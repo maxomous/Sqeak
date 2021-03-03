@@ -6,7 +6,7 @@ LIBS = -lwiringPi
 #-lpthread -lm -lrt -lGL -lGLU -lglut -lGLEW -lfreetype 
 
 # add to libs for debugging gdb -v -da -Q
-CC = gcc
+CC = g++
 
 # -g   for debugging
 # -Wall -Werror   to show all errors
@@ -19,8 +19,8 @@ CFLAGS=  -g -Wall -Werror -Wextra
 default: $(TARGET)
 all: default
 
-OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c))
-HEADERS = $(wildcard *.h)
+OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+HEADERS = $(wildcard *.hpp)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
