@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdarg.h>
 #include <string>
 #include <string.h>
 #include <ctype.h>
@@ -18,9 +19,11 @@
 #include "grbl.hpp"
 
 
-#define ERR_SUCCESS	0
-#define ERR_FAIL	1
+#define ERR_SUCCESS		0
+#define ERR_FAIL		1
 
-extern void exitf(const char* str) ;
+#define MAX_STRING 		255 // general maximum string length 
+
+extern void exitf(const char* format, ... );
 
 #endif
