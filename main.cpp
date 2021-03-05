@@ -40,15 +40,32 @@ int main(int argc, char **argv)
 	gcList_t* gcList = new gcList_t;
 	// add gcodes to the stream
 	gcList->add("$X");
+	/*
+	
+	gcList->add("M3 S1232.0");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
+	
+	gcList->add("G1 X10 Y20 Z50 F6000");
+	gcList->add("G4 P1");
+	
 	gcList->add("$$");
 	gcList->add("$#");
+	gcList->add("$G");*/
+	gcList->add("$I");
+	
+	/* JOG
+	gcList->add("$J=G91 X10 F1000");
+	grblRealTime(fd, GRBL_RT_JOG_CANCEL);
+	*/
+	
+	
+	/* PROBE 
 	gcList->add("G91 G38.2 Z-200 F100\n");
 	gcList->add("G91 G38.4 Z1 F100\n");
-	/*
-	gcList->add("G91");
-	gcList->add("G1 X10 Y20 Z50");
-	gcList->add("G4 P1");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	*/
+	
+	/*gcList->add("G1 X-10 Y-20 Z-50 F6000");
 	gcList->add("G4 P1");
 	
 	gcList->add("G1 X10 Y20 Z50 F6000");
@@ -79,7 +96,7 @@ int main(int argc, char **argv)
 	
 	uint requestTime = millis() + 1000;
 	
-	uint requestTimeHold = millis() + 6000;
+	uint requestTimeHold = millis() + 1000;
 	uint requestTimeResume = millis() + 7000;
 	do {
 		grblWrite(fd, gcList, q);
@@ -90,27 +107,47 @@ int main(int argc, char **argv)
 		
 		/*
 		if(millis() > requestTime) {
+			// no more that 5Hz (200ns)
 			grblRealTime(fd, GRBL_RT_STATUS_QUERY);			
 			requestTime += 1000;
 		}
 		*/
 		
 		if(millis() > requestTimeHold) {
-			grblRealTime(fd, GRBL_RT_OVERRIDE_FEED_100PERCENT);	
 			requestTimeHold += 3000;
+		/*	grblRealTime(fd, GRBL_RT_OVERRIDE_FEED_100PERCENT);	
 			for (int i = 0; i < 6; i++) {
-				cout << "Work Coord G" << 54+i << " = " << grblParams->gC.workCoords[i].x << ", " << grblParams->gC.workCoords[i].y << ", " << grblParams->gC.workCoords[i].z << endl;
+				cout << "Work Coord G" << 54+i << " = " << grblParams->param.workCoords[i].x << ", " << grblParams->param.workCoords[i].y << ", " << grblParams->param.workCoords[i].z << endl;
 			}
 			
-			cout << "Home Coord G28 = " << grblParams->gC.homeCoords[0].x << ", " << grblParams->gC.homeCoords[0].y << ", " << grblParams->gC.homeCoords[0].z << endl;
-			cout << "Home Coord G30 = " << grblParams->gC.homeCoords[1].x << ", " << grblParams->gC.homeCoords[1].y << ", " << grblParams->gC.homeCoords[1].z << endl;
+			cout << "Home Coord G28 = " << grblParams->param.homeCoords[0].x << ", " << grblParams->param.homeCoords[0].y << ", " << grblParams->param.homeCoords[0].z << endl;
+			cout << "Home Coord G30 = " << grblParams->param.homeCoords[1].x << ", " << grblParams->param.homeCoords[1].y << ", " << grblParams->param.homeCoords[1].z << endl;
 			
-			cout << "Offset Coord G92 = " << grblParams->gC.offsetCoords.x << ", " << grblParams->gC.offsetCoords.y << ", " << grblParams->gC.offsetCoords.z << endl;
-			cout << "TLO = " << grblParams->gC.toolLengthOffset << endl;
+			cout << "Offset Coord G92 = " << grblParams->param.offsetCoords.x << ", " << grblParams->param.offsetCoords.y << ", " << grblParams->param.offsetCoords.z << endl;
+			cout << "TLO = " << grblParams->param.toolLengthOffset << endl;
 			
-			cout << "Probe = " << grblParams->gC.probeOffset.x << ", " << grblParams->gC.probeOffset.y << ", " << grblParams->gC.probeOffset.z << endl;
-			cout << "Probe Success = " << grblParams->gC.probeSuccess << endl;
+			cout << "Probe = " << grblParams->param.probeOffset.x << ", " << grblParams->param.probeOffset.y << ", " << grblParams->param.probeOffset.z << endl;
+			cout << "Probe Success = " << grblParams->param.probeSuccess << endl << endl;
 			
+			
+			cout << "MotionMode = " << grblParams->mode.MotionMode << endl;
+			cout << "CoordinateSystem = " << grblParams->mode.CoordinateSystem << endl;
+			cout << "Plane = " << grblParams->mode.Plane << endl;
+			cout << "DistanceMode = " << grblParams->mode.DistanceMode << endl;
+			cout << "ArcIJKDistanceMode = " << grblParams->mode.ArcIJKDistanceMode << endl;
+			cout << "FeedRateMode = " << grblParams->mode.FeedRateMode << endl;
+			cout << "UnitsMode = " << grblParams->mode.UnitsMode << endl;
+			cout << "CutterRadiusCompensation = " << grblParams->mode.CutterRadiusCompensation << endl;
+			cout << "ToolLengthOffset = " << grblParams->mode.ToolLengthOffset << endl;
+			cout << "ProgramMode = " << grblParams->mode.ProgramMode << endl;
+			cout << "SpindleState = " << grblParams->mode.SpindleState << endl;
+			cout << "CoolantState = " << grblParams->mode.CoolantState << endl;
+			cout << "toolNumber = " << grblParams->mode.toolNumber << endl;
+			cout << "spindleSpeed = " << grblParams->mode.spindleSpeed << endl;
+			cout << "feedRate = " << grblParams->mode.feedRate << endl;
+			*/
+			cout << "Startup Block 1 = " << grblParams->startupBlock[0] << endl;
+			cout << "Startup Block 2 = " << grblParams->startupBlock[1] << endl;
 		}
 		
 		/*if(millis() > requestTimeResume) {

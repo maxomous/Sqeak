@@ -38,7 +38,7 @@ static point3D grblReadXYZ(string msg, bool* success) {
 	return (point3D) {.x=0, .y=0, .z=0};
 }
 
-//grblReadXYZa(msg, &(grblParams->gC.probeOffset));
+//grblReadXYZa(msg, &(grblParams->param.probeOffset));
 
 			// [PRB:0.000,0.000,0.000:0]
 
@@ -46,19 +46,42 @@ static point3D grblReadXYZ(string msg, bool* success) {
 grblParams_t::grblParams_t() {
 	// clear all values in object
 	point3D defaultP = (point3D){.x=0.0f, .y=0.0f, .z=0.0f};
+	
+	// 
 	// G54 - G59
 	for (int i = 0; i < 6; i++)
-		this->gC.workCoords[i] = defaultP;
+		this->param.workCoords[i] = defaultP;
 	// G28 & G30
 	for (int i = 0; i < 2; i++)
-		this->gC.homeCoords[i] = defaultP;	
+		this->param.homeCoords[i] = defaultP;	
 	// G92
-	this->gC.offsetCoords = defaultP;
+	this->param.offsetCoords = defaultP;
 		
-	this->gC.toolLengthOffset = 0.0f;
+	this->param.toolLengthOffset = 0.0f;
 	
-	this->gC.probeOffset = defaultP;
-	this->gC.probeSuccess = FALSE;
+	this->param.probeOffset = defaultP;
+	this->param.probeSuccess = FALSE;
+	
+	// modal group
+	this->mode.MotionMode = "G0";
+	this->mode.CoordinateSystem = "G54";
+	this->mode.Plane = "G17";
+	this->mode.DistanceMode = "G90";
+	this->mode.ArcIJKDistanceMode = "G91.1";
+	this->mode.FeedRateMode = "G94";
+	this->mode.UnitsMode = "G21";
+	this->mode.CutterRadiusCompensation = "G40";
+	this->mode.ToolLengthOffset = "G49";
+	this->mode.ProgramMode = "M0";
+	this->mode.SpindleState = "M5";
+	this->mode.CoolantState = "M9";
+
+	this->mode.toolNumber = 0;
+	this->mode.spindleSpeed = 0.0f;
+	this->mode.feedRate = 0.0f;
+	
+	this->startupBlock[0] = "";
+	this->startupBlock[1] = "";
 }
 
 
@@ -221,52 +244,102 @@ void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q) {
 			break;
 		}
 		// print out messages
-		else if(!msg.compare(0, 4, "Grbl") || !msg.compare(1, 3, "MSG")) {	
+		else if(!msg.compare(0, 4, "Grbl") || !msg.compare(0, 4, "[MSG")) {	
 			cout << msg << endl;
+		}
+		// View build info - just print out
+		else if(!msg.compare(0, 4, "[VER") || !msg.compare(0, 4, "[OPT")) {	
+			cout << msg << endl;
+		}
+		else if(!msg.compare(0, 3, "[GC")) {
+			cout << msg << endl;
+			string s = msg.substr(4, msg.length()-5);
+			istringstream iss(s);
+			do {
+				string code;
+				iss >> code;
+				// [GC:G0 G54 G17 G21 G90 G94 M0 M5 M9 T0 S0.0 F500.0]
+				if(code == "")
+					{/*do nothing*/}
+				else if(code == "G0" || code == "G1" || code ==  "G2" || code ==  "G3" || code ==  "G38.2" || code ==  "G38.3" || code ==  "G38.4 "|| code ==  "G38.5" || code ==  "G80")
+					grblParams->mode.MotionMode = code;
+				else if(code == "G54" || code == "G55" || code == "G56" || code == "G57" || code ==  "G58" || code == "G59")
+					grblParams->mode.CoordinateSystem = code;
+				else if(code == "G17" || code == "G18" || code == "G19")
+					grblParams->mode.Plane = code;
+				else if(code == "G90" || code == "G91")
+					grblParams->mode.DistanceMode = code;
+				else if(code == "G91.1")
+					grblParams->mode.ArcIJKDistanceMode = code;
+				else if(code == "G93" || code == "G94")
+					grblParams->mode.FeedRateMode = code;
+				else if(code == "G20" || code == "G21")
+					grblParams->mode.UnitsMode = code;
+				else if(code == "G40")
+					grblParams->mode.CutterRadiusCompensation = code;
+				else if(code == "G43.1" || code == "G49")
+					grblParams->mode.ToolLengthOffset = code;
+				else if(code == "M0" || code == "M1" || code == "M2" || code == "M30")
+					grblParams->mode.ProgramMode = code;
+				else if(code == "M3" || code == "M4" || code == "M5")
+					grblParams->mode.SpindleState = code;
+				else if(code == "M7" || code == "M8" || code == "M9")
+					grblParams->mode.CoolantState = code;
+				else if(code.compare(0, 1, "T"))
+					grblParams->mode.toolNumber = stoi(code.substr(1, code.length()-1));
+				else if(code.compare(0, 1, "S"))
+					grblParams->mode.spindleSpeed = stof(code.substr(1, code.length()-1));
+				else if(code.compare(0, 1, "F"))
+					grblParams->mode.feedRate = stof(code.substr(1, code.length()-1));
+				else
+					cout << "Code unrecognised: " << code << endl;
+			} while (iss);
 		}
 		else if(!msg.compare(0, 1, "[")) {
 			cout << msg << endl;
 		
-		/*
-		point3D workCoords[6];	// G54 - G59
-		point3D homeCoords[2];	// G28 & G30
-		point3D offsetCoords;	// G92
-		point3D toolLengthOffset;
-		point3D probeOffset;
-*/		
 			// [G54:4.000,0.000,0.000] - [G59:4.000,0.000,0.000]
 			if(!msg.compare(1, 3, "G54")) 
-				grblParams->gC.workCoords[0] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[0] = grblReadXYZ(msg, NULL);
 			else if(!msg.compare(1, 3, "G55")) 
-				grblParams->gC.workCoords[1] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[1] = grblReadXYZ(msg, NULL);
 			else if(!msg.compare(1, 3, "G56")) 
-				grblParams->gC.workCoords[2] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[2] = grblReadXYZ(msg, NULL);
 			else if(!msg.compare(1, 3, "G57")) 
-				grblParams->gC.workCoords[3] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[3] = grblReadXYZ(msg, NULL);
 			else if(!msg.compare(1, 3, "G58")) 
-				grblParams->gC.workCoords[4] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[4] = grblReadXYZ(msg, NULL);
 			else if(!msg.compare(1, 3, "G59")) 
-				grblParams->gC.workCoords[5] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[5] = grblReadXYZ(msg, NULL);
 			// [G28:1.000,2.000,0.000]  / [G30:4.000,6.000,0.000]
 			else if(!msg.compare(1, 3, "G28")) 
-				grblParams->gC.homeCoords[0] = grblReadXYZ(msg, NULL);
+				grblParams->param.homeCoords[0] = grblReadXYZ(msg, NULL);
 			else if(!msg.compare(1, 3, "G30")) 
-				grblParams->gC.homeCoords[1] = grblReadXYZ(msg, NULL);
+				grblParams->param.homeCoords[1] = grblReadXYZ(msg, NULL);
 			// [G92:0.000,0.000,0.000]
 			else if(!msg.compare(1, 3, "G92")) 
-				grblParams->gC.offsetCoords = grblReadXYZ(msg, NULL);
+				grblParams->param.offsetCoords = grblReadXYZ(msg, NULL);
 			// [TLO:0.000]	
 			else if(!msg.compare(1, 3, "TLO")) 
-				grblParams->gC.toolLengthOffset = grblReadX(msg);
+				grblParams->param.toolLengthOffset = grblReadX(msg);
 			// [PRB:0.000,0.000,0.000:0]
 			else if(!msg.compare(1, 3, "PRB"))
-				grblParams->gC.probeOffset = grblReadXYZ(msg, &(grblParams->gC.probeSuccess));
-
-				
+				grblParams->param.probeOffset = grblReadXYZ(msg, &(grblParams->param.probeSuccess));
+			else
+				cout << "Message unrecognised: " << msg << endl;				
 		}
 		else if(!msg.compare(0, 1, "<")) {	
 			cout << msg << endl;
 		}
+		else if(!msg.compare(0, 2, "$N")) {	
+			cout << msg << endl;
+			int blockNum = stoi(msg.substr(2, 1));
+			if(blockNum == 0 || blockNum == 1)
+				grblParams->startupBlock[blockNum] = msg.substr(4);
+			else
+				cout << "Startup block number unrecognised: " << msg << endl;
+		}
+		
 		// settings codes
 		else if(!msg.compare(0, 1, "$")) {	
 			// retrieve settings code & current value
@@ -444,19 +517,20 @@ void grblRealTime(int fd, char cmd) {
 	$G - View gcode parser state
 		[GC:G0 G54 G17 G21 G90 G94 M0 M5 M9 T0 S0.0 F500.0]
 
-			Modal Group					Member Words
-		Motion Mode					G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
-		Coordinate System Select	G54, G55, G56, G57, G58, G59
-		Plane Select				G17, G18, G19
-		Distance Mode				G90, G91
-		Arc IJK Distance Mode		G91.1
-		Feed Rate Mode				G93, G94
-		Units Mode					G20, G21
-		Cutter Radius Compensation	G40
-		Tool Length Offset			G43.1, G49
-		Program Mode				M0, M1, M2, M30
-		Spindle State				M3, M4, M5
-		Coolant State				M7, M8, M9
+														
+			Modal Group					Member Words	*default
+		Motion Mode					*G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
+		Coordinate System Select	*G54, G55, G56, G57, G58, G59
+		Plane Select				*G17, G18, G19
+		Distance Mode				*G90, G91
+		Arc IJK Distance Mode		*G91.1
+		Feed Rate Mode				G93, *G94
+		Units Mode					G20, *G21
+		Cutter Radius Compensation	*G40
+		Tool Length Offset			G43.1, *G49
+		Program Mode				*M0, M1, M2, M30
+		Spindle State				M3, M4, *M5
+		Coolant State				M7, M8, *M9
 
 		T tool number, S spindle speed, and F feed rate,
 
@@ -467,7 +541,7 @@ void grblRealTime(int fd, char cmd) {
 		Optionally, $I can also store a short string to help identify which CNC machine you are communicating with
 		To set this string, send Grbl $I=xxx
 	
-	$N - View startup blocks
+	$N - View startup blocks - (set with $Nx=line)
 		GCodes to be ran on startup - set using $N0=xxxx (e.g. '$N0=G21 G54 G17'  metric / work offset 0 / xy plane)
 		$N0=
 		$N1=

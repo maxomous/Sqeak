@@ -9,6 +9,7 @@
 #include <stdarg.h>
 #include <string>
 #include <string.h>
+#include <sstream>
 #include <algorithm>
 #include <ctype.h>
 #include <assert.h>
