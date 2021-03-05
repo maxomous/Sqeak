@@ -1,6 +1,8 @@
 
 #include "common.hpp"
 
+using namespace std;
+
 // - I dont quite understand new - i get that it allocates memory
 // 		-is it just used when making a pointer and thats all? if so that makes sense
 // - Whats the naming convention for classes? im still using x_t
@@ -9,8 +11,12 @@
 // - do i need to destruct gcList_t?
 // - dont like how we are handling real time commands in grblRead
 // - difference between passing by reference and pointer
+// - is the buffer cleared out when theres an alarm ??
 int main(int argc, char **argv)
 {
+	//cout << *argv << endl;
+
+	
 	(void)argc, (void) argv;
 		
 	int wiringPiSetup(void);
@@ -19,67 +25,65 @@ int main(int argc, char **argv)
 	if(fd == -1)
 		exitf("ERROR: Could not open serial device\n");
 	
-	serialPuts(fd, "\r\n\r\n"); // what is this doing?
+	//clear the serial buffer
+	serialPuts(fd, "\r\n\r\n"); // not actually sure what this does but it is given in the grbl example
 	delay(2000);
 	serialFlush(fd);	
 	
 	grblRealTime(fd, GRBL_RT_SOFT_RESET);	
 	grblRealTime(fd, GRBL_RT_STATUS_QUERY);	
 	
+	grblParams_t* grblParams = new grblParams_t;
 	
 	queue_t* q = new queue_t(128);			
 	
 	gcList_t* gcList = new gcList_t;
 	// add gcodes to the stream
-	gcList->add("$X\n");
-	gcList->add("$$\n");
-	gcList->add("G91\n");
-	gcList->add("G1 X10 Y20 Z50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000\n");
-	gcList->add("G4 P1\n");
+	gcList->add("$X");
+	gcList->add("$$");
+	gcList->add("$#");
+	gcList->add("G91 G38.2 Z-200 F100\n");
+	gcList->add("G91 G38.4 Z1 F100\n");
 	/*
-	gcList->add("G1 X10 Y20 Z50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000\n");*/
-	/*gcList->add("G4 P1\n");
-	gcList->add("G1 X10 Y20 Z50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X10 Y20 Z50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X10 Y20 Z50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X10 Y20 Z50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X10 Y20 Z50 F6000\n");
-	gcList->add("G4 P1\n");
-	gcList->add("G1 X-10 Y-20 Z-50 F6000\n");
-	gcList->add("G4 P1\n");
-	*/
-	/*serialPuts(fd, "$\n");
-	serialPuts(fd, "$$\n");
-
-	serialPuts(fd, "$X\n");
+	gcList->add("G91");
+	gcList->add("G1 X10 Y20 Z50");
+	gcList->add("G4 P1");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
 	
-	serialPuts(fd, "$#\n");*/
-	//serialPuts(fd, "G00 X5\n");
-	//serialPuts(fd, "G00 y5\n");
+	gcList->add("G1 X10 Y20 Z50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X10 Y20 Z50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X10 Y20 Z50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X10 Y20 Z50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X10 Y20 Z50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X10 Y20 Z50 F6000");
+	gcList->add("G4 P1");
+	gcList->add("G1 X-10 Y-20 Z-50 F6000");
+	gcList->add("G4 P1");
+	*/
 	
 	uint requestTime = millis() + 1000;
 	
-	uint requestTimeHold = millis() + 4000;
+	uint requestTimeHold = millis() + 6000;
 	uint requestTimeResume = millis() + 7000;
 	do {
 		grblWrite(fd, gcList, q);
-		grblRead(fd, gcList, q);
+		grblRead(grblParams, fd, gcList, q);
 		
 		
 		
@@ -90,12 +94,25 @@ int main(int argc, char **argv)
 			requestTime += 1000;
 		}
 		*/
-		/*
+		
 		if(millis() > requestTimeHold) {
 			grblRealTime(fd, GRBL_RT_OVERRIDE_FEED_100PERCENT);	
 			requestTimeHold += 3000;
+			for (int i = 0; i < 6; i++) {
+				cout << "Work Coord G" << 54+i << " = " << grblParams->gC.workCoords[i].x << ", " << grblParams->gC.workCoords[i].y << ", " << grblParams->gC.workCoords[i].z << endl;
+			}
+			
+			cout << "Home Coord G28 = " << grblParams->gC.homeCoords[0].x << ", " << grblParams->gC.homeCoords[0].y << ", " << grblParams->gC.homeCoords[0].z << endl;
+			cout << "Home Coord G30 = " << grblParams->gC.homeCoords[1].x << ", " << grblParams->gC.homeCoords[1].y << ", " << grblParams->gC.homeCoords[1].z << endl;
+			
+			cout << "Offset Coord G92 = " << grblParams->gC.offsetCoords.x << ", " << grblParams->gC.offsetCoords.y << ", " << grblParams->gC.offsetCoords.z << endl;
+			cout << "TLO = " << grblParams->gC.toolLengthOffset << endl;
+			
+			cout << "Probe = " << grblParams->gC.probeOffset.x << ", " << grblParams->gC.probeOffset.y << ", " << grblParams->gC.probeOffset.z << endl;
+			cout << "Probe Success = " << grblParams->gC.probeSuccess << endl;
+			
 		}
-		*
+		
 		/*if(millis() > requestTimeResume) {
 			grblRealTime(fd, GRBL_RT_FLOOD_COOLANT);	
 			requestTimeResume += 10000;
@@ -108,25 +125,6 @@ int main(int argc, char **argv)
 	
 	return 0;
 }
-
-
-/*
- * $$ and $x=val - View and write Grbl settings
- * 
- * 
- * $# - View gcode parameters
-	[G54:4.000,0.000,0.000]		work coords				can be changed with 	G10 L2 Px or G10 L20 Px
-	[G55:4.000,6.000,7.000]
-	[G56:0.000,0.000,0.000]
-	[G57:0.000,0.000,0.000]
-	[G58:0.000,0.000,0.000]
-	[G59:0.000,0.000,0.000]
-	[G28:1.000,2.000,0.000]		pre-defined positions 	can be changed with 	G28.1
-	[G30:4.000,6.000,0.000]												 		G30.1
-	[G92:0.000,0.000,0.000]		coordinate offset 
-	[TLO:0.000]					tool length offsets
-	[PRB:0.000,0.000,0.000:0]	probing
- */
 
 
 

@@ -23,7 +23,7 @@ class queue_t {
 
 		// Remove the oldest value in the queue
 		// and return it.
-		// returns 0 to check if queue is full
+		// throws error if queue if empty
 		size_t dequeue();
 
 		// Return the oldest value in the queue.

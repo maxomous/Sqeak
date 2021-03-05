@@ -5,10 +5,10 @@
 #define SERIAL_DEVICE 		"/dev/ttyAMA0"
 #define SERIAL_BAUDRATE 	115200
 
-#define STATUS_NONE			0	// not sent yet to grbl
-#define STATUS_PENDING 		1	// sent to grbl but no status received
-#define STATUS_OK			2	// 'ok' received by grbl
-#define STATUS_ERROR		3	// 'error' received by grbl
+#define STATUS_NONE			-2	// not sent yet to grbl
+#define STATUS_PENDING 		-1	// sent to grbl but no status received
+#define STATUS_OK			0	// 'ok' received by grbl
+// ERROR STATUS MATCHES GRBL's 	#define STATUS_ERROR		3	// 'error' received by grbl
 
 #define MAX_GRBL_BUFFER 	128
 
@@ -41,6 +41,8 @@
 #define GRBL_RT_FLOOD_COOLANT						(char)0xA0
 #define GRBL_RT_MIST_COOLANT						(char)0xA1
 
+static int grblBufferSize = MAX_GRBL_BUFFER;
+
 class gcList_t {
 	public:
 		int count;
@@ -51,15 +53,49 @@ class gcList_t {
 		std::vector<int> status;
 		
 		gcList_t();
-		~gcList_t();
 		void add(std::string str);		
 };
+
+/*		GRBL GCode Parametes
+* 
+	[G54:4.000,0.000,0.000]		work coords				can be changed with 	G10 L2 Px or G10 L20 Px
+	[G55:4.000,6.000,7.000]
+	[G56:0.000,0.000,0.000]
+	[G57:0.000,0.000,0.000]
+	[G58:0.000,0.000,0.000]
+	[G59:0.000,0.000,0.000]
+	[G28:1.000,2.000,0.000]		pre-defined positions 	can be changed with 	G28.1
+	[G30:4.000,6.000,0.000]												 		G30.1
+	[G92:0.000,0.000,0.000]		coordinate offset 
+	[TLO:0.000]					tool length offsets
+	[PRB:0.000,0.000,0.000:0]	probing
+*/
+
+typedef struct {
+	point3D workCoords[6];	// G54 - G59
+	point3D homeCoords[2];	// G28 & G30
+	point3D offsetCoords;	// G92
+	float toolLengthOffset;
+	point3D probeOffset;
+	bool probeSuccess;
+} gCodeParams_t;
+
+class grblParams_t {
+	public:
+		gCodeParams_t gC;
+		
+		grblParams_t();
+};
+
+
+			
+
 
 // Reads line of serial port. 
 // Returns string and length in msg
 extern void grblReadLine(int fd, std::string* msg);
 // Reads block off serial port
-extern void grblRead(int fd, gcList_t* gcList, queue_t* q);
+extern void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q);
 // Writes line to serial port
 extern void grblWrite(int fd, gcList_t* gcList, queue_t* q);
 // Writes realtime command to serial port

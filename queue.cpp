@@ -19,14 +19,14 @@ queue_t::queue_t(size_t size) {
 int queue_t::enqueue(size_t val) {	
 	// If the pointers meet, the queue is full.
 	if (this->head == this->tail - 1)
-		return false;
+		throw "ERROR: Queue is full!";
 	
 	// If the head pointer is at the end of the buffer
 	// and the tail pointer at the beginning,
 	// the queue is also full.
 	if (this->head == this->size) {
 		if (this->tail == 0) 
-			return false;
+		throw "ERROR: Queue is full!";
 	}
 	
 	this->buf[this->head] = val;
@@ -40,13 +40,12 @@ int queue_t::enqueue(size_t val) {
 
 // Remove the oldest value in the queue
 // and return it.
-// returns 0 to check if queue is full
+// throws error if queue if empty
 size_t queue_t::dequeue() {
-	
 	// Queue is empty, 
 	// nothing to return
 	if (this->head == this->tail)
-		return false;
+		throw "ERROR: You cannot remove from an empty queue!";
 	
 	size_t oldTail = this->tail;
 	
