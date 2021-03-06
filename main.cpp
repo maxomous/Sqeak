@@ -22,7 +22,10 @@ using namespace std;
 // - difference between passing by reference and pointer
 // - is the buffer cleared out when theres an alarm ??
 // test all value are coming through ok - in particular coord systems as i modified the code
+* 		// maybe a test which sends a tonnes of values and checks they match?
 // - should check if in mm or inches ($13) as everything returned from grbl is based on those units
+// - check buffer state response in status report (Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer) matches our buffer - mask needs to be enabled first $_=_
+
 
 // on error, halt
 // $C on open file?
@@ -42,12 +45,42 @@ using namespace std;
 */
 
 
+			
 int main(int argc, char **argv)
 {
+	
+	/*
+	grblParams_t* grblParams = new grblParams_t;
+	
+	grblStatus_t* s = &(grblParams->status);
+	
 	//cout << *argv << endl;
+	string segs[1];
 	
+	segs[0] = "A:CFM";
+	int i = 0;
+	*/
 	
-
+	/*
+	if(segs[i].substr(0, 2) == "Ov") {
+		point3D ov = stoxyz(segs[i].substr(3));
+		int override_Feedrate = (int)ov.x;
+		int override_RapidFeed = (int)ov.y;
+		int override_SpindleSpeed = (int)ov.z;
+		cout << override_Feedrate << endl;
+		cout << override_RapidFeed << endl;
+		cout << override_SpindleSpeed << endl;
+	}
+	
+	*/
+		/*
+		X Y Z XYZ limit pins, respectively
+P the probe pin.
+D H R S the door, hold, soft-reset, and cycle-start pins, respectively.
+Example: Pn:PZ indicates the probe and z-limit pins are 'triggered'.
+Note: A may be added in later versions for an A-axis limit pin.
+		
+	*/
 	
 
 
@@ -97,7 +130,7 @@ int main(int argc, char **argv)
 	queue_t* q = new queue_t(128);			
 	
 	gcList_t* gcList = new gcList_t;
-	
+
 	// add gcodes to the stream
 	
 	// GRBL SETTINGS

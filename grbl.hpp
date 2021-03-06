@@ -119,8 +119,8 @@ typedef struct {
 	float feedRate;
 } modalGroup_t;
 
-
-typedef struct {
+// realtime status values
+typedef struct {	
 	std::string state;
 	// either of these are given 
 	// WPos = MPos - WCO
@@ -128,22 +128,40 @@ typedef struct {
 	point3D WPos;
 	// this is given every 10 or 30 status messages
 	point3D WCO;
+	int lineNum;
+	float feedRate;	// mm/min or inches/min
+	int spindleSpeed; // rpm
+	
+	bool inputPin_LimX;
+	bool inputPin_LimY;
+	bool inputPin_LimZ;
+	bool inputPin_Probe;
+	bool inputPin_Door;
+	bool inputPin_Hold;
+	bool inputPin_SoftReset;
+	bool inputPin_CycleStart;
+	
+	int override_Feedrate;
+	int override_RapidFeed;
+	int override_SpindleSpeed;
+	
+	int accessory_SpindleDirection;
+	int accessory_FloodCoolant;
+	int accessory_MistCoolant;
 	
 } grblStatus_t;
 
 class grblParams_t {
 	public:
+		std::string startupBlock[2];
 		gCodeParams_t param;
 		modalGroup_t mode;
-		std::string startupBlock[2];
 		grblStatus_t status;
 		
 		
 		grblParams_t();
 };
 
-
-			
 
 
 // Reads line of serial port. 

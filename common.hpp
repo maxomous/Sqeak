@@ -37,6 +37,9 @@ typedef struct {
 
 #define MAX_STRING 		255 // general maximum string length 
 
+#define CLOCKWISE		1
+#define ANTICLOCKWISE	-1
+
 
 extern void exitf(const char* format, ... );
 

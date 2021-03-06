@@ -24,47 +24,87 @@ static point3D stoxyz(string msg) {
 	
 
 grblParams_t::grblParams_t() {
-	// clear all values in object
-	point3D defaultP = (point3D){.x=0.0f, .y=0.0f, .z=0.0f};
 	
-	// 
-	// G54 - G59
-	for (int i = 0; i < 6; i++)
-		this->param.workCoords[i] = defaultP;
-	// G28 & G30
-	for (int i = 0; i < 2; i++)
-		this->param.homeCoords[i] = defaultP;	
-	// G92
-	this->param.offsetCoords = defaultP;
-		
-	this->param.toolLengthOffset = 0.0f;
-	
-	this->param.probeOffset = defaultP;
-	this->param.probeSuccess = FALSE;
-	
-	// modal group
-	this->mode.MotionMode = "G0";
-	this->mode.CoordinateSystem = "G54";
-	this->mode.Plane = "G17";
-	this->mode.DistanceMode = "G90";
-	this->mode.ArcIJKDistanceMode = "G91.1";
-	this->mode.FeedRateMode = "G94";
-	this->mode.UnitsMode = "G21";
-	this->mode.CutterRadiusCompensation = "G40";
-	this->mode.ToolLengthOffset = "G49";
-	this->mode.ProgramMode = "M0";
-	this->mode.SpindleState = "M5";
-	this->mode.CoolantState = "M9";
-
-	this->mode.toolNumber = 0;
-	this->mode.spindleSpeed = 0.0f;
-	this->mode.feedRate = 0.0f;
-	
+// base (grblParams_t)
 	this->startupBlock[0] = "";
 	this->startupBlock[1] = "";
+	
+// clear all values in object
+	point3D defaultP = (point3D){.x=0.0f, .y=0.0f, .z=0.0f};
+	
+// gCodeParams_t
+	gCodeParams_t* g = &(this->param);
+	// G54 - G59
+	for (int i = 0; i < 6; i++)
+		g->workCoords[i] = defaultP;
+	// G28 & G30
+	for (int i = 0; i < 2; i++)
+		g->homeCoords[i] = defaultP;	
+	// G92
+	g->offsetCoords = defaultP;
+		
+	g->toolLengthOffset = 0.0f;
+	
+	g->probeOffset = defaultP;
+	g->probeSuccess = FALSE;
+	
+// modalGroup_t
+	modalGroup_t* m = &(this->mode);
+	m->MotionMode = "G0";
+	m->CoordinateSystem = "G54";
+	m->Plane = "G17";
+	m->DistanceMode = "G90";
+	m->ArcIJKDistanceMode = "G91.1";
+	m->FeedRateMode = "G94";
+	m->UnitsMode = "G21";
+	m->CutterRadiusCompensation = "G40";
+	m->ToolLengthOffset = "G49";
+	m->ProgramMode = "M0";
+	m->SpindleState = "M5";
+	m->CoolantState = "M9";
+
+	m->toolNumber = 0;
+	m->spindleSpeed = 0.0f;
+	m->feedRate = 0.0f;
+
+// grblStatus_t
+	grblStatus_t* s = &(this->status);
+	s->state = "";
+	s->MPos = defaultP;
+	s->WPos = defaultP;
+	s->WCO = defaultP;
+	s->lineNum = 0;
+	s->feedRate = 0;
+	s->spindleSpeed = 0;
+	
+	s->inputPin_LimX = 0;
+	s->inputPin_LimY = 0;
+	s->inputPin_LimZ = 0;
+	s->inputPin_Probe = 0;
+	s->inputPin_Door = 0;
+	s->inputPin_Hold = 0;
+	s->inputPin_SoftReset = 0;
+	s->inputPin_CycleStart = 0;
+	
+	s->override_Feedrate = 0;
+	s->override_RapidFeed = 0;
+	s->override_SpindleSpeed = 0;
+	
+	s->accessory_SpindleDirection = 0;
+	s->accessory_FloodCoolant = 0;
+	s->accessory_MistCoolant = 0;
+	
 }
-
-
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 
 gcList_t::gcList_t(){
 	this->count = 0;
@@ -397,20 +437,124 @@ void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q) {
 					s->WCO = stoxyz(segs[i].substr(4));
 				}
 				
-				
-				
+				// Buffer State - mainly used for debugging
+				// Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer.
+				else if(segs[i].substr(0, 2) == "Bf") {
+					cout << segs[i] << endl; 
+				}
+				// line number Ln:99999
+				else if(segs[i].substr(0, 2) == "Ln") {
+					s->lineNum = stoi(segs[i].substr(3)); 
+				}
+				// feed & speed
+				// FS:500,8000 (feed rate / spindle speed)
+				else if(segs[i].substr(0, 2) == "FS") {
+					size_t a = segs[i].find(",");
+					if (a != string::npos) {
+						cout << segs[i].substr(3, a-3) << endl;
+						s->feedRate = stof(segs[i].substr(3, a-3)); 
+						cout << segs[i].substr(a+1) << endl;
+						s->spindleSpeed = stoi(segs[i].substr(a+1)); 
+					}
+					else
+						exitf("ERROR: Can't find ',' in FS\n");
+				}
+				// feed only
+				// F:500 (feed rate only) - when VARIABLE_SPINDLE is disabled in config.h
+				else if(segs[i].substr(0, 1) == "F") {
+					s->feedRate = stof(segs[i].substr(2)); 
+				}
+				// Input Pin State
+				// Pn:XYZPDHRS - can be any number of letters
+				else if(segs[i].substr(0, 2) == "Pn") {
+					// set all pins to default
+					s->inputPin_LimX = false;
+					s->inputPin_LimY = false;
+					s->inputPin_LimZ = false;
+					s->inputPin_Probe = false;
+					s->inputPin_Door = false;
+					s->inputPin_Hold = false;
+					s->inputPin_SoftReset = false;
+					s->inputPin_CycleStart = false;
+					
+					string str = segs[i].substr(3);
+					for (int j = 0; j < str.length(); j++) {
+						if(str[j] == 'X')
+							s->inputPin_LimX = true;
+						else if(str[j] == 'Y')
+							s->inputPin_LimY = true;
+						else if(str[j] == 'Z')
+							s->inputPin_LimZ = true;
+						else if(str[j] == 'P')
+							s->inputPin_Probe = true;
+						else if(str[j] == 'D')
+							s->inputPin_Door = true;
+						else if(str[j] == 'H')
+							s->inputPin_Hold = true;
+						else if(str[j] == 'R')
+							s->inputPin_SoftReset = true;
+						else if(str[j] == 'S')
+							s->inputPin_CycleStart = true;
+						else
+							exitf("ERROR: Input pin unrecognised\n");
+					}
+					cout << "Pin X = " << s->inputPin_LimX << endl;
+					cout << "Pin Y = " << s->inputPin_LimY << endl;
+					cout << "Pin Z = " << s->inputPin_LimZ << endl;
+					cout << "Probe = " << s->inputPin_Probe << endl;
+					cout << "Door = " << s->inputPin_Door << endl;
+					cout << "Hold = " << s->inputPin_Hold << endl;
+					cout << "SoftReset = " << s->inputPin_SoftReset << endl;
+					cout << "CycleStart = " << s->inputPin_CycleStart << endl << endl;
+				}
+				//Override Values:
+				// Ov:100,100,100 current override values in percent of programmed values for feed, rapids, and spindle speed, respectively.
+				else if(segs[i].substr(0, 2) == "Ov") {
+					point3D ov = stoxyz(segs[i].substr(3));
+					s->override_Feedrate = (int)ov.x;
+					s->override_RapidFeed = (int)ov.y;
+					s->override_SpindleSpeed = (int)ov.z;
+				}
+				// Accessory State
+				// 	'A:SFM' - can be any number of letters
+				// S indicates spindle is enabled in the CW direction. This does not appear with C.
+				// C indicates spindle is enabled in the CCW direction. This does not appear with S.
+				// F indicates flood coolant is enabled.
+				// M indicates mist coolant is enabled.
+				else if(segs[i].substr(0, 2) == "A:") {
+					// set all pins to default
+					s->accessory_SpindleDirection = false;
+					s->accessory_FloodCoolant = false;
+					s->accessory_MistCoolant = false;
+					
+					string str = segs[i].substr(2);
+					for (int j = 0; j < str.length(); j++) {
+						if(str[j] == 'S')
+							s->accessory_SpindleDirection = CLOCKWISE;	// (1)
+						else if(str[j] == 'C')
+							s->accessory_SpindleDirection = ANTICLOCKWISE;	// (-1)
+						else if(str[j] == 'F')
+							s->accessory_FloodCoolant = true;
+						else if(str[j] == 'M')
+							s->accessory_MistCoolant = true;
+						else
+							exitf("ERROR: Input pin unrecognised\n");
+					}
+					cout << "Spindle Direction = " << s->accessory_SpindleDirection << endl;
+					cout << "Flood Coolant = " << s->accessory_FloodCoolant << endl;
+					cout << "Mist Coolant = " << s->accessory_MistCoolant << endl;
+				}
 			}
 
-					cout << "MPos x = " << grblParams->status.MPos.x << endl;
-					cout << "MPos y = " << grblParams->status.MPos.y << endl;
-					cout << "MPos z = " << grblParams->status.MPos.z << endl;
-					cout << "WPos x = " << grblParams->status.WPos.x << endl;
-					cout << "WPos y = " << grblParams->status.WPos.y << endl;
-					cout << "WPos z = " << grblParams->status.WPos.z << endl;
-					cout << "WCO x = " << grblParams->status.WCO.x << endl;
-					cout << "WCO y = " << grblParams->status.WCO.y << endl;
-					cout << "WCO z = " << grblParams->status.WCO.z << endl;
-			
+			cout << "MPos x = " << grblParams->status.MPos.x << endl;
+			cout << "MPos y = " << grblParams->status.MPos.y << endl;
+			cout << "MPos z = " << grblParams->status.MPos.z << endl;
+			cout << "WPos x = " << grblParams->status.WPos.x << endl;
+			cout << "WPos y = " << grblParams->status.WPos.y << endl;
+			cout << "WPos z = " << grblParams->status.WPos.z << endl;
+			cout << "WCO x = " << grblParams->status.WCO.x << endl;
+			cout << "WCO y = " << grblParams->status.WCO.y << endl;
+			cout << "WCO z = " << grblParams->status.WCO.z << endl;
 			
 		}
 		// if startup block added, it will look like this on starup: '>G20G54G17:ok' or error
