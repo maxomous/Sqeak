@@ -1,3 +1,8 @@
+/*
+ * grbl.hpp
+ *  Max Peglar-Willis & Luke Mitchell 2021
+ */
+
 #ifndef GRBL_HPP
 #define GRBL_HPP
 
@@ -8,9 +13,7 @@
 #define STATUS_NONE			-2	// not sent yet to grbl
 #define STATUS_PENDING 		-1	// sent to grbl but no status received
 #define STATUS_OK			0	// 'ok' received by grbl
-// ERROR STATUS MATCHES GRBL's 	#define STATUS_ERROR		3	// 'error' received by grbl
-
-#define MAX_GRBL_BUFFER 	128
+// ERROR STATUS NOW MATCHES GRBL's 	#define STATUS_ERROR		3	// 'error' received by grbl
 
 // REALTIME COMMANDS
 #define GRBL_RT_SOFT_RESET 							(char)0x18
@@ -41,9 +44,11 @@
 #define GRBL_RT_FLOOD_COOLANT						(char)0xA0
 #define GRBL_RT_MIST_COOLANT						(char)0xA1
 
+#define MAX_GRBL_BUFFER 	128
+
 static int grblBufferSize = MAX_GRBL_BUFFER;
 
-class gcList_t {
+class GCList {
 	public:
 		int count;
 		int written;
@@ -52,7 +57,7 @@ class gcList_t {
 		std::vector<std::string> str;
 		std::vector<int> status;
 		
-		gcList_t();
+		GCList();
 		void add(std::string str);		
 };
 
@@ -151,7 +156,7 @@ typedef struct {
 	
 } grblStatus_t;
 
-class grblParams_t {
+class GRBLParams {
 	public:
 		std::string startupBlock[2];
 		gCodeParams_t param;
@@ -159,7 +164,7 @@ class grblParams_t {
 		grblStatus_t status;
 		
 		
-		grblParams_t();
+		GRBLParams();
 };
 
 
@@ -168,9 +173,9 @@ class grblParams_t {
 // Returns string and length in msg
 extern void grblReadLine(int fd, std::string* msg);
 // Reads block off serial port
-extern void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q);
+extern void grblRead(GRBLParams* grblParams, int fd, GCList* gcList, Queue* q);
 // Writes line to serial port
-extern void grblWrite(int fd, gcList_t* gcList, queue_t* q);
+extern void grblWrite(int fd, GCList* gcList, Queue* q);
 // Writes realtime command to serial port
 extern void grblRealTime(int fd, char cmd);
 #endif

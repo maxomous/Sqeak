@@ -1,3 +1,8 @@
+/*
+ * common.hpp
+ *  Max Peglar-Willis & Luke Mitchell 2021
+ */
+
 #ifndef COMMON_HPP
 #define COMMON_HPP
 

@@ -1,3 +1,7 @@
+/*
+ * codes.hpp
+ *  Max Peglar-Willis & Luke Mitchell 2021
+ */
 
 #ifndef CODES_HPP
 #define CODES_HPP

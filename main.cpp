@@ -1,3 +1,7 @@
+/*
+ * main.cpp
+ *  Max Peglar-Willis & Luke Mitchell 2021
+ */
 
 #include "common.hpp"
 
@@ -12,26 +16,23 @@ using namespace std;
 		Grbl 1.1e ['$' for help]
 
 
-// - I dont quite understand new - i get that it allocates memory
-// 		-is it just used when making a pointer and thats all? if so that makes sense
-// - Whats the naming convention for classes? im still using x_t
 // - Inlcudes are probably for c std libraries
-// - static int grblBufferSize = MAX_GRBL_BUFFER; in grbl.cpp are global, should I do these differently?
-// - do i need to destruct gcList_t?
-// - dont like how we are handling real time commands in grblRead
-// - difference between passing by reference and pointer
-// - is the buffer cleared out when theres an alarm ??
+// - grblBufferSize is a global variable in grbl.cpp are global, should I do these differently?
+// - do i need to destruct gcList?
 // test all value are coming through ok - in particular coord systems as i modified the code
 * 		// maybe a test which sends a tonnes of values and checks they match?
 // - should check if in mm or inches ($13) as everything returned from grbl is based on those units
-// - check buffer state response in status report (Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer) matches our buffer - mask needs to be enabled first $_=_
-
-
-// on error, halt
-// $C on open file?
-// to sync gui to grbl use G4 P0.01
+// - check buffer state response in status report matches our buffer (Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer)  - mask needs to be enabled first $_=_
 // handle errors cleanly
-	// i.e.  if(b != string::npos) ... else handle error
+	// i.e. better way than this: if(b != string::npos) ... else handle error
+	// and exitf(...)
+// on error, halt rest of commands
+// handle alarms
+// - is the buffer cleared out when theres an alarm ?? - i think so
+
+// other notes
+* // $C (check) should be called on open file?
+* // if we need to sync gui to grbl, use G4 P0.01
 
 /*
 	EEPROM Issues
@@ -48,67 +49,6 @@ using namespace std;
 			
 int main(int argc, char **argv)
 {
-	
-	/*
-	grblParams_t* grblParams = new grblParams_t;
-	
-	grblStatus_t* s = &(grblParams->status);
-	
-	//cout << *argv << endl;
-	string segs[1];
-	
-	segs[0] = "A:CFM";
-	int i = 0;
-	*/
-	
-	/*
-	if(segs[i].substr(0, 2) == "Ov") {
-		point3D ov = stoxyz(segs[i].substr(3));
-		int override_Feedrate = (int)ov.x;
-		int override_RapidFeed = (int)ov.y;
-		int override_SpindleSpeed = (int)ov.z;
-		cout << override_Feedrate << endl;
-		cout << override_RapidFeed << endl;
-		cout << override_SpindleSpeed << endl;
-	}
-	
-	*/
-		/*
-		X Y Z XYZ limit pins, respectively
-P the probe pin.
-D H R S the door, hold, soft-reset, and cycle-start pins, respectively.
-Example: Pn:PZ indicates the probe and z-limit pins are 'triggered'.
-Note: A may be added in later versions for an A-axis limit pin.
-		
-	*/
-	
-
-
-
-
-  /*
-  
-  
-	istringstream stream(s); 
-	string token; 
-	size_t pos = -1; 
-  
-	while (stream >> token) { 
-		// If ',' is found then tokenize 
-		// the string token 
-		while ((pos = token.rfind('|')) 
-			   != std::string::npos) { 
-			token.erase(pos, 1); 
-		} 
-  
-		// Print the tokenize string 
-		cout << token << '\n'; 
-	} */
-	
-
-	//return 0;
-
-	
 	(void)argc, (void) argv;
 		
 	int wiringPiSetup(void);
@@ -125,11 +65,11 @@ Note: A may be added in later versions for an A-axis limit pin.
 	grblRealTime(fd, GRBL_RT_SOFT_RESET);	
 	grblRealTime(fd, GRBL_RT_STATUS_QUERY);	
 	
-	grblParams_t* grblParams = new grblParams_t;
+	GRBLParams* grblParams = new GRBLParams;
 	
-	queue_t* q = new queue_t(128);			
+	Queue* q = new Queue(128);			
 	
-	gcList_t* gcList = new gcList_t;
+	GCList* gcList = new GCList;
 
 	// add gcodes to the stream
 	
@@ -232,42 +172,42 @@ Note: A may be added in later versions for an A-axis limit pin.
 		
 		
 		if(millis() > timer2) {
-			
+			/*
 			
 			timer2 = millis() + 2000;
 			grblRealTime(fd, GRBL_RT_OVERRIDE_FEED_100PERCENT);	
 			for (int i = 0; i < 6; i++) {
-				cout << "Work Coord G" << 54+i << " = " << grblParams->param.workCoords[i].x << ", " << grblParams->param.workCoords[i].y << ", " << grblParams->param.workCoords[i].z << endl;
+				cout << "Work Coord G" << 54+i << " = " << GRBLParams->param.workCoords[i].x << ", " << GRBLParams->param.workCoords[i].y << ", " << GRBLParams->param.workCoords[i].z << endl;
 			}
 			
-			cout << "Home Coord G28 = " << grblParams->param.homeCoords[0].x << ", " << grblParams->param.homeCoords[0].y << ", " << grblParams->param.homeCoords[0].z << endl;
-			cout << "Home Coord G30 = " << grblParams->param.homeCoords[1].x << ", " << grblParams->param.homeCoords[1].y << ", " << grblParams->param.homeCoords[1].z << endl;
+			cout << "Home Coord G28 = " << GRBLParams->param.homeCoords[0].x << ", " << GRBLParams->param.homeCoords[0].y << ", " << GRBLParams->param.homeCoords[0].z << endl;
+			cout << "Home Coord G30 = " << GRBLParams->param.homeCoords[1].x << ", " << GRBLParams->param.homeCoords[1].y << ", " << GRBLParams->param.homeCoords[1].z << endl;
 			
-			cout << "Offset Coord G92 = " << grblParams->param.offsetCoords.x << ", " << grblParams->param.offsetCoords.y << ", " << grblParams->param.offsetCoords.z << endl;
-			cout << "TLO = " << grblParams->param.toolLengthOffset << endl;
+			cout << "Offset Coord G92 = " << GRBLParams->param.offsetCoords.x << ", " << GRBLParams->param.offsetCoords.y << ", " << GRBLParams->param.offsetCoords.z << endl;
+			cout << "TLO = " << GRBLParams->param.toolLengthOffset << endl;
 			
-			cout << "Probe = " << grblParams->param.probeOffset.x << ", " << grblParams->param.probeOffset.y << ", " << grblParams->param.probeOffset.z << endl;
-			cout << "Probe Success = " << grblParams->param.probeSuccess << endl << endl;
-			
+			cout << "Probe = " << GRBLParams->param.probeOffset.x << ", " << GRBLParams->param.probeOffset.y << ", " << GRBLParams->param.probeOffset.z << endl;
+			cout << "Probe Success = " << GRBLParams->param.probeSuccess << endl << endl;
+			*/
 			/*
-			cout << "MotionMode = " << grblParams->mode.MotionMode << endl;
-			cout << "CoordinateSystem = " << grblParams->mode.CoordinateSystem << endl;
-			cout << "Plane = " << grblParams->mode.Plane << endl;
-			cout << "DistanceMode = " << grblParams->mode.DistanceMode << endl;
-			cout << "ArcIJKDistanceMode = " << grblParams->mode.ArcIJKDistanceMode << endl;
-			cout << "FeedRateMode = " << grblParams->mode.FeedRateMode << endl;
-			cout << "UnitsMode = " << grblParams->mode.UnitsMode << endl;
-			cout << "CutterRadiusCompensation = " << grblParams->mode.CutterRadiusCompensation << endl;
-			cout << "ToolLengthOffset = " << grblParams->mode.ToolLengthOffset << endl;
-			cout << "ProgramMode = " << grblParams->mode.ProgramMode << endl;
-			cout << "SpindleState = " << grblParams->mode.SpindleState << endl;
-			cout << "CoolantState = " << grblParams->mode.CoolantState << endl;
-			cout << "toolNumber = " << grblParams->mode.toolNumber << endl;
-			cout << "spindleSpeed = " << grblParams->mode.spindleSpeed << endl;
-			cout << "feedRate = " << grblParams->mode.feedRate << endl;
+			cout << "MotionMode = " << GRBLParams->mode.MotionMode << endl;
+			cout << "CoordinateSystem = " << GRBLParams->mode.CoordinateSystem << endl;
+			cout << "Plane = " << GRBLParams->mode.Plane << endl;
+			cout << "DistanceMode = " << GRBLParams->mode.DistanceMode << endl;
+			cout << "ArcIJKDistanceMode = " << GRBLParams->mode.ArcIJKDistanceMode << endl;
+			cout << "FeedRateMode = " << GRBLParams->mode.FeedRateMode << endl;
+			cout << "UnitsMode = " << GRBLParams->mode.UnitsMode << endl;
+			cout << "CutterRadiusCompensation = " << GRBLParams->mode.CutterRadiusCompensation << endl;
+			cout << "ToolLengthOffset = " << GRBLParams->mode.ToolLengthOffset << endl;
+			cout << "ProgramMode = " << GRBLParams->mode.ProgramMode << endl;
+			cout << "SpindleState = " << GRBLParams->mode.SpindleState << endl;
+			cout << "CoolantState = " << GRBLParams->mode.CoolantState << endl;
+			cout << "toolNumber = " << GRBLParams->mode.toolNumber << endl;
+			cout << "spindleSpeed = " << GRBLParams->mode.spindleSpeed << endl;
+			cout << "feedRate = " << GRBLParams->mode.feedRate << endl;
 			
-			cout << "Startup Block 1 = " << grblParams->startupBlock[0] << endl;
-			cout << "Startup Block 2 = " << grblParams->startupBlock[1] << endl;
+			cout << "Startup Block 1 = " << GRBLParams->startupBlock[0] << endl;
+			cout << "Startup Block 2 = " << GRBLParams->startupBlock[1] << endl;
 			*/
 		}
 		
