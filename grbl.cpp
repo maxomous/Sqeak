@@ -5,43 +5,23 @@
 #include "common.hpp"
 using namespace std;
 
-static float grblReadX(string msg) {
-	size_t start = 5;
-	return stof(msg.substr(start, msg.length()-start-1));
-}
 
-// splits a string from grbl into xyz values
-// example: [G54:4.000,0.000,0.000]
-// PRB is a special case where it also returns a success value
-//  other than this, success should be null
-static point3D grblReadXYZ(string msg, bool* success) {
+// This takes a string of 3 values seperated by commas (,) and will return a 3DPoint
+// 4.000,0.000,0.000
+static point3D stoxyz(string msg) {
 	
-	// find position of commas and check they exist
-	int a = msg.find(",",0);
-	if(a != string::npos) {
-		int b = msg.find(",",a+1);
-		if(b != string::npos) {
-			float x = stof(msg.substr(5, a-5));
-			float y = stof(msg.substr(a+1, b-a-1));
-			float z;
-			if(success == NULL)
-				z = stof(msg.substr(b+1, msg.length()-b-2));
-			else {
-				z = stof(msg.substr(b+1, msg.length()-b-4));
-				*success = (bool)stoi(msg.substr(msg.length()-2, 1));
-				cout << "Success: " << *success << endl;
-			}
-			return (point3D) {.x=x, .y=y, .z=z};
-		}
+	istringstream stream(msg);
+	string segment;
+	float val[3];
+	
+	for (int i = 0; i < 3; i++) {
+		getline(stream, segment, ',');
+		val[i] = stof(segment);
 	}
-	printf("ERROR: Can't read xyz from string\n");
-	return (point3D) {.x=0, .y=0, .z=0};
+	
+	return (point3D) {.x=val[0], .y=val[1], .z=val[2]};
 }
-
-//grblReadXYZa(msg, &(grblParams->param.probeOffset));
-
-			// [PRB:0.000,0.000,0.000:0]
-
+	
 
 grblParams_t::grblParams_t() {
 	// clear all values in object
@@ -162,9 +142,9 @@ static void bufferRemove(queue_t* q){
 }
 
 static int bufferAdd(queue_t* q, int len){
-	// exit if buffer full
+	// return true if buffer full
 	if(grblBufferSize - len < 0)
-		return ERR_FAIL;
+		return TRUE;
 	// reduce buffer size by length of string
 	grblBufferSize -= len;
 	// add length of string to queue
@@ -174,7 +154,7 @@ static int bufferAdd(queue_t* q, int len){
 		cerr << e << endl;
 		exit(1);
 	} 
-	return ERR_NONE;
+	return FALSE;
 }
 
 // set the response status
@@ -222,7 +202,7 @@ void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q) {
 			break; 
 		}
 		// error messages
-		else if(!msg.compare(0, 6, "error:")) {	
+		else if(!msg.compare(0, 6, "error:")) {																				//ERROR NEED TO HALT EVERYTHING
 			bufferRemove(q);	
 			// retrieve error code
 			int errCode = stoi(msg.substr(6));
@@ -243,21 +223,53 @@ void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q) {
 			cout << "ALARM " << alarmCode << ": " << alarmName << "\tDesc: " << alarmDesc << endl;
 			break;
 		}
+		// Startup Line Execution	">G54G20:ok" or ">G54G20:error:X"
+		else if(!msg.compare(0, 1, ">")) {	
+			// Startup Line Execution	">G54G20:ok" or ">G54G20:error:X"
+			cout << msg << endl;
+			
+			// retrieve position of :
+			size_t a = msg.find(":");
+			// checks to prevent errors
+			if(a != string::npos) {
+				// retrieve value of response ('ok' or 'error:x')
+				string response = msg.substr(a+1, msg.length()-a-1);
+				if(response == "ok")
+					cout << msg << endl;
+				else {
+					size_t b = response.find(":");
+					if(b != string::npos) {
+						int errCode = stoi(response.substr(b+1));
+						cout << "Startup Line Execution has encountered an error: " << errCode << endl;						//ERROR NEED TO HALT EVERYTHING
+					}
+					else
+						exitf("ERROR: Something is not right here\n");
+				}
+			}
+			else
+				exitf("ERROR: Something is not right here\n");
+				
+
+		}
 		// print out messages
-		else if(!msg.compare(0, 4, "Grbl") || !msg.compare(0, 4, "[MSG")) {	
+		else if(!msg.compare(0, 4, "Grbl") || !msg.compare(0, 4, "[MSG") || !msg.compare(0, 4, "[HLP") || !msg.compare(0, 4, "[echo")) {
 			cout << msg << endl;
 		}
-		// View build info - just print out
+		
+		// View build info - just print out	
+		// This response hasnt been decoded as seen as unnesessary
+		// For more details, see: https://github.com/gnea/grbl/wiki/Grbl-v1.1-Interface
 		else if(!msg.compare(0, 4, "[VER") || !msg.compare(0, 4, "[OPT")) {	
 			cout << msg << endl;
 		}
+		
 		else if(!msg.compare(0, 3, "[GC")) {
 			cout << msg << endl;
 			string s = msg.substr(4, msg.length()-5);
-			istringstream iss(s);
+			istringstream stream(s);
 			do {
 				string code;
-				iss >> code;
+				stream >> code;
 				// [GC:G0 G54 G17 G21 G90 G94 M0 M5 M9 T0 S0.0 F500.0]
 				if(code == "")
 					{/*do nothing*/}
@@ -293,44 +305,115 @@ void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q) {
 					grblParams->mode.feedRate = stof(code.substr(1, code.length()-1));
 				else
 					cout << "Code unrecognised: " << code << endl;
-			} while (iss);
+			} while (stream);
 		}
 		else if(!msg.compare(0, 1, "[")) {
 			cout << msg << endl;
 		
+			string s = msg.substr(5, msg.length()-6);
 			// [G54:4.000,0.000,0.000] - [G59:4.000,0.000,0.000]
 			if(!msg.compare(1, 3, "G54")) 
-				grblParams->param.workCoords[0] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[0] = stoxyz(s);
 			else if(!msg.compare(1, 3, "G55")) 
-				grblParams->param.workCoords[1] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[1] = stoxyz(s);
 			else if(!msg.compare(1, 3, "G56")) 
-				grblParams->param.workCoords[2] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[2] = stoxyz(s);
 			else if(!msg.compare(1, 3, "G57")) 
-				grblParams->param.workCoords[3] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[3] = stoxyz(s);
 			else if(!msg.compare(1, 3, "G58")) 
-				grblParams->param.workCoords[4] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[4] = stoxyz(s);
 			else if(!msg.compare(1, 3, "G59")) 
-				grblParams->param.workCoords[5] = grblReadXYZ(msg, NULL);
+				grblParams->param.workCoords[5] = stoxyz(s);
 			// [G28:1.000,2.000,0.000]  / [G30:4.000,6.000,0.000]
 			else if(!msg.compare(1, 3, "G28")) 
-				grblParams->param.homeCoords[0] = grblReadXYZ(msg, NULL);
+				grblParams->param.homeCoords[0] = stoxyz(s);
 			else if(!msg.compare(1, 3, "G30")) 
-				grblParams->param.homeCoords[1] = grblReadXYZ(msg, NULL);
+				grblParams->param.homeCoords[1] = stoxyz(s);
 			// [G92:0.000,0.000,0.000]
 			else if(!msg.compare(1, 3, "G92")) 
-				grblParams->param.offsetCoords = grblReadXYZ(msg, NULL);
+				grblParams->param.offsetCoords = stoxyz(s);
 			// [TLO:0.000]	
 			else if(!msg.compare(1, 3, "TLO")) 
-				grblParams->param.toolLengthOffset = grblReadX(msg);
+				grblParams->param.toolLengthOffset = stof(s);
 			// [PRB:0.000,0.000,0.000:0]
-			else if(!msg.compare(1, 3, "PRB"))
-				grblParams->param.probeOffset = grblReadXYZ(msg, &(grblParams->param.probeSuccess));
+			else if(!msg.compare(1, 3, "PRB")) {
+				grblParams->param.probeOffset = stoxyz(msg.substr(5, msg.length()-8));
+				grblParams->param.probeSuccess = (bool)stoi(msg.substr(msg.length()-2, 1));
+			}
 			else
 				cout << "Message unrecognised: " << msg << endl;				
 		}
 		else if(!msg.compare(0, 1, "<")) {	
 			cout << msg << endl;
+			
+
+			// The $10 status report mask setting can alter what data is present and certain data fields can be reported intermittently (see descriptions for details.)
+			// The $13 report inches settings alters the units of some data values. $13=0 false indicates mm-mode, while $13=1 true indicates inch-mode reporting.
+			// "<Idle|WPos:828.000,319.000,49.100|FS:0,0|Pn:PXYZ>"
+
+			//string msg = "<Idle|WPos:828.000,319.000,49.100|FS:0,0|Pn:PXYZ>"; 
+
+
+			istringstream stream(msg.substr(1, msg.length()-2));
+			string segment;
+			vector<string> segs;
+			
+			while(getline(stream, segment, '|')) 
+				segs.push_back(segment);
+			
+			// itterate backwards through segs[i]s
+			for (int i = segs.size()-1; i >= 0; i--) {
+				
+				grblStatus_t* s = &(grblParams->status);
+				cout << segs[i] << endl; 
+
+				// Idle, Run, Hold, Jog, Alarm, Door, Check, Home, Sleep
+				//- `Hold:0` Hold complete. Ready to resume.
+				//- `Hold:1` Hold in-progress. Reset will throw an alarm.
+				//- `Door:0` Door closed. Ready to resume.
+				//- `Door:1` Machine stopped. Door still ajar. Can't resume until closed.
+				//- `Door:2` Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm.
+				//- `Door:3` Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm.
+				
+				if(segs[i] == "Idle" || segs[i] == "Run" || segs[i].substr(0, 4) == "Hold" || segs[i] == "Jog" || segs[i] == "Alarm" 
+					|| segs[i].substr(0, 4) == "Door" || segs[i] == "Check" || segs[i] == "Home" || segs[i] == "Sleep" ) {
+					s->state = segs[i];
+					cout << "state = " << s->state << endl;
+				}
+				
+				// MPos:0.000,-10.000,5.000 machine position  or  WPos:-2.500,0.000,11.000 work position
+				// WPos = MPos - WCO
+				else if(segs[i].substr(0, 4) == "MPos") {
+					s->MPos = stoxyz(segs[i].substr(5));
+					s->WPos = minus3p(s->MPos, s->WCO);
+				}
+				else if(segs[i].substr(0, 4) == "WPos") {
+					s->WPos = stoxyz(segs[i].substr(5));
+					s->MPos = add3p(s->WPos, s->WCO);
+				}
+				// work coord offset - shown every 10-30 times
+				// the current work coordinate system, G92 offsets, and G43.1 tool length offset
+				else if(segs[i].substr(0, 3) == "WCO") {
+					s->WCO = stoxyz(segs[i].substr(4));
+				}
+				
+				
+				
+			}
+
+					cout << "MPos x = " << grblParams->status.MPos.x << endl;
+					cout << "MPos y = " << grblParams->status.MPos.y << endl;
+					cout << "MPos z = " << grblParams->status.MPos.z << endl;
+					cout << "WPos x = " << grblParams->status.WPos.x << endl;
+					cout << "WPos y = " << grblParams->status.WPos.y << endl;
+					cout << "WPos z = " << grblParams->status.WPos.z << endl;
+					cout << "WCO x = " << grblParams->status.WCO.x << endl;
+					cout << "WCO y = " << grblParams->status.WCO.y << endl;
+					cout << "WCO z = " << grblParams->status.WCO.z << endl;
+			
+			
 		}
+		// if startup block added, it will look like this on starup: '>G20G54G17:ok' or error
 		else if(!msg.compare(0, 2, "$N")) {	
 			cout << msg << endl;
 			int blockNum = stoi(msg.substr(2, 1));
@@ -377,7 +460,7 @@ void grblRead(grblParams_t* grblParams, int fd, gcList_t* gcList, queue_t* q) {
 	[echo:] : Indicates an automated line echo from a pre-parsed string prior to g-code parsing. Enabled by config.h option.
 	>G54G20:ok : The open chevron indicates startup line execution. The :ok suffix shows it executed correctly without adding an unmatched ok response on a new line.
 */
-		// if startup block added, it will look like this on starup: '>G20G54G17:ok' or error
+		
 	} while(1);	
 }
 
@@ -385,7 +468,7 @@ void grblWrite(int fd, gcList_t* gcList, queue_t* q) {
 	
 	do {
 		// exit if nothing new in the gcList
-		if (gcList->written >= gcList->count) //gcListWritten >= gcListCount)
+		if (gcList->written >= gcList->count)
 			break;
 			
 		string* curStr = &gcList->str[gcList->written];

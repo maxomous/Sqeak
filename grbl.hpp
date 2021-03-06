@@ -119,11 +119,25 @@ typedef struct {
 	float feedRate;
 } modalGroup_t;
 
+
+typedef struct {
+	std::string state;
+	// either of these are given 
+	// WPos = MPos - WCO
+	point3D MPos;
+	point3D WPos;
+	// this is given every 10 or 30 status messages
+	point3D WCO;
+	
+} grblStatus_t;
+
 class grblParams_t {
 	public:
 		gCodeParams_t param;
 		modalGroup_t mode;
 		std::string startupBlock[2];
+		grblStatus_t status;
+		
 		
 		grblParams_t();
 };

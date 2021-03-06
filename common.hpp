@@ -40,4 +40,9 @@ typedef struct {
 
 extern void exitf(const char* format, ... );
 
+// returns p1 + p2
+extern point3D add3p(point3D p1, point3D p2);
+// return p1 - p2
+extern point3D minus3p(point3D p1, point3D p2);
+
 #endif
