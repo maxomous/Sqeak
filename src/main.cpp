@@ -3,16 +3,17 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 
-#include "common.hpp"
+#include "common.hpp" 
 
-using namespace std;
-
+ 
+using namespace std; 
+ 
 
 
 /* **********PROBLEMS FOR LATER************
  * 
  * should recieve this: - i get this when i send a $X reset?
-		Once connected you should get the Grbl-prompt, which looks like this:
+		Once connected you should get  the Grbl-prompt, which looks like this:
 		Grbl 1.1e ['$' for help]
 
 
@@ -49,6 +50,12 @@ using namespace std;
 			
 int main(int argc, char **argv)
 {
+	
+	string workingDir = getWorkingDir(argv);
+		
+	gui(workingDir);
+	return 0;
+	
 	(void)argc, (void) argv;
 		
 	int wiringPiSetup(void);
@@ -71,10 +78,14 @@ int main(int argc, char **argv)
 	
 	GCList* gcList = new GCList;
 
+
+
+	
+	
 	// add gcodes to the stream
 	
 	// GRBL SETTINGS
-	// gcList->add("$$");
+	//gcList->add("$$");
 	
 	// GCODE PARAMETERS (coord systems)
 	//gcList->add("$#");
@@ -93,7 +104,7 @@ int main(int argc, char **argv)
 	//gcList->add("$C");
 	
 	// KILL ALARM LOCK
-	gcList->add("$X");
+	//gcList->add("$X");
 	
 	// RUN HOMING CYCLE
 	//gcList->add("$H");
@@ -151,6 +162,16 @@ int main(int argc, char **argv)
 	gcList->add("G1 X-10 Y-20 Z-50 F6000");
 	gcList->add("G4 P1");
 	*/
+	
+	
+	
+//	string file = "/home/pi/Desktop/New.nc";
+	
+//	if(runFile(gcList, file)) {
+		/*couldnt open file*/
+//	}
+	
+	
 	
 	uint timerStatusQuery = millis() + 1000;
 	

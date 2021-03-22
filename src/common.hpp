@@ -15,6 +15,7 @@
 #include <string>
 #include <string.h>
 #include <sstream>
+#include <fstream>
 #include <algorithm>
 #include <ctype.h>
 #include <assert.h>
@@ -30,10 +31,11 @@ typedef struct {
 	float z;
 } point3D;
 
-
+#include "gui/gui.hpp"
 #include "queue.hpp"
 #include "grbl.hpp"
-#include "codes.hpp"
+#include "grblcodes.hpp"
+#include "file.hpp"
 
 
 
@@ -44,6 +46,7 @@ typedef struct {
 
 #define CLOCKWISE		1
 #define ANTICLOCKWISE	-1
+
 
 
 extern void exitf(const char* format, ... );

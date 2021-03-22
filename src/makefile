@@ -2,29 +2,33 @@
 
 
 TARGET = grbl
-LIBS = -lwiringPi 
+DIRS = gui gui/imgui
+LIBS = -lwiringPi -lGL -lglfw -lGLEW
 #-lpthread -lm -lrt -lGL -lGLU -lglut -lGLEW -lfreetype 
 
 # add to libs for debugging gdb -v -da -Q
 CC = g++
 
+ 
 # -g   for debugging
 # -Wall -Werror   to show all errors
-CFLAGS=  -g -Wall -Werror -Wextra
+CFLAGS= -g -Wall -Werror -Wextra
 #-pthread  -I/usr/include/freetype2  -I/usr/include/libpng16 
 
-#  -O0 did something for debugging
+# this ensures that if there is a file called default, all or clean, it will still be compiled
 .PHONY: default all clean
 
 default: $(TARGET)
 all: default
 
-OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp))
+# substitute '.cpp' with '.o' in any *.cpp 
+OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp $(addsuffix /*.cpp, $(DIRS))))
 HEADERS = $(wildcard *.hpp)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# if make is interupted, dont delete any object file
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
