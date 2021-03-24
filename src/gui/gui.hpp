@@ -6,6 +6,6 @@
 #ifndef GUI_HPP
 #define GUI_HPP
 
-extern int gui(const std::string& workingDir);
+extern int gui(const std::string& workingDir, GRBL* grbl);
 
 #endif

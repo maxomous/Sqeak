@@ -1,42 +1,15 @@
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_impl_glfw.h"
-#include "imgui/imgui_impl_opengl3.h"
-
 #include "../common.hpp"
 using namespace std;
 
-#include <GL/glew.h>
-// Include glfw3.h after our OpenGL definitions
-#include <GLFW/glfw3.h>
-
-
-static int cbConsoleHistory(ImGuiInputTextCallbackData* data)
-{
-    if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory)
-    {
-        if (data->EventKey == ImGuiKey_UpArrow)
-        {
-            data->DeleteChars(0, data->BufTextLen);
-            data->InsertChars(0, "Pressed Up!");
-            data->SelectAll();
-        }
-        else if (data->EventKey == ImGuiKey_DownArrow)
-        {
-            data->DeleteChars(0, data->BufTextLen);
-            data->InsertChars(0, "Pressed Down!");
-            data->SelectAll();
-        }
-    }
-    return 0;
-}
+  
 
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-int gui(const string& workingDir)
+int gui(const string& workingDir, GRBL* Grbl)
 {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -96,10 +69,92 @@ int gui(const string& workingDir)
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
+    
+    
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    
+    ImGuiTextBuffer* consoleLog = new ImGuiTextBuffer();
+    string grblReponse;
+    
+    Grbl->Connect();
+    Grbl->SetStatusInterval(500);
+    
+    
+ {   // add gcodes to the stream
+    
+    // KILL ALARM LOCK
+    //Grbl->Send("$X");
+    
+    // GRBL SETTINGS
+    //Grbl->Send("$$");
+    
+    // GCODE PARAMETERS (coord systems)
+    //Grbl->Send("$#");
+    
+    // MODAL STATES
+    //Grbl->Send("$G");
+    
+    // BUILD INFO
+    //Grbl->Send("$I");
+    
+    // STARTUP BLOCKS
+    //Grbl->Send("$N");
+    
+    
+    // CHECK MODE (send again to cancel)
+    //Grbl->Send("$C");
+    
+    // RUN HOMING CYCLE
+    //Grbl->Send("$H");
+    
+    // JOG
+    //Grbl->Send("$J=G91 X10 F1000");
+    //Grbl->SendRT(GRBL_RT_JOG_CANCEL);
+    
+    // RESET SETTINGS ( USE WITH CATION ) 
+    // "$RST=$", "$RST=#", and "$RST=*"
+    
+    // SLEEP
+    //Grbl->Send("$SLP");
+    
+    
+    
+    /* PROBE 
+    Grbl->Send("G91 G38.2 Z-200 F100\n");
+    Grbl->Send("G91 G38.4 Z1 F100\n");
+    */
+    /*
+    string file = "/home/pi/Desktop/New.nc";
+    Grbl->FileRun(file);
+*/
+    
+    
+    /*
+    string file = "/home/pi/Desktop/New.nc";
+    if(readFile(Grbl, file)){
+        cout << "Error: Could not open file" << endl;
+        return -1;
+    }
+    */
+}
+
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
+        
+        Grbl->Write();
+        if(Grbl->Read(grblReponse)) {
+            consoleLog->append(grblReponse.c_str());
+            grblReponse.erase();
+        }
+        Grbl->Status();
+     
+        
+        
+        
+        
+        
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -112,28 +167,14 @@ int gui(const string& workingDir)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        drawFrames(Grbl, consoleLog);
+/*
+        if(f->console.visible)
+            f->console.Show(Grbl);
         
-        ImGui::Begin("Console");   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-        ImGui::Text("Hello from another window!");
-        if (ImGui::Button("Close Me"))
-            show_another_window = false;
-        static char strConsole[128] = "Hello, world!";
-        
-        ImGui::InputText("Input GCode Here", strConsole, IM_ARRAYSIZE(strConsole), ImGuiInputTextFlags_EnterReturnsTrue && ImGuiInputTextFlags_CallbackHistory, &cbConsoleHistory);
-        
-          
-        /*
-        if (ImGui::InputText("Input", InputBuf, IM_ARRAYSIZE(InputBuf), input_text_flags, &TextEditCallbackStub, (void*)this))
-        {
-            char* s = InputBuf;
-            Strtrim(s);
-            if (s[0])
-                ExecCommand(s);
-            strcpy(s, "");
-            reclaim_focus = true;
-        }
-         * */
-        ImGui::End();
+        if(f->stats.visible)
+            f->stats.Show(Grbl);
+        */
         
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
@@ -190,6 +231,8 @@ int gui(const string& workingDir)
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
 
+    delete(consoleLog);
+    
     glfwDestroyWindow(window);
     glfwTerminate();
 

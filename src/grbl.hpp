@@ -10,6 +10,8 @@
 #define SERIAL_DEVICE 		"/dev/ttyAMA0"
 #define SERIAL_BAUDRATE 	115200
 
+#define MAX_GRBL_BUFFER 	128
+
 #define STATUS_NONE			-2	// not sent yet to grbl
 #define STATUS_PENDING 		-1	// sent to grbl but no status received
 #define STATUS_OK			0	// 'ok' received by grbl
@@ -44,9 +46,7 @@
 #define GRBL_RT_FLOOD_COOLANT						(char)0xA0
 #define GRBL_RT_MIST_COOLANT						(char)0xA1
 
-#define MAX_GRBL_BUFFER 	128
 
-static int grblBufferSize = MAX_GRBL_BUFFER;
 
 class GCList {
 	public:
@@ -58,7 +58,11 @@ class GCList {
 		std::vector<int> status;
 		
 		GCList();
-		void add(std::string str);		
+		void Add(std::string* str);		
+		void SetResponse(std::ostringstream& outputStream, int response);
+	private:
+		void CleanString(std::string* str);
+		
 };
 
 /*		GRBL GCode Parametes
@@ -159,23 +163,64 @@ typedef struct {
 class GRBLParams {
 	public:
 		std::string startupBlock[2];
-		gCodeParams_t param;
+		gCodeParams_t gcParam;
 		modalGroup_t mode;
 		grblStatus_t status;
 		
-		
 		GRBLParams();
+		
+		void Print() ;
+		point3D stoxyz(const std::string& msg);
+		void CheckStartupLine(const std::string& msg);
+		void DecodeParameters(const std::string& msg);
+		void DecodeMode(const std::string& msg);
+		void DecodeStatus(const std::string& msg);
+		void DecodeSettings(std::ostringstream& outputStream, const std::string& msg);
+	
+		//printAll
 };
 
+class GRBL {
+	public:
+		GRBLParams Param;
+		bool verbose = false;
+		
+		GRBL();
+		~GRBL();
+		
+		// initialises connection to the serial port
+		void Connect();
+		// send command to serial port
+		void Send(std::string* cmd);
+		void Send(std::string cmd);
+		// Writes realtime command to serial port
+		void SendRT(char cmd);
+		// Writes line to serial port
+		void Write();
+		// Reads block off serial port
+		// returns true if new reponse
+		int Read(std::string& outputLog);
+		
+		void SetStatusInterval(uint timems);
+		void Status();
+	
+	private:
+		
+		int fd;
+		int grblBufferSize = MAX_GRBL_BUFFER;
+		GCList gcList;
+		Queue *q;
+		// status report timer
+		uint statusTimer;
+		uint statusTimerInterval;
+		// Reads line of serial port. 
+		// Returns string and length in msg
+		void ReadLine(std::string* msg);
+		void BufferRemove();
+		int BufferAdd(int len);
+		// callback function which executes a line from FileRun
+		//int ExectuteFileLine(const string& cmd);
+			
+};
 
-
-// Reads line of serial port. 
-// Returns string and length in msg
-extern void grblReadLine(int fd, std::string* msg);
-// Reads block off serial port
-extern void grblRead(GRBLParams* grblParams, int fd, GCList* gcList, Queue* q);
-// Writes line to serial port
-extern void grblWrite(int fd, GCList* gcList, Queue* q);
-// Writes realtime command to serial port
-extern void grblRealTime(int fd, char cmd);
 #endif

@@ -6,6 +6,5 @@
 #define __FILE_HPP
 
 extern std::string getWorkingDir(char **argv);
-extern int runFile(GCList* gcList, std::string filename);
-
+extern int readFile(GRBL* Grbl, const std::string& filename);
 #endif 

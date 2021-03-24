@@ -22,7 +22,8 @@ string getWorkingDir(char **argv) {
     }
 }
 
-int runFile(GCList* gcList, const string& filename) {
+// reads a line of a file and invokes the callback function with a pointer to the string 
+int readFile(GRBL* Grbl, const std::string& filename) {
     ifstream openFile(filename);
     if(!openFile) {
 		cout << "Error: Couldn't open file" << endl;
@@ -30,7 +31,7 @@ int runFile(GCList* gcList, const string& filename) {
     }
     string output;
     while(getline(openFile, output)) {
-        gcList->add(output);
+	Grbl->Send(&output);
     }
     openFile.close();
     return ERR_NONE;

@@ -1,7 +1,7 @@
 # see: https://www.gnu.org/software/make/manual/html_node/Automatic-Variables.html
 
 
-TARGET = grbl
+TARGET = ../grbl
 DIRS = gui gui/imgui
 LIBS = -lwiringPi -lGL -lglfw -lGLEW
 #-lpthread -lm -lrt -lGL -lGLU -lglut -lGLEW -lfreetype 

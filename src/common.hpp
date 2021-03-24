@@ -24,6 +24,13 @@
 #include <wiringPi.h>
 #include <wiringSerial.h>
 
+// gui
+#include "gui/imgui/imgui.h"
+#include "gui/imgui/imgui_impl_glfw.h"
+#include "gui/imgui/imgui_impl_opengl3.h"
+#include <GL/glew.h>
+// Include glfw3.h after our OpenGL definitions
+#include <GLFW/glfw3.h>
 
 typedef struct {
 	float x;
@@ -31,11 +38,12 @@ typedef struct {
 	float z;
 } point3D;
 
-#include "gui/gui.hpp"
 #include "queue.hpp"
 #include "grbl.hpp"
 #include "grblcodes.hpp"
 #include "file.hpp"
+#include "gui/gui.hpp"
+#include "gui/frames.hpp"
 
 
 
