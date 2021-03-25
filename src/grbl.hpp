@@ -160,8 +160,23 @@ typedef struct {
 	
 } grblStatus_t;
 
-class GRBLParams {
+class MainSettings {
 	public:
+		float max_FeedRateX 			= 6000;
+		float max_FeedRateY 			= 6000;
+		float max_FeedRateZ 			= 6000;
+		
+		std::string units_Distance	= "mm";
+		std::string units_Feed		= "mm/min";
+		
+		void SetUnitsInches(int val);
+		
+		MainSettings();
+};
+
+class GRBLParams {
+	public:		
+		MainSettings settings;
 		std::string startupBlock[2];
 		gCodeParams_t gcParam;
 		modalGroup_t mode;
@@ -195,6 +210,8 @@ class GRBL {
 		void Send(std::string cmd);
 		// Writes realtime command to serial port
 		void SendRT(char cmd);
+		// send jog command
+		void SendJog(int axis, int dir, float distance, int feedrate);
 		// Writes line to serial port
 		void Write();
 		// Reads block off serial port

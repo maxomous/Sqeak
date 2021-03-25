@@ -6,7 +6,22 @@
 #include "common.hpp"
 using namespace std;
 
+MainSettings::MainSettings()
+{
+	SetUnitsInches(false);
+}
 
+void MainSettings::SetUnitsInches(int val) 
+{
+	if(val) {
+		units_Distance	= "in";
+		units_Feed		= "in/min";
+	}
+	else /*inches*/ {
+		units_Distance	= "mm";
+		units_Feed		= "mm/min";
+	}	
+}
 	
 GRBLParams::GRBLParams() {
 	
@@ -80,6 +95,7 @@ GRBLParams::GRBLParams() {
 	s->accessory_MistCoolant = 0;
 	
 }
+
 
 void GRBLParams::Print() {
 	
@@ -451,6 +467,17 @@ void GRBLParams::DecodeSettings(ostringstream& outputStream, const string& msg) 
 			cout << "Error: Can't find setting code!" << endl;
 			exit(1);
 		}
+		//determine which units we are using
+		if(settingsCode == 13)
+			settings.SetUnitsInches((int)value);
+			
+		if(settingsCode == 110)
+			settings.max_FeedRateX = value;
+		if(settingsCode == 111)
+			settings.max_FeedRateY = value;
+		if(settingsCode == 112)
+			settings.max_FeedRateZ = value;
+		
 		// display
 		outputStream << "$" << settingsCode << " = " << value << " (";
 		// if it's a mask, display as in binary instead of unit
@@ -646,6 +673,30 @@ void GRBL::SendRT(char cmd) {
 	serialPutchar(fd, cmd);
 }
 
+void GRBL::SendJog(int axis, int dir, float distance, int feedrate) {
+    //Grbl->SendRT(GRBL_RT_JOG_CANCEL);
+    
+    // example: $J=G91 X10 F1000
+    string cmd("$J=G91");
+    
+    if(axis == X_AXIS)
+		cmd += "X";
+    if(axis == Y_AXIS)
+		cmd += "Y";
+    if(axis == Z_AXIS)
+		cmd += "Z";
+		
+	char val[16];
+	snprintf(val, 16, "%g", dir*(float)((int)(distance*1000))/1000);
+	cmd += val;
+    
+	cmd += "F";
+	snprintf(val, 16, "%d", feedrate);
+	cmd += val;
+	
+	Send(&cmd);
+}
+
 void GRBL::Write() {
 //void grblWrite(int fd, GCList* gcList, Queue* q) {
 	//GCList* gcList = &(gcList);
@@ -760,31 +811,35 @@ int GRBL::Read(string& outputLog) {
 				}
 				else
 				{
-					// output message is just what grbl send us for any below
-					outputStream << msg << endl;
 					// Startup Line Execution	">G54G20:ok" or ">G54G20:error:X"
 					// checks for unlikely event of error and prints to show execution
 					if(!msg.compare(0, 1, ">")) {	
+						outputStream << msg << endl;
 						grblParams->CheckStartupLine(msg);
 					}
 					// print out messages
 					else if(!msg.compare(0, 4, "Grbl") || !msg.compare(0, 4, "[MSG") || !msg.compare(0, 4, "[HLP") || !msg.compare(0, 4, "[echo")) {
+						outputStream << msg << endl;
 					}
 					
 					// View build info - just print out	
 					// This response hasnt been decoded as seen as unnesessary
 					// For more details, see: https://github.com/gnea/grbl/wiki/Grbl-v1.1-Interface
 					else if(!msg.compare(0, 4, "[VER") || !msg.compare(0, 4, "[OPT")) {	
+						outputStream << msg << endl;
 					}
 					
 					else if(!msg.compare(0, 3, "[GC")) {
+						outputStream << msg << endl;
 						grblParams->DecodeMode(msg);
 					}
 					else if(!msg.compare(0, 1, "[")) {
+						outputStream << msg << endl;
 						grblParams->DecodeParameters(msg);				
 					}
 					// if startup block added, it will look like this on starup: '>G20G54G17:ok' or error
 					else if(!msg.compare(0, 2, "$N")) {	
+						outputStream << msg << endl;
 						int blockNum = stoi(msg.substr(2, 1));
 						if(blockNum == 0 || blockNum == 1)
 							grblParams->startupBlock[blockNum] = msg.substr(4);
@@ -796,9 +851,7 @@ int GRBL::Read(string& outputLog) {
 					
 					// settings codes
 					else if(!msg.compare(0, 1, "$")) {
-						// chagne whats written onto stream ...not a very nice way to do this...	
-						outputStream.str("");
-						outputStream.clear();
+						outputStream << msg << endl;
 						grblParams->DecodeSettings(outputStream, msg);
 					}
 					else {			
@@ -845,6 +898,7 @@ int GRBL::BufferAdd(int len) {
 		return TRUE;
 	// reduce buffer size by length of string
 	grblBufferSize -= len;
+	
 	// add length of string to queue
 	try{
 		q->enqueue(len);

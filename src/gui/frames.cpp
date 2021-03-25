@@ -145,53 +145,196 @@ struct Console
 };
   
 
+/*
+x   std::string state;
+	// either of these are given 
+	// WPos = MPos - WCO
+	point3D MPos;
+x	point3D WPos;
+	// this is given every 10 or 30 status messages
+	point3D WCO;
+	int lineNum;
+	float feedRate;	// mm/min or inches/min
+	int spindleSpeed; // rpm
+	
+	bool inputPin_LimX;
+	bool inputPin_LimY;
+	bool inputPin_LimZ;
+	bool inputPin_Probe;
+	bool inputPin_Door;
+	bool inputPin_Hold;
+	bool inputPin_SoftReset;
+	bool inputPin_CycleStart;
+	
+	int override_Feedrate;
+	int override_RapidFeed;
+	int override_SpindleSpeed;
+	
+	int accessory_SpindleDirection;
+	int accessory_FloodCoolant;
+	int accessory_MistCoolant;
+	
+*/
 struct Stats 
 {
     bool visible = true;
     
+    void DrawPosition(GRBL* Grbl) 
+    {
+		grblStatus_t* status = &(Grbl->Param.status);
+		MainSettings* settings = &(Grbl->Param.settings);
+		
+		char distanceUnit[16];
+		strncpy(distanceUnit, settings->units_Distance.c_str(), 16);
+		char feedrateUnit[16];
+		strncpy(feedrateUnit, settings->units_Feed.c_str(), 16);
+		
+		ImGui::Text(status->state.c_str());
+		
+		if (ImGui::BeginTable("Position", 3))
+        {
+            ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("X");
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("Y");
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("Z");
+			
+			char x[10], y[10], z[10];
+			snprintf(x, 10, "%.3f", status->WPos.x);
+			snprintf(y, 10, "%.3f", status->WPos.y);
+			snprintf(z, 10, "%.3f", status->WPos.z);
+			
+            ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(x);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text(y);
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text(z);
+			
+            ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(distanceUnit);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text(distanceUnit);
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text(distanceUnit);
+			
+            ImGui::EndTable();
+		}
+		
+		if (ImGui::BeginTable("Motion", 2))
+        {
+            ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Feed Rate");
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("Spindle");
+			
+			char feed[10], spindle[10];
+			snprintf(feed, 10, "%.0f", status->feedRate);
+			snprintf(spindle, 10, "%d", status->spindleSpeed);
+			
+            ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(feed);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text(spindle);
+			
+            ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(feedrateUnit);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("RPM");
+			
+            ImGui::EndTable();
+		}
+	}
+    
+    void DrawJogController(GRBL* Grbl) 
+    {
+		//grblStatus_t* status = &(Grbl->Param.status);
+		MainSettings* settings = &(Grbl->Param.settings);
+		
+		ImGui::Text("Jog Contoller");
+		
+		static float jogDistance = 10;
+		static int feedRate = 6000;
+		
+		ImGui::InputFloat("Jog Distance", &jogDistance);
+		float maxFeedRate = (settings->max_FeedRateX > settings->max_FeedRateY) ? settings->max_FeedRateX : settings->max_FeedRateY;
+		ImGui::SliderInt("Feed Rate", &feedRate, 0, (int)maxFeedRate);
+		
+		//jog controller
+        if (ImGui::BeginTable("Jog Controller", 5, ImGuiTableFlags_SizingFixedSame))
+        {
+			int w = 40, h = 40;
+			
+            ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(1);
+			if(ImGui::Button("Y+", ImVec2(w, h)))
+				Grbl->SendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
+			ImGui::TableSetColumnIndex(4);
+			if(ImGui::Button("Z+", ImVec2(w, h)))
+				Grbl->SendJog(Z_AXIS, FORWARD, jogDistance, feedRate);
+			
+			ImGui::TableNextRow(ImGuiTableRowFlags_None);
+			ImGui::TableSetColumnIndex(0);
+			if(ImGui::Button("X-", ImVec2(w, h)))
+				Grbl->SendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
+			ImGui::TableSetColumnIndex(2);
+			if(ImGui::Button("X+", ImVec2(w, h)))
+				Grbl->SendJog(X_AXIS, FORWARD, jogDistance, feedRate);
+			
+			ImGui::TableNextRow(ImGuiTableRowFlags_None);
+			ImGui::TableSetColumnIndex(1);
+			if(ImGui::Button("Y-", ImVec2(w, h)))
+				Grbl->SendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
+			ImGui::TableSetColumnIndex(4);
+			if(ImGui::Button("Z-", ImVec2(w, h)))
+				Grbl->SendJog(Z_AXIS, BACKWARD, jogDistance, feedRate);
+			
+            ImGui::EndTable();
+        }
+	}
+    
 	void Draw(GRBL* Grbl)
 	{
+		//gCodeParams_t* p = &(Grbl->Param.gcParam);
+		//modalGroup_t* m = &(Grbl->Param.mode);
+		//grblStatus_t* s = &(Grbl->Param.status);
+		
 		 // initialise
-		ImGui::SetNextWindowSize(ImVec2(520, 600), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(275, 600), ImGuiCond_FirstUseEver);
 		if (!ImGui::Begin("Stats", &visible)) {
 			ImGui::End();
 			return;
 		}
 		
-		if(ImGui::Button("Soft Reset")) 
+		DrawPosition(Grbl);
+		
+		ImGui::Separator();
+		
+		if(ImGui::Button("Soft Reset", ImVec2(50, 30))) 
 			Grbl->SendRT(GRBL_RT_SOFT_RESET);
 		ImGui::SameLine();
-		if(ImGui::Button("Kill Alarm Lock")) 
+		if(ImGui::Button("Kill Alarm Lock", ImVec2(50, 30))) 
 			Grbl->Send("$X");
 			
 		ImGui::Checkbox("Status Report", &Grbl->verbose);
 		
-		gCodeParams_t* p = &(Grbl->Param.gcParam);
-		modalGroup_t* m = &(Grbl->Param.mode);
-		grblStatus_t* s = &(Grbl->Param.status);
 		
-		ImGui::Text("X");
-		ImGui::SameLine();
-		ImGui::Text("Y");
-		ImGui::SameLine();
-		ImGui::Text("Z");
 		
-		char x[10], y[10], z[10];
-		snprintf(x, 10, "%.3f", s->WPos.x);
-		snprintf(y, 10, "%.3f", s->WPos.y);
-		snprintf(z, 10, "%.3f", s->WPos.z);
 		
-		ImGui::Text(x);
-		ImGui::SameLine();
-		ImGui::Text(y);
-		ImGui::SameLine();
-		ImGui::Text(z);
-			
 		ImGui::Separator();
 		
+		DrawJogController(Grbl);
+		
+		ImGui::Separator();
 		
 		ImGui::End();
-		
 	}
 };
   

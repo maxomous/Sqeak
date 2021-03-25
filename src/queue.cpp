@@ -6,34 +6,48 @@
 // Initialise a new queue of the 
 // specified size
 Queue::Queue(size_t size) {
-	this->head = 0;
-	this->tail = 0;
-	this->size = size;
-	this->buf = (size_t*)malloc(size * sizeof(size_t));
-	assert(this->buf);
+	head = 0;
+	tail = 0;
+	size = size;
+	printf("size = %d\n",size);
+	fflush(stdin);
+	buf = new size_t[size];
+	assert(buf);
+}
+
+Queue::~Queue() {
+	delete[] buf;
 }
 
 // Add a new value to the queue
 // Returns TRUE on success, FALSE
 // when the queue is full.
 int Queue::enqueue(size_t val) {	
+	
+	
+	printf("head: %d\n", head);
+	printf("tail: %d\n", tail);
+	printf("size: %d\n\n", size);
+	printf("val: %d\n", val);
+	fflush(stdin);
+	
 	// If the pointers meet, the queue is full.
-	if (this->head == this->tail - 1)
+	if (head == tail - 1)
 		throw "ERROR: Queue is full!";
 	
 	// If the head pointer is at the end of the buffer
 	// and the tail pointer at the beginning,
 	// the queue is also full.
-	if (this->head == this->size) {
-		if (this->tail == 0) 
+	if (head == size) {
+		if (tail == 0) 
 		throw "ERROR: Queue is full!";
 	}
 	
-	this->buf[this->head] = val;
+	buf[head] = val;
 	
 	// If the head pointer is at the end of the
 	// buffer, loop around to the start.
-	this->head = (this->head == this->size)  ?  0  :  this->head + 1;
+	head = (head == size)  ?  0  :  head + 1;
 	
 	return true;
 }
@@ -44,25 +58,25 @@ int Queue::enqueue(size_t val) {
 size_t Queue::dequeue() {
 	// Queue is empty, 
 	// nothing to return
-	if (this->head == this->tail)
+	if (head == tail)
 		throw "ERROR: You cannot remove from an empty queue!";
 	
-	size_t oldTail = this->tail;
+	size_t oldTail = tail;
 	
 	// If the tail pointer is at
 	// the end of the buffer,
 	// loop around to the start.
-	if (this->tail == this->size)
-		this->tail = 0;
+	if (tail == size)
+		tail = 0;
 	else 
-		this->tail += 1;
+		tail += 1;
 	
-	return this->buf[oldTail];
+	return buf[oldTail];
 }
 
 // Return the oldest value in the thisueue.
 // This is the next value that will be
 // removed when dethisueue is called.
 size_t Queue::peek() {
-	return this->buf[this->tail];
+	return buf[tail];
 }

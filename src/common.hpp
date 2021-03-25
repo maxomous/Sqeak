@@ -55,6 +55,13 @@ typedef struct {
 #define CLOCKWISE		1
 #define ANTICLOCKWISE	-1
 
+#define FORWARD			1
+#define BACKWARD		-1
+
+#define X_AXIS			1
+#define Y_AXIS			2
+#define Z_AXIS			3
+
 
 
 extern void exitf(const char* format, ... );

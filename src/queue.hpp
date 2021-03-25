@@ -15,7 +15,7 @@ class Queue {
 		// Initialise a new queue of the 
 		// specified size
 		Queue(size_t size);
-
+		~Queue();
 		// Add a new value to the queue
 		// Returns TRUE on success, FALSE
 		// when the queue is full.
