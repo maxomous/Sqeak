@@ -7,6 +7,7 @@
 #define COMMON_HPP
 
 #include <iostream>
+#include <fstream>
 #include <bitset>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 #include <ctype.h>
 #include <assert.h>
 #include <vector>
+#include <functional>
 
 #include <wiringPi.h>
 #include <wiringSerial.h>

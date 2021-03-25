@@ -3,7 +3,6 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 #include "common.hpp"
-#include <fstream>
 using namespace std;
 
 
@@ -22,8 +21,17 @@ string getWorkingDir(char **argv) {
     }
 }
 
+/*	Usage:
+    auto lambda = [](string& str) {
+	cout << str << endl;
+    }; 
+    if(readFile("/home/pi/Desktop/New.nc", lambda)) {
+	cout << "Error: Could not open file" << endl;
+    }
+*/
+
 // reads a line of a file and invokes the callback function with a pointer to the string 
-int readFile(GRBL* Grbl, const std::string& filename) {
+int readFile(const std::string& filename, const std::function<void(std::string&)>& func) {
     ifstream openFile(filename);
     if(!openFile) {
 		cout << "Error: Couldn't open file" << endl;
@@ -31,7 +39,8 @@ int readFile(GRBL* Grbl, const std::string& filename) {
     }
     string output;
     while(getline(openFile, output)) {
-	Grbl->Send(&output);
+	func(output);
+	cout << output << endl << endl;
     }
     openFile.close();
     return ERR_NONE;

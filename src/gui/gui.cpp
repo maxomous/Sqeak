@@ -128,15 +128,21 @@ int gui(const string& workingDir, GRBL* Grbl)
     Grbl->FileRun(file);
 */
     
+/*
+    auto executeLine = [](string& str) {
+        Grbl->Send(&str);
+    }; 
     
-    /*
     string file = "/home/pi/Desktop/New.nc";
-    if(readFile(Grbl, file)){
+    
+	if(readFile(file, executeLine)){
         cout << "Error: Could not open file" << endl;
         return -1;
     }
-    */
+*/
+    
 }
+    
 
 
     // Main loop
@@ -153,8 +159,6 @@ int gui(const string& workingDir, GRBL* Grbl)
         
         
         
-        
-        
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -168,13 +172,6 @@ int gui(const string& workingDir, GRBL* Grbl)
         ImGui::NewFrame();
 
         drawFrames(Grbl, consoleLog);
-/*
-        if(f->console.visible)
-            f->console.Show(Grbl);
-        
-        if(f->stats.visible)
-            f->stats.Show(Grbl);
-        */
         
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).

@@ -220,13 +220,13 @@ class GRBL {
 		
 		void SetStatusInterval(uint timems);
 		void Status();
+		Queue *q;
 	
 	private:
 		
 		int fd;
 		int grblBufferSize = MAX_GRBL_BUFFER;
 		GCList gcList;
-		Queue *q;
 		// status report timer
 		uint statusTimer;
 		uint statusTimerInterval;

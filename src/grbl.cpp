@@ -687,7 +687,7 @@ void GRBL::SendJog(int axis, int dir, float distance, int feedrate) {
 		cmd += "Z";
 		
 	char val[16];
-	snprintf(val, 16, "%g", dir*(float)((int)(distance*1000))/1000);
+	snprintf(val, 16, "%g", (float)dir*(float)((int)(distance*1000))/1000);
 	cmd += val;
     
 	cmd += "F";
@@ -698,6 +698,7 @@ void GRBL::SendJog(int axis, int dir, float distance, int feedrate) {
 }
 
 void GRBL::Write() {
+	
 //void grblWrite(int fd, GCList* gcList, Queue* q) {
 	//GCList* gcList = &(gcList);
 	do {
@@ -758,9 +759,9 @@ int GRBL::Read(string& outputLog) {
 		
 		ReadLine(&msg);
 		
-		#ifdef DEBUG
+		//#ifdef DEBUG
 			cout << "Reading from grbl: " << msg << endl;
-		#endif
+		//#endif
 		
 		// ignore blank responses
 		if(!msg.compare(0, 1, "")) {
@@ -898,6 +899,9 @@ int GRBL::BufferAdd(int len) {
 		return TRUE;
 	// reduce buffer size by length of string
 	grblBufferSize -= len;
+	
+	printf("len = %d\n",len);
+	fflush(stdin);
 	
 	// add length of string to queue
 	try{

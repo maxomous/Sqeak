@@ -8,8 +8,7 @@
 Queue::Queue(size_t size) {
 	head = 0;
 	tail = 0;
-	size = size;
-	printf("size = %d\n",size);
+	this->size = size;
 	fflush(stdin);
 	buf = new size_t[size];
 	assert(buf);
@@ -19,16 +18,12 @@ Queue::~Queue() {
 	delete[] buf;
 }
 
+
 // Add a new value to the queue
 // Returns TRUE on success, FALSE
 // when the queue is full.
 int Queue::enqueue(size_t val) {	
 	
-	
-	printf("head: %d\n", head);
-	printf("tail: %d\n", tail);
-	printf("size: %d\n\n", size);
-	printf("val: %d\n", val);
 	fflush(stdin);
 	
 	// If the pointers meet, the queue is full.

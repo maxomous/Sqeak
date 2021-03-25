@@ -85,6 +85,7 @@ struct Console
     
 	void sendToConsole(GRBL* Grbl, ImGuiTextBuffer* log, char* str) 
 	{
+		printf("string to console = %s\n", str);
 		if(str[0]) {
 			Grbl->Send(str);
 			printf("Send: %s\n", str);
@@ -98,11 +99,19 @@ struct Console
 				historyCount = MAX_HISTORY-1;
 			}
 			historyPos = historyCount + 1;
-			strcpy(str, "");
+			strncpy(str, "", 128);
 		}
 		reclaim_focus = true;
 		ScrollToBottom = true;
 	}
+
+
+    /*
+    auto executeLine = [&](string& str) {
+        Grbl->Send(&str);
+    }; 
+        
+	readFile(file, executeLine)*/
 
     // In C++11 you'd be better off using lambdas for this sort of forwarding callbacks
     static int TextEditCallbackStub(ImGuiInputTextCallbackData* data)
@@ -181,7 +190,6 @@ struct Stats
     
     void DrawPosition(GRBL* Grbl) 
     {
-		grblStatus_t* status = &(Grbl->Param.status);
 		MainSettings* settings = &(Grbl->Param.settings);
 		
 		char distanceUnit[16];
@@ -189,7 +197,7 @@ struct Stats
 		char feedrateUnit[16];
 		strncpy(feedrateUnit, settings->units_Feed.c_str(), 16);
 		
-		ImGui::Text(status->state.c_str());
+		grblStatus_t* status = &(Grbl->Param.status);
 		
 		if (ImGui::BeginTable("Position", 3))
         {
@@ -224,7 +232,12 @@ struct Stats
 			
             ImGui::EndTable();
 		}
-		
+	}
+	void DrawMotion(GRBL* Grbl) 
+    {
+		grblStatus_t* status = &(Grbl->Param.status);
+		MainSettings* settings = &(Grbl->Param.settings);
+				
 		if (ImGui::BeginTable("Motion", 2))
         {
             ImGui::TableNextRow();
@@ -245,7 +258,7 @@ struct Stats
 			
             ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Text(feedrateUnit);
+			ImGui::Text(settings->units_Feed.c_str());
 			ImGui::TableSetColumnIndex(1);
 			ImGui::Text("RPM");
 			
@@ -253,20 +266,94 @@ struct Stats
 		}
 	}
     
-    void DrawJogController(GRBL* Grbl) 
-    {
+	void Draw(GRBL* Grbl)
+	{
+		 // initialise
+		ImGui::SetNextWindowSize(ImVec2(250, 300), ImGuiCond_FirstUseEver);
+		if (!ImGui::Begin("Stats", &visible)) {
+			ImGui::End();
+			return;
+		}
+		
+		//gCodeParams_t* p = &(Grbl->Param.gcParam);
+		//modalGroup_t* m = &(Grbl->Param.mode);
+		//grblStatus_t* s = &(Grbl->Param.status);
+		grblStatus_t* status = &(Grbl->Param.status);
+		
+		// current state
+		ImGui::Text(status->state.c_str());
+		ImGui::Separator();
+		// current x y z location
+		DrawPosition(Grbl);
+		ImGui::Separator();
+		// current feedrate & spindle speed
+		DrawMotion(Grbl); 
+		ImGui::Separator();
+		
+		
+		if (ImGui::BeginTable("Commands", 3))
+        {
+			int w = 80, h = 60;
+			
+            ImGui::TableNextRow();
+            
+			ImGui::TableSetColumnIndex(0);
+			if(ImGui::Button("Soft Reset", ImVec2(w, h))) 
+				Grbl->SendRT(GRBL_RT_SOFT_RESET);
+				
+			ImGui::TableSetColumnIndex(1);
+			if(ImGui::Button("Kill Alarm Lock", ImVec2(w, h))) 
+				Grbl->Send("$X");
+				
+			ImGui::TableSetColumnIndex(2);
+			if(ImGui::Button("Home", ImVec2(w, h))) 
+				Grbl->Send("$H");
+			
+            ImGui::TableNextRow();
+            
+			ImGui::TableSetColumnIndex(0);
+			if(ImGui::Button("Check Mode", ImVec2(w, h))) 
+				Grbl->Send("$C");
+			
+			// return to zero
+			// reset zero
+			// get state
+			
+			ImGui::EndTable();
+		}
+		
+		ImGui::Checkbox("Status Report", &Grbl->verbose);
+		
+		
+		
+		ImGui::Separator();
+		
+		ImGui::End();
+	}
+};
+  
+struct JogController 
+{
+    bool visible = true;
+    
+	void Draw(GRBL* Grbl)
+	{
+		 // initialise
+		ImGui::SetNextWindowSize(ImVec2(250, 250), ImGuiCond_FirstUseEver);
+		if (!ImGui::Begin("Jog Controller", &visible)) {
+			ImGui::End();
+			return;
+		}
+		
+		grblStatus_t* status = &(Grbl->Param.status);
+		
 		//grblStatus_t* status = &(Grbl->Param.status);
 		MainSettings* settings = &(Grbl->Param.settings);
-		
-		ImGui::Text("Jog Contoller");
-		
 		static float jogDistance = 10;
 		static int feedRate = 6000;
 		
-		ImGui::InputFloat("Jog Distance", &jogDistance);
-		float maxFeedRate = (settings->max_FeedRateX > settings->max_FeedRateY) ? settings->max_FeedRateX : settings->max_FeedRateY;
-		ImGui::SliderInt("Feed Rate", &feedRate, 0, (int)maxFeedRate);
-		
+		ImGui::Text("Jog Contoller");
+				
 		//jog controller
         if (ImGui::BeginTable("Jog Controller", 5, ImGuiTableFlags_SizingFixedSame))
         {
@@ -298,46 +385,19 @@ struct Stats
 			
             ImGui::EndTable();
         }
-	}
-    
-	void Draw(GRBL* Grbl)
-	{
-		//gCodeParams_t* p = &(Grbl->Param.gcParam);
-		//modalGroup_t* m = &(Grbl->Param.mode);
-		//grblStatus_t* s = &(Grbl->Param.status);
+        ImGui::Separator();
 		
-		 // initialise
-		ImGui::SetNextWindowSize(ImVec2(275, 600), ImGuiCond_FirstUseEver);
-		if (!ImGui::Begin("Stats", &visible)) {
-			ImGui::End();
-			return;
-		}
-		
-		DrawPosition(Grbl);
-		
-		ImGui::Separator();
-		
-		if(ImGui::Button("Soft Reset", ImVec2(50, 30))) 
-			Grbl->SendRT(GRBL_RT_SOFT_RESET);
-		ImGui::SameLine();
-		if(ImGui::Button("Kill Alarm Lock", ImVec2(50, 30))) 
-			Grbl->Send("$X");
-			
-		ImGui::Checkbox("Status Report", &Grbl->verbose);
-		
-		
-		
-		
-		ImGui::Separator();
-		
-		DrawJogController(Grbl);
-		
-		ImGui::Separator();
+		ImGui::PushItemWidth(100);
+        ImGui::Indent();
+			ImGui::InputFloat("Jog Distance", &jogDistance);
+			float maxFeedRate = (settings->max_FeedRateX > settings->max_FeedRateY) ? settings->max_FeedRateX : settings->max_FeedRateY;
+			ImGui::SliderInt("Feed Rate", &feedRate, 0, (int)maxFeedRate);
+		ImGui::Unindent();
+		ImGui::PopItemWidth();
 		
 		ImGui::End();
 	}
 };
-  
   
 void drawFrames(GRBL* Grbl, ImGuiTextBuffer* consoleLog)
 {
@@ -345,6 +405,9 @@ void drawFrames(GRBL* Grbl, ImGuiTextBuffer* consoleLog)
     console.Draw(Grbl, consoleLog);
     static Stats stats;
     stats.Draw(Grbl);
+    static JogController jogController;
+    jogController.Draw(Grbl);
+    
     
 }
   
