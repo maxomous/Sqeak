@@ -50,17 +50,27 @@
 
 class GCList {
 	public:
-		int count;
-		int written;
-		int read;
+		// use size() to see how many have been added to buffer
+		int written;	// how many sent to grbl
+		int read;		// how many recieved a response from grbl
 		
 		std::vector<std::string> str;
 		std::vector<int> status;
 		
 		GCList();
-		void Add(std::string* str);		
+		
+		void ClearAll();
+		int Add(std::string* str);		
 		void SetResponse(std::ostringstream& outputStream, int response);
+		// returns true if we are mid file transfer
+		bool IsFileRunning();
+		// this triggers that we have sent a file 
+		// and not to allow further commands until it complete 
+		void FileSent();
 	private:
+		// denotes the end point of a file sent
+		// prevents sending file multiple times
+		int fileEnd = 0;
 		void CleanString(std::string* str);
 		
 };
@@ -206,24 +216,37 @@ class GRBL {
 		// initialises connection to the serial port
 		void Connect();
 		// send command to serial port
-		void Send(std::string* cmd);
-		void Send(std::string cmd);
+		int Send(std::string* cmd);
+		int Send(std::string cmd);
+		// send a file to GRBL
+		int SendFile(const std::string& file);
 		// Writes realtime command to serial port
 		void SendRT(char cmd);
 		// send jog command
 		void SendJog(int axis, int dir, float distance, int feedrate);
+		// stops any more commands being sent to grbl
+		// note: any remaining command grbl has in it's buffer will still be executed
+		void Cancel();
 		// Writes line to serial port
 		void Write();
 		// Reads block off serial port
 		// returns true if new reponse
 		int Read(std::string& outputLog);
-		
+		// sets the interval time between status requests
 		void SetStatusInterval(uint timems);
-		void Status();
+		// Sends a request to GRBL for a status report
+		void RequestStatus();
+		// a blocking function which waits for status to be read from grbl
+		// returns 0 when status recieved, -1 on timeout
+		int WaitForIdle(ImGuiTextBuffer* log);
+		// returns true when mid file transfer
+		bool IsFileRunning();
 		Queue *q;
 	
 	private:
-		
+		// flag to force-wait until we recieve a status repsonse
+		bool waitingForStatus = false;
+	 
 		int fd;
 		int grblBufferSize = MAX_GRBL_BUFFER;
 		GCList gcList;

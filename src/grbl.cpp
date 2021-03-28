@@ -488,7 +488,6 @@ void GRBLParams::DecodeSettings(ostringstream& outputStream, const string& msg) 
 
 
 GCList::GCList(){
-	count = 0;
 	written = 0;
 	read = 0;
 }
@@ -517,12 +516,15 @@ void GCList::CleanString(string* str) {
 }
 
 // add a line of GCode to the GCode List
-void GCList::Add(string* str) {
+int GCList::Add(string* str) {
+	
+	if(IsFileRunning())
+		return -1;
 	
 	CleanString(str);
 	// ignore blank lines
 	if(*str == "\n")
-		return;
+		return 0;
 		
 	if(str->length() > MAX_GRBL_BUFFER)
 		exitf("ERROR: String is longer than grbl buffer!\n");
@@ -530,7 +532,7 @@ void GCList::Add(string* str) {
 	this->str.push_back(*str);
 	status.push_back(STATUS_NONE);
 	
-	count++;
+	return 0;
 }	
 		
 // set the response status of the GCode line
@@ -549,6 +551,27 @@ void GCList::SetResponse(ostringstream& outputStream, int response) {
 		outputStream << "Error " << response << ": " << errName << "\tDesc: " << errDesc << endl;
 	}
 	read++;
+	// to trigger that we have reached end of file
+	if(fileEnd != 0 && read >= fileEnd) {
+		fileEnd = 0;
+		outputStream << "End of File" << endl;
+	}
+}
+
+
+bool GCList::IsFileRunning() {
+	return fileEnd;
+}
+
+void GCList::FileSent() {
+	fileEnd = str.size();
+}
+
+// clears any remaining GCodes in buffer
+void GCList::ClearAll() {
+	str.erase(str.begin() + written, str.end());
+	status.erase(status.begin() + written, status.end());
+	fileEnd = str.size();
 }
 
 GRBL::GRBL() {
@@ -559,6 +582,7 @@ GRBL::GRBL() {
 
 
 GRBL::~GRBL() {
+	delete(q);
 	// close serial connection
 	serialClose(fd);
 }
@@ -575,12 +599,34 @@ void GRBL::Connect() {
 }
 
 // adds to the GCode list, ready to be written when buffer has space
-// sending a pointer is slightly quicker as it wont have to be be copied, it will however be modified to remove whitespace and comments etc
-void GRBL::Send(string* cmd) {
-	gcList.Add(cmd); 
+// sending a pointer is slightly quicker as it wont have to be be copied, it will however, modify the original string to remove whitespace and comments etc
+int GRBL::Send(string* cmd) {
+	
+	if (gcList.Add(cmd))
+		return -1;	// error probably a file running
+		
+	return 0;
 }
-void GRBL::Send(string cmd) {
-	gcList.Add(&cmd); 
+
+int GRBL::Send(string cmd) {
+	return Send(&cmd);
+}
+
+	
+int GRBL::SendFile(const string& file) {
+	
+	auto executeLine = [this](string& str) {
+		
+		if(this->Send(&str))
+			return -1; // cannot send, is probably busy with file transfer
+
+		return 0;
+	}; 
+	if(readFile(file, executeLine)){
+		return -1;
+	}
+	gcList.FileSent();
+	return 0;
 }
 
 /* sends a REALTIME COMMAND
@@ -694,16 +740,19 @@ void GRBL::SendJog(int axis, int dir, float distance, int feedrate) {
 	snprintf(val, 16, "%d", feedrate);
 	cmd += val;
 	
-	Send(&cmd);
+	if(Send(&cmd)) {
+		// cannot send, is probably busy with file transfer
+	}
+}
+void GRBL::Cancel() {
+	gcList.ClearAll();
 }
 
 void GRBL::Write() {
 	
-//void grblWrite(int fd, GCList* gcList, Queue* q) {
-	//GCList* gcList = &(gcList);
 	do {
 		// exit if nothing new in the gcList
-		if (gcList.written >= gcList.count)
+		if (gcList.written >= gcList.str.size())
 			break;
 			
 		string* curStr = &gcList.str[gcList.written];
@@ -745,7 +794,6 @@ void GRBL::ReadLine(string* msg) {
 // Reads block of serial interface until no response received
 int GRBL::Read(string& outputLog) {
 	
-//void grblRead(GRBLParams* grblParams, int fd, GCList* gcList, Queue* q) {
 	GRBLParams* grblParams = &(Param);
 	ostringstream outputStream;
 	string msg;
@@ -759,9 +807,9 @@ int GRBL::Read(string& outputLog) {
 		
 		ReadLine(&msg);
 		
-		//#ifdef DEBUG
-			cout << "Reading from grbl: " << msg << endl;
-		//#endif
+		#ifdef DEBUG
+			cout << "Reading: " << msg << endl;
+		#endif
 		
 		// ignore blank responses
 		if(!msg.compare(0, 1, "")) {
@@ -804,6 +852,8 @@ int GRBL::Read(string& outputLog) {
 			else 
 			{
 				if(!msg.compare(0, 1, "<")) {
+					// Flag used to make sure we receice status before we carry out next task
+					waitingForStatus = false;
 					grblParams->DecodeStatus(msg);
 					if(verbose)
 						outputStream << msg << endl;
@@ -866,6 +916,7 @@ int GRBL::Read(string& outputLog) {
 	if(streamModified) {
 		// copy contents of log to return it
 		outputLog = outputStream.str();
+		//cout << outputLog << endl;
 		return 1;
 	}
 	return 0;
@@ -899,10 +950,6 @@ int GRBL::BufferAdd(int len) {
 		return TRUE;
 	// reduce buffer size by length of string
 	grblBufferSize -= len;
-	
-	printf("len = %d\n",len);
-	fflush(stdin);
-	
 	// add length of string to queue
 	try{
 		q->enqueue(len);
@@ -921,7 +968,7 @@ void GRBL::SetStatusInterval(uint timems) {
 }
 
 // check status report
-void GRBL::Status() {
+void GRBL::RequestStatus() {
 	if(!statusTimerInterval)
 		return;
 	if(millis() > statusTimer) {
@@ -931,8 +978,38 @@ void GRBL::Status() {
 	
 }
 
+#define WAIT_FOR_STATUS_TIMEOUT 10000 // 10s
+
+// A blocking loop until we recieve next status report
+// returns 0 when recieved and is idle, -1 on timeout or not idle
+int GRBL::WaitForIdle(ImGuiTextBuffer* consoleLog) {
 	
-        
+	string grblReponse;
+	waitingForStatus = true;
+	uint timeout = millis() + WAIT_FOR_STATUS_TIMEOUT;
+	// send status query
+	SendRT(GRBL_RT_STATUS_QUERY);
+	do {
+		// just in case we receive a message before the status report
+		if(Read(grblReponse)) {
+            consoleLog->append(grblReponse.c_str());
+            grblReponse.erase();
+        }
+        // return error if timeout
+		if(millis() > timeout)
+			return -1;
+	} while (waitingForStatus);
+	
+	if(Param.status.state != "Idle") 
+		return -1;
+	
+	return 0;
+}	
+
+bool GRBL::IsFileRunning() {
+	return gcList.IsFileRunning();
+}
+
 /* see: https://github.com/gnea/grbl/wiki/Grbl-v1.1-Commands
  
 	$$ and $x=val - View and write Grbl settings

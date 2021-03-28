@@ -8,6 +8,10 @@
 
 #include <iostream>
 #include <fstream>
+#include "dirent.h"	// viewing directory
+#include <sys/stat.h> // file stats
+//#include <sys/types.h>
+#include <time.h>
 #include <bitset>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,7 +20,6 @@
 #include <string>
 #include <string.h>
 #include <sstream>
-#include <fstream>
 #include <algorithm>
 #include <ctype.h>
 #include <assert.h>
@@ -73,4 +76,6 @@ extern point3D add3p(point3D p1, point3D p2);
 // return p1 - p2
 extern point3D minus3p(point3D p1, point3D p2);
 
+// returns lower case version of str
+extern std::string lowerCase(const std::string& str);
 #endif

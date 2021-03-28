@@ -3366,7 +3366,6 @@ struct MyItem
     // We could technically call ImGui::TableGetSortSpecs() in CompareWithSortSpecs(), but considering that this function is called
     // very often by the sorting algorithm it would be a little wasteful.
     static const ImGuiTableSortSpecs* s_current_sort_specs;
-
     // Compare function to be used by qsort()
     static int IMGUI_CDECL CompareWithSortSpecs(const void* lhs, const void* rhs)
     {

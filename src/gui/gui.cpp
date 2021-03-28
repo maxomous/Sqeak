@@ -77,7 +77,7 @@ int gui(const string& workingDir, GRBL* Grbl)
     string grblReponse;
     
     Grbl->Connect();
-    Grbl->SetStatusInterval(500);
+    Grbl->SetStatusInterval(100);
     
     
  {   // add gcodes to the stream
@@ -128,18 +128,8 @@ int gui(const string& workingDir, GRBL* Grbl)
     Grbl->FileRun(file);
 */
     
-/*
-    auto executeLine = [](string& str) {
-        Grbl->Send(&str);
-    }; 
-    
-    string file = "/home/pi/Desktop/New.nc";
-    
-	if(readFile(file, executeLine)){
-        cout << "Error: Could not open file" << endl;
-        return -1;
-    }
-*/
+
+
     
 }
     
@@ -154,7 +144,7 @@ int gui(const string& workingDir, GRBL* Grbl)
             consoleLog->append(grblReponse.c_str());
             grblReponse.erase();
         }
-        Grbl->Status();
+        Grbl->RequestStatus();
      
         
         
@@ -171,7 +161,7 @@ int gui(const string& workingDir, GRBL* Grbl)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        drawFrames(Grbl, consoleLog);
+        drawFrames(workingDir, Grbl, consoleLog);
         
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).

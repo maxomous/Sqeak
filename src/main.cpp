@@ -48,7 +48,6 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
-
 	
 	(void)argc, (void) argv;
 	string workingDir = getWorkingDir(argv);
@@ -58,6 +57,8 @@ int main(int argc, char **argv)
 	GRBL* Grbl = new GRBL();
 	
 	gui(workingDir, Grbl);
+	
+	delete(Grbl);
 	
 	return 0;
 }
