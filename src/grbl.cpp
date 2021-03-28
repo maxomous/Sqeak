@@ -190,7 +190,7 @@ void GRBLParams::CheckStartupLine(const string& msg) {
 		// retrieve value of response ('ok' or 'error:x')
 		string response = msg.substr(a+1, msg.length()-a-1);
 		if(response == "ok")
-			cout << msg << endl;
+			return;
 		else {
 			size_t b = response.find(":");
 			if(b != string::npos) {
@@ -199,11 +199,11 @@ void GRBLParams::CheckStartupLine(const string& msg) {
 				exit(1);
 			}
 			else
-				exitf("ERROR: Something is not right here\n");
+				exitf("ERROR: Something is not right here, didn't find 2nd ':'\n");
 		}
 	}
 	else
-		exitf("ERROR: Something is not right here\n");
+		exitf("ERROR: Something is not right here, didn't find ':'\n");
 }	
 
 // decodes GCode Parameters
@@ -256,8 +256,6 @@ void GRBLParams::DecodeParameters(const string& msg) {
 void GRBLParams::DecodeMode(const string& msg) {
 	
 	modalGroup_t* m = &(mode);
-	
-	cout << msg << endl;
 	
 	string s = msg.substr(4, msg.length()-5);
 	istringstream stream(s);
@@ -334,11 +332,28 @@ void GRBLParams::DecodeStatus(const string& msg) {
 		//- `Door:2` Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm.
 		//- `Door:3` Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm.
 		
+		
+		if(segs[i] == "Idle" || segs[i].substr(0, 4) == "Hold"  || segs[i] == "Sleep") {
+			s->state = segs[i];
+			s->stateColour = 0; // for colouring state
+		}
+		
+		else if(segs[i] == "Run" || segs[i] == "Jog" || segs[i] == "Check" || segs[i] == "Home") {
+			s->state = segs[i];
+			s->stateColour = 1;
+		}
+		
+		else if(segs[i] == "Alarm" || segs[i].substr(0, 4) == "Door") {
+			s->state = segs[i];
+			s->stateColour = 2;
+		}
+			
+			
+		/*	
 		if(segs[i] == "Idle" || segs[i] == "Run" || segs[i].substr(0, 4) == "Hold" || segs[i] == "Jog" || segs[i] == "Alarm" 
 			|| segs[i].substr(0, 4) == "Door" || segs[i] == "Check" || segs[i] == "Home" || segs[i] == "Sleep" ) {
 			s->state = segs[i];
-			
-		}
+		}*/
 		// MPos:0.000,-10.000,5.000 machine position  or  WPos:-2.500,0.000,11.000 work position
 		// WPos = MPos - WCO
 		else if(segs[i].substr(0, 4) == "MPos") {
@@ -454,7 +469,7 @@ void GRBLParams::DecodeStatus(const string& msg) {
 
 // decodes the settings froms grbl
 // just prints them for now
-void GRBLParams::DecodeSettings(ostringstream& outputStream, const string& msg) {
+string GRBLParams::DecodeSettings(const string& msg) {
 	// retrieve settings code & current value
 	size_t a = msg.find("=");
 	// checks to prevent errors
@@ -478,12 +493,14 @@ void GRBLParams::DecodeSettings(ostringstream& outputStream, const string& msg) 
 		if(settingsCode == 112)
 			settings.max_FeedRateZ = value;
 		
-		// display
-		outputStream << "$" << settingsCode << " = " << value << " (";
+		// display unit and name for setting
+		ostringstream s("(");
 		// if it's a mask, display as in binary instead of unit
-		(unit == "mask") ? (outputStream << bitset<8>(value)) : (outputStream << unit);
-		outputStream << ") :\t" << name << endl; //<< " Desc: " << desc << endl;
+		(unit == "mask") ? (s << bitset<8>(value)) : (s << unit);
+		s << ") : " << name; //<< " (" << desc << ")";
+		return s.str();
 	}
+	return "";
 }
 
 
@@ -492,6 +509,13 @@ GCList::GCList(){
 	read = 0;
 }
 
+void GCList::GetListItem(int n, string& str, int& status) {
+	str = this->str[n];
+	status = this->status[n];
+}
+int GCList::GetSize() {
+	return str.size();
+}
 // takes a GCode linbe and cleans up
 // (removes spaces, comments, make uppercase, ensures '\n' is present)
 void GCList::CleanString(string* str) {
@@ -523,11 +547,13 @@ int GCList::Add(string* str) {
 	
 	CleanString(str);
 	// ignore blank lines
-	if(*str == "\n")
+	if(*str == "\n") {
+		//cout << "Ignoring blank line" << endl;
 		return 0;
-		
+	}	
+	
 	if(str->length() > MAX_GRBL_BUFFER)
-		exitf("ERROR: String is longer than grbl buffer!\n");
+		exitf("Error: String is longer than grbl buffer!\n");
 	
 	this->str.push_back(*str);
 	status.push_back(STATUS_NONE);
@@ -536,25 +562,18 @@ int GCList::Add(string* str) {
 }	
 		
 // set the response status of the GCode line
-void GCList::SetResponse(ostringstream& outputStream, int response) {
-	// set reponse to corrosponding gcode
-	status[read] = response;
-	outputStream << '#' << read << "\t" << str[read].substr(0, str[read].length() -1) <<  "\t\tstatus: ";
-	if (response == STATUS_OK) 
-		outputStream << "ok" << endl;
-	else {
-		string errName, errDesc;
-		if(getErrMsg(response, &errName, &errDesc)) {	
-			outputStream << "Error: Can't find error code!" << endl;
-			exit(1);
-		}
-		outputStream << "Error " << response << ": " << errName << "\tDesc: " << errDesc << endl;
+void GCList::SetResponse(vector<string>* consoleLog, int response) {
+	if(read >= status.size()) {
+		consoleLog->push_back("Error: We are reading more than we have sent...");
+		cout << "Error: We are reading more than we have sent... size = " << status.size() << endl;
+		return;
 	}
-	read++;
+	// Set reponse to corrosponding gcode
+	status[read++] = response;
 	// to trigger that we have reached end of file
 	if(fileEnd != 0 && read >= fileEnd) {
 		fileEnd = 0;
-		outputStream << "End of File" << endl;
+		consoleLog->push_back("End of File");
 	}
 }
 
@@ -567,24 +586,77 @@ void GCList::FileSent() {
 	fileEnd = str.size();
 }
 
+// clears any completed GCodes in the buffer
+void GCList::ClearCompleted() {
+	str.erase(str.begin(), str.begin() + read);
+	status.erase(status.begin(), status.begin() + read);
+	fileEnd -= read;
+	if (fileEnd < 0) fileEnd = 0;
+	written -= read;
+	read = 0;
+}
+
 // clears any remaining GCodes in buffer
-void GCList::ClearAll() {
+void GCList::ClearNoResponses() {
 	str.erase(str.begin() + written, str.end());
 	status.erase(status.begin() + written, status.end());
 	fileEnd = str.size();
+	/*
+	cout << "GCodes List Size: " << str.size() << endl;
+	cout << "GCodes Written: " << written << endl;
+	cout << "GCodes Read: " << read << endl;
+	cout << "fileEnd: " << fileEnd << endl;*/
 }
+
+// clears any remaining GCodes in buffer
+// queue MUST be emptied also + grblBufferSize set to max
+void GCList::ClearSent() {
+	
+	str.erase(str.begin() + read, str.end());
+	status.erase(status.begin() + read, status.end());
+	fileEnd = 0;
+	written = read;
+	/*
+	cout << "GCodes List Size: " << str.size() << endl;
+	cout << "GCodes Written: " << written << endl;
+	cout << "GCodes Read: " << read << endl;
+	cout << "fileEnd: " << fileEnd << endl;*/
+}
+/*
+// clears entire GCode List 
+void GCList::ClearAll() {
+	str.clear();
+	status.clear();
+	written = 0;
+	read = 0;
+	fileEnd = 0;
+	cout << "GCodes List Size: " << str.size() << endl;
+	cout << "GCodes Written: " << written << endl;
+	cout << "GCodes Read: " << read << endl;
+	cout << "fileEnd: " << fileEnd << endl;
+}
+*/
 
 GRBL::GRBL() {
 	q = new Queue(128);
+	consoleLog = new vector<string>();
 	statusTimerInterval = 500;
 	statusTimer = millis() + statusTimerInterval;
 }
 
 
 GRBL::~GRBL() {
-	delete(q);
 	// close serial connection
 	serialClose(fd);
+	delete(q);
+	delete(consoleLog);
+}
+
+// Flush the serial buffer
+void GRBL::Flush() {
+	serialPuts(fd, "\r\n\r\n");
+	delay(2000);
+	serialFlush(fd);
 }
 
 void GRBL::Connect() {
@@ -593,18 +665,18 @@ void GRBL::Connect() {
 	if(fd == -1)
 		exitf("ERROR: Could not open serial device\n");
 	//clear the serial buffer
-	serialPuts(fd, "\r\n\r\n"); // not actually sure what this does but it is given in the grbl example
-	delay(2000);
-	serialFlush(fd);	
+	Flush();
 }
 
 // adds to the GCode list, ready to be written when buffer has space
 // sending a pointer is slightly quicker as it wont have to be be copied, it will however, modify the original string to remove whitespace and comments etc
 int GRBL::Send(string* cmd) {
 	
-	if (gcList.Add(cmd))
-		return -1;	// error probably a file running
-		
+	consoleLog->push_back((string)"Sent: " + *cmd);
+	if (gcList.Add(cmd)) {
+		consoleLog->push_back("Error: File is already running in function GRBL::Send()");
+		return -1;
+	}
 	return 0;
 }
 
@@ -625,6 +697,7 @@ int GRBL::SendFile(const string& file) {
 	if(readFile(file, executeLine)){
 		return -1;
 	}
+	// state that we have sent a file - this is to prevent sending twice
 	gcList.FileSent();
 	return 0;
 }
@@ -745,14 +818,30 @@ void GRBL::SendJog(int axis, int dir, float distance, int feedrate) {
 	}
 }
 void GRBL::Cancel() {
-	gcList.ClearAll();
+	// clears any gcodes which havent received a reponse (but ones grbl's buffer will still remain)
+	gcList.ClearNoResponses();
 }
+
+// soft reset 
+void GRBL::SoftReset() {
+	// send reset to grbl
+	SendRT(GRBL_RT_SOFT_RESET);	
+	// flush the serial buffer
+	Flush();
+	// clears any waiting gcodes in the gclist
+	gcList.ClearSent();
+	// clears the queue
+	q->clear();
+	// sets buffer size to max
+	grblBufferSize = MAX_GRBL_BUFFER;
+}
+
 
 void GRBL::Write() {
 	
 	do {
 		// exit if nothing new in the gcList
-		if (gcList.written >= gcList.str.size())
+		if(!(gcList.written < gcList.str.size()))
 			break;
 			
 		string* curStr = &gcList.str[gcList.written];
@@ -792,13 +881,56 @@ void GRBL::ReadLine(string* msg) {
 }
 
 // Reads block of serial interface until no response received
-int GRBL::Read(string& outputLog) {
+void GRBL::Read() {
+	
+	// Response for an 'ok'
+	auto okResponse = [this]() 
+	{	// remove command from gcbuffer
+		if(BufferRemove())
+			return;
+		// set response of corrosponding gcode to 'OK'
+		gcList.SetResponse(consoleLog, STATUS_OK);
+		// add response to log
+		consoleLog->push_back("ok");	
+	};
+	
+	// Response for an 'error'
+	auto errorResponse = [this](const string& msg) 
+	{	// remove command from gcbuffer
+		if(BufferRemove())
+			return;
+		// retrieve error code
+		int errCode = stoi(msg.substr(6));
+		// set response of corrosponding gcode to 'ERROR'
+		gcList.SetResponse(consoleLog, errCode);
+		// add response to log
+		string errName, errDesc;
+		if(getErrMsg(errCode, &errName, &errDesc)) {	
+			cout << "Error: Can't find error code!" << endl;
+			exit(1);
+		}
+		ostringstream s;
+		s << "Error " << errCode << ": " << errName << "(" << errDesc << ")";
+		consoleLog->push_back(s.str());
+	};
+	
+	// Response for an 'alarm'
+	auto alarmResponse = [this](const string& msg) 
+	{	// retrieve alarm code
+		int alarmCode = stoi(msg.substr(6));
+		// add response to log
+		string alarmName, alarmDesc;
+		if(getAlarmMsg(alarmCode, &alarmName, &alarmDesc)) {	
+			cout << "Error: Can't find alarm code!" << endl;
+			exit(1);
+		}
+		ostringstream s;
+		s << "ALARM " << alarmCode << ": " << alarmName << " (" << alarmDesc << ")";
+		consoleLog->push_back(s.str());
+	};
 	
 	GRBLParams* grblParams = &(Param);
-	ostringstream outputStream;
 	string msg;
-	
-	bool streamModified = false;
 	
 	// retrieve data upto response 'ok' or 'error'
 	do {
@@ -814,39 +946,20 @@ int GRBL::Read(string& outputLog) {
 		// ignore blank responses
 		if(!msg.compare(0, 1, "")) {
 		}
-		else {
-			// we are going to return some message
-			streamModified = true;
-				
+		else {				
 			// match up an 'ok' or 'error' to the corrosponding sent gcode and set it's status
-			if(!msg.compare("ok")) {	
-				BufferRemove();
-				// set response of corrosponding gcode to 'OK'
-				gcList.SetResponse(outputStream, STATUS_OK);
+			if(!msg.compare("ok")) {
+				okResponse();
 				break; 
 			}
 			// error messages
 			else if(!msg.compare(0, 6, "error:")) {			//ERROR NEED TO HALT EVERYTHING
-				
-				BufferRemove();	
-				// retrieve error code
-				int errCode = stoi(msg.substr(6));
-				// set response of corrosponding gcode to 'ERROR'
-				gcList.SetResponse(outputStream, errCode);
+				errorResponse(msg);
 				break;
 			}
 			// alarm messages
 			else if(!msg.compare(0, 6, "ALARM:")) {		
-				// retrieve error code
-				int alarmCode = stoi(msg.substr(6));
-					
-				string alarmName, alarmDesc;
-				if(getAlarmMsg(alarmCode, &alarmName, &alarmDesc)) {	
-					cout << "Error: Can't find alarm code!" << endl;
-					exit(1);
-				}
-				
-				outputStream << "ALARM " << alarmCode << ": " << alarmName << "\tDesc: " << alarmDesc << endl;
+				alarmResponse(msg);
 				break;
 			}
 			else 
@@ -855,42 +968,35 @@ int GRBL::Read(string& outputLog) {
 					// Flag used to make sure we receice status before we carry out next task
 					waitingForStatus = false;
 					grblParams->DecodeStatus(msg);
-					if(verbose)
-						outputStream << msg << endl;
-					else
-						streamModified = false;
+					if(viewStatusReport)
+						consoleLog->push_back(msg);
 				}
 				else
 				{
+					// any messages from here want to be printed to the console
+					consoleLog->push_back(msg);
+					
 					// Startup Line Execution	">G54G20:ok" or ">G54G20:error:X"
-					// checks for unlikely event of error and prints to show execution
 					if(!msg.compare(0, 1, ">")) {	
-						outputStream << msg << endl;
 						grblParams->CheckStartupLine(msg);
 					}
-					// print out messages
+					// just print out message
 					else if(!msg.compare(0, 4, "Grbl") || !msg.compare(0, 4, "[MSG") || !msg.compare(0, 4, "[HLP") || !msg.compare(0, 4, "[echo")) {
-						outputStream << msg << endl;
 					}
-					
 					// View build info - just print out	
 					// This response hasnt been decoded as seen as unnesessary
 					// For more details, see: https://github.com/gnea/grbl/wiki/Grbl-v1.1-Interface
 					else if(!msg.compare(0, 4, "[VER") || !msg.compare(0, 4, "[OPT")) {	
-						outputStream << msg << endl;
 					}
 					
 					else if(!msg.compare(0, 3, "[GC")) {
-						outputStream << msg << endl;
 						grblParams->DecodeMode(msg);
 					}
 					else if(!msg.compare(0, 1, "[")) {
-						outputStream << msg << endl;
 						grblParams->DecodeParameters(msg);				
 					}
 					// if startup block added, it will look like this on starup: '>G20G54G17:ok' or error
 					else if(!msg.compare(0, 2, "$N")) {	
-						outputStream << msg << endl;
 						int blockNum = stoi(msg.substr(2, 1));
 						if(blockNum == 0 || blockNum == 1)
 							grblParams->startupBlock[blockNum] = msg.substr(4);
@@ -899,45 +1005,43 @@ int GRBL::Read(string& outputLog) {
 							exit(1);
 						}
 					}
-					
 					// settings codes
 					else if(!msg.compare(0, 1, "$")) {
-						outputStream << msg << endl;
-						grblParams->DecodeSettings(outputStream, msg);
+						string setting = grblParams->DecodeSettings(msg);
+						consoleLog->push_back(setting);
 					}
-					else {			
-						outputStream << " ERROR: Unsupported message" << endl;
+					else {	
+						consoleLog->push_back("ERROR: Unsupported message");
+						cout << " ERROR: Unsupported message" << endl;
+						exit(1);
 					}
 				}
 			}
 		}
 	} while(1);	
-	
-	if(streamModified) {
-		// copy contents of log to return it
-		outputLog = outputStream.str();
-		//cout << outputLog << endl;
-		return 1;
-	}
-	return 0;
 }
 
 
 // grbl has just read a line of GCode
 // we then add the number of characters 
 // in that line back onto our buffer size variable
-void GRBL::BufferRemove() {
+int GRBL::BufferRemove() {
+	size_t cmdSize = 0;
 	try {
 		// add length of string of completed request back onto buffer
-		size_t cmdSize = q->dequeue();
-		grblBufferSize += cmdSize;
+		cmdSize = q->dequeue();
 		#ifdef DEBUG
 			cout << "(remaining buffer: " << grblBufferSize << "/" << MAX_GRBL_BUFFER << ")\t";
 		#endif
 	} catch (const char* e) {
-		cerr << e << endl;
-		exit(1);
+		// something has gone very wrong...
+		SoftReset();
+		consoleLog->push_back("Error: Unexpected response, machine has been reset. (Purhaps there were some commands left in GRBL's buffer?)");
+		cout << "Error: Unexpected response, machine has been reset. (Purhaps there were some commands left in GRBL's buffer?)" << endl;
+		return -1;
 	}
+	grblBufferSize += cmdSize;
+	return 0;
 }
 
 // we are about to send grbl a line of GCode
@@ -946,8 +1050,11 @@ void GRBL::BufferRemove() {
 // returns TRUE if full
 int GRBL::BufferAdd(int len) {
 	// return true if buffer full
-	if(grblBufferSize - len < 0)
+	if(grblBufferSize - len < 0) {
+	//	cout << "buffer full" << endl;
 		return TRUE;
+	}
+		
 	// reduce buffer size by length of string
 	grblBufferSize -= len;
 	// add length of string to queue
@@ -982,7 +1089,7 @@ void GRBL::RequestStatus() {
 
 // A blocking loop until we recieve next status report
 // returns 0 when recieved and is idle, -1 on timeout or not idle
-int GRBL::WaitForIdle(ImGuiTextBuffer* consoleLog) {
+int GRBL::WaitForIdle() {
 	
 	string grblReponse;
 	waitingForStatus = true;
@@ -991,17 +1098,14 @@ int GRBL::WaitForIdle(ImGuiTextBuffer* consoleLog) {
 	SendRT(GRBL_RT_STATUS_QUERY);
 	do {
 		// just in case we receive a message before the status report
-		if(Read(grblReponse)) {
-            consoleLog->append(grblReponse.c_str());
-            grblReponse.erase();
-        }
+		Read();
         // return error if timeout
 		if(millis() > timeout)
 			return -1;
 	} while (waitingForStatus);
 	
 	if(Param.status.state != "Idle") 
-		return -1;
+		return -2;
 	
 	return 0;
 }	

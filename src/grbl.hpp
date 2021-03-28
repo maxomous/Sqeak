@@ -15,6 +15,8 @@
 #define STATUS_NONE			-2	// not sent yet to grbl
 #define STATUS_PENDING 		-1	// sent to grbl but no status received
 #define STATUS_OK			0	// 'ok' received by grbl
+
+
 // ERROR STATUS NOW MATCHES GRBL's 	#define STATUS_ERROR		3	// 'error' received by grbl
 
 // REALTIME COMMANDS
@@ -53,15 +55,28 @@ class GCList {
 		// use size() to see how many have been added to buffer
 		int written;	// how many sent to grbl
 		int read;		// how many recieved a response from grbl
-		
+		// GCode List - a store of all gcodes sent (or en route) to grbl
 		std::vector<std::string> str;
 		std::vector<int> status;
 		
 		GCList();
-		
-		void ClearAll();
+		void GetListItem(int n, std::string& str, int& status);
+		int GetSize();
+		// clears completed gcodes
+		// used for 'clear commands' button
+		void ClearCompleted();
+		// clears any gcodes which have not received a response
+		// used for 'cancel' button
+		void ClearNoResponses();
+		// clears any gcodes which have not been sent yet or ones that have not received a response
+		// used for soft resetting
+		void ClearSent();
+		// clears entire gcode list
+		//void ClearAll();
+		// adds gcode to GClist
 		int Add(std::string* str);		
-		void SetResponse(std::ostringstream& outputStream, int response);
+		// grbl has repsonded, this sets the response to the gcode in status
+		void SetResponse(std::vector<std::string>* consoleLog, int response);
 		// returns true if we are mid file transfer
 		bool IsFileRunning();
 		// this triggers that we have sent a file 
@@ -141,6 +156,7 @@ typedef struct {
 // realtime status values
 typedef struct {	
 	std::string state;
+	int stateColour = 0;
 	// either of these are given 
 	// WPos = MPos - WCO
 	point3D MPos;
@@ -200,19 +216,21 @@ class GRBLParams {
 		void DecodeParameters(const std::string& msg);
 		void DecodeMode(const std::string& msg);
 		void DecodeStatus(const std::string& msg);
-		void DecodeSettings(std::ostringstream& outputStream, const std::string& msg);
-	
+		std::string DecodeSettings(const std::string& msg);
 		//printAll
 };
 
 class GRBL {
 	public:
+		std::vector<std::string>* consoleLog;
 		GRBLParams Param;
-		bool verbose = false;
+		bool viewStatusReport = false;
 		
 		GRBL();
 		~GRBL();
 		
+		// flushes the serial buffer
+		void Flush();
 		// initialises connection to the serial port
 		void Connect();
 		// send command to serial port
@@ -227,36 +245,39 @@ class GRBL {
 		// stops any more commands being sent to grbl
 		// note: any remaining command grbl has in it's buffer will still be executed
 		void Cancel();
+		// Resets GRBL and clears program running flag
+		void SoftReset() ;
+		// Something has gone very wrong and we need to reset everything
+		void Reset();
 		// Writes line to serial port
 		void Write();
 		// Reads block off serial port
 		// returns true if new reponse
-		int Read(std::string& outputLog);
+		void Read();
 		// sets the interval time between status requests
 		void SetStatusInterval(uint timems);
 		// Sends a request to GRBL for a status report
 		void RequestStatus();
 		// a blocking function which waits for status to be read from grbl
 		// returns 0 when status recieved, -1 on timeout
-		int WaitForIdle(ImGuiTextBuffer* log);
+		int WaitForIdle();
 		// returns true when mid file transfer
 		bool IsFileRunning();
 		Queue *q;
-	
+		GCList gcList;		
+		
 	private:
 		// flag to force-wait until we recieve a status repsonse
 		bool waitingForStatus = false;
-	 
 		int fd;
 		int grblBufferSize = MAX_GRBL_BUFFER;
-		GCList gcList;
 		// status report timer
 		uint statusTimer;
 		uint statusTimerInterval;
 		// Reads line of serial port. 
 		// Returns string and length in msg
 		void ReadLine(std::string* msg);
-		void BufferRemove();
+		int BufferRemove();
 		int BufferAdd(int len);
 		// callback function which executes a line from FileRun
 		//int ExectuteFileLine(const string& cmd);

@@ -6229,7 +6229,7 @@ struct ExampleAppConsole
     int                   HistoryPos;    // -1: new line, 0..History.Size-1 browsing history.
     ImGuiTextFilter       Filter;
     bool                  AutoScroll;
-    bool                  ScrollToBottom;
+    bool                  scroll_To_Bottom;
 
     ExampleAppConsole()
     {
@@ -6243,7 +6243,7 @@ struct ExampleAppConsole
         Commands.push_back("CLEAR");
         Commands.push_back("CLASSIFY");
         AutoScroll = true;
-        ScrollToBottom = false;
+        scroll_To_Bottom = false;
         AddLog("Welcome to Dear ImGui!");
     }
     ~ExampleAppConsole()
@@ -6386,9 +6386,9 @@ struct ExampleAppConsole
         if (copy_to_clipboard)
             ImGui::LogFinish();
 
-        if (ScrollToBottom || (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
+        if (scroll_To_Bottom || (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
             ImGui::SetScrollHereY(1.0f);
-        ScrollToBottom = false;
+        scroll_To_Bottom = false;
 
         ImGui::PopStyleVar();
         ImGui::EndChild();
@@ -6454,7 +6454,7 @@ struct ExampleAppConsole
         }
 
         // On command input, we scroll to bottom even if AutoScroll==false
-        ScrollToBottom = true;
+        scroll_To_Bottom = true;
     }
 
     // In C++11 you'd be better off using lambdas for this sort of forwarding callbacks

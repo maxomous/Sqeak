@@ -31,5 +31,7 @@ class Queue {
 		// removed when dequeue is called.
 		size_t peek();
 		
+		// reset the queue, size remains the same
+		void clear();
 };
 #endif

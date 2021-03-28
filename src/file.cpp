@@ -12,8 +12,8 @@ string getWorkingDir(char **argv) {
     size_t c = 0;
     c = loc.find_last_of("/");
     if(c == string::npos) {
-	    cout << "ERROR: Cannot get current working directory" << endl;
-	    return "/";
+	cout << "Error: Cannot get current working directory" << endl;
+	return "/";
     }
     else {
 	loc.erase(++c, loc.length()-c);

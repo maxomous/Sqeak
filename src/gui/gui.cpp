@@ -73,8 +73,6 @@ int gui(const string& workingDir, GRBL* Grbl)
     
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     
-    ImGuiTextBuffer* consoleLog = new ImGuiTextBuffer();
-    string grblReponse;
     
     Grbl->Connect();
     Grbl->SetStatusInterval(100);
@@ -140,10 +138,7 @@ int gui(const string& workingDir, GRBL* Grbl)
     {
         
         Grbl->Write();
-        if(Grbl->Read(grblReponse)) {
-            consoleLog->append(grblReponse.c_str());
-            grblReponse.erase();
-        }
+        Grbl->Read();
         Grbl->RequestStatus();
      
         
@@ -161,7 +156,7 @@ int gui(const string& workingDir, GRBL* Grbl)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        drawFrames(workingDir, Grbl, consoleLog);
+        drawFrames(workingDir, Grbl);
         
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
@@ -217,8 +212,6 @@ int gui(const string& workingDir, GRBL* Grbl)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-
-    delete(consoleLog);
     
     glfwDestroyWindow(window);
     glfwTerminate();
