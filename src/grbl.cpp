@@ -1132,14 +1132,14 @@ void GRBL::RequestStatus() {
 		SendRT(GRBL_RT_STATUS_QUERY);			
 		statusTimer = millis() + statusTimerInterval;
 	}
-	
+	 
 }
 
 #define WAIT_FOR_STATUS_TIMEOUT 10000 // 10s
 
 // A blocking loop until we recieve next status report
 // returns 0 when recieved and is idle, -1 on timeout or not idle
-int GRBL::WaitForIdle() {
+int GRBL::WaitForIdle() { 
 	
 	string grblReponse;
 	waitingForStatus = true;
@@ -1154,7 +1154,7 @@ int GRBL::WaitForIdle() {
 			return -1;
 	} while (waitingForStatus);
 	
-	if(Param.status.state != "Idle") 
+	if(Param.status.state != "Idle" && Param.status.state != "Check") 
 		return -2;
 	
 	return 0;

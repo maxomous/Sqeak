@@ -6,6 +6,8 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+// pre compiled headers
+//#include "pch.hpp"
 #include <iostream>
 #include <fstream>
 #include "dirent.h"	// viewing directory
@@ -30,13 +32,14 @@
 #include <wiringSerial.h>
 
 // gui
+#define IMGUI_DEFINE_MATH_OPERATORS 
 #include "gui/imgui/imgui.h"
+#include "gui/imgui/imgui_internal.h"
 #include "gui/imgui/imgui_impl_glfw.h"
 #include "gui/imgui/imgui_impl_opengl3.h"
 #include <GL/glew.h>
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
-
 typedef struct {
 	float x;
 	float y;

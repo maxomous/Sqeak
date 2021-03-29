@@ -4,6 +4,8 @@
 TARGET = ../grbl
 DIRS = gui gui/imgui
 LIBS = -lwiringPi -lGL -lglfw -lGLEW
+# ignore precompiled headers
+IGNOREH = pch.hpp	
 #-lpthread -lm -lrt -lGL -lGLU -lglut -lGLEW -lfreetype 
 
 # add to libs for debugging gdb -v -da -Q
@@ -23,7 +25,7 @@ all: default
 
 # substitute '.cpp' with '.o' in any *.cpp 
 OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp $(addsuffix /*.cpp, $(DIRS))))
-HEADERS = $(wildcard *.hpp)
+HEADERS = $(filter-out $(IGNOREH), wildcard *.hpp)
 
 %.o: %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -455,7 +455,7 @@ struct FileBrowser {
             | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_NoBordersInBody
             | ImGuiTableFlags_ScrollY;
 	
-	const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
+	const float TEXT_BASE_HEIGHT = ImGui::GetFrameHeightWithSpacing();
 
         if (ImGui::BeginTable("table_sorting", 4, flags, ImVec2(0.0f, TEXT_BASE_HEIGHT * 15), 0.0f)) { // ImVec2(0.0f, TEXT_BASE_HEIGHT * 15)
 	    // Setup columns 	
@@ -722,12 +722,9 @@ struct Stats
 	}
     }
     void DrawMotion(GRBL* Grbl) 
-    {
+    { 
 	grblStatus_t& status = Grbl->Param.status;
 	MainSettings& settings = Grbl->Param.settings;
-		
-		
-		
 		
 	static float f[] = { 0.0f};
         static float s[] = { 0.0f};
@@ -739,7 +736,7 @@ struct Stats
 	   // ImGui::Dummy(ImVec2(10.0f,0));
 	   // ImGui::SetCursorPosX(10);
 	    f[0] = status.feedRate;
-	    ImGui::PlotHistogram("", f, IM_ARRAYSIZE(f), 0, NULL, 0.0f, settings.max_FeedRate, ImVec2(20.0f, ImGui::GetTextLineHeightWithSpacing() * 3 + 4));
+	    ImGui::PlotHistogram("", f, IM_ARRAYSIZE(f), 0, NULL, 0.0f, settings.max_FeedRate, ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
 	    
 	    ImGui::TableSetColumnIndex(1);
 	    ImGui::TextUnformatted("Feed Rate");
@@ -749,7 +746,7 @@ struct Stats
 	    ImGui::TableSetColumnIndex(2);
 	   // ImGui::SetCursorPosX(10);
 	    s[0] = (float)status.spindleSpeed;
-	    ImGui::PlotHistogram("", s, IM_ARRAYSIZE(s), 0, NULL, (float)settings.min_SpindleSpeed, (float)settings.max_SpindleSpeed, ImVec2(20.0f, ImGui::GetTextLineHeightWithSpacing() * 3 + 4));
+	    ImGui::PlotHistogram("", s, IM_ARRAYSIZE(s), 0, NULL, (float)settings.min_SpindleSpeed, (float)settings.max_SpindleSpeed, ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
 	    
 	    ImGui::TableSetColumnIndex(3);
 	    ImGui::TextUnformatted("Spindle");
@@ -758,10 +755,56 @@ struct Stats
 	
 	    ImGui::EndTable();
 	}
-	
-	
     }
 
+    void DrawInputPins(GRBL* Grbl) {
+	if (ImGui::BeginTable("InputPins", 4, ImGuiTableFlags_NoSavedSettings, ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 2)))
+	{ 
+	    grblStatus_t& s = Grbl->Param.status;
+	    
+	    // orange
+	    ImVec4 colour = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);;
+	
+	    ImGui::TableNextRow();
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_LimX)
+		ImGui::TextColored(colour, "Limit X");
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_LimY)
+		ImGui::TextColored(colour, "Limit Y");
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_LimZ)
+		ImGui::TextColored(colour, "Limit Z");
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_Probe)
+		ImGui::TextColored(colour, "Probe");
+	    ImGui::TableNextRow();
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_Door)
+		ImGui::TextColored(colour, "Door");
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_Hold)
+		ImGui::TextColored(colour, "Hold");
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_SoftReset)
+		ImGui::TextColored(colour, "Reset");
+	    ImGui::TableNextColumn();
+	    
+	    if(s.inputPin_CycleStart)
+		ImGui::TextColored(colour, "Start");
+	    
+	    ImGui::EndTable();
+	}
+    }
+		
+	
     void Draw(GRBL* Grbl)
     {
 	 // initialise
@@ -794,38 +837,92 @@ struct Stats
 	// current feedrate & spindle speed
 	DrawMotion(Grbl); 
 	ImGui::Separator();
+	// Limit switches / probe
+	DrawInputPins(Grbl);
+	ImGui::Separator();
+	
 	
 	if (ImGui::BeginTable("Commands", 3, ImGuiTableFlags_NoSavedSettings))
-	{
-	    int w = 80, h = 60;
-		    
+	{	    
+	    ImVec2 sizeL(80.0f, 60.0f);
+	    ImVec2 sizeS(50.0f, 40.0f);
+	    ImVec2 posS = (sizeL - sizeS) / 2;
+	    
+	    ImGui::TableNextRow();
+	    
+	    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+		ImGui::TableSetColumnIndex(0);
+		ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
+		if (ImGui::Button("Zero\n   X", sizeS)) {
+		    Grbl->consoleLog->push_back("Setting current X position to 0 for this coord system");
+		    Grbl->Send("G10 L20 P0 X0");
+		}
+		ImGui::TableSetColumnIndex(1);
+		ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
+		if (ImGui::Button("Zero\n   Y", sizeS)) {
+		    Grbl->consoleLog->push_back("Setting current Y position to 0 for this coord system");
+		    Grbl->Send("G10 L20 P0 Y0");
+		}
+		
+		ImGui::TableSetColumnIndex(2);
+		ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
+		if (ImGui::Button("Zero\n   Z", sizeS)) {
+		    Grbl->consoleLog->push_back("Setting current Z position to 0 for this coord system");
+		    Grbl->Send("G10 L20 P0 Z0");
+		}
+		// position cursor to bottom corner of cell so it doesnt clip
+		ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
+	    ImGui::PopStyleVar();
+	
 	    ImGui::TableNextRow();
 
 	    ImGui::TableSetColumnIndex(0);
-	    if(ImGui::Button(" Soft\nReset", ImVec2(w, h)))
+	    if(ImGui::Button(" Soft\nReset", sizeL))
 		Grbl->SoftReset();
 		    
 	    ImGui::TableSetColumnIndex(1);
-	    if(ImGui::Button("  Kill\nAlarm\n Lock", ImVec2(w, h))) 
+	    if(ImGui::Button("  Kill\nAlarm\n Lock", sizeL)) 
 		Grbl->Send("$X");
 		    
 	    ImGui::TableSetColumnIndex(2);
-	    if(ImGui::Button("Home", ImVec2(w, h))) 
+	    if(ImGui::Button("Home", sizeL)) 
 		Grbl->Send("$H");
 	    
 	    ImGui::TableNextRow();
 
 	    ImGui::TableSetColumnIndex(0);
-	    if(ImGui::Button("Check\nMode", ImVec2(w, h))) 
+	    if(ImGui::Button("Check\nMode", sizeL)) 
 		Grbl->Send("$C");
 	    
+	    string customGCode = "G91; G28 Z0; G28 X0 Y0; G90";
+	    
+	    ImGui::TableSetColumnIndex(0);
+	    if(ImGui::Button("Safe G28", sizeL)) {
 		
+		istringstream s(customGCode);
+		
+		string segment;
+		
+		for (string segment; getline(s, segment, ';'); ) {
+		    if(segment != "")
+			Grbl->Send(segment);
+		}
+	    }
+		
+	    if (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
+		cout << "right click" << endl;
+	    }
+        //       OpenPopup(id);
+        //    return BeginPopup(id);
 		// return to zero
 		// reset zero
 		// get state
 		
 		ImGui::EndTable();
 	    }
+	    
+	    
+	    
 	    ImGui::Checkbox("Status Report", &Grbl->viewStatusReport);
 	    
 	    ImGui::Separator();

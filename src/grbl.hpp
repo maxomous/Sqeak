@@ -150,7 +150,8 @@ typedef struct {
 
 	int toolNumber;
 	float spindleSpeed;
-	float feedRate;
+	float feedRate;		
+	// all of these are the last set (modal) values 
 } modalGroup_t;
 
 // realtime status values

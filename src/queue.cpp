@@ -33,12 +33,7 @@ int Queue::enqueue(size_t val) {
 		if (tail == 0) 
 			throw "Error: Queue is full!";
 	}
-	std::cout << "val:  " << val << std::endl;
-	std::cout << "head: " << head << std::endl;
-	std::cout << "tail: " << tail << std::endl;
-	std::cout << "size: " << size << std::endl;
 	buf[head] = val;
-	std::cout << "size: " << size << std::endl;
 	
 	// If the head pointer is at the end of the
 	// buffer, loop around to the start.
