@@ -689,9 +689,8 @@ struct Stats
     
     void DrawPosition(GRBL* Grbl) 
     {
-	MainSettings* settings = &(Grbl->Param.settings);
-	
-	grblStatus_t* status = &(Grbl->Param.status);
+	MainSettings& settings = Grbl->Param.settings;
+	grblStatus_t& status = Grbl->Param.status;
 	
 	if (ImGui::BeginTable("Position", 3, ImGuiTableFlags_NoSavedSettings))
 	{
@@ -705,27 +704,27 @@ struct Stats
 			
 	    ImGui::TableNextRow();
 	    ImGui::TableSetColumnIndex(0);
-	    ImGui::Text("%.3f", status->WPos.x);
+	    ImGui::Text("%.3f", status.WPos.x);
 	    ImGui::TableSetColumnIndex(1);
-	    ImGui::Text("%.3f", status->WPos.y);
+	    ImGui::Text("%.3f", status.WPos.y);
 	    ImGui::TableSetColumnIndex(2);
-	    ImGui::Text("%.3f", status->WPos.z);
+	    ImGui::Text("%.3f", status.WPos.z);
 			
 	    ImGui::TableNextRow();
 	    ImGui::TableSetColumnIndex(0);
-	    ImGui::TextUnformatted(settings->units_Distance.c_str());	// mm
+	    ImGui::TextUnformatted(settings.units_Distance.c_str());	// mm
 	    ImGui::TableSetColumnIndex(1);
-	    ImGui::TextUnformatted(settings->units_Distance.c_str());
+	    ImGui::TextUnformatted(settings.units_Distance.c_str());
 	    ImGui::TableSetColumnIndex(2);
-	    ImGui::TextUnformatted(settings->units_Distance.c_str());
+	    ImGui::TextUnformatted(settings.units_Distance.c_str());
 			
 	    ImGui::EndTable();
 	}
     }
     void DrawMotion(GRBL* Grbl) 
     {
-	grblStatus_t* status = &(Grbl->Param.status);
-	MainSettings* settings = &(Grbl->Param.settings);
+	grblStatus_t& status = Grbl->Param.status;
+	MainSettings& settings = Grbl->Param.settings;
 		
 		
 		
@@ -737,22 +736,24 @@ struct Stats
 	{
 	    ImGui::TableNextRow();
 	    ImGui::TableSetColumnIndex(0);
-	    
-	    f[0] = status->feedRate;
-	    ImGui::PlotHistogram("", f, IM_ARRAYSIZE(f), 0, NULL, 0.0f, 6000.0f, ImVec2(20.0f, ImGui::GetTextLineHeightWithSpacing() * 3 + 4));
+	   // ImGui::Dummy(ImVec2(10.0f,0));
+	   // ImGui::SetCursorPosX(10);
+	    f[0] = status.feedRate;
+	    ImGui::PlotHistogram("", f, IM_ARRAYSIZE(f), 0, NULL, 0.0f, settings.max_FeedRate, ImVec2(20.0f, ImGui::GetTextLineHeightWithSpacing() * 3 + 4));
 	    
 	    ImGui::TableSetColumnIndex(1);
 	    ImGui::TextUnformatted("Feed Rate");
-	    ImGui::Text("%.0f", status->feedRate);
-	    ImGui::TextUnformatted(settings->units_Feed.c_str());
+	    ImGui::Text("%.0f", status.feedRate);
+	    ImGui::TextUnformatted(settings.units_Feed.c_str());
 	    
 	    ImGui::TableSetColumnIndex(2);
-	    s[0] = (float)status->spindleSpeed;
-	    ImGui::PlotHistogram("", s, IM_ARRAYSIZE(s), 0, NULL, 0.0f, 24000.0f, ImVec2(20.0f, ImGui::GetTextLineHeightWithSpacing() * 3 + 4));
+	   // ImGui::SetCursorPosX(10);
+	    s[0] = (float)status.spindleSpeed;
+	    ImGui::PlotHistogram("", s, IM_ARRAYSIZE(s), 0, NULL, (float)settings.min_SpindleSpeed, (float)settings.max_SpindleSpeed, ImVec2(20.0f, ImGui::GetTextLineHeightWithSpacing() * 3 + 4));
 	    
 	    ImGui::TableSetColumnIndex(3);
 	    ImGui::TextUnformatted("Spindle");
-	    ImGui::Text("%.0d", status->spindleSpeed);
+	    ImGui::Text("%.0d", status.spindleSpeed);
 	    ImGui::TextUnformatted("RPM");
 	
 	    ImGui::EndTable();
@@ -774,17 +775,17 @@ struct Stats
 	//gCodeParams_t* p = &(Grbl->Param.gcParam);
 	//modalGroup_t* m = &(Grbl->Param.mode);
 	//grblStatus_t* s = &(Grbl->Param.status);
-	grblStatus_t* status = &(Grbl->Param.status);
+	grblStatus_t& status = Grbl->Param.status;
 	// current state colour
 	ImVec4 colour;
-	if(status->stateColour == 0)	// idle
-	    colour = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-	else if(status->stateColour == 1)	// motion
+	if(status.stateColour == 0)		// idle
 	    colour = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+	else if(status.stateColour == 1)	// motion
+	    colour = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
 	else //if(status->stateColour = 2)	// alert
 	    colour = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
 	// current state
-	ImGui::TextColored(colour, status->state.c_str());
+	ImGui::TextColored(colour, status.state.c_str());
 	//ImGui::TextUnformatted(status->state.c_str());
 	ImGui::Separator();
 	// current x y z location
@@ -851,7 +852,7 @@ struct JogController
 	MainSettings& settings = Grbl->Param.settings;
 	
 	static float jogDistance = 10;
-	static int feedRate = 6000;
+	static int feedRate = (int)settings.max_FeedRate; // intialise to max feed
 				
 		//jog controller
         if (ImGui::BeginTable("Jog Controller", 5, ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_NoSavedSettings))
@@ -889,8 +890,7 @@ struct JogController
 	ImGui::PushItemWidth(100);
         ImGui::Indent();
 	ImGui::InputFloat("Jog Distance", &jogDistance);
-	float maxFeedRate = (settings.max_FeedRateX > settings.max_FeedRateY) ? settings.max_FeedRateX : settings.max_FeedRateY;
-	ImGui::SliderInt("Feed Rate", &feedRate, 0, (int)maxFeedRate);
+	ImGui::SliderInt("Feed Rate", &feedRate, 0, (int)settings.max_FeedRate);
 	ImGui::Unindent();
 	ImGui::PopItemWidth();
 	ImGui::End();

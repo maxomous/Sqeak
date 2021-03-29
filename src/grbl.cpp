@@ -17,7 +17,7 @@ void MainSettings::SetUnitsInches(int val)
 		units_Distance	= "in";
 		units_Feed		= "in/min";
 	}
-	else /*inches*/ {
+	else /*mm*/ {
 		units_Distance	= "mm";
 		units_Feed		= "mm/min";
 	}	
@@ -466,7 +466,42 @@ void GRBLParams::DecodeStatus(const string& msg) {
 		}
 	}
 }
-
+/*	
+$0 = 10 (us) : Step pulse time
+$1 = 25 (ms) : Step idle delay
+$2 = 7 (00000111) : Step pulse invert
+$3 = 6 (00000110) : Step direction invert
+$4 = 0 (boolean) : Invert step enable pin
+$5 = 0 (boolean) : Invert limit pins
+$6 = 1 (boolean) : Invert probe pin
+$10 = 2 (00000010) : Status report options
+$11 = 0.01 (mm) : Junction deviation
+$12 = 0.002 (mm) : Arc tolerance
+$13 = 0 (boolean) : Report in inches
+$20 = 0 (boolean) : Soft limits enable
+$21 = 1 (boolean) : Hard limits enable
+$22 = 1 (boolean) : Homing cycle enable
+$23 = 3 (00000011) : Homing direction invert
+$24 = 25 (mm/min) : Homing locate feed rate
+$25 = 2500 (mm/min) : Homing search seek rate
+$26 = 25 (ms) : Homing switch debounce delay
+$27 = 1 (mm) : Homing switch pull-off distance
+$30 = 24000 (RPM) : Maximum spindle speed
+$31 = 0 (RPM) : Minimum spindle speed
+$32 = 0 (boolean) : Laser-mode enable
+$100 = 320 (step/mm) : X-axis travel resolution
+$101 = 320 (step/mm) : Y-axis travel resolution
+$102 = 640 (step/mm) : Z-axis travel resolution
+$110 = 6000 (mm/min) : X-axis maximum rate
+$111 = 6000 (mm/min) : Y-axis maximum rate
+$112 = 3000 (mm/min) : Z-axis maximum rate
+$120 = 200 (mm/sec^2) : X-axis acceleration
+$121 = 200 (mm/sec^2) : Y-axis acceleration
+$122 = 200 (mm/sec^2) : Z-axis acceleration
+$130 = 950 (mm) : X-axis maximum travel
+$131 = 530 (mm) : Y-axis maximum travel
+$132 = 160 (mm) : Z-axis maximum travel
+*/
 // decodes the settings froms grbl
 // just prints them for now
 string GRBLParams::DecodeSettings(const string& msg) {
@@ -482,22 +517,37 @@ string GRBLParams::DecodeSettings(const string& msg) {
 			cout << "Error: Can't find setting code!" << endl;
 			exit(1);
 		}
+
 		//determine which units we are using
 		if(settingsCode == 13)
 			settings.SetUnitsInches((int)value);
 			
-		if(settingsCode == 110)
-			settings.max_FeedRateX = value;
-		if(settingsCode == 111)
-			settings.max_FeedRateY = value;
-		if(settingsCode == 112)
-			settings.max_FeedRateZ = value;
+		if(settingsCode == 30)
+			settings.max_SpindleSpeed = value;
+		if(settingsCode == 31)
+			settings.min_SpindleSpeed = value;
 		
+		if(settingsCode == 110 || settingsCode == 111 || settingsCode == 112) {
+			if(settingsCode == 110)
+				settings.max_FeedRateX = value;
+			if(settingsCode == 111)
+				settings.max_FeedRateY = value;
+			if(settingsCode == 112)
+				settings.max_FeedRateZ = value;
+			// append largest value to max_feedrate
+			if(settings.max_FeedRateX > settings.max_FeedRateY)
+				settings.max_FeedRate = settings.max_FeedRateX;
+			if(settings.max_FeedRateZ > settings.max_FeedRate)
+				settings.max_FeedRate = settings.max_FeedRateZ;
+		}
+			
 		// display unit and name for setting
-		ostringstream s("(");
+		ostringstream s;
+		s << " (";
 		// if it's a mask, display as in binary instead of unit
 		(unit == "mask") ? (s << bitset<8>(value)) : (s << unit);
 		s << ") : " << name; //<< " (" << desc << ")";
+		//cout << "$" << settingsCode << " = " << value << s.str() << endl;
 		return s.str();
 	}
 	return "";
@@ -1008,7 +1058,7 @@ void GRBL::Read() {
 					// settings codes
 					else if(!msg.compare(0, 1, "$")) {
 						string setting = grblParams->DecodeSettings(msg);
-						consoleLog->push_back(setting);
+						consoleLog->back().append(setting);
 					}
 					else {	
 						consoleLog->push_back("ERROR: Unsupported message");

@@ -188,9 +188,12 @@ typedef struct {
 
 class MainSettings {
 	public:
+		int min_SpindleSpeed 			= 0;
+		int max_SpindleSpeed			= 24000;
 		float max_FeedRateX 			= 6000;
 		float max_FeedRateY 			= 6000;
 		float max_FeedRateZ 			= 6000;
+		float max_FeedRate 				= 6000;	// used internally
 		
 		std::string units_Distance	= "mm";
 		std::string units_Feed		= "mm/min";
