@@ -45,20 +45,74 @@ using namespace std;
 	Grbl's EEPROM write commands: G10 L2, G10 L20, G28.1, G30.1, $x=, $I=, $Nx=, $RST=
 	Grbl's EEPROM read commands: G54-G59, G28, G30, $$, $I, $N, $#
 */
- 
+		
+#ifdef DEBUG_MEMORY_ALLOC
+	static uint32_t s_AllocCount = 0;
+
+	void* operator new(size_t size)
+	{
+		s_AllocCount++;
+		cout << "Allocating " << size << " bytes\n";
+		return malloc(size);
+	}
+#endif
+
+
+
 int main(int argc, char **argv)
 {
 	
-	(void)argc, (void) argv;
-	string workingDir = getWorkingDir(argv);
-		
-	int wiringPiSetup(void);
-
 	GRBL* Grbl = new GRBL();
 	
-	gui(workingDir, Grbl);
+    Grbl->Connect();
+    Grbl->SetStatusInterval(100);
+    
+	/*
+	Grbl->Connect();
+	Grbl->SetStatusInterval(100);*/
+	/*
+	Grbl->Send("$X");
+	Grbl->Send("G90");
+	Grbl->Send("G90");
+	Grbl->Send("G90");*/
+/*	string msg = "sdkfns;aldksdg";
+	cout << "Program start\n" << endl;
+	
+	msg.compare(0, 4, "Grbl");
+	int i = 0;
+	while(1) {
+		if(i++ > 100)
+			return 0;
+	  */
+		/*
+		Grbl->Write();
+		
+		Grbl->Read();
+		Grbl->RequestStatus();
+	 */
+		#ifdef DEBUG_MEMORY_ALLOC
+			cout << "end of loop\n\n" << endl;
+		#endif
+/*	};
+	
+	return 0;
+	*/
+
+
+
+
+	(void)argc, (void) argv;
+	
+	int wiringPiSetup(void);
+
+	
+	gui(Grbl);
 	
 	delete(Grbl);
+	
+	#ifdef DEBUG_ALLOCATIONS
+		cout << s_AllocCount << " allocations" << endl;
+	#endif
 	
 	return 0;
 }

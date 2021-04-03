@@ -2,14 +2,12 @@
 #include "../common.hpp"
 using namespace std;
 
-  
-
 static void glfw_error_callback(int error, const char* description)
 {
     fprintf(stderr, "Glfw Error %d: %s\n", error, description);
 }
 
-int gui(const string& workingDir, GRBL* Grbl)
+int gui(GRBL* Grbl)
 {
     // Setup window
     glfwSetErrorCallback(glfw_error_callback);
@@ -42,8 +40,8 @@ int gui(const string& workingDir, GRBL* Grbl)
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    string iniFileName = workingDir + "XYZTable.ini";
-    io.IniFilename = iniFileName.c_str();
+    string s = File::GetWorkingDir("XYZTable.ini");
+    io.IniFilename = s.c_str();
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
@@ -56,26 +54,22 @@ int gui(const string& workingDir, GRBL* Grbl)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    //io.Fonts->AddFontDefault();
-    ImFont* font_geomanist = io.Fonts->AddFontFromFileTTF("/home/pi/Desktop/Projects/grbl/fonts/geomanist-regular-webfont.ttf", 17.0f);
-    IM_ASSERT(font_geomanist != NULL);
+    // io.Fonts->AddFontDefault();
+    // Load Geomanist
+    ImFont* font_geomanist = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 17.0f);
+    if(!font_geomanist)
+        cout << "Error: Could not find font 'Geomanist'" << endl;
+
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    
 
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
     
     
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     
     
-    Grbl->Connect();
-    Grbl->SetStatusInterval(100);
     
     
  {   // add gcodes to the stream
@@ -141,8 +135,7 @@ int gui(const string& workingDir, GRBL* Grbl)
         Grbl->Read();
         Grbl->RequestStatus();
      
-        
-        
+           
          
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
@@ -156,8 +149,11 @@ int gui(const string& workingDir, GRBL* Grbl)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        drawFrames(workingDir, Grbl);
+        drawFrames(Grbl);
         
+        
+        
+            
 
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window)
@@ -206,6 +202,7 @@ int gui(const string& workingDir, GRBL* Grbl)
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
+     
     }
 
     // Cleanup

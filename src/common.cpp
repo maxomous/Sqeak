@@ -38,3 +38,13 @@ string lowerCase(const string& str) {
     
     return s;
 }
+
+// convert seconds into hours, minutes and seconds
+void normaliseSecs(uint s, uint& hr, uint& min, uint& sec)
+{
+    hr = s / 3600;
+    s %= 3600;
+    min = s / 60 ;
+    s %= 60;
+    sec = s;
+}

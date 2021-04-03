@@ -301,6 +301,28 @@ void GRBLParams::DecodeMode(const string& msg) {
 		}
 	} while (stream);
 }
+
+void GRBLParams::SetState(const string& state) {
+	
+	if(state == "Idle" || state.substr(0, 4) == "Hold"  || state == "Sleep") {
+		status.state = state;
+		status.stateColour = GRBL_STATE_COLOUR_IDLE; // for colouring state
+	}
+	else if(state == "Run" || state == "Jog" || state == "Check" || state == "Home") {
+		status.state = state;
+		status.stateColour = GRBL_STATE_COLOUR_MOTION;
+	}
+	else if(state == "Alarm" || state.substr(0, 4) == "Door") {
+		status.state = state;
+		status.stateColour = GRBL_STATE_COLOUR_ALERT;
+	}
+	else {
+		cout << "Error: Unknown state: " << state << endl;
+		status.state = "Unknown";
+		status.stateColour = GRBL_STATE_COLOUR_ALERT;
+	}
+}
+
 // decodes status response 
 // and stores inside grbl Parameters
 // The $10 status report mask setting can alter what data is present and certain data fields can be reported intermittently (see descriptions for details.)
@@ -311,13 +333,19 @@ void GRBLParams::DecodeStatus(const string& msg) {
 	grblStatus_t* s = &(status);
 	
 	istringstream stream(msg.substr(1, msg.length()-2));
-	string segment;
-	vector<string> segs;
+	// reserve enough space for all possible segments
+	static vector<string> segs;
+	segs.reserve(16);
+	segs.clear();
 	
-	while(getline(stream, segment, '|')) 
-		segs.push_back(segment);
-	
+	static string segment(32, 0);
 	// itterate backwards through segs[i]s
+	// this is to ensure WCO can be calculated after MPos / WPos
+	while(getline(stream, segment, '|')) 
+		segs.emplace_back(segment);
+	
+	// **** ^ 3 allocations above ^ ****
+	
 	for (int i = segs.size()-1; i >= 0; i--) {
 		
 		#ifdef DEBUG
@@ -332,23 +360,12 @@ void GRBLParams::DecodeStatus(const string& msg) {
 		//- `Door:2` Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm.
 		//- `Door:3` Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm.
 		
+		if(segs[i].substr(0, 4) == "Hold" || segs[i].substr(0, 4) == "Door" || segs[i] == "Idle" || segs[i] == "Sleep" || 
+		segs[i] == "Run" || segs[i] == "Jog" || segs[i] == "Check" || segs[i] == "Home" || segs[i] == "Alarm") {
+			SetState(segs[i]);
+		}	
+	
 		
-		if(segs[i] == "Idle" || segs[i].substr(0, 4) == "Hold"  || segs[i] == "Sleep") {
-			s->state = segs[i];
-			s->stateColour = 0; // for colouring state
-		}
-		
-		else if(segs[i] == "Run" || segs[i] == "Jog" || segs[i] == "Check" || segs[i] == "Home") {
-			s->state = segs[i];
-			s->stateColour = 1;
-		}
-		
-		else if(segs[i] == "Alarm" || segs[i].substr(0, 4) == "Door") {
-			s->state = segs[i];
-			s->stateColour = 2;
-		}
-			
-			
 		/*	
 		if(segs[i] == "Idle" || segs[i] == "Run" || segs[i].substr(0, 4) == "Hold" || segs[i] == "Jog" || segs[i] == "Alarm" 
 			|| segs[i].substr(0, 4) == "Door" || segs[i] == "Check" || segs[i] == "Home" || segs[i] == "Sleep" ) {
@@ -363,6 +380,8 @@ void GRBLParams::DecodeStatus(const string& msg) {
 		else if(segs[i].substr(0, 4) == "WPos") {
 			s->WPos = stoxyz(segs[i].substr(5));
 			s->MPos = add3p(s->WPos, s->WCO);
+			
+			// **** ^ 2 allocations in here ^ ****
 		}
 		// work coord offset - shown every 10-30 times
 		// the current work coordinate system, G92 offsets, and G43.1 tool length offset
@@ -393,6 +412,7 @@ void GRBLParams::DecodeStatus(const string& msg) {
 		// F:500 (feed rate only) - when VARIABLE_SPINDLE is disabled in config.h
 		else if(segs[i].substr(0, 1) == "F") {
 			s->feedRate = stof(segs[i].substr(2)); 
+			
 		}
 		// Input Pin State
 		// Pn:XYZPDHRS - can be any number of letters
@@ -592,8 +612,10 @@ void GCList::CleanString(string* str) {
 // add a line of GCode to the GCode List
 int GCList::Add(string* str) {
 	
-	if(IsFileRunning())
+	if(IsFileRunning()) {
+		cout << "Error: File is already running (GCList::Add())";
 		return -1;
+	}
 	
 	CleanString(str);
 	// ignore blank lines
@@ -602,11 +624,13 @@ int GCList::Add(string* str) {
 		return 0;
 	}	
 	
-	if(str->length() > MAX_GRBL_BUFFER)
-		exitf("Error: String is longer than grbl buffer!\n");
+	if(str->length() > MAX_GRBL_BUFFER) {
+		cout << "Error: Line is longer than the maximum buffer size (GCList::Add())";
+		return -2;
+	}
 	
-	this->str.push_back(*str);
-	status.push_back(STATUS_NONE);
+	this->str.emplace_back(*str);
+	status.emplace_back(STATUS_NONE);
 	
 	return 0;
 }	
@@ -622,26 +646,42 @@ void GCList::SetResponse(vector<string>* consoleLog, int response) {
 	status[read++] = response;
 	// to trigger that we have reached end of file
 	if(fileEnd != 0 && read >= fileEnd) {
+		fileStart = 0;
 		fileEnd = 0;
 		consoleLog->push_back("End of File");
 	}
 }
 
-
 bool GCList::IsFileRunning() {
 	return fileEnd;
+}
+
+void GCList::FileStart() {
+	fileStart = str.size();
 }
 
 void GCList::FileSent() {
 	fileEnd = str.size();
 }
 
+int GCList::GetFileLines() {
+	return fileEnd - fileStart;
+}
+
+int GCList::GetFilePos() {
+	return read - fileStart;
+}
+
+
 // clears any completed GCodes in the buffer
 void GCList::ClearCompleted() {
 	str.erase(str.begin(), str.begin() + read);
 	status.erase(status.begin(), status.begin() + read);
 	fileEnd -= read;
-	if (fileEnd < 0) fileEnd = 0;
+	if (fileEnd < 0) {
+		fileStart = 0;
+		fileEnd = 0;
+	}	
 	written -= read;
 	read = 0;
 }
@@ -664,6 +704,7 @@ void GCList::ClearSent() {
 	
 	str.erase(str.begin() + read, str.end());
 	status.erase(status.begin() + read, status.end());
+	fileStart = 0;
 	fileEnd = 0;
 	written = read;
 	/*
@@ -686,9 +727,8 @@ void GCList::ClearAll() {
 	cout << "fileEnd: " << fileEnd << endl;
 }
 */
-
+ 
 GRBL::GRBL() {
-	q = new Queue(128);
 	consoleLog = new vector<string>();
 	statusTimerInterval = 500;
 	statusTimer = millis() + statusTimerInterval;
@@ -698,7 +738,6 @@ GRBL::GRBL() {
 GRBL::~GRBL() {
 	// close serial connection
 	serialClose(fd);
-	delete(q);
 	delete(consoleLog);
 }
 
@@ -720,13 +759,14 @@ void GRBL::Connect() {
 
 // adds to the GCode list, ready to be written when buffer has space
 // sending a pointer is slightly quicker as it wont have to be be copied, it will however, modify the original string to remove whitespace and comments etc
+// returns 0 on success, -1 on failure
 int GRBL::Send(string* cmd) {
-	
+	// add to log
 	consoleLog->push_back((string)"Sent: " + *cmd);
-	if (gcList.Add(cmd)) {
-		consoleLog->push_back("Error: File is already running in function GRBL::Send()");
+	// add command to GCList
+	if (gcList.Add(cmd)) 
 		return -1;
-	}
+
 	return 0;
 }
 
@@ -734,7 +774,7 @@ int GRBL::Send(string cmd) {
 	return Send(&cmd);
 }
 
-	
+	 
 int GRBL::SendFile(const string& file) {
 	
 	auto executeLine = [this](string& str) {
@@ -744,7 +784,10 @@ int GRBL::SendFile(const string& file) {
 
 		return 0;
 	}; 
-	if(readFile(file, executeLine)){
+	
+	gcList.FileStart();
+	
+	if(File::Read(file, executeLine)){
 		return -1;
 	}
 	// state that we have sent a file - this is to prevent sending twice
@@ -881,7 +924,8 @@ void GRBL::SoftReset() {
 	// clears any waiting gcodes in the gclist
 	gcList.ClearSent();
 	// clears the queue
-	q->clear();
+	while(!q.empty())
+		q.pop();
 	// sets buffer size to max
 	grblBufferSize = MAX_GRBL_BUFFER;
 }
@@ -912,21 +956,25 @@ void GRBL::Write() {
 }
 
 // Reads line of serial interface and returns onto msg
-void GRBL::ReadLine(string* msg) {
+void GRBL::ReadLine(string& msg) {
 	
-	msg->clear();
-			
+	msg.clear();
+	
 	char buf;
 	//retrieve line
 	do {
 		// retrieve letter
 		buf = serialGetchar(fd);
 		// break if end of line
-		if (buf == '\n')
+		if (buf == '\n') 
 			break;
+		if(msg.length() >= MAX_GRBL_RECEIVE_BUFFER) {
+			cout << "Warning: Serial input length is greater than input buffer, allocating more memory.";
+			msg.resize(2 * msg.capacity());
+		}
 		// add to buffer - skip non-printable characters
 		if(isprint(buf)) 
-			*msg += buf;
+			msg += buf;
 	} while(1);
 }
 
@@ -941,7 +989,7 @@ void GRBL::Read() {
 		// set response of corrosponding gcode to 'OK'
 		gcList.SetResponse(consoleLog, STATUS_OK);
 		// add response to log
-		consoleLog->push_back("ok");	
+		consoleLog->emplace_back("ok");	
 	};
 	
 	// Response for an 'error'
@@ -961,7 +1009,7 @@ void GRBL::Read() {
 		}
 		ostringstream s;
 		s << "Error " << errCode << ": " << errName << "(" << errDesc << ")";
-		consoleLog->push_back(s.str());
+		consoleLog->emplace_back(s.str());
 	};
 	
 	// Response for an 'alarm'
@@ -976,23 +1024,23 @@ void GRBL::Read() {
 		}
 		ostringstream s;
 		s << "ALARM " << alarmCode << ": " << alarmName << " (" << alarmDesc << ")";
-		consoleLog->push_back(s.str());
+		consoleLog->emplace_back(s.str());
 	};
-	
 	GRBLParams* grblParams = &(Param);
-	string msg;
 	
-	// retrieve data upto response 'ok' or 'error'
+	
+	static string msg(128, ' ');
+	
+	// retrieve data upto response 'ok', 'error' or 'alarm'
 	do {
 		if(!serialDataAvail(fd))
 			break;
-		
-		ReadLine(&msg);
+			
+		ReadLine(msg);
 		
 		#ifdef DEBUG
 			cout << "Reading: " << msg << endl;
 		#endif
-		
 		// ignore blank responses
 		if(!msg.compare(0, 1, "")) {
 		}
@@ -1001,7 +1049,7 @@ void GRBL::Read() {
 			if(!msg.compare("ok")) {
 				okResponse();
 				break; 
-			}
+			} 
 			// error messages
 			else if(!msg.compare(0, 6, "error:")) {			//ERROR NEED TO HALT EVERYTHING
 				errorResponse(msg);
@@ -1010,6 +1058,8 @@ void GRBL::Read() {
 			// alarm messages
 			else if(!msg.compare(0, 6, "ALARM:")) {		
 				alarmResponse(msg);
+				// status report stops getting sent so we update state manually
+				grblParams->SetState("Alarm"); 
 				break;
 			}
 			else 
@@ -1076,21 +1126,24 @@ void GRBL::Read() {
 // we then add the number of characters 
 // in that line back onto our buffer size variable
 int GRBL::BufferRemove() {
-	size_t cmdSize = 0;
-	try {
-		// add length of string of completed request back onto buffer
-		cmdSize = q->dequeue();
-		#ifdef DEBUG
-			cout << "(remaining buffer: " << grblBufferSize << "/" << MAX_GRBL_BUFFER << ")\t";
-		#endif
-	} catch (const char* e) {
-		// something has gone very wrong...
+	
+	if(q.empty()) {
 		SoftReset();
 		consoleLog->push_back("Error: Unexpected response, machine has been reset. (Purhaps there were some commands left in GRBL's buffer?)");
 		cout << "Error: Unexpected response, machine has been reset. (Purhaps there were some commands left in GRBL's buffer?)" << endl;
 		return -1;
 	}
+	
+	// add length of string of completed request back onto buffer
+	size_t cmdSize = q.front();
+	q.pop();
+	
 	grblBufferSize += cmdSize;
+	
+	#ifdef DEBUG
+		cout << "(remaining buffer: " << grblBufferSize << "/" << MAX_GRBL_BUFFER << ")\t";
+	#endif
+	
 	return 0;
 }
 
@@ -1102,19 +1155,13 @@ int GRBL::BufferAdd(int len) {
 	// return true if buffer full
 	if(grblBufferSize - len < 0) {
 	//	cout << "buffer full" << endl;
-		return TRUE;
+		return -1;
 	}
-		
 	// reduce buffer size by length of string
 	grblBufferSize -= len;
-	// add length of string to queue
-	try{
-		q->enqueue(len);
-	} catch(const char* e) {
-		cerr << e << endl;
-		exit(1);
-	} 
-	return FALSE;
+	q.push(len);
+	
+	return 0;
 }
 
 // set the interval timer for the status report
@@ -1129,7 +1176,7 @@ void GRBL::RequestStatus() {
 	if(!statusTimerInterval)
 		return;
 	if(millis() > statusTimer) {
-		SendRT(GRBL_RT_STATUS_QUERY);			
+		SendRT(GRBL_RT_STATUS_QUERY);	
 		statusTimer = millis() + statusTimerInterval;
 	}
 	 

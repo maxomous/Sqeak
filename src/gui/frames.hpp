@@ -6,6 +6,8 @@
 #ifndef FRAME_HPP
 #define FRAME_HPP
 
-extern void drawFrames(const std::string& workingDir, GRBL* Grbl);
+
+
+extern void drawFrames(GRBL* Grbl);
 
 #endif

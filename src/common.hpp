@@ -6,13 +6,13 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+//#define DEBUG_MEMORY_ALLOC
+
+
+
 // pre compiled headers
 //#include "pch.hpp"
 #include <iostream>
-#include <fstream>
-#include "dirent.h"	// viewing directory
-#include <sys/stat.h> // file stats
-//#include <sys/types.h>
 #include <time.h>
 #include <bitset>
 #include <stdio.h>
@@ -37,6 +37,13 @@
 #include "gui/imgui/imgui_internal.h"
 #include "gui/imgui/imgui_impl_glfw.h"
 #include "gui/imgui/imgui_impl_opengl3.h"
+#include "gui/imgui/imgui_stdlib.h"	// to use string
+// for loading images
+#include "gui/stb_image/imgui_stb_image.h"	// wrapper to use stb_image with ImGui buttons
+// fonts
+#include "gui/fonts/font_geomanist.h"
+
+
 #include <GL/glew.h>
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
@@ -46,7 +53,6 @@ typedef struct {
 	float z;
 } point3D;
 
-#include "queue.hpp"
 #include "grbl.hpp"
 #include "grblcodes.hpp"
 #include "file.hpp"
@@ -81,4 +87,7 @@ extern point3D minus3p(point3D p1, point3D p2);
 
 // returns lower case version of str
 extern std::string lowerCase(const std::string& str);
+
+// convert seconds into hours, minutes and seconds
+extern void normaliseSecs(uint s, uint& hr, uint& min, uint& sec);
 #endif

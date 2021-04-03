@@ -7,15 +7,21 @@
 #define GRBL_HPP
 
 
+#include <queue>
+	 
 #define SERIAL_DEVICE 		"/dev/ttyAMA0"
 #define SERIAL_BAUDRATE 	115200
 
-#define MAX_GRBL_BUFFER 	128
+#define MAX_GRBL_BUFFER 			128
+#define MAX_GRBL_RECEIVE_BUFFER 	128
 
 #define STATUS_NONE			-2	// not sent yet to grbl
 #define STATUS_PENDING 		-1	// sent to grbl but no status received
 #define STATUS_OK			0	// 'ok' received by grbl
 
+#define GRBL_STATE_COLOUR_IDLE 		0
+#define GRBL_STATE_COLOUR_MOTION 	1
+#define GRBL_STATE_COLOUR_ALERT 	2
 
 // ERROR STATUS NOW MATCHES GRBL's 	#define STATUS_ERROR		3	// 'error' received by grbl
 
@@ -49,7 +55,6 @@
 #define GRBL_RT_MIST_COOLANT						(char)0xA1
 
 
-
 class GCList {
 	public:
 		// use size() to see how many have been added to buffer
@@ -81,10 +86,14 @@ class GCList {
 		bool IsFileRunning();
 		// this triggers that we have sent a file 
 		// and not to allow further commands until it complete 
+		void FileStart();
 		void FileSent();
+		int GetFileLines();
+		int GetFilePos();
 	private:
 		// denotes the end point of a file sent
 		// prevents sending file multiple times
+		int fileStart = 0;
 		int fileEnd = 0;
 		void CleanString(std::string* str);
 		
@@ -219,6 +228,7 @@ class GRBLParams {
 		void CheckStartupLine(const std::string& msg);
 		void DecodeParameters(const std::string& msg);
 		void DecodeMode(const std::string& msg);
+		void SetState(const std::string& state);
 		void DecodeStatus(const std::string& msg);
 		std::string DecodeSettings(const std::string& msg);
 		//printAll
@@ -267,7 +277,7 @@ class GRBL {
 		int WaitForIdle();
 		// returns true when mid file transfer
 		bool IsFileRunning();
-		Queue *q;
+		std::queue<int> q;
 		GCList gcList;		
 		
 	private:
@@ -276,11 +286,11 @@ class GRBL {
 		int fd;
 		int grblBufferSize = MAX_GRBL_BUFFER;
 		// status report timer
-		uint statusTimer;
-		uint statusTimerInterval;
+		uint statusTimer = 0;
+		uint statusTimerInterval = 0;
 		// Reads line of serial port. 
 		// Returns string and length in msg
-		void ReadLine(std::string* msg);
+		void ReadLine(std::string& msg);
 		int BufferRemove();
 		int BufferAdd(int len);
 		// callback function which executes a line from FileRun
