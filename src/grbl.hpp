@@ -58,8 +58,8 @@
 class GCList {
 	public:
 		// use size() to see how many have been added to buffer
-		int written;	// how many sent to grbl
-		int read;		// how many recieved a response from grbl
+		uint written;	// how many sent to grbl
+		uint read;		// how many recieved a response from grbl
 		// GCode List - a store of all gcodes sent (or en route) to grbl
 		std::vector<std::string> str;
 		std::vector<int> status;
@@ -88,13 +88,13 @@ class GCList {
 		// and not to allow further commands until it complete 
 		void FileStart();
 		void FileSent();
-		int GetFileLines();
-		int GetFilePos();
+		uint GetFileLines();
+		uint GetFilePos();
 	private:
 		// denotes the end point of a file sent
 		// prevents sending file multiple times
-		int fileStart = 0;
-		int fileEnd = 0;
+		uint fileStart = 0;
+		uint fileEnd = 0;
 		void CleanString(std::string* str);
 		
 };

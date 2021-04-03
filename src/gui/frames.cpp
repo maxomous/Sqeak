@@ -257,7 +257,7 @@ struct Console
 		else
 		    return 0;
 	    }
-	    const char* history_str = (history.size() >= 0) ? history[historyPos].c_str() : "";
+	    const char* history_str = (history.size() > 0) ? history[historyPos].c_str() : "";
 	    data->DeleteChars(0, data->BufTextLen);
 	    data->InsertChars(0, history_str);
         }
@@ -452,7 +452,7 @@ struct FileBrowser {
 	    if (ImGui::IsItemClicked())
 		nodeClicked = i;
 	    i++;
-	    if(i < curDirFolders.size())
+	    if(i < (int)curDirFolders.size())
 		DrawFolder(i);
 	    
 	    ImGui::TreePop();
@@ -476,7 +476,7 @@ struct FileBrowser {
 	    
 	    string newDir = "/";
 	    for (int j = 0; j < nodeSelected+1; j++) {
-		if(j < curDirFolders.size()) {	// just in case to prevent overflow
+		if(j < (int)curDirFolders.size()) {	// just in case to prevent overflow
 		    newDir += curDirFolders[j];
 		    newDir += '/';
 		}
@@ -728,7 +728,7 @@ struct Controller {
 	    ImGui::PushItemWidth(-FLT_MIN);
 	    // progress bar
 	    char buf[64];
-	    snprintf(buf, 64, "%d/%d (%.2f%)", pos, lines, 100 * percComplete);
+	    snprintf(buf, 64, "%d/%d (%.2f%%)", pos, lines, 100 * percComplete);
 	    ImGui::ProgressBar(percComplete, ImVec2(0.0f, 0.0f), buf);
 	    ImGui::PopItemWidth();
 	} 
@@ -793,14 +793,82 @@ struct Stats
     ImVec2 sizeCust= { 80.0, 35.0f };
     ImVec2 sizeCustNew = { 25.0, 25.0f };
     ImVec2 posCustNew = (sizeCust - sizeCustNew) / 2;
-    
-    Stats() {
-	customGC.push_back((customGC_t) {.name = "Z First G28", .gcode = "G91; G28 Z0; G28 X0 Y0; G90"});
-	customGC.push_back((customGC_t) {.name = "Test", .gcode = "Gtest; gtest; ggg"});
+
+    Stats() 
+    {
+	importCustomGCs();
     }
     
-    void DrawStatus(GRBL* Grbl) {
+#define IMPORT_TYPE_NONE 	0
+#define IMPORT_TYPE_CUSTOMGC 	1
+
+    void importCustomGCs()
+    {
+	vector<string> fileBuf;
+		
+	auto executeLine = [&fileBuf](string& str) {
+	    if(str != "")
+		fileBuf.push_back(str);
+	    return 0;
+	}; 
 	
+	string filename = File::GetWorkingDir("config.ini");
+	if(File::Read(filename, executeLine)) {
+	    cout << "Error: Could not open file " << filename << endl;
+	    return;
+	}
+	
+	// clear existing values
+	customGC.clear();
+	
+	// initialise type of import
+	int importType = IMPORT_TYPE_NONE;
+	    
+	// create buffer
+	customGC_t gcBuf;
+	
+	for(string line : fileBuf)
+	{
+	    // If heading, set import type
+	    if(line.substr(0, 13) == "[CustomGCode]") {
+		importType = IMPORT_TYPE_CUSTOMGC;
+		continue;
+	    }
+	    
+	    // If value...
+	    switch (importType)
+	    {
+		case IMPORT_TYPE_CUSTOMGC:
+		    if(line.substr(0, 5) == "Name=")
+			gcBuf.name = line.substr(5);
+		    else if(line.substr(0, 6) == "GCode=") {
+			gcBuf.gcode = line.substr(6);
+			customGC.push_back(gcBuf);
+			// clear
+			gcBuf.name = gcBuf.gcode = "";
+		    }
+		    break;
+		default:
+		    cout << "Error: Unknown import type";
+		    break;
+	    }
+	}
+    }
+    
+    void exportCustomsGCs() 
+    {
+	ostringstream stream;
+	for (size_t i = 0; i < customGC.size(); i++) {
+	     stream << "[CustomGCode][" << i << "]" << endl;
+	     stream << "Name=" << customGC[i].name << endl;
+	     stream << "GCode=" << customGC[i].gcode << endl << endl;
+	}
+	string filename = File::GetWorkingDir("config.ini");
+	File::Write(filename, stream.str());
+    }
+    
+    void DrawStatus(GRBL* Grbl) 
+    {
 	grblStatus_t& status = Grbl->Param.status;
 	// current state colour
 	ImVec4 colour;
@@ -965,23 +1033,38 @@ struct Stats
 	    ImGui::TableNextRow();
 
 	    ImGui::TableSetColumnIndex(0);
-	    if(ImGui::Button(" Soft\nReset", sizeL))
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImVec4(1.0f, 0.0f, 0.0f, 0.6f)));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImVec4(1.0f, 0.8f, 0.8f, 0.6f)));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImVec4(1.0f, 0.6f, 0.6f, 0.6f)));	    
+	    if(ImGui::Button("Reset", sizeL))
 		Grbl->SoftReset();
+            ImGui::PopStyleColor(3);
 		    
 	    ImGui::TableSetColumnIndex(1);
-	    if(ImGui::Button("  Kill\nAlarm\n Lock", sizeL)) 
+	    if(Grbl->Param.status.stateColour == GRBL_STATE_COLOUR_ALERT) {
+		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImVec4(1.0f, 0.5f, 0.0f, 0.6f)));
+		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImVec4(1.0f, 0.8f, 0.8f, 0.6f)));
+		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImVec4(1.0f, 0.8f, 0.6f, 0.6f)));
+	    }
+	    if(ImGui::Button(" Clear\nAlarms", sizeL)) 
 		Grbl->Send("$X");
+	    if(Grbl->Param.status.stateColour == GRBL_STATE_COLOUR_ALERT)
+		ImGui::PopStyleColor(3);
 		    
-	    ImGui::TableSetColumnIndex(2);
-	    if(ImGui::Button("Home", sizeL)) 
-		Grbl->Send("$H");
-	    
 	    ImGui::TableNextRow();
-
-	    ImGui::TableSetColumnIndex(0);
+	    
+	    ImGui::TableSetColumnIndex(1);
 	    if(ImGui::Button("Check\nMode", sizeL)) 
 		Grbl->Send("$C");
 	    
+	    ImGui::TableSetColumnIndex(2);
+            ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImVec4(0.6f, 0.8f, 0.6f, 0.6f)));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImVec4(0.8f, 0.9f, 0.8f, 0.6f)));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImVec4(0.6f, 0.8f, 0.6f, 0.6f)));
+	    if(ImGui::Button("Home", sizeL)) 
+		Grbl->Send("$H");
+            ImGui::PopStyleColor(3);
+		
 	    ImGui::EndTable();
 	}	
     }	
@@ -1002,7 +1085,7 @@ struct Stats
 	if (ImGui::BeginTable("Commands", 3, ImGuiTableFlags_NoSavedSettings))
 	{
 	    
-	    for (int i = 0; i <= customGC.size(); i++) 
+	    for (size_t i = 0; i <= customGC.size(); i++) 
 	    {
 		if(i < MAX_CUSTOM_GCODES) 
 		{
@@ -1030,15 +1113,15 @@ struct Stats
 			    customGCIndex = i;
 			    ImGui::OpenPopup("Custom GCode");
 			}
-			//ImGui::OpenPopupOnItemClick("Custom GCode", ImGuiPopupFlags_MouseButtonRight);
 		    }
 		}
-	    } 
-	    
+	    }
+	    static bool popupOpen = false;
 	    if (ImGui::BeginPopup("Custom GCode"))
 	    {
+		popupOpen = true;
 		ImGui::Text("Custom GCode #%d", customGCIndex+1);
-		ImGui::SameLine;
+		ImGui::SameLine();
 		HelpMarker("GCode lines should be seperated with a semi-colon ("";"")");
 		ImGui::SameLine();
 		
@@ -1052,6 +1135,11 @@ struct Stats
 		ImGui::InputText("GCode", &customGC[customGCIndex].gcode);
 		
 		ImGui::EndPopup();
+	    } else { // if popup has just been closed
+		if(popupOpen == true) {
+		    exportCustomsGCs();
+		    popupOpen = false;
+		}
 	    }
 	    ImGui::EndTable();
 	}
@@ -1094,62 +1182,147 @@ struct Stats
   
 struct JogController 
 {
+    bool jogWithKeyboard = false;
+    bool jogging = false;
+    float jogDistance = 10;
+    int feedRate = 1000;
+	
+    JogController(GRBL* Grbl) {
+	feedRate = (int)Grbl->Param.settings.max_FeedRate; // intialise to max feed
+    }
     
-    void Draw(GRBL* Grbl)
+    void DrawJogController(GRBL* Grbl) 
     {
-	 // initialise
-	//ImGui::SetNextWindowSize(ImVec2(250, 250), ImGuiCond_FirstUseEver);
-	ImGui::SetNextWindowSize(ImVec2(246, 229), ImGuiCond_Always);
+	ImGui::Checkbox("Control with arrow keys", &jogWithKeyboard);
+	
+	if(jogWithKeyboard) {
+	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) {
+		jogging = true;
+		Grbl->SendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
+	    }
+	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) {
+		jogging = true;
+		Grbl->SendJog(X_AXIS, FORWARD, jogDistance, feedRate);
+	    }
+	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow))) {
+		jogging = true;
+		Grbl->SendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
+	    }
+	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow))) {
+		jogging = true;
+		Grbl->SendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
+	    }
+	}	
+	if(jogging) {
+	    if(ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)) || ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)) ||
+	    ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) || ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow))) {
+		Grbl->Cancel();
+		Grbl->SendRT(GRBL_RT_JOG_CANCEL);
+		jogging = false;
+	    }
+	}
+	int w = 40, h = 40;
+	// Draw Jog XY
+	ImGui::BeginGroup();
+	
+	    ImGui::Dummy(ImVec2(w, h));
+	    ImGui::SameLine();
+	    
+	    if(ImGui::Button("Y+", ImVec2(w, h)))
+		Grbl->SendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
+	       
+	    if(ImGui::Button("X-", ImVec2(w, h)))
+		Grbl->SendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
+	    
+	    ImGui::SameLine();	
+	    ImGui::Dummy(ImVec2(w, h));
+	    ImGui::SameLine();
+	    
+	    if(ImGui::Button("X+", ImVec2(w, h)))
+		Grbl->SendJog(X_AXIS, FORWARD, jogDistance, feedRate);
+		
+	    ImGui::Dummy(ImVec2(w, h));
+	    ImGui::SameLine();
+	    
+	    if(ImGui::Button("Y-", ImVec2(w, h)))
+		Grbl->SendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
+	   
+	ImGui::EndGroup();
+	
+	ImGui::SameLine();
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 15);
+	
+	// Draw Jog Z
+	ImGui::BeginGroup();
+	    
+	    if(ImGui::Button("Z+", ImVec2(w, h)))
+		Grbl->SendJog(Z_AXIS, FORWARD, jogDistance, feedRate);
+		
+	    ImGui::Dummy(ImVec2(w, h));
+		
+	    if(ImGui::Button("Z-", ImVec2(w, h)))
+		Grbl->SendJog(Z_AXIS, BACKWARD, jogDistance, feedRate);
+			    
+	ImGui::EndGroup();
+    }
+    void DrawJogSetting(GRBL* Grbl)
+    {
+	int ySpacing = 10;
+	
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ySpacing);
+	ImGui::PushItemWidth(100);
+	ImGui::Indent();
+	ImGui::InputFloat("Jog Distance", &jogDistance);
+	ImGui::Unindent();
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ySpacing);
+	auto incrementer = [this](const char* str, float incr) {
+	    
+	    ImGui::PushID(str);
+	    if(ImGui::SmallButton("-"))
+		jogDistance -= incr;
+	    ImGui::SameLine();
+	    ImGui::TextUnformatted(str);
+	    ImGui::SameLine();
+	    if(ImGui::SmallButton("+"))
+		jogDistance += incr;
+	    ImGui::PopID();
+	    if(jogDistance < 0)
+		jogDistance = 0;
+	};
+	incrementer("0.1", 0.1f);
+	ImGui::SameLine();
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
+	incrementer("1", 1.0f);
+	ImGui::SameLine();
+	ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 8);
+	incrementer("10", 10.0f);
+	
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ySpacing);
+	
+	ImGui::Separator();
+	
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ySpacing);
+	ImGui::Indent();
+	ImGui::SliderInt("Feed Rate", &feedRate, 0, (int)Grbl->Param.settings.max_FeedRate);
+	ImGui::Unindent();
+	ImGui::PopItemWidth();
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() + ySpacing/2);
+    }
+	
+    void Draw(GRBL* Grbl)
+    {	// initialise
+	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
 	if (!ImGui::Begin("Jog Controller", NULL)) {
 		ImGui::End();
 		return;
 	}
 	
-	grblStatus_t& status = Grbl->Param.status;
-	MainSettings& settings = Grbl->Param.settings;
+	DrawJogController(Grbl);
 	
-	static float jogDistance = 10;
-	static int feedRate = (int)settings.max_FeedRate; // intialise to max feed
-				
-		//jog controller
-        if (ImGui::BeginTable("Jog Controller", 5, ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_NoSavedSettings))
-        {
-	    int w = 40, h = 40;
-			
-            ImGui::TableNextRow();
-	    ImGui::TableSetColumnIndex(1);
-	    if(ImGui::Button("Y+", ImVec2(w, h)))
-		Grbl->SendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
-	    ImGui::TableSetColumnIndex(4);
-	    if(ImGui::Button("Z+", ImVec2(w, h)))
-		Grbl->SendJog(Z_AXIS, FORWARD, jogDistance, feedRate);
-	    
-	    ImGui::TableNextRow(ImGuiTableRowFlags_None);
-	    ImGui::TableSetColumnIndex(0);
-	    if(ImGui::Button("X-", ImVec2(w, h)))
-		Grbl->SendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
-	    ImGui::TableSetColumnIndex(2);
-	    if(ImGui::Button("X+", ImVec2(w, h)))
-		Grbl->SendJog(X_AXIS, FORWARD, jogDistance, feedRate);
-	    
-	    ImGui::TableNextRow(ImGuiTableRowFlags_None);
-	    ImGui::TableSetColumnIndex(1);
-	    if(ImGui::Button("Y-", ImVec2(w, h)))
-		Grbl->SendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
-	    ImGui::TableSetColumnIndex(4);
-	    if(ImGui::Button("Z-", ImVec2(w, h)))
-		Grbl->SendJog(Z_AXIS, BACKWARD, jogDistance, feedRate);
-			
-            ImGui::EndTable();
-        }
         ImGui::Separator();
-		
-	ImGui::PushItemWidth(100);
-        ImGui::Indent();
-	ImGui::InputFloat("Jog Distance", &jogDistance);
-	ImGui::SliderInt("Feed Rate", &feedRate, 0, (int)settings.max_FeedRate);
-	ImGui::Unindent();
-	ImGui::PopItemWidth();
+	//feedrate / distance
+	DrawJogSetting(Grbl);
+	
 	ImGui::End();
     }
 };
@@ -1165,7 +1338,7 @@ void drawFrames(GRBL* Grbl)
     static Stats stats;
     stats.Draw(Grbl);
     
-    static JogController jogController;
+    static JogController jogController(Grbl);
     jogController.Draw(Grbl);
     
 }

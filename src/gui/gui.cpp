@@ -20,7 +20,7 @@ int gui(GRBL* Grbl)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
     //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
-
+    
 
     // Create window with graphics context
     GLFWwindow* window = glfwCreateWindow(1280, 720, "XYZ Table", NULL, NULL);
@@ -36,13 +36,14 @@ int gui(GRBL* Grbl)
         return 1;
     }
 
+    
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     string s = File::GetWorkingDir("XYZTable.ini");
     io.IniFilename = s.c_str();
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
     //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup Dear ImGui style
@@ -53,6 +54,11 @@ int gui(GRBL* Grbl)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    // Load icon
+    string filename = File::GetWorkingDir("/img/img_restart.png");
+    if(!LoadIconFromFile(window, filename.c_str()))
+        cout << "Error: Could not find icon " << filename << endl;
+    
     // Load Fonts
     // io.Fonts->AddFontDefault();
     // Load Geomanist

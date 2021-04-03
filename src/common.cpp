@@ -33,7 +33,7 @@ point3D minus3p(point3D p1, point3D p2)
 
 string lowerCase(const string& str) {
     string s = str;
-    for (int i = 0; i < s.length(); i++)
+    for (size_t i = 0; i < s.length(); i++)
 	s[i] = tolower(s[i]);
     
     return s;

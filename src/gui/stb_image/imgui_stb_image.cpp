@@ -6,7 +6,26 @@
 #include "stb_image.h" 
 #include "../imgui/imgui.h"
 #include "imgui_stb_image.h"
+#include <GLFW/glfw3.h>
+
+
 using namespace std;
+
+bool LoadIconFromFile(GLFWwindow* window, const char* filename) 
+{  
+    GLFWimage* img = new GLFWimage;
+    img->width = 0;
+    img->height = 0;
+    // Load from file
+    img->pixels = stbi_load(filename, &img->width, &img->height, NULL, 4);
+    if (img->pixels == NULL)
+        return false;
+    // set image as icon
+    glfwSetWindowIcon(window, 1, img);
+    delete(img);
+    return true;
+}
+
 
 // Simple helper function to load an image into a OpenGL texture with common settings
 bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height)
@@ -44,8 +63,7 @@ bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_wid
 }
 
 void ImageTexture::Init(const char* location) { 
-    bool t = LoadTextureFromFile(location, &textureID, &w, &h);
-    if(!t)
+    if(!LoadTextureFromFile(location, &textureID, &w, &h))
         cout << "Error: Could not find image " << location << endl;
 }
 

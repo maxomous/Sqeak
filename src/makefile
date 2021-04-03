@@ -7,12 +7,11 @@ LIBS = -lwiringPi -lGL -lglfw -lGLEW
 #-lpthread -lm -lrt -lGL -lGLU -lglut -lGLEW -lfreetype 
 
 # add to libs for debugging gdb -v -da -Q
-CC = g++
+CXX = g++
 
- 
 # -g   for debugging
 # -Wall -Werror   to show all errors
-CFLAGS= -g -Wall -Werror -Wextra
+CXXFLAGS= -g -Wall -Werror -Wextra
 #-pthread  -I/usr/include/freetype2  -I/usr/include/libpng16 
 
 # this ensures that if there is a file called default, all or clean, it will still be compiled
@@ -25,14 +24,16 @@ all: default
 OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp $(addsuffix /*.cpp, $(DIRS))))
 HEADERS = $(wildcard *.hpp)
 
+# build the executable
 %.o: %.c $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
-
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+	
 # if make is interupted, dont delete any object file
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
+# build the objects
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+	$(CXX) $(OBJECTS) -Wall $(LIBS) -o $@ 
 
 clean:
 	-rm -f *.o

@@ -58,13 +58,14 @@ class File
 	// Reads contents of file and calls func callback
 	// returns 0 on success / 1 if unsuccessful
 	    
-	//	Usage:
-	//	auto lambda = [](string& str) {
-	//		cout << str << endl;
-	//	}; 
-	//	if(File::Read("/home/pi/Desktop/New.nc", lambda)) {
-	//		cout << "Error: Could not open file" << endl;
-	//	}
+//	auto executeLine = [](string& str) {
+//	    cout << str << endl;
+//	    return 0;
+//	}; 
+//	if(File::Read("/home/pi/Desktop/New.nc", executeLine)) {
+//		cout << "Error: Could not open file" << endl;
+//	}
+	
 	static int Read(const std::string& filename, const std::function<int(std::string&)>& func) { return Get().IRead(filename, func); };
 	// retrieves information about the files within a given directory
 	// if extensions is not an empty string, it will only return files with given extensions (can be seperated by ',' e.g. "exe,ini")

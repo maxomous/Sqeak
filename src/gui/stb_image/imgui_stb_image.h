@@ -2,8 +2,11 @@
 
 
 #include <GL/glew.h>
+#include <GLFW/glfw3.h>
 
 #pragma once
+
+extern bool LoadIconFromFile(GLFWwindow* window, const char* filename) ;
 
 class ImageTexture 
 {

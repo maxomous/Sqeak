@@ -35,7 +35,7 @@ using namespace std;
 * // $C (check) should be called on open file?
 * // if we need to sync gui to grbl, use G4 P0.01
 
-/*
+
 	EEPROM Issues
 	EEPROM access on the Arduino AVR CPUs turns off all of the interrupts while the CPU writes to EEPROM. This poses a problem for certain features in Grbl, particularly if a user is streaming and running a g-code program, since it can pause the main step generator interrupt from executing on time. Most of the EEPROM access is restricted by Grbl when it's in certain states, but there are some things that developers need to know.
 
@@ -58,54 +58,18 @@ using namespace std;
 #endif
 
 
+#include <string_view>
 
 int main(int argc, char **argv)
-{
+{		
+	(void)argc, (void) argv;
 	
 	GRBL* Grbl = new GRBL();
-	
     Grbl->Connect();
     Grbl->SetStatusInterval(100);
     
-	/*
-	Grbl->Connect();
-	Grbl->SetStatusInterval(100);*/
-	/*
-	Grbl->Send("$X");
-	Grbl->Send("G90");
-	Grbl->Send("G90");
-	Grbl->Send("G90");*/
-/*	string msg = "sdkfns;aldksdg";
-	cout << "Program start\n" << endl;
-	
-	msg.compare(0, 4, "Grbl");
-	int i = 0;
-	while(1) {
-		if(i++ > 100)
-			return 0;
-	  */
-		/*
-		Grbl->Write();
-		
-		Grbl->Read();
-		Grbl->RequestStatus();
-	 */
-		#ifdef DEBUG_MEMORY_ALLOC
-			cout << "end of loop\n\n" << endl;
-		#endif
-/*	};
-	
-	return 0;
-	*/
-
-
-
-
-	(void)argc, (void) argv;
-	
 	int wiringPiSetup(void);
 
-	
 	gui(Grbl);
 	
 	delete(Grbl);

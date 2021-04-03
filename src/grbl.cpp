@@ -428,7 +428,7 @@ void GRBLParams::DecodeStatus(const string& msg) {
 			s->inputPin_CycleStart = false;
 			
 			string str = segs[i].substr(3);
-			for (int j = 0; j < str.length(); j++) {
+			for (size_t j = 0; j < str.length(); j++) {
 				if(str[j] == 'X')
 					s->inputPin_LimX = true;
 				else if(str[j] == 'Y')
@@ -471,7 +471,7 @@ void GRBLParams::DecodeStatus(const string& msg) {
 			s->accessory_MistCoolant = false;
 			
 			string str = segs[i].substr(2);
-			for (int j = 0; j < str.length(); j++) {
+			for (size_t j = 0; j < str.length(); j++) {
 				if(str[j] == 'S')
 					s->accessory_SpindleDirection = CLOCKWISE;	// (1)
 				else if(str[j] == 'C')
@@ -664,11 +664,11 @@ void GCList::FileSent() {
 	fileEnd = str.size();
 }
 
-int GCList::GetFileLines() {
+uint GCList::GetFileLines() {
 	return fileEnd - fileStart;
 }
 
-int GCList::GetFilePos() {
+uint GCList::GetFilePos() {
 	return read - fileStart;
 }
 
@@ -677,8 +677,9 @@ int GCList::GetFilePos() {
 void GCList::ClearCompleted() {
 	str.erase(str.begin(), str.begin() + read);
 	status.erase(status.begin(), status.begin() + read);
-	fileEnd -= read;
-	if (fileEnd < 0) {
+	
+	fileEnd = (fileEnd < read) ? 0 : fileEnd - read;
+	if (fileEnd <= 0) {
 		fileStart = 0;
 		fileEnd = 0;
 	}	
@@ -805,77 +806,77 @@ void GRBL::SendRT(char cmd) {
 	
 	switch (cmd) {
 		case GRBL_RT_SOFT_RESET:
-			printf("Sent: 'Soft Reset'\n");
+			cout << "Sent: 'Soft Reset'" << endl;
 			break;
 		case GRBL_RT_STATUS_QUERY:
 			#ifdef DEBUG
-				printf("Sent: 'Status Query'\n");
+				cout << "Sent: 'Status Query'" << endl;
 			#endif
 			break;
 		case GRBL_RT_HOLD:
-			printf("Sent: 'Hold'\n");
+			cout << "Sent: 'Hold'" << endl;
 			break;
 		case GRBL_RT_RESUME:
-			printf("Sent: 'Resume'\n");
+			cout << "Sent: 'Resume'" << endl;
 			break;
 			
 		case GRBL_RT_DOOR:
-			printf("Sent: 'Door'\n");
+			cout << "Sent: 'Door'" << endl;
 			break;
 		case GRBL_RT_JOG_CANCEL:
-			printf("Sent: 'Cancel Jog'\n");
+			cout << "Sent: 'Cancel Jog'" << endl;
 			break;
 			
 		case GRBL_RT_OVERRIDE_FEED_100PERCENT:
-			printf("Sent: 'Override Feedrate (Set to 100%)'\n");
+			cout << "Sent: 'Override Feedrate (Set to 100%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_FEED_ADD_10PERCENT:
-			printf("Sent: 'Override Feedrate (+10%)'\n");
+			cout << "Sent: 'Override Feedrate (+10%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_FEED_MINUS_10PERCENT:
-			printf("Sent: 'Override Feedrate (-10%)'\n");
+			cout << "Sent: 'Override Feedrate (-10%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_FEED_ADD_1PERCENT:
-			printf("Sent: 'Override Feedrate (+1%)'\n");
+			cout << "Sent: 'Override Feedrate (+1%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_FEED_MINUS_1PERCENT:
-			printf("Sent: 'Override Feedrate (-1%)'\n");
+			cout << "Sent: 'Override Feedrate (-1%)'" << endl;
 			break;
 			
 		case GRBL_RT_OVERRIDE_RAPIDFEED_100PERCENT:
-			printf("Sent: 'Override Rapid Feedrate (Set to 100%)'\n");
+			cout << "Sent: 'Override Rapid Feedrate (Set to 100%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_RAPIDFEED_50PERCENT:
-			printf("Sent: 'Override Rapid Feedrate (Set to 50%)'\n");
+			cout << "Sent: 'Override Rapid Feedrate (Set to 50%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_RAPIDFEED_25PERCENT:
-			printf("Sent: 'Override Rapid Feedrate (Set to 25%)'\n");
+			cout << "Sent: 'Override Rapid Feedrate (Set to 25%)'" << endl;
 			break;
 			
 		case GRBL_RT_OVERRIDE_SPINDLE_100PERCENT:
-			printf("Sent: 'Override Spindle Speed (Set to 100%)'\n");
+			cout << "Sent: 'Override Spindle Speed (Set to 100%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_ADD_10PERCENT:
-			printf("Sent: 'Override Spindle Speed (+10%)'\n");
+			cout << "Sent: 'Override Spindle Speed (+10%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_MINUS_10PERCENT:
-			printf("Sent: 'Override Spindle Speed (-10%)'\n");
+			cout << "Sent: 'Override Spindle Speed (-10%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_ADD_1PERCENT:
-			printf("Sent: 'Override Spindle Speed (+1%)'\n");
+			cout << "Sent: 'Override Spindle Speed (+1%)'" << endl;
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_MINUS_1PERCENT:
-			printf("Sent: 'Override Spindle Speed (-1%)'\n");
+			cout << "Sent: 'Override Spindle Speed (-1%)'" << endl;
 			break;
 			
 		case GRBL_RT_SPINDLE_STOP:
-			printf("Sent: 'Stop Spindle'\n");
+			cout << "Sent: 'Stop Spindle'" << endl;
 			break;
 		case GRBL_RT_FLOOD_COOLANT:
-			printf("Sent: 'Flood Coolant'\n");
+			cout << "Sent: 'Flood Coolant'" << endl;
 			break;
 		case GRBL_RT_MIST_COOLANT:
-			printf("Sent: 'Mist Coolant'\n");
+			cout << "Sent: 'Mist Coolant'" << endl;
 			break;
 
 			
