@@ -11,7 +11,7 @@ CXX = g++
 
 # -g   for debugging
 # -Wall -Werror   to show all errors
-CXXFLAGS= -g -Wall -Werror -Wextra
+CXXFLAGS= -std=c++17 -g -Wall -Werror -Wextra
 #-pthread  -I/usr/include/freetype2  -I/usr/include/libpng16 
 
 # this ensures that if there is a file called default, all or clean, it will still be compiled

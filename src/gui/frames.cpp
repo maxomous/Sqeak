@@ -1191,36 +1191,56 @@ struct JogController
 	feedRate = (int)Grbl->Param.settings.max_FeedRate; // intialise to max feed
     }
     
+    float calcuateJogDistance(float feedrate, float acc) 
+    {
+	    float v = feedrate / 60; // mm/s
+	    int N = 15; // number blocks in planner buffer
+	    
+	    float dt = (v*v) / (2*acc*(N-1));
+	    
+	    cout << "@ " << feedrate << "mm/min" << endl;
+	    cout << "dt = " << dt << endl;
+	    
+	    float smin = v*dt; // mm (smallest jog distance
+	    
+	    cout << "sMin = " << smin << endl << endl;
+	    return smin;
+    }
+
     void DrawJogController(GRBL* Grbl) 
     {
 	ImGui::Checkbox("Control with arrow keys", &jogWithKeyboard);
 	
-	if(jogWithKeyboard) {
-	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) {
-		jogging = true;
-		Grbl->SendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
-	    }
-	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) {
-		jogging = true;
-		Grbl->SendJog(X_AXIS, FORWARD, jogDistance, feedRate);
-	    }
-	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow))) {
-		jogging = true;
-		Grbl->SendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
-	    }
-	    if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow))) {
-		jogging = true;
-		Grbl->SendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
+	if(jogWithKeyboard) 
+	{	// dont send further jogs until we have recieved a response from the last one
+	    if(Grbl->gcList.status.size() == Grbl->gcList.read) 
+	    {
+		if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow))) {
+		    jogging = true;
+		    Grbl->SendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
+		}
+		else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow))) {
+		    jogging = true;
+		    Grbl->SendJog(X_AXIS, FORWARD, jogDistance, feedRate);
+		}
+		else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow))) {
+		    jogging = true;
+		    Grbl->SendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
+		}
+		else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow))) {
+		    jogging = true;
+		    Grbl->SendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
+		}
 	    }
 	}	
 	if(jogging) {
 	    if(ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)) || ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)) ||
 	    ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) || ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow))) {
-		Grbl->Cancel();
 		Grbl->SendRT(GRBL_RT_JOG_CANCEL);
 		jogging = false;
 	    }
 	}
+	
 	int w = 40, h = 40;
 	// Draw Jog XY
 	ImGui::BeginGroup();

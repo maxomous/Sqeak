@@ -644,11 +644,13 @@ void GCList::SetResponse(vector<string>* consoleLog, int response) {
 	}
 	// Set reponse to corrosponding gcode
 	status[read++] = response;
+		cout << "read: " << read << "    File end: " << fileEnd << endl;
 	// to trigger that we have reached end of file
 	if(fileEnd != 0 && read >= fileEnd) {
 		fileStart = 0;
 		fileEnd = 0;
 		consoleLog->push_back("End of File");
+		cout << "End of File" endl;
 	}
 }
 
@@ -674,6 +676,7 @@ uint GCList::GetFilePos() {
 
 
 // clears any completed GCodes in the buffer
+// used for clearing old commands in log
 void GCList::ClearCompleted() {
 	str.erase(str.begin(), str.begin() + read);
 	status.erase(status.begin(), status.begin() + read);
@@ -687,11 +690,13 @@ void GCList::ClearCompleted() {
 	read = 0;
 }
 
-// clears any remaining GCodes in buffer
+// clears any remaining GCodes in our buffer
+// for cancelling any commands that are waiting to be sent
 void GCList::ClearNoResponses() {
 	str.erase(str.begin() + written, str.end());
 	status.erase(status.begin() + written, status.end());
 	fileEnd = str.size();
+	cout << "File end: " << fileEnd << endl;
 	/*
 	cout << "GCodes List Size: " << str.size() << endl;
 	cout << "GCodes Written: " << written << endl;
@@ -699,7 +704,8 @@ void GCList::ClearNoResponses() {
 	cout << "fileEnd: " << fileEnd << endl;*/
 }
 
-// clears any remaining GCodes in buffer
+// clears any remaining GCodes in ours, and GRBLs buffer
+// for resetting only
 // queue MUST be emptied also + grblBufferSize set to max
 void GCList::ClearSent() {
 	
@@ -886,6 +892,9 @@ void GRBL::SendRT(char cmd) {
 	serialPutchar(fd, cmd);
 }
 
+// jogs do not affect the parser state 
+// therefore you do not need to set the machine back to G90 after using a G91 command
+// and the feedrate is not modal
 void GRBL::SendJog(int axis, int dir, float distance, int feedrate) {
     //Grbl->SendRT(GRBL_RT_JOG_CANCEL);
     

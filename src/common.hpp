@@ -8,7 +8,7 @@
 
 //#define DEBUG_MEMORY_ALLOC
 
-
+ 
 
 // pre compiled headers
 //#include "pch.hpp"
@@ -21,6 +21,7 @@
 #include <stdarg.h>
 #include <string>
 #include <string.h>
+#include <string_view>
 #include <sstream>
 #include <algorithm>
 #include <ctype.h>
