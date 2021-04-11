@@ -3,8 +3,7 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 
-#ifndef COMMON_HPP
-#define COMMON_HPP
+#pragma once
 
 //#define DEBUG_MEMORY_ALLOC
 
@@ -48,17 +47,14 @@
 #include <GL/glew.h>
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
-typedef struct {
-	float x;
-	float y;
-	float z;
-} point3D;
 
-#include "grbl.hpp"
-#include "grblcodes.hpp"
-#include "file.hpp"
-#include "gui/gui.hpp"
-#include "gui/frames.hpp"
+#include "dev/ads1115.h"
+#include "libs/geom.h"
+#include "libs/file.h"
+#include "grbl.h"
+#include "grblcodes.h"
+#include "gui/gui.h"
+#include "gui/frames.h"
 
 
 
@@ -77,18 +73,15 @@ typedef struct {
 #define Y_AXIS			2
 #define Z_AXIS			3
 
-
-
 extern void exitf(const char* format, ... );
 
-// returns p1 + p2
-extern point3D add3p(point3D p1, point3D p2);
-// return p1 - p2
-extern point3D minus3p(point3D p1, point3D p2);
+// modifies string to lower case
+extern void lowerCase(std::string& str);
+// modifies string to upper case
+extern void upperCase(std::string& str);
 
-// returns lower case version of str
 extern std::string lowerCase(const std::string& str);
 
 // convert seconds into hours, minutes and seconds
 extern void normaliseSecs(uint s, uint& hr, uint& min, uint& sec);
-#endif
+

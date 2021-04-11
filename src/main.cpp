@@ -3,7 +3,7 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 
-#include "common.hpp" 
+#include "common.h" 
 
  
 using namespace std; 
@@ -47,8 +47,6 @@ using namespace std;
 */
 		
 #ifdef DEBUG_MEMORY_ALLOC
-	static uint32_t s_AllocCount = 0;
-
 	void* operator new(size_t size)
 	{
 		s_AllocCount++;
@@ -59,25 +57,61 @@ using namespace std;
 
 
 
+#define JOYSTICK_X 			ADS1115_PIN_A0
+#define JOYSTICK_Y 			ADS1115_PIN_A1
+#define JOYSTICK_BUTTON 	ADS1115_PIN_A2
+#define JOYSTICK_INVERT 	point2D(1, -1)
+#define JOYSTICK_VMAX	 	3.3f	// volts
+#define JOYSTICK_VTRIG	 	3.0f	// voltage above this is high
+
+
+void readJoystick(ADS1115& adc, point2D& return_point, bool& return_press) 
+{	// read joystick voltage
+	point2D p = point2D(adc.Read(JOYSTICK_X), adc.Read(JOYSTICK_Y));
+	// normalise to -1 to 1, and translate from (0 to 2) to (-1 to 1)
+	p = (p * 2 / JOYSTICK_VMAX) - 1.0f;
+	// invert y axis
+	return_point = p * JOYSTICK_INVERT;
+	return_press = (adc.Read(JOYSTICK_BUTTON) > JOYSTICK_VTRIG) ? true : false;
+}
 
 int main(int argc, char **argv)
-{		
+{
 
+	/*
+	ADS1115 adc(0x48, ADS1115_FSR_4_096V);
+	
+	while(1) {		
+		point2D p;
+		bool clicked;
+		readJoystick(adc, p, clicked);
+		
+		polar pol(p);
+		float ignoreRadius = 0.1f; // +- this is between 0 and 1
+		// Ignore if within small radius
+		if(pol.r < ignoreRadius){
+			p = point2D(0, 0);
+			pol = polar(0, 0);
+		}
+		
+		cout << "\r                                                                             " << flush;
+		cout << "\r Joystick = " << p << "  " << pol.r << "V  " << rad2deg(pol.th) << "degs   pressed = " << clicked << flush;
+	}
+
+	return 0;
+	*/
 	(void)argc, (void) argv;
 	
+	if(wiringPiSetup() == -1) {
+		cout << "Error: Could not start wiringPi " << strerror(errno) << endl;
+		exit(1);
+	}
+	    
 	GRBL* Grbl = new GRBL();
-    Grbl->Connect();
-    Grbl->SetStatusInterval(100);
-    
-	int wiringPiSetup(void);
-
+	
 	gui(Grbl);
 	
 	delete(Grbl);
-	
-	#ifdef DEBUG_ALLOCATIONS
-		cout << s_AllocCount << " allocations" << endl;
-	#endif
 	
 	return 0;
 }

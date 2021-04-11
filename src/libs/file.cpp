@@ -2,7 +2,7 @@
  * file.cpp
  */
 
-#include "file.hpp"
+#include "file.h"
 
 using namespace std;
 

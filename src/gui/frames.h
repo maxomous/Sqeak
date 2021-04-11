@@ -3,11 +3,7 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 
-#ifndef FRAME_HPP
-#define FRAME_HPP
-
+#pragma once
 
 
 extern void drawFrames(GRBL* Grbl);
-
-#endif

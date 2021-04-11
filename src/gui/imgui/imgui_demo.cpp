@@ -5413,7 +5413,7 @@ static void ShowDemoWindowMisc()
         ImGui::Text("WantTextInput: %d", io.WantTextInput);
         ImGui::Text("WantSetMousePos: %d", io.WantSetMousePos);
         ImGui::Text("NavActive: %d, NavVisible: %d", io.NavActive, io.NavVisible);
-
+    
         // Display Mouse state
         if (ImGui::TreeNode("Mouse State"))
         {

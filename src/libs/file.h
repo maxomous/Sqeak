@@ -2,9 +2,7 @@
  * file.hpp
  */
 
-
-#ifndef FILE_HPP
-#define FILE_HPP
+#pragma once
 
 #include <string>
 #include <cstring>
@@ -36,9 +34,6 @@ typedef struct {
 class File
 {
     public:
-	// deleted copy constructor
-	File(const File&) = delete;
-	File& operator=(const File&) = delete;
 	
 	// returns instance of File / creates if does already exist
 	static File& Get() {
@@ -83,7 +78,9 @@ class File
 	int IGetFilesInDir(const std::string& location, const std::string& extensions, std::vector<filedesc_t>& files);
 
 	// prevent class from being instatiated
-	File() {}	
+	File() {}
+	// deleted copy constructor
+	File(const File&) = delete;
+	File& operator=(const File&) = delete;	
 };
 
-#endif /* FILE_HPP */ 

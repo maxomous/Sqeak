@@ -12,7 +12,7 @@ using namespace std;
 
 #include <GL/glew.h>
 
-#include "shader.hpp"
+#include "shader.h"
 
 
 string VertexShaderStd = 

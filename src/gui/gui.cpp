@@ -1,5 +1,5 @@
 
-#include "../common.hpp"
+#include "../common.h"
 using namespace std;
 
 static void glfw_error_callback(int error, const char* description)
@@ -26,6 +26,7 @@ int gui(GRBL* Grbl)
     GLFWwindow* window = glfwCreateWindow(1280, 720, "XYZ Table", NULL, NULL);
     if (window == NULL)
         return 1;
+    glfwSetWindowSizeLimits(window, 200, 200, GLFW_DONT_CARE, GLFW_DONT_CARE);
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // Enable vsync
 
@@ -136,10 +137,11 @@ int gui(GRBL* Grbl)
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
-        
-        Grbl->Write();
-        Grbl->Read();
-        Grbl->RequestStatus();
+        if(Grbl->IsConnected()) {
+            Grbl->Write();
+            Grbl->Read();
+            Grbl->RequestStatus();
+        }
      
            
          

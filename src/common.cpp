@@ -3,40 +3,87 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 
-#include "common.hpp"
+#include "common.h"
 
 using namespace std;
+/*
 
+class Log {
+public:
+    enum LogLevel{
+	LevelError, LevelWarning, LevelInfo
+    };
+private:
+    LogLevel logLevel = LevelInfo; // default show all errors
+    std::vector<std::string> consoleLog;
+public:
+    //log.SetLogLevel(Log::LevelError);
+    void SetLogLevel(LogLevel level) { logLevel = level; }
+
+    void PrintToConsole(string msg) { consoleLog.emplace_back(output); }
+    void PrintToTerminal(string msg) { cout << output << endl; }
+
+    void Error(const string& msg)
+    {
+	string errMsg = "Error: " + msg;
+	PrintToConsole(errMsg);
+	PrintToTerminal(errMsg);
+    }
+    void Warning(const string& msg)
+    {
+	string warningMsg = "Warning: " + msg;
+	PrintToConsole(warningMsg);
+	PrintToTerminal(warningMsg);
+    }
+    void Info(const string& msg)
+    {
+	string infoMsg = "Info: " + msg;
+	PrintToConsole(infoMsg);
+	PrintToTerminal(infoMsg);
+    }
+    
+public:
+    void Add(const char* str);
+    void Add(const char* format, ... );
+    void Add(const string& str);
+    
+private:
+    
+    std::vector<std::string>* consoleLog;
+    void ShowAbove();
+};
+
+
+
+string va_str(const char* format, ... )
+{
+    va_list arglist;
+    char buf[MAX_SIZE];
+    va_start( arglist, format );
+    vsnprintf(buf, sizeof(buf), format, arglist);
+    va_end( arglist );
+    
+    return buf;
+}
+*/
 void exitf(const char* format, ... ) 
 {
     va_list arglist;
+    char buf[MAX_STRING];
     va_start( arglist, format );
-    
-	char str[MAX_STRING];
-	vsnprintf(str, MAX_STRING, format, arglist);
+    vsnprintf(buf, sizeof(buf), format, arglist);
     va_end( arglist );
     
-    printf("%s",str);
-	exit(1);
+    cout << buf << endl;
+    exit(1);
 }
 
-// returns p1 + p2
-point3D add3p(point3D p1, point3D p2)
-{
-    return (point3D){ .x = p1.x+p2.x, .y = p1.y+p2.y, .z = p1.z+p2.z };
-}
-// return p1 - p2
-point3D minus3p(point3D p1, point3D p2)
-{
-    return (point3D){ .x = p1.x-p2.x, .y = p1.y-p2.y, .z = p1.z-p2.z };
+void lowerCase(string& str) {
+    transform(str.begin(), str.end(),str.begin(), ::tolower);
 }
 
-string lowerCase(const string& str) {
-    string s = str;
-    for (size_t i = 0; i < s.length(); i++)
-	s[i] = tolower(s[i]);
-    
-    return s;
+void upperCase(string& str) {
+    transform(str.begin(), str.end(),str.begin(), ::toupper);
 }
 
 // convert seconds into hours, minutes and seconds

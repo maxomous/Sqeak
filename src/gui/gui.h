@@ -3,9 +3,6 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 
-#ifndef GUI_HPP
-#define GUI_HPP
+#pragma once
 
 extern int gui(GRBL* grbl);
-
-#endif

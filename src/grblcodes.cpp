@@ -3,7 +3,7 @@
  *  Max Peglar-Willis & Luke Mitchell 2021
  */
 
-#include "common.hpp"
+#include "common.h"
 
 #define NUM_ERROR_MSG 36
 //"Error Code in v1.1+", "Error Message in v1.0-", "Error Description"

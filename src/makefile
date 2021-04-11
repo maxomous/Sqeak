@@ -2,8 +2,8 @@
 
 
 TARGET = ../grbl
-DIRS = gui gui/imgui gui/stb_image gui/fonts 
-LIBS = -lwiringPi -lGL -lglfw -lGLEW
+DIRS = dev libs gui gui/imgui gui/stb_image gui/fonts 
+LDLIBS = -lwiringPi -lGL -lglfw -lGLEW
 #-lpthread -lm -lrt -lGL -lGLU -lglut -lGLEW -lfreetype 
 
 # add to libs for debugging gdb -v -da -Q
@@ -22,7 +22,7 @@ all: default
 
 # substitute '.cpp' with '.o' in any *.cpp 
 OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp $(addsuffix /*.cpp, $(DIRS))))
-HEADERS = $(wildcard *.hpp)
+HEADERS = $(wildcard *.h)
 
 # build the executable
 %.o: %.c $(HEADERS)
@@ -33,8 +33,8 @@ HEADERS = $(wildcard *.hpp)
 
 # build the objects
 $(TARGET): $(OBJECTS)
-	$(CXX) $(OBJECTS) -Wall $(LIBS) -o $@ 
+	$(CXX) $(OBJECTS) -Wall $(LDLIBS) -o $@ 
 
 clean:
-	-rm -f *.o
+	-rm -f *.o $(addsuffix /*.o, $(DIRS))
 	-rm -f $(TARGET)
