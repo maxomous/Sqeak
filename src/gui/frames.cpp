@@ -93,19 +93,20 @@ struct Console
     int historyCount = -1;
     int historyPos = 0;
     
-    void DrawLogTab(GRBL* Grbl) 
+    void DrawLogTab() 
     {
       if (ImGui::BeginTabItem("Log"))
 	{	
 	    log_Tab_Open = true;
 	    // Console    
 	    ImGui::BeginChild("Log", ImVec2(0, ImGui::GetWindowHeight() - ImGui::GetFrameHeightWithSpacing() * 3 - 16), false, ImGuiWindowFlags_HorizontalScrollbar);
+	    const vector<string>& console = Log::GetConsoleLog();
 	    // Clip only visible lines
 	    ImGuiListClipper clipper;
-	    clipper.Begin(Grbl->consoleLog->size());
+	    clipper.Begin(console.size());
 	    while (clipper.Step()) {
 		for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++) {
-		    ImGui::TextUnformatted((*(Grbl->consoleLog))[line_no].c_str());
+		    ImGui::TextUnformatted(console[line_no].c_str());
 		}
 	    }
 	    clipper.End();
@@ -160,13 +161,13 @@ struct Console
 				break;
 			    default: // error
 				string errName, errDesc;
-				if(getErrMsg(gcItem.status, &errName, &errDesc)) {	
-				    cout << "Error: Can't find error code!" << endl;
-				    exit(1);
+				if(getErrMsg(gcItem.status, &errName, &errDesc)) {
+				    ImGui::Text("Error %d: Can't find error code", gcItem.status);
+				} else {				    
+				    ImGui::Text("Error %d", gcItem.status);
+				    ImGui::TableNextColumn();
+				    ImGui::Text("%s: %s", errName.c_str(), errDesc.c_str());
 				}
-				ImGui::Text("Error %d", gcItem.status);
-				ImGui::TableNextColumn();
-				ImGui::Text("%s: %s", errName.c_str(), errDesc.c_str());
 			}
 		    }
 		}
@@ -193,7 +194,7 @@ struct Console
 	
 	if (ImGui::BeginTabBar("Console", ImGuiTabBarFlags_None))
 	{
-	    DrawLogTab(Grbl);
+	    DrawLogTab();
 	    DrawCommandsTab(Grbl);
 	    
 	    scroll_To_Bottom = false;
@@ -204,15 +205,16 @@ struct Console
 	
 	ImGui::Separator();
 	
-	static char strConsole[128] = "";
-	static bool send = false;
 	
+	static bool send = false;
 	send |= ImGui::Button("Send");
 		
 	ImGui::SameLine();
 	 
 	ImGui::PushItemWidth(200); // use -ve for distance from right size
+	
 	// Console text input
+	static char strConsole[128] = "";
 	send |= ImGui::InputText("Input GCode Here", strConsole, IM_ARRAYSIZE(strConsole), 
 	    ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackEdit | ImGuiInputTextFlags_CallbackHistory, &TextEditCallbackStub, (void*)this);
 	
@@ -232,7 +234,7 @@ struct Console
 	
 	if(log_Tab_Open) {
 	    if (ImGui::Button("Clear Log"))
-		Grbl->consoleLog->clear(); 
+		Log::ClearConsoleLog();
 	}
 	else {
 	    if (ImGui::Button("Clear Commands")) 
@@ -247,8 +249,6 @@ struct Console
     void sendToConsole(GRBL* Grbl, char* str) 
     {
 	if(str[0]) {
-	    Grbl->Send(str);
-	    cout << "Sending: " << str << endl;
 	    history.push_back(str);
 	    historyCount++;
 	    if(history.size() > MAX_HISTORY) {
@@ -256,6 +256,7 @@ struct Console
 		historyCount = MAX_HISTORY-1;
 	    }
 	    historyPos = historyCount + 1;
+	    Grbl->Send(str);
 	    strncpy(str, "", 128);
 	}
 	reclaim_focus = true;
@@ -357,7 +358,7 @@ struct FileBrowser {
     void updateFiles()
     {	
 	if(File::GetFilesInDir(curDir, showFileTypes, files)) {
-	    cout << "Error: Can't access directory: " << curDir << endl;
+	    Log::Error("Can't access directory: %s", curDir);
 	    return;
 	}
     }
@@ -401,11 +402,7 @@ struct FileBrowser {
 	    i++;
 	}
 	// didn't find it - shouldn't ever reach
-	cout << "Error: File not found in list?" << endl;
-	cout << "selectedFileID: " << selectedFileID << endl;
-	for (filedesc_t f : files)
-	    cout << "name: " << f.name << "id: " << f.id << endl;
-		
+	Log::Error("File not found in list - We should never have reached this...");
 	filetype = -1;
 	return -1;
     }
@@ -421,7 +418,7 @@ struct FileBrowser {
 	if(filetype == FILE_TYPE) {
 	    curFile = filename;
 	    curFileFull = File::CombineDirPath(curDir, curFile);
-	    cout << "Opening file: " << curFileFull << endl;
+	    Log::Info(string("Opening file: ") + curFileFull);
 	    curFileFull = shortenFilePath(curFileFull);
 	    ImGui::CloseCurrentPopup();
 	} else { //folder
@@ -471,7 +468,8 @@ struct FileBrowser {
 		    break;
 		    
 		default:
-		    exitf("Error: Column unknown\n");
+		    Log::Error("Sorting column unknown");
+		    return false;
 	    }
 	    return false;
 	};
@@ -645,12 +643,12 @@ struct Controller {
     {
 	// check we have selected a file 
 	if(fileBrowser.curFile == "") {
-	    Grbl->consoleLog->push_back("Error: No file has been selected");
+	    Log::Error("No file has been selected");
 	    return;
 	}
 	// Check we haven't already got a file running
 	if(Grbl->IsFileRunning()) {
-	    Grbl->consoleLog->push_back("Error: File is already running");
+	    Log::Error("File is already running");
 	    return;
 	}
 	// check grbl is idle - not neccessarily needed but a good sanity check
@@ -659,13 +657,13 @@ struct Controller {
 	// get filepath of file
 	string filepath = File::CombineDirPath(fileBrowser.curDir, fileBrowser.curFile);
 	// add to log
-	Grbl->consoleLog->push_back((string)"Sending File: " + filepath);
+	Log::Info((string)"Sending File: " + filepath);
 	// start time
 	timeStart = millis();
 	// send file to grbl
 	if(Grbl->SendFile(filepath)) {
 	    //couldn't open file
-	    Grbl->consoleLog->push_back("Error: Couldn't send file to GRBL");
+	    Log::Error("Couldn't send file to GRBL");
 	}
 	
     }
@@ -701,7 +699,7 @@ struct Controller {
 	if (ImGui::Button("Cancel", ImVec2(w, h))) {	
 	    if(Grbl->IsFileRunning()) 
 	    {  
-		Grbl->consoleLog->push_back("Cancelling... Note: Any commands remaining in GRBL's buffer will still execute.");
+		Log::Info("Cancelling... Note: Any commands remaining in GRBL's buffer will still execute.");
 		Grbl->Cancel();
 	    }
 	}
@@ -716,13 +714,13 @@ struct Controller {
 	    
 	    ImGui::SameLine();
 	    if (ImGui::ImageButton(img_Pause, ImVec2(w2, h2))) {
-		Grbl->consoleLog->push_back("Pausing...");
+		Log::Info("Pausing...");
 		Grbl->SendRT(GRBL_RT_HOLD);
 	    }
 	    
 	    ImGui::SameLine();
 	    if (ImGui::ImageButton(img_Play, ImVec2(w2, h2))) {
-		Grbl->consoleLog->push_back("Resuming...");
+		Log::Info("Resuming...");
 		Grbl->SendRT(GRBL_RT_RESUME);
 	    }
 	ImGui::PopStyleVar();
@@ -853,7 +851,7 @@ struct Stats
 	
 	string filename = File::GetWorkingDir("config.ini");
 	if(File::Read(filename, executeLine)) {
-	    cout << "Error: Could not open file " << filename << endl;
+	    Log::Error(string("Could not open file ") + filename);
 	    return;
 	}
 	
@@ -888,7 +886,7 @@ struct Stats
 		    }
 		    break;
 		default:
-		    cout << "Error: Unknown import type";
+		    Log::Error("Unknown import type");
 		    break;
 	    }
 	}
@@ -1074,20 +1072,20 @@ struct Stats
 	    ImGui::TableSetColumnIndex(0);
 	    ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
 	    if (ImGui::Button("Zero X", sizeS)) {
-		Grbl->consoleLog->push_back("Setting current X position to 0 for this coord system");
+		Log::Info("Setting current X position to 0 for this coord system");
 		Grbl->Send("G10 L20 P0 X0");
 	    }
 	    ImGui::TableSetColumnIndex(1);
 	    ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
 	    if (ImGui::Button("Zero Y", sizeS)) {
-		Grbl->consoleLog->push_back("Setting current Y position to 0 for this coord system");
+		Log::Info("Setting current Y position to 0 for this coord system");
 		Grbl->Send("G10 L20 P0 Y0");
 	    }
 	    
 	    ImGui::TableSetColumnIndex(2);
 	    ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
 	    if (ImGui::Button("Zero Z", sizeS)) {
-		Grbl->consoleLog->push_back("Setting current Z position to 0 for this coord system");
+		Log::Info("Setting current Z position to 0 for this coord system");
 		Grbl->Send("G10 L20 P0 Z0");
 	    }
 	    // position cursor to bottom corner of cell so it doesnt clip
@@ -1272,7 +1270,7 @@ struct JogController
     JogController(GRBL* Grbl) {
 	feedRate = (int)Grbl->Param.settings.max_FeedRate(); // intialise to max feed
     }
-    
+/*   
     float calcuateJogDistance(float feedrate, float acc) 
     {
 	    float v = feedrate / 60; // mm/s
@@ -1288,7 +1286,7 @@ struct JogController
 	    cout << "sMin = " << smin << endl << endl;
 	    return smin;
     }
-
+*/
     void KeyboardJogging(GRBL* Grbl) 
     {
 	// - This is a rather messy piece of code, but for now it solves the issue.

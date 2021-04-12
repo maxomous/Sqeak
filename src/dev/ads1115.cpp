@@ -136,33 +136,6 @@ int ADS1115::SelectInput (unsigned int adcInput)
 	return 0;
 	
 }
-/*	auto read = [this](uint Register) 
-	{
-		int din = wiringPiI2CReadReg16(fd, Register);
-		int data = ((din >> 8) & 0x00FF) | ((din << 8) & 0xFF00);	// swap the 1st 2-bytes with the 2nd 2-bytes
-		// reverse top bit if 1 (twos complement)
-		if(data && 0x8000) {
-			data |= 0x8000;
-			data = -data;
-		}
-		return data;
-	};
-	
-	int data;
-	
-	if(Register == CONFIG_REG || config_Mode == ADS1115_MODE_CONTINUOUS)
-	{
-		data = read(Register);
-	}
-	else if (Register == CONVERSION_REG)
-	{
-		do {
-			data = read(Register);
-			// wait until OS bit has been set to 1
-		} while (!(ReadRegister(CONFIG_REG) & OS_BIT));
-	}
-	
-	return data;*/
 int ADS1115::ReadRegister(unsigned int Register)
 {
 	auto read = [this](uint Register) 

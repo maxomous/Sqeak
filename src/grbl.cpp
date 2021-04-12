@@ -18,66 +18,6 @@ void MainSettings::SetUnitsInches(bool val)
 	}	
 }
 
-void GRBLParams::Print() {
-	
-	
-	// gCodeParams_t
-	for (int i = 0; i < 6; i++) {
-		cout << "Work Coord G" << 54+i << " = " << gcParam.workCoords_[i] << endl;
-	}
-	cout << "Home Coord G28 = " << gcParam.homeCoords_[0] << endl;
-	cout << "Home Coord G30 = " << gcParam.homeCoords_[1] << endl;
-	cout << "Offset Coord G92 = " << gcParam.offsetCoords_ << endl;
-	cout << "TLO = " << gcParam.toolLengthOffset_ << endl;
-	cout << "Probe = " << gcParam.probeOffset_ << endl;
-	cout << "Probe Success = " << gcParam.probeSuccess_ << endl << endl;
-
-	// modalGroup_t
-	cout << "Startup Block 1 = " << mode.StartupBlock_[0] << endl;
-	cout << "Startup Block 2 = " << mode.StartupBlock_[1] << endl;
-	cout << "MotionMode = " << mode.MotionMode_ << endl;
-	cout << "CoordinateSystem = " << mode.CoordinateSystem_ << endl;
-	cout << "Plane = " << mode.Plane_ << endl;
-	cout << "DistanceMode = " << mode.DistanceMode_ << endl;
-	cout << "ArcIJKDistanceMode = " << mode.ArcIJKDistanceMode_ << endl;
-	cout << "FeedRateMode = " << mode.FeedRateMode_ << endl;
-	cout << "UnitsMode = " << mode.UnitsMode_ << endl;
-	cout << "CutterRadCompensation = " << mode.CutterRadCompensation_ << endl;
-	cout << "ToolLengthOffset = " << mode.ToolLengthOffset_ << endl;
-	cout << "ProgramMode = " << mode.ProgramMode_ << endl;
-	cout << "SpindleState = " << mode.SpindleState_ << endl;
-	cout << "CoolantState = " << mode.CoolantState_ << endl;
-	cout << "toolNumber = " << mode.toolNumber_ << endl;
-	cout << "spindleSpeed = " << mode.spindleSpeed_ << endl;
-	cout << "feedRate = " << mode.feedRate_ << endl;
-
-
-	// grblStatus_t
-	cout << "state = " << status.state_ << endl;
-	cout << "MPos  = " << status.MPos_ << endl;
-	cout << "WPos = " << status.WPos_ << endl;
-	cout << "WCO = " << status.WCO_ << endl;
-	cout << "LineNum = " << status.lineNum_ << endl;
-	cout << "FeedRate = " << status.feedRate_ << endl;
-	cout << "SpindleSpeed = " << status.spindleSpeed_ << endl;
-	cout << "Override Feedrate = " << status.override_Feedrate_ << endl;
-	cout << "Override RapidFeed = " << status.override_RapidFeed_ << endl;
-	cout << "Override SpindleSpeed = " << status.override_SpindleSpeed_ << endl;
-	cout << "Pin X = " << status.inputPin_LimX_ << endl;
-	cout << "Pin Y = " << status.inputPin_LimY_ << endl;
-	cout << "Pin Z = " << status.inputPin_LimZ_ << endl;
-	cout << "Probe = " << status.inputPin_Probe_ << endl;
-	cout << "Door = " << status.inputPin_Door_ << endl;
-	cout << "Hold = " << status.inputPin_Hold_ << endl;
-	cout << "SoftReset = " << status.inputPin_SoftReset_ << endl;
-	cout << "CycleStart = " << status.inputPin_CycleStart_ << endl << endl;
-	cout << "Spindle Direction = " << status.accessory_SpindleDir_ << endl;
-	cout << "Flood Coolant = " << status.accessory_FloodCoolant_ << endl;
-	cout << "Mist Coolant = " << status.accessory_MistCoolant_ << endl;
-
-}
-	
-
 // This takes a string of 3 values seperated by commas (,) and will return a 3DPoint
 // 4.000,0.000,0.000
 point3D GRBLParams::stoxyz(const string& msg) {
@@ -110,15 +50,14 @@ void GRBLParams::CheckStartupLine(const string& msg) {
 			size_t b = response.find(":");
 			if(b != string::npos) {
 				int errCode = stoi(response.substr(b+1));
-				cout << "Startup Line Execution has encountered an error: " << errCode << endl;						//ERROR NEED TO HALT EVERYTHING
-				exit(1);
+				Log::Critical("Startup Line Execution has encountered an error: %d", errCode);
 			}
 			else
-				exitf("ERROR: Something is not right here, didn't find 2nd ':'\n");
+				Log::Critical("Something is not right here, didn't find 2nd ':'");
 		}
 	}
 	else
-		exitf("ERROR: Something is not right here, didn't find ':'\n");
+		Log::Critical("Something is not right here, didn't find ':'");
 }	
 
 // decodes GCode Parameters
@@ -160,8 +99,7 @@ void GRBLParams::DecodeParameters(const string& msg) {
 		gcParam.probeSuccess_ = (bool)stoi(msg.substr(msg.length()-2, 1));
 	}
 	else {
-		cout << "Message unrecognised: " << msg << endl;
-		exit(1);
+		Log::Error("Something's not right... Parameter unrecognised: %s", msg.c_str());
 	}
 }
 // decodes the startup block
@@ -171,8 +109,7 @@ void GRBLParams::DecodeStartupBlock(const string& msg)
 	if(blockNum == 0 || blockNum == 1)
 		mode.StartupBlock_[blockNum] = msg.substr(4);
 	else {
-		cout << "Startup block number unrecognised: " << msg << endl;
-		exit(1);
+		Log::Error("Something's not right... Startup block number unrecognised: %s", msg.c_str());
 	}
 }
 // decodes modal groups
@@ -218,8 +155,7 @@ void GRBLParams::DecodeMode(const string& msg) {
 		else if(code.compare(0, 1, "F"))
 			mode.feedRate_ = stof(code.substr(1, code.length()-1));
 		else {
-			cout << "ERROR: Code unrecognised: " << code << endl;
-			exit(1);
+			Log::Error("Something's not right... Mode unrecognised: %s", code.c_str());
 		}
 	} while (stream);
 }
@@ -239,7 +175,7 @@ void GRBLParams::SetState(const string& state) {
 		status.stateColour_ = GRBL_STATE_COLOUR_ALERT;
 	}
 	else {
-		cout << "Error: Unknown state: " << state << endl;
+		Log::Error("Unknown state: %s", state.c_str());
 		status.state_ = "Unknown";
 		status.stateColour_ = GRBL_STATE_COLOUR_ALERT;
 	}
@@ -267,10 +203,6 @@ void GRBLParams::DecodeStatus(const string& msg) {
 	// **** ^ 3 allocations above ^ ****
 	
 	for (int i = segs.size()-1; i >= 0; i--) {
-		
-		#ifdef DEBUG
-			cout << "segment " << i << "= " << segs[i] << endl; 
-		#endif
 		
 		// Idle, Run, Hold, Jog, Alarm, Door, Check, Home, Sleep
 		//- `Hold:0` Hold complete. Ready to resume.
@@ -326,7 +258,7 @@ void GRBLParams::DecodeStatus(const string& msg) {
 				status.spindleSpeed_ = stoi(segs[i].substr(a+1)); 
 			}
 			else
-				exitf("ERROR: Can't find ',' in FS\n");
+				Log::Error("Can't find ',' in FS");
 		}
 		// feed only
 		// F:500 (feed rate only) - when VARIABLE_SPINDLE is disabled in config.h
@@ -366,7 +298,7 @@ void GRBLParams::DecodeStatus(const string& msg) {
 				else if(str[j] == 'S')
 					status.inputPin_CycleStart_ = true;
 				else
-					exitf("ERROR: Input pin unrecognised\n");
+					Log::Error("Input pin unrecognised: %c", str[j]);
 			}
 			
 		}
@@ -401,7 +333,7 @@ void GRBLParams::DecodeStatus(const string& msg) {
 				else if(str[j] == 'M')
 					status.accessory_MistCoolant_ = true;
 				else
-					exitf("ERROR: Input pin unrecognised\n");
+					Log::Error("Accessory pin unrecognised: %c", str[j]);
 			}
 		}
 	}
@@ -451,13 +383,7 @@ string GRBLParams::DecodeSettings(const string& msg) {
 	if((a != string::npos) && (a > 0) && msg.length() > a+1) {
 		int settingsCode = stoi(msg.substr(1, a-1));
 		float value = stof(msg.substr(a+1));
-		// retrieve name, desc & unit of setting
-		string name, unit, desc;
-		if(getSettingsMsg(settingsCode, &name, &unit, &desc)) {	
-			cout << "Error: Can't find setting code!" << endl;
-			exit(1);
-		}
-
+		
 		//determine which units we are using
 		if(settingsCode == 13)
 			settings.SetUnitsInches((int)value);
@@ -478,7 +404,13 @@ string GRBLParams::DecodeSettings(const string& msg) {
 			settings.max_FeedRate_ = max(settings.max_FeedRateX_, settings.max_FeedRateY_);
 			settings.max_FeedRate_ = max(settings.max_FeedRate_, settings.max_FeedRateZ_);
 		}
-			
+		
+		// retrieve name, desc & unit of setting
+		string name, unit, desc;
+		if(getSettingsMsg(settingsCode, &name, &unit, &desc)) {	
+			Log::Error("Error %d: Can't find settings code", settingsCode);
+		}
+
 		// display unit and name for setting
 		ostringstream s;
 		s << " (";
@@ -486,7 +418,6 @@ string GRBLParams::DecodeSettings(const string& msg) {
 		(unit == "mask") ? (s << bitset<8>(value)) : (s << unit);
 		// append the name
 		s << ") : " << name; //<< " (" << desc << ")";
-		//cout << "$" << settingsCode << " = " << value << s.str() << endl;
 		return s.str();
 	}
 	return "";
@@ -532,11 +463,10 @@ int GCList::Add(string& str) {
 	CleanString(str);
 	// ignore blank lines
 	if(str == "\n") {
-		//cout << "Ignoring blank line" << endl;
 		return 0;
 	}	
 	if(str.length() > MAX_GRBL_BUFFER) {
-		cout << "Error: Line is longer than the maximum buffer size (GCList::Add())";
+		Log::Error("Line is longer than the maximum buffer size");
 		return -1;
 	}
 	gCodeList.emplace_back((GCItem_t){ str, STATUS_UNSENT });
@@ -549,11 +479,10 @@ void GCList::SetStatus(int status)
 }	
 
 // set the response status of the GCode line
-void GCList::SetResponse(vector<string>* consoleLog, int response) 
+void GCList::SetResponse(int response) 
 {
 	if(read >= gCodeList.size()) {
-		consoleLog->push_back("Error: We are reading more than we have sent...");
-		cout << "Error: We are reading more than we have sent... size = " << gCodeList.size() << endl;
+		Log::Error("We are reading more than we have sent... size = %d", gCodeList.size());
 		return;
 	}
 	// Set reponse to corrosponding gcode
@@ -569,8 +498,7 @@ bool GCList::IsWaitingToSend() {
 void GCList::EndOfFile() {
 	fileStart = 0;
 	fileEnd = 0;
-	//consoleLog->push_back("End of File");
-	cout << "End of File" << endl;
+	Log::Info("End of file");
 }
 
 bool GCList::IsFileRunning() {
@@ -635,14 +563,12 @@ void GCList::ClearAll() {
 */
  
 GRBL::GRBL() { 
-	consoleLog = new vector<string>;
 	statusTimer = millis() + statusTimerInterval;
 }
 
 
 GRBL::~GRBL() {
 	Disconnect();
-	delete(consoleLog);
 }
 
 // Flush the serial buffer
@@ -653,22 +579,27 @@ void GRBL::Flush() {
 }
 
 int GRBL::Connect() {
-	
-	fd = serialOpen(SERIAL_DEVICE, SERIAL_BAUDRATE);
-	if(fd < 0) {
-		cout << "Error: Could not open serial device" << strerror(errno) << endl;
-		return -1;
+	if(!connected) {
+		fd = serialOpen(SERIAL_DEVICE, SERIAL_BAUDRATE);
+		if(fd < 0) {
+			Log::Error("Could not open serial device");
+			return -1;
+		}
+		// clear the serial buffer
+		Flush();
+		connected = true;
+		// request settings
+		Send("$$");
 	}
-	//clear the serial buffer
-	Flush();
-	connected = true;
 	return 0;
 }
 
 void GRBL::Disconnect() {
-	// close serial connection
-	serialClose(fd);
-	connected = false;
+	if(connected) {
+		// close serial connection
+		serialClose(fd);
+		connected = false;
+	}
 }
 // adds to the GCode list, ready to be written when buffer has space
 // sending a pointer is slightly quicker as it wont have to be be copied, it will however, modify the original string to remove whitespace and comments etc
@@ -676,15 +607,15 @@ void GRBL::Disconnect() {
 int GRBL::Send(string& cmd) 
 {
 	if(!connected) {
-		cout << "Error: Connect to GRBL before sending commands" << endl;
+		Log::Error("Connect to GRBL before sending commands");
 		return -2;
 	}
 	if(gcList.IsFileRunning()) {
-		cout << "Error: File is already running" << endl;
+		Log::Error("File is already running");
 		return -3;
 	}
 	// add to log
-	consoleLog->push_back((string)"Sent: " + cmd);
+	Log::Info((string)"Sent: " + cmd);
 	// add command to GCList
 	if(gcList.Add(cmd)) 
 		return -1;	// line was longer than GRBL_MAX_BUFFER
@@ -712,6 +643,7 @@ int GRBL::SendFile(const string& file) {
 	gcList.FileStart();
 	
 	if(File::Read(file, executeLine)) {
+		Log::Error(string("Could not open file ") + file);
 		gcList.EndOfFile();
 		return -1;
 	}
@@ -728,7 +660,7 @@ void GRBL::SendJog(point3D p, int feedrate) {
     // cancel with Grbl->SendRT(GRBL_RT_JOG_CANCEL);
     
     if(p == point3D(0,0,0)) {
-		cout << "Error: Set a jog distance" << endl;
+		Log::Error("Jog requires a distance");
 		return;
 	}
     // example: $J=G91 X10 F1000
@@ -756,82 +688,82 @@ void GRBL::SendRT(char cmd) {
 	
 	switch (cmd) {
 		case GRBL_RT_SOFT_RESET:
-			cout << "Sent: 'Soft Reset'" << endl;
+			Log::Info("Sent: 'Soft Reset'");
 			break;
 		case GRBL_RT_STATUS_QUERY:
 			#ifdef DEBUG
-				cout << "Sent: 'Status Query'" << endl;
+				Log::Info("Sent: 'Status Query'");
 			#endif
 			break;
 		case GRBL_RT_HOLD:
-			cout << "Sent: 'Hold'" << endl;
+			Log::Info("Sent: 'Hold'");
 			break;
 		case GRBL_RT_RESUME:
-			cout << "Sent: 'Resume'" << endl;
+			Log::Info("Sent: 'Resume'");
 			break;
 			
 		case GRBL_RT_DOOR:
-			cout << "Sent: 'Door'" << endl;
+			Log::Info("Sent: 'Door'");
 			break;
 		case GRBL_RT_JOG_CANCEL:
-			cout << "Sent: 'Cancel Jog'" << endl;
+			Log::Info("Sent: 'Cancel Jog'");
 			break;
 			
 		case GRBL_RT_OVERRIDE_FEED_100PERCENT:
-			cout << "Sent: 'Override Feedrate (Set to 100%)'" << endl;
+			Log::Info("Sent: 'Override Feedrate (Set to 100%)'");
 			break;
 		case GRBL_RT_OVERRIDE_FEED_ADD_10PERCENT:
-			cout << "Sent: 'Override Feedrate (+10%)'" << endl;
+			Log::Info("Sent: 'Override Feedrate (+10%)'");
 			break;
 		case GRBL_RT_OVERRIDE_FEED_MINUS_10PERCENT:
-			cout << "Sent: 'Override Feedrate (-10%)'" << endl;
+			Log::Info("Sent: 'Override Feedrate (-10%)'");
 			break;
 		case GRBL_RT_OVERRIDE_FEED_ADD_1PERCENT:
-			cout << "Sent: 'Override Feedrate (+1%)'" << endl;
+			Log::Info("Sent: 'Override Feedrate (+1%)'");
 			break;
 		case GRBL_RT_OVERRIDE_FEED_MINUS_1PERCENT:
-			cout << "Sent: 'Override Feedrate (-1%)'" << endl;
+			Log::Info("Sent: 'Override Feedrate (-1%)'");
 			break;
 			
 		case GRBL_RT_OVERRIDE_RAPIDFEED_100PERCENT:
-			cout << "Sent: 'Override Rapid Feedrate (Set to 100%)'" << endl;
+			Log::Info("Sent: 'Override Rapid Feedrate (Set to 100%)'");
 			break;
 		case GRBL_RT_OVERRIDE_RAPIDFEED_50PERCENT:
-			cout << "Sent: 'Override Rapid Feedrate (Set to 50%)'" << endl;
+			Log::Info("Sent: 'Override Rapid Feedrate (Set to 50%)'");
 			break;
 		case GRBL_RT_OVERRIDE_RAPIDFEED_25PERCENT:
-			cout << "Sent: 'Override Rapid Feedrate (Set to 25%)'" << endl;
+			Log::Info("Sent: 'Override Rapid Feedrate (Set to 25%)'");
 			break;
 			
 		case GRBL_RT_OVERRIDE_SPINDLE_100PERCENT:
-			cout << "Sent: 'Override Spindle Speed (Set to 100%)'" << endl;
+			Log::Info("Sent: 'Override Spindle Speed (Set to 100%)'");
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_ADD_10PERCENT:
-			cout << "Sent: 'Override Spindle Speed (+10%)'" << endl;
+			Log::Info("Sent: 'Override Spindle Speed (+10%)'");
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_MINUS_10PERCENT:
-			cout << "Sent: 'Override Spindle Speed (-10%)'" << endl;
+			Log::Info("Sent: 'Override Spindle Speed (-10%)'");
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_ADD_1PERCENT:
-			cout << "Sent: 'Override Spindle Speed (+1%)'" << endl;
+			Log::Info("Sent: 'Override Spindle Speed (+1%)'");
 			break;
 		case GRBL_RT_OVERRIDE_SPINDLE_MINUS_1PERCENT:
-			cout << "Sent: 'Override Spindle Speed (-1%)'" << endl;
+			Log::Info("Sent: 'Override Spindle Speed (-1%)'");
 			break;
 			
 		case GRBL_RT_SPINDLE_STOP:
-			cout << "Sent: 'Stop Spindle'" << endl;
+			Log::Info("Sent: 'Stop Spindle'");
 			break;
 		case GRBL_RT_FLOOD_COOLANT:
-			cout << "Sent: 'Flood Coolant'" << endl;
+			Log::Info("Sent: 'Flood Coolant'");
 			break;
 		case GRBL_RT_MIST_COOLANT:
-			cout << "Sent: 'Mist Coolant'" << endl;
+			Log::Info("Sent: 'Mist Coolant'");
 			break;
 
-			
 		default:
-			exitf("ERROR: Realtime command not recognised: %c\n", cmd);
+			Log::Error("Realtime command unrecognised: %c", cmd);
+			return;
 	}
 	serialPutchar(fd, cmd);
 }
@@ -859,13 +791,13 @@ void GRBL::SoftReset() {
 void GRBL::Write() {
 	
 	do {
-		// exit if nothing new in the gcList
+		// return if nothing new in the gcList
 		if(!(gcList.IsWaitingToSend()))
 			break;
 		string gcode = gcList.GetNextItem().str;
 		
 		#ifdef DEBUG
-			cout << "Writing to grbl: " << gcode << " (length = "<< gcode.length() << ")" << endl;
+			Log::Info(string("Sending (raw): ") + gcode);
 		#endif
 		
 		if(BufferAdd(gcode.length()))
@@ -891,7 +823,7 @@ void GRBL::ReadLine(string& msg) {
 		if (buf == '\n') 
 			break;
 		if(msg.length() >= MAX_GRBL_RECEIVE_BUFFER) {
-			cout << "Warning: Serial input length is greater than input buffer, allocating more memory.";
+			Log::Warning("Serial input length is greater than input buffer, allocating more memory");
 			msg.resize(2 * msg.capacity());
 		}
 		// add to buffer - skip non-printable characters
@@ -909,9 +841,9 @@ void GRBL::Read() {
 		if(BufferRemove())
 			return;
 		// set response of corrosponding gcode to 'OK'
-		gcList.SetResponse(consoleLog, STATUS_OK);
+		gcList.SetResponse(STATUS_OK);
 		// add response to log
-		consoleLog->emplace_back("ok");	
+		Log::Response("ok");
 	};
 	
 	// Response for an 'error'
@@ -922,16 +854,13 @@ void GRBL::Read() {
 		// retrieve error code
 		int errCode = stoi(msg.substr(6));
 		// set response of corrosponding gcode to 'ERROR'
-		gcList.SetResponse(consoleLog, errCode);
+		gcList.SetResponse(errCode);
 		// add response to log
 		string errName, errDesc;
-		if(getErrMsg(errCode, &errName, &errDesc)) {	
-			cout << "Error: Can't find error code!" << endl;
-			exit(1);
-		}
-		ostringstream s;
-		s << "Error " << errCode << ": " << errName << "(" << errDesc << ")";
-		consoleLog->emplace_back(s.str());
+		if(getErrMsg(errCode, &errName, &errDesc)) 
+			Log::Error("Error %d: Can't find error code", errCode);
+		else
+			Log::Response("Error %d: %s (%s)", errCode, errName.c_str(), errDesc.c_str());
 	};
 	
 	// Response for an 'alarm'
@@ -940,13 +869,10 @@ void GRBL::Read() {
 		int alarmCode = stoi(msg.substr(6));
 		// add response to log
 		string alarmName, alarmDesc;
-		if(getAlarmMsg(alarmCode, &alarmName, &alarmDesc)) {	
-			cout << "Error: Can't find alarm code!" << endl;
-			exit(1);
-		}
-		ostringstream s;
-		s << "ALARM " << alarmCode << ": " << alarmName << " (" << alarmDesc << ")";
-		consoleLog->emplace_back(s.str());
+		if(getAlarmMsg(alarmCode, &alarmName, &alarmDesc))
+			Log::Error("ALARM %d: Can't find alarm code", alarmCode);
+		else	
+			Log::Response("ALARM %d: %s (%s)", alarmCode, alarmName.c_str(), alarmDesc.c_str());
 	};
 	
 	static string msg(128, ' ');
@@ -959,15 +885,15 @@ void GRBL::Read() {
 		ReadLine(msg);
 		
 		#ifdef DEBUG
-			cout << "Reading: " << msg << endl;
+			Log::Info(string("Recieved (raw): ") + msg);
 		#endif
+		
 		// ignore blank responses
 		if(!msg.compare(0, 1, "")) {
 		}
 		else {				
 			// match up an 'ok' or 'error' to the corrosponding sent gcode and set it's status
 			if(!msg.compare("ok")) {
-				cout << "Reading: " << msg << endl;
 				okResponse();
 				break; 
 			} 
@@ -976,8 +902,7 @@ void GRBL::Read() {
 				errorResponse(msg);
 				// We have recieved an error, the safest thing to do is stop everything
 				if(IsFileRunning()) {
-					cout << "Error: An error occured mid file transfer. The machine has been reset for safety. Consider using check mode before running file." << endl;
-					consoleLog->emplace_back("Error: An error occured mid file transfer. The machine has been reset for safety. Consider using check mode before running file.");
+					Log::Error("An error occured mid file transfer. The machine has been reset for safety. Consider using check mode before running file");
 					SoftReset();
 				}
 				break;
@@ -996,45 +921,46 @@ void GRBL::Read() {
 					waitingForStatus = false;
 					Param.DecodeStatus(msg);
 					if(viewStatusReport)
-						consoleLog->push_back(msg);
+						Log::Response(msg);
 				}
 				else
 				{
-					// any messages from here want to be printed to the console
-					consoleLog->push_back(msg);
-					
 					// Startup Line Execution	">G54G20:ok" or ">G54G20:error:X"
 					if(!msg.compare(0, 1, ">")) {	
 						Param.CheckStartupLine(msg);
+						Log::Response(msg);
 					}
 					// just print out message
 					else if(!msg.compare(0, 4, "Grbl") || !msg.compare(0, 4, "[MSG") || !msg.compare(0, 4, "[HLP") || !msg.compare(0, 4, "[echo")) {
+						Log::Response(msg);
 					}
 					// View build info - just print out	
 					// This response hasnt been decoded as seen as unnesessary
 					// For more details, see: https://github.com/gnea/grbl/wiki/Grbl-v1.1-Interface
 					else if(!msg.compare(0, 4, "[VER") || !msg.compare(0, 4, "[OPT")) {	
+						Log::Response(msg);
 					}
 					
 					else if(!msg.compare(0, 3, "[GC")) {
 						Param.DecodeMode(msg);
+						Log::Response(msg);
 					}
 					else if(!msg.compare(0, 1, "[")) {
 						Param.DecodeParameters(msg);				
+						Log::Response(msg);
 					}
 					// if startup block added, it will look like this on starup: '>G20G54G17:ok' or error
 					else if(!msg.compare(0, 2, "$N")) {	
 						Param.DecodeStartupBlock(msg);
+						Log::Response(msg);
 					}
 					// settings codes
 					else if(!msg.compare(0, 1, "$")) {
 						string setting = Param.DecodeSettings(msg);
-						consoleLog->back().append(setting);
+						Log::Response(msg + setting);
 					}
 					else {	
-						consoleLog->push_back("ERROR: Unsupported message");
-						cout << " ERROR: Unsupported message: " << msg << endl;
-						exit(1);
+						Log::Error("Unsupported GRBL message: %s", msg.c_str());
 					}
 				}
 			}
@@ -1050,8 +976,7 @@ int GRBL::BufferRemove() {
 	
 	if(q.empty()) {
 		SoftReset();
-		consoleLog->push_back("Error: Unexpected response, machine has been reset. (Purhaps there were some commands left in GRBL's buffer?)");
-		cout << "Error: Unexpected response, machine has been reset. (Purhaps there were some commands left in GRBL's buffer?)" << endl;
+		Log::Error("Unexpected response, machine has been reset. (Purhaps there were some commands left in GRBL's buffer?)");
 		return -1;
 	}
 	
@@ -1062,7 +987,7 @@ int GRBL::BufferRemove() {
 	grblBufferSize += cmdSize;
 	
 	#ifdef DEBUG
-		cout << "(remaining buffer: " << grblBufferSize << "/" << MAX_GRBL_BUFFER << ")\t";
+		Log::Info("Remaining buffer: %d/%d", grblBufferSize, MAX_GRBL_BUFFER);
 	#endif
 	
 	return 0;
@@ -1075,7 +1000,6 @@ int GRBL::BufferRemove() {
 int GRBL::BufferAdd(int len) {
 	// return true if buffer full
 	if(grblBufferSize - len < 0) {
-	//	cout << "buffer full" << endl;
 		return -1;
 	}
 	// reduce buffer size by length of string
@@ -1119,13 +1043,13 @@ int GRBL::WaitForIdle() {
 		Read();
         // return error if timeout
 		if(millis() > timeout) {
-			cout << "Error: Timeout, no response recieved from grbl" << endl;
+			Log::Error("Timeout, no response recieved from grbl");
 			return -1;
 		}
 	} while (waitingForStatus);
 	
 	if(Param.status.state() != "Idle" && Param.status.state() != "Check") {
-	    consoleLog->push_back("Error: Grbl is not 'Idle'");
+	    Log::Error("Grbl is not 'Idle'");
 		return -2;
 	}
 	

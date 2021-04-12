@@ -6,76 +6,18 @@
 #include "common.h"
 
 using namespace std;
-/*
-
-class Log {
-public:
-    enum LogLevel{
-	LevelError, LevelWarning, LevelInfo
-    };
-private:
-    LogLevel logLevel = LevelInfo; // default show all errors
-    std::vector<std::string> consoleLog;
-public:
-    //log.SetLogLevel(Log::LevelError);
-    void SetLogLevel(LogLevel level) { logLevel = level; }
-
-    void PrintToConsole(string msg) { consoleLog.emplace_back(output); }
-    void PrintToTerminal(string msg) { cout << output << endl; }
-
-    void Error(const string& msg)
-    {
-	string errMsg = "Error: " + msg;
-	PrintToConsole(errMsg);
-	PrintToTerminal(errMsg);
-    }
-    void Warning(const string& msg)
-    {
-	string warningMsg = "Warning: " + msg;
-	PrintToConsole(warningMsg);
-	PrintToTerminal(warningMsg);
-    }
-    void Info(const string& msg)
-    {
-	string infoMsg = "Info: " + msg;
-	PrintToConsole(infoMsg);
-	PrintToTerminal(infoMsg);
-    }
-    
-public:
-    void Add(const char* str);
-    void Add(const char* format, ... );
-    void Add(const string& str);
-    
-private:
-    
-    std::vector<std::string>* consoleLog;
-    void ShowAbove();
-};
 
 
-
+ 
 string va_str(const char* format, ... )
 {
     va_list arglist;
-    char buf[MAX_SIZE];
+    char buf[255];
     va_start( arglist, format );
     vsnprintf(buf, sizeof(buf), format, arglist);
     va_end( arglist );
     
-    return buf;
-}
-*/
-void exitf(const char* format, ... ) 
-{
-    va_list arglist;
-    char buf[MAX_STRING];
-    va_start( arglist, format );
-    vsnprintf(buf, sizeof(buf), format, arglist);
-    va_end( arglist );
-    
-    cout << buf << endl;
-    exit(1);
+    return string(buf);
 }
 
 void lowerCase(string& str) {

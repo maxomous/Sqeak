@@ -24,9 +24,6 @@ using namespace std;
 * 		// maybe a test which sends a tonnes of values and checks they match?
 // - should check if in mm or inches ($13) as everything returned from grbl is based on those units
 // - check buffer state response in status report matches our buffer (Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer)  - mask needs to be enabled first $_=_
-// handle errors cleanly
-	// i.e. better way than this: if(b != string::npos) ... else handle error
-	// and exitf(...)
 // on error, halt rest of commands
 // handle alarms
 // - is the buffer cleared out when theres an alarm ?? - i think so
@@ -77,7 +74,6 @@ void readJoystick(ADS1115& adc, point2D& return_point, bool& return_press)
 
 int main(int argc, char **argv)
 {
-
 	/*
 	ADS1115 adc(0x48, ADS1115_FSR_4_096V);
 	
@@ -102,10 +98,8 @@ int main(int argc, char **argv)
 	*/
 	(void)argc, (void) argv;
 	
-	if(wiringPiSetup() == -1) {
-		cout << "Error: Could not start wiringPi " << strerror(errno) << endl;
-		exit(1);
-	}
+	if(wiringPiSetup() == -1)
+		Log::Critical("Could not start wiringPi: %s", strerror(errno));
 	    
 	GRBL* Grbl = new GRBL();
 	

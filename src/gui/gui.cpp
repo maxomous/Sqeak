@@ -58,14 +58,14 @@ int gui(GRBL* Grbl)
     // Load icon
     string filename = File::GetWorkingDir("/img/img_restart.png");
     if(!LoadIconFromFile(window, filename.c_str()))
-        cout << "Error: Could not find icon " << filename << endl;
+        Log::Error(string("Could not find icon: ") + filename);
     
     // Load Fonts
     // io.Fonts->AddFontDefault();
     // Load Geomanist
     ImFont* font_geomanist = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 17.0f);
     if(!font_geomanist)
-        cout << "Error: Could not find font 'Geomanist'" << endl;
+        Log::Error("Could not find font: Geomanist");
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     

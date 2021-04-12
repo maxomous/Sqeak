@@ -81,7 +81,7 @@ public:
 	// sets status of gcode (before grbl has responded
 	void SetStatus(int status);
 	// grbl has repsonded, this sets the response to the gcode in status
-	void SetResponse(std::vector<std::string>* consoleLog, int response);
+	void SetResponse(int response);
 	// checks if any gcodes are waiting to be sent to grbl
 	bool IsWaitingToSend();
 	// sets file completed
@@ -312,8 +312,6 @@ public:
 	MainSettings settings;
 	
 private:	
-	// printAll - for debugging
-	void Print();
 	point3D stoxyz(const std::string& msg);
 	void CheckStartupLine(const std::string& msg);
 	void DecodeParameters(const std::string& msg);
@@ -330,7 +328,6 @@ class GRBL {
 	public:
 		GRBLParams Param;
 		GCList gcList;	
-		std::vector<std::string>* consoleLog;
 		// flag to show status reponse in console
 		bool viewStatusReport = false;
 		 
