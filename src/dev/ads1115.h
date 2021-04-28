@@ -57,6 +57,7 @@ public:
 	void ConfigureSampleTime(int val);
 	
 private:
+	std::mutex m_mutex;
 	int fd = -1;
 	float config_FSRvolts;	// set in ConfigureFSRVolts
 	int config_FSR;			// set in ConfigureFSRVolts

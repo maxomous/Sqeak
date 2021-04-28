@@ -53,10 +53,10 @@ int getErrMsg(int num, std::string* name, std::string* desc) {
 		if(num == std::stoi(errMessages[i][0])) {
 			*name = errMessages[i][1];
 			*desc = errMessages[i][2];
-			return ERR_NONE;
+			return 0;
 		}
 	}
-	return ERR_FAIL;
+	return -1;
 }
 
 
@@ -118,10 +118,10 @@ int getSettingsMsg(int num, std::string* name, std::string* units, std::string* 
 			*units = unitStr;
 			
 			*desc = settingsMessages[i][3];
-			return ERR_NONE;
+			return 0;
 		}
 	}
-	return ERR_FAIL;
+	return -1;
 }
 
 
@@ -147,8 +147,8 @@ int getAlarmMsg(int num, std::string* name, std::string* desc) {
 		if(num == std::stoi(alarmMessages[i][0])) {
 			*name = alarmMessages[i][1];
 			*desc = alarmMessages[i][2];
-			return ERR_NONE;
+			return 0;
 		}
 	}
-	return ERR_FAIL;
+	return -1;
 }

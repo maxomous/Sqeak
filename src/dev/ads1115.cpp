@@ -3,8 +3,8 @@
  */
 
 #include <iostream>
-
-#include <bitset> // to view binary in terminal
+#include <bitset> 	// to view binary in terminal
+#include <mutex>	// threads
 
 #include <wiringPi.h>
 #include <wiringPiI2C.h>
@@ -15,8 +15,8 @@ using namespace std;
 // Internal
 #define CONVERSION_REG			(int)0x00				// ADC Registers
 #define CONFIG_REG				(int)0x01
-#define RESET_CONVERSION_REG	(int)0x0000				// ADC Register reset vals
-#define RESET_CONFIG_REG		(int)0x8583				// 1000 0101 1000 0011
+#define RESET_CONVERSION_REG		(int)0x0000				// ADC Register reset vals
+#define RESET_CONFIG_REG			(int)0x8583				// 1000 0101 1000 0011
 #define ADC_CONFIG_MASK			(int)0x8003				// basic format 
 #define OS_BIT					(int)0x8000				// used to check when new value is ready in conversion reg when using single shot mode
 // Full scale range in bits
@@ -35,11 +35,15 @@ using namespace std;
 // Init ADC I2C 
 void ADS1115::Init(int addr) 
 {
-	fd = wiringPiI2CSetup(addr);
-	if(fd < 0) {
-		cout << "Error: Couldn't connect to I2C address " << addr << endl;
-		cout << "Hint: To find I2C address, use command 'sudo i2cdetect -y 1'" << endl;
-		return;
+	{    // lock the mutex
+		std::lock_guard<std::mutex> gaurd(m_mutex);
+		
+		fd = wiringPiI2CSetup(addr);
+		if(fd < 0) {
+			cout << "Error: Couldn't connect to I2C address " << addr << endl;
+			cout << "Hint: To find I2C address, use command 'sudo i2cdetect -y 1'" << endl;
+			return;
+		}
 	}
 	//dummy read
 	Read(ADS1115_PIN_A0);
@@ -47,6 +51,9 @@ void ADS1115::Init(int addr)
 
 void ADS1115::ConfigureFSRVolts(float val) 
 {
+	// lock the mutex
+	std::lock_guard<std::mutex> gaurd(m_mutex);
+	
 	if(val == ADS1115_FSR_6_144V) {
 		config_FSRvolts = val;
 		config_FSR 		= FSR_6_144;
@@ -80,6 +87,9 @@ void ADS1115::ConfigureFSRVolts(float val)
 
 void ADS1115::ConfigureComparitor(int val) 
 {
+	// lock the mutex
+	std::lock_guard<std::mutex> gaurd(m_mutex);
+	
 	if(val == ADS1115_COMPARITOR_USE) {
 		cout << "Error: Multiplex comparitor has not yet been coded, bits 4-0 will require ammending - see datasheet, shouldn't be too much work" << endl;
 		return;
@@ -92,6 +102,9 @@ void ADS1115::ConfigureComparitor(int val)
 
 void ADS1115::ConfigureMode(int val) 
 {
+	// lock the mutex
+	std::lock_guard<std::mutex> gaurd(m_mutex);
+	
 	if(val != ADS1115_MODE_SINGLE_SHOT  &&  val != ADS1115_MODE_CONTINUOUS)
 		cout << "Error: ADS1115 mode " << val << " unrecognised" << endl;
 	else
@@ -100,6 +113,9 @@ void ADS1115::ConfigureMode(int val)
 
 void ADS1115::ConfigureSampleTime(int val) 
 {
+	// lock the mutex
+	std::lock_guard<std::mutex> gaurd(m_mutex);
+	
 	if(val != ADS1115_SAMPLE_TIME_8SPS  &&  val != ADS1115_SAMPLE_TIME_16SPS  &&  val != ADS1115_SAMPLE_TIME_32SPS  &&  val != ADS1115_SAMPLE_TIME_64SPS &&
 	val != ADS1115_SAMPLE_TIME_128SPS  &&  val != ADS1115_SAMPLE_TIME_250SPS  &&  val != ADS1115_SAMPLE_TIME_475SPS  &&  val != ADS1115_SAMPLE_TIME_860SPS)
 		cout << "Error: ADS1115 sample time " << val << " unrecognised" << endl;
@@ -107,6 +123,26 @@ void ADS1115::ConfigureSampleTime(int val)
 		config_SampleTime = val;
 }
 
+double ADS1115::Read(int input)
+{
+	// lock the mutex
+	std::lock_guard<std::mutex> gaurd(m_mutex);
+	
+	//Reset config reg
+	ResetRegister(CONFIG_REG);
+	delay(10);
+	//Select ADC input
+	if(SelectInput(input))
+		return 0;	// return if error
+	delay(5);
+	//Reset conversion reg
+	ResetRegister(CONVERSION_REG);
+	delay(10);
+	//Retrieve ADC input voltage
+	return GetVoltage();
+}
+
+//************* ALL FUNCTIONS BELOW HERE SHOULD ALREADY HAVE MUTEX LOCKED! *************//
 
 void ADS1115::ResetRegister(unsigned int Register)
 {
@@ -172,20 +208,4 @@ int ADS1115::ReadRegister(unsigned int Register)
 double ADS1115::GetVoltage()
 {
 	return (double)ReadRegister(CONVERSION_REG) * volts_Per_Bits;	
-}
-
-double ADS1115::Read(int input)
-{
-	//Reset config reg
-	ResetRegister(CONFIG_REG);
-	delay(10);
-	//Select ADC input
-	if(SelectInput(input))
-		return 0;	// return if error
-	delay(5);
-	//Reset conversion reg
-	ResetRegister(CONVERSION_REG);
-	delay(10);
-	//Retrieve ADC input voltage
-	return GetVoltage();
 }

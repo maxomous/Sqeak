@@ -3,8 +3,8 @@
 
 TARGET = ../grbl
 DIRS = dev libs gui gui/imgui gui/stb_image gui/fonts 
-LDLIBS = -lwiringPi -lGL -lglfw -lGLEW
-#-lpthread -lm -lrt -lGL -lGLU -lglut -lGLEW -lfreetype 
+LDLIBS = -lwiringPi -lGL -lglfw -lGLEW -lpthread
+# -lm -lrt -lGLU -lglut -lfreetype 
 
 # add to libs for debugging gdb -v -da -Q
 CXX = g++

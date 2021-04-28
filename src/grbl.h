@@ -1,392 +1,1185 @@
-/*
- * grbl.hpp
- *  Max Peglar-Willis & Luke Mitchell 2021
- */
+
 #pragma once
 
-
-#include <queue>
-	 
-#define SERIAL_DEVICE 		"/dev/ttyAMA0"
-#define SERIAL_BAUDRATE 	115200
-
-#define MAX_GRBL_BUFFER 			128
-#define MAX_GRBL_RECEIVE_BUFFER 	128
-
-#define STATUS_UNSENT		-2	// not sent yet to grbl
-#define STATUS_PENDING 		-1	// sent to grbl but no status received
-#define STATUS_OK			0	// 'ok' received by grbl
-
-#define GRBL_STATE_COLOUR_IDLE 		0
-#define GRBL_STATE_COLOUR_MOTION 	1
-#define GRBL_STATE_COLOUR_ALERT 	2
-
-// ERROR STATUS NOW MATCHES GRBL's 	#define STATUS_ERROR		3	// 'error' received by grbl
-
-// REALTIME COMMANDS
-#define GRBL_RT_SOFT_RESET 							(char)0x18
-#define GRBL_RT_STATUS_QUERY 						(char)'?'
-#define GRBL_RT_RESUME								(char)'~'
-#define GRBL_RT_HOLD								(char)'!'
-
-#define GRBL_RT_DOOR								(char)0x84
-#define GRBL_RT_JOG_CANCEL							(char)0x85
-
-#define GRBL_RT_OVERRIDE_FEED_100PERCENT			(char)0x90
-#define GRBL_RT_OVERRIDE_FEED_ADD_10PERCENT			(char)0x91
-#define GRBL_RT_OVERRIDE_FEED_MINUS_10PERCENT		(char)0x92
-#define GRBL_RT_OVERRIDE_FEED_ADD_1PERCENT			(char)0x93
-#define GRBL_RT_OVERRIDE_FEED_MINUS_1PERCENT		(char)0x94
-
-#define GRBL_RT_OVERRIDE_RAPIDFEED_100PERCENT		(char)0x95
-#define GRBL_RT_OVERRIDE_RAPIDFEED_50PERCENT		(char)0x96
-#define GRBL_RT_OVERRIDE_RAPIDFEED_25PERCENT		(char)0x97
-
-#define GRBL_RT_OVERRIDE_SPINDLE_100PERCENT			(char)0x99
-#define GRBL_RT_OVERRIDE_SPINDLE_ADD_10PERCENT		(char)0x9A
-#define GRBL_RT_OVERRIDE_SPINDLE_MINUS_10PERCENT	(char)0x9B
-#define GRBL_RT_OVERRIDE_SPINDLE_ADD_1PERCENT		(char)0x9C
-#define GRBL_RT_OVERRIDE_SPINDLE_MINUS_1PERCENT		(char)0x9D
-
-#define GRBL_RT_SPINDLE_STOP						(char)0x9E
-#define GRBL_RT_FLOOD_COOLANT						(char)0xA0
-#define GRBL_RT_MIST_COOLANT						(char)0xA1
-
-typedef struct {
-	std::string str;
-	int status;
-} GCItem_t;
-
-class GCList {
+ 
+// GRBL GCode Coords
+class GRBLCoords
+{
 public:
-	// retrives the next item to be sent to grbl
-	GCItem_t GetNextItem();
-	// retrieves an item from the gclist
-	GCItem_t GetItem(int n);
-	// retrieves size of list
-	int GetSize();
-	// clears completed gcodes
-	// used for 'clear commands' button
-	void ClearCompleted();
-	// clears any gcodes which have not received a response
-	// used for 'cancel' button
-	void ClearUnsent();
-	// clears any gcodes which have not been sent yet or ones that have not received a response
-	// used for soft resetting
-	void ClearSent();
-	// clears entire gcode list
-	//void ClearAll();
-	// adds gcode to GClist
-	int Add(std::string& str);		
-	// sets status of gcode (before grbl has responded
-	void SetStatus(int status);
-	// grbl has repsonded, this sets the response to the gcode in status
-	void SetResponse(int response);
-	// checks if any gcodes are waiting to be sent to grbl
-	bool IsWaitingToSend();
-	// sets file completed
-	void EndOfFile();
-	// returns true if we are mid file transfer
-	bool IsFileRunning();
-	// this triggers that we have sent a file 
-	// and not to allow further commands until it complete 
-	void FileStart();
-	void FileSent();
-	uint GetFileLines();
-	uint GetFilePos();
+    typedef struct {
+	point3D workCoords[6];		// 	[G54:4.000,0.000,0.000]		work coords		can be changed with 	G10 L2 Px or G10 L20 Px
+					//	[G55:4.000,6.000,7.000]
+					//	[G56:0.000,0.000,0.000]
+					//	[G57:0.000,0.000,0.000]
+					//	[G58:0.000,0.000,0.000]
+					//	[G59:0.000,0.000,0.000]
+	point3D homeCoords[2];		// 	[G28:1.000,2.000,0.000]		pre-defined positions 	can be changed with 	G28.1
+					//	[G30:4.000,6.000,0.000]						 		G30.1
+	point3D offsetCoords;		//	[G92:0.000,0.000,0.000]		coordinate offset 
+	float toolLengthOffset 	= 0.0f;	//	[TLO:0.000]			tool length offsets
+	point3D probeOffset;		//	[PRB:0.000,0.000,0.000:0]	probing
+	bool probeSuccess 	= false;//			       ^
+    } GRBLCoords_vals;
+    
+    // returns a copy of vals
+    const GRBLCoords_vals getVals() { 
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return m_vals;
+    } 
+    
 private:
-	// use gCodeList.size() to see how many have been added to buffer
-	uint written = 0;	// how many sent to grbl
-	uint read = 0;		// how many recieved a response from grbl
-	// GCode List - a store of all gcodes sent (or en route) to grbl
-	std::vector<GCItem_t> gCodeList;
-	// denotes the end point of a file sent
-	// prevents sending file multiple times
-	uint fileStart = 0;
-	uint fileEnd = 0;
-	// function to clean gcode string (remove spaces / comments etc)
-	void CleanString(std::string& str);
+    std::mutex m_mutex;
+    GRBLCoords_vals m_vals;
+    friend class GRBLSystem;
+	
 };
 
-/*		GRBL GCode Parametes
-* 
-	[G54:4.000,0.000,0.000]		work coords				can be changed with 	G10 L2 Px or G10 L20 Px
-	[G55:4.000,6.000,7.000]
-	[G56:0.000,0.000,0.000]
-	[G57:0.000,0.000,0.000]
-	[G58:0.000,0.000,0.000]
-	[G59:0.000,0.000,0.000]
-	[G28:1.000,2.000,0.000]		pre-defined positions 	can be changed with 	G28.1
-	[G30:4.000,6.000,0.000]												 		G30.1
-	[G92:0.000,0.000,0.000]		coordinate offset 
-	[TLO:0.000]					tool length offsets
-	[PRB:0.000,0.000,0.000:0]	probing
-*/
-
-typedef struct 
+ 
+// Modal Group
+// 	These define the last set (modal) values
+class GRBLModal
 {
 public:
-	// returns value
-	const point3D& workCoords(size_t i) const 	{ if(i < 6) return workCoords_[i]; }	// G54 - G59
-	const point3D& homeCoords(size_t i) const 	{ if(i < 2) return homeCoords_[i]; }	// G28 & G30
-	const point3D& offsetCoords() const 		{ return offsetCoords_; }						// G92
-	float toolLengthOffset() const 				{ return toolLengthOffset_; }
-	const point3D& probeOffset() const 			{ return probeOffset_; }
-	bool probeSuccess() const 					{ return probeSuccess_; }
-	
+
+    typedef struct {
+	std::string StartupBlock[2];
+	std::string MotionMode 			= "G0";		// *G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
+	std::string CoordinateSystem 		= "G54";	// *G54, G55, G56, G57, G58, G59
+	std::string Plane 			= "G17";	// *G17, G18, G19
+	std::string DistanceMode 		= "G90";	// *G90, G91
+	std::string ArcIJKDistanceMode 		= "G91.1";	// *G91.1
+	std::string FeedRateMode 		= "G94";	// G93, *G94
+	std::string UnitsMode 			= "G21";	// G20, *G21
+	std::string CutterRadCompensation 	= "G40";	// *G40
+	std::string ToolLengthOffset 		= "G49";	// G43.1, *G49
+	std::string ProgramMode 		= "M0";		// *M0, M1, M2, M30
+	std::string SpindleState 		= "M5";		// M3, M4, *M5
+	std::string CoolantState 		= "M9";		// M7, M8, *M9
+
+	int toolNumber 				= 0;
+	float spindleSpeed 			= 0.0f;
+	float feedRate 				= 0.0f;	
+    } GRBLModal_vals;
+
+    // returns a copy of vals
+    const GRBLModal_vals getVals() { 
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return m_vals;
+    }
+    
 private:
-	point3D workCoords_[6];	// G54 - G59
-	point3D homeCoords_[2];	// G28 & G30
-	point3D offsetCoords_;	// G92
-	float toolLengthOffset_ = 0.0f;
-	point3D probeOffset_;
-	bool probeSuccess_ = false;
-	
-	friend class GRBLParams;
-	
-} gCodeParams_t;
+    std::mutex m_mutex;
+    GRBLModal_vals m_vals;
+    friend class GRBLSystem;
+};
 
 
-/*												
-	Modal Group					Member Words	*default
-Motion Mode					*G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
-Coordinate System Select	*G54, G55, G56, G57, G58, G59
-Plane Select				*G17, G18, G19
-Distance Mode				*G90, G91
-Arc IJK Distance Mode		*G91.1
-Feed Rate Mode				G93, *G94
-Units Mode					G20, *G21
-Cutter Radius Compensation	*G40
-Tool Length Offset			G43.1, *G49
-Program Mode				*M0, M1, M2, M30
-Spindle State				M3, M4, *M5
-Coolant State				M7, M8, *M9
-
-T tool number
-S spindle speed
-F feed rate,
-*/
-typedef struct 
-{
-public:
-	// returns value
-	const std::string& StartupBlock(size_t i) const 	{ if(i < 2) return StartupBlock_[i]; }
-	
-	const std::string& MotionMode() const 				{ return MotionMode_; }
-	const std::string& CoordinateSystem() const 		{ return CoordinateSystem_; }
-	const std::string& Plane() const 					{ return Plane_; }
-	const std::string& DistanceMode() const 			{ return DistanceMode_; }
-	const std::string& ArcIJKDistanceMode() const		{ return ArcIJKDistanceMode_; }
-	const std::string& FeedRateMode() const 			{ return FeedRateMode_; }
-	const std::string& UnitsMode() const 				{ return UnitsMode_; }
-	const std::string& CutterRadCompensation() const 	{ return CutterRadCompensation_; }
-	const std::string& ToolLengthOffset() const 		{ return ToolLengthOffset_; }
-	const std::string& ProgramMode() const 				{ return ProgramMode_; }
-	const std::string& SpindleState() const 			{ return SpindleState_; }
-	const std::string& CoolantState() const				{ return CoolantState_; }
-
-	int toolNumber() 									{ return toolNumber_; }
-	float spindleSpeed() 								{ return spindleSpeed_; }
-	float feedRate() 									{ return feedRate_; }	
-	
-private:
-	
-	std::string StartupBlock_[2];
-
-	std::string MotionMode_ 			= "G0";
-	std::string CoordinateSystem_ 		= "G54";
-	std::string Plane_ 					= "G17";
-	std::string DistanceMode_ 			= "G90";
-	std::string ArcIJKDistanceMode_ 	= "G91.1";
-	std::string FeedRateMode_ 			= "G94";
-	std::string UnitsMode_ 				= "G21";
-	std::string CutterRadCompensation_ 	= "G40";
-	std::string ToolLengthOffset_ 		= "G49";
-	std::string ProgramMode_ 			= "M0";
-	std::string SpindleState_ 			= "M5";
-	std::string CoolantState_ 			= "M9";
-
-	int toolNumber_ 					= 0;
-	float spindleSpeed_ 				= 0.0f;
-	float feedRate_ 					= 0.0f;	
-	
-	friend class GRBLParams;
-	// all of these are the last set (modal) values 
-} modalGroup_t;
-
-// realtime status values
-typedef struct 
+// Realtime status values
+//	These are the values recieved from the real time status report
+class GRBLStatus 
 {	
 public:
-	// returns value
-	const std::string& state() const 	{ return state_; }
-	int stateColour() const 			{ return stateColour_; }
-	const point3D& MPos() const 		{ return MPos_; }
-	const point3D& WPos() const 		{ return WPos_; }
-	const point3D& WCO() const 			{ return WCO_; }
-	int lineNum() const 				{ return lineNum_; }
-	float feedRate() const				{ return feedRate_; }
-	int spindleSpeed() const			{ return spindleSpeed_; }
-	
-	bool inputPin_LimX() const 			{ return inputPin_LimX_; }
-	bool inputPin_LimY() const 			{ return inputPin_LimY_; }
-	bool inputPin_LimZ() const 			{ return inputPin_LimZ_; }
-	bool inputPin_Probe() const 		{ return inputPin_Probe_; }
-	bool inputPin_Door() const 			{ return inputPin_Door_; }
-	bool inputPin_Hold() const 			{ return inputPin_Hold_; }
-	bool inputPin_SoftReset() const 	{ return inputPin_SoftReset_; }
-	bool inputPin_CycleStart() const 	{ return inputPin_CycleStart_; }
-	
-	int override_Feedrate() const 		{ return override_Feedrate_; }
-	int override_RapidFeed() const 		{ return override_RapidFeed_; }
-	int override_SpindleSpeed() const 	{ return override_SpindleSpeed_; }
-	
-	int accessory_SpindleDir() const	{ return accessory_SpindleDir_; }
-	int accessory_FloodCoolant() const 	{ return accessory_FloodCoolant_; }
-	int accessory_MistCoolant() const 	{ return accessory_MistCoolant_; }
-	
-private:
-	std::string state_;
-	int stateColour_ 				= 0;
-	// either of these are given (WPos = MPos - WCO)
-	point3D MPos_;
-	point3D WPos_;
-	// this is recieved every 10 or 30 status messages
-	point3D WCO_;
-	int lineNum_					= 0;
-	float feedRate_					= 0;	// mm/min or inches/min
-	int spindleSpeed_				= 0; 	// rpm
-	
-	bool inputPin_LimX_				= 0;
-	bool inputPin_LimY_				= 0;
-	bool inputPin_LimZ_				= 0;
-	bool inputPin_Probe_			= 0;
-	bool inputPin_Door_				= 0;
-	bool inputPin_Hold_				= 0;
-	bool inputPin_SoftReset_		= 0;
-	bool inputPin_CycleStart_		= 0;
-	
-	int override_Feedrate_			= 0;
-	int override_RapidFeed_			= 0;
-	int override_SpindleSpeed_		= 0;
-	
-	int accessory_SpindleDir_		= 0;
-	int accessory_FloodCoolant_		= 0;
-	int accessory_MistCoolant_		= 0;
-	
-	friend class GRBLParams;
-	
-} grblStatus_t;
+  
+    // Idle, Run, Hold, Jog, Alarm, Door, Check, Home, Sleep
+    //- `Hold:0` Hold complete. Ready to resume.
+    //- `Hold:1` Hold in-progress. Reset will throw an alarm.
+    //- `Door:0` Door closed. Ready to resume.
+    //- `Door:1` Machine stopped. Door still ajar. Can't resume until closed.
+    //- `Door:2` Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm.
+    //- `Door:3` Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm.
+    enum GRBLState {
+	Status_Idle, 
+	Status_Hold0,
+	Status_Hold1, 
+	Status_Sleep, 
+	// ^ colour idle ^
+	Status_Run, 
+	Status_Jog, 
+	Status_Check, 
+	Status_Home, 
+	// ^ colour motion ^
+	Status_Alarm, 
+	Status_Door0, 
+	Status_Door1, 
+	Status_Door2, 
+	Status_Door3,
+	Status_Unknown
+	// ^ colour alert ^
+    };
 
-class MainSettings {
+    struct GRBLStatus_vals
+    {
+	GRBLState state 		= Status_Unknown;
+	point3D MPos;				// either MPos if WPos is given (WPos = MPos - WCO)
+	point3D WPos;
+	point3D WCO;				// this is recieved every 10 or 30 status messages
+	int lineNum			= 0;
+	float feedRate			= 0;	// mm/min or inches/min
+	int spindleSpeed		= 0; 	// rpm
+	
+	bool inputPin_LimX		= 0;
+	bool inputPin_LimY		= 0;
+	bool inputPin_LimZ		= 0;
+	bool inputPin_Probe		= 0;
+	bool inputPin_Door		= 0;
+	bool inputPin_Hold		= 0;
+	bool inputPin_SoftReset		= 0;
+	bool inputPin_CycleStart	= 0;
+	
+	int override_Feedrate		= 0;
+	int override_RapidFeed		= 0;
+	int override_SpindleSpeed	= 0;
+	
+	int accessory_SpindleDir	= 0;
+	int accessory_FloodCoolant	= 0;
+	int accessory_MistCoolant	= 0;
+	
+	int bufferPlannerAvail		= 0;
+	int bufferSerialAvail		= 0;
+	
+    };
+    
+    bool isCheckMode() {
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return (getVals().state == Status_Check);
+    }
+    
+    // returns a copy of vals
+    const GRBLStatus_vals getVals() { 
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return m_vals;
+    }
+
+    // returns value 
+    const std::string stateStr(GRBLState state)
+    {
+	switch (state)
+	{
+	    case Status_Idle:
+		return "Idle";
+	    case Status_Hold0:
+		return "Hold 0";
+	    case Status_Hold1:
+		return "Hold 1";
+	    case Status_Sleep:
+		return "Sleep";
+	    case Status_Run:
+		return "Run";
+	    case Status_Jog:
+		return "Jog";
+	    case Status_Check:
+		return "Check";
+	    case Status_Home:
+		return "Home";
+	    case Status_Alarm:
+		return "Alarm";
+	    case Status_Door0:
+		return "Door 0";
+	    case Status_Door1:
+		return "Door 1";
+	    case Status_Door2:
+		return "Door 2";
+	    case Status_Door3:
+		return "Door 3";
+	    case Status_Unknown:
+		return "Unknown";
+	    default:
+		Log::Error("Unknown Grbl state");
+	}
+	return "";
+    }
+    // for externally setting the state
+    void setState(GRBLState state) { 
+	std::lock_guard<std::mutex> guard(m_mutex);
+	m_vals.state = state; 
+    }
+    
+private:
+    std::mutex m_mutex;
+    GRBLStatus_vals m_vals;
+    friend class GRBLSystem;
+};
+
+class MainSettings 
+{
 public:
-	// sets units to mm or inches
-	void SetUnitsInches(bool val);
-	// returns value
-	int min_SpindleSpeed() const 				{ return min_SpindleSpeed_; }
-	int max_SpindleSpeed() const 				{ return max_SpindleSpeed_; }
-	float max_FeedRateX() const 				{ return max_FeedRateX_; }
-	float max_FeedRateY() const 				{ return max_FeedRateY_; }
-	float max_FeedRateZ() const 				{ return max_FeedRateZ_; }
-	float max_FeedRate() const 					{ return max_FeedRate_; }
-	const std::string& units_Distance() const	{ return units_Distance_; }
-	const std::string& units_Feed() const		{ return units_Feed_; }
+    typedef struct {
+	int min_SpindleSpeed 		= 0;
+	int max_SpindleSpeed		= 24000;
+	float max_FeedRateX 		= 6000;
+	float max_FeedRateY 		= 6000;
+	float max_FeedRateZ		= 6000;
+	float max_FeedRate 		= 6000;	// internal use only
+	std::string units_Distance 	= "mm";
+	std::string units_Feed 		= "mm/min";
+    } MainSettings_vals;
+    
+    // returns a copy of vals
+    const MainSettings_vals getVals() { 
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return m_vals;
+    }
+    // sets units to mm or inches
+    void setUnitsInches(bool isInches) 
+    {
+	std::lock_guard<std::mutex> guard(m_mutex);
 	
+	if(isInches) {
+	    m_vals.units_Distance	= "in";
+	    m_vals.units_Feed		= "in/min";
+	}
+	else /*mm*/ {
+	    m_vals.units_Distance	= "mm";
+	    m_vals.units_Feed		= "mm/min";
+	}	
+    }
+    
 private:
-	int min_SpindleSpeed_ 			= 0;
-	int max_SpindleSpeed_			= 24000;
-	float max_FeedRateX_ 			= 6000;
-	float max_FeedRateY_ 			= 6000;
-	float max_FeedRateZ_			= 6000;
-	float max_FeedRate_ 			= 6000;	// internal use only
-	std::string units_Distance_ 	= "mm";
-	std::string units_Feed_ 		= "mm/min";
-	friend class GRBLParams;
+    std::mutex m_mutex;
+    MainSettings_vals m_vals;
+    friend class GRBLSystem;
 };
 
-class GRBLParams {
-public:	
-	gCodeParams_t gcParam;
-	modalGroup_t mode;
-	grblStatus_t status;
-	MainSettings settings;
+ 
+class GRBLSystem 
+{
+public:
+    GRBLCoords 		coords;
+    GRBLModal 		mode;
+    GRBLStatus 		status;
+    MainSettings 	settings;
+
+private:
+
+    // This takes a std::string of 3 values seperated by commas (,) and will return a 3DPoint
+    // 4.000,0.000,0.000
+    point3D stoxyz(const std::string& msg) {
+
+	std::stringstream stream(msg);
+	std::string segment;
+	float val[3];
+
+	for (int i = 0; i < 3; i++) {
+	    getline(stream, segment, ',');
+	    val[i] = stof(segment);
+	}
+
+	return (point3D) {val[0], val[1], val[2]};
+    }
+	    
+    // checks Startup Line Execution for error	msg = ">G54G20:ok" or ">G54G20:error:X"
+    // it is very unlikely that there will be an error as this is checked before it is saves onto the eeprom
+    void checkStartupLine(const std::string& msg) 
+    {
+	// retrieve position of :
+	size_t a = msg.find(":");
+	// checks to prevent errors
+	if(a == std::string::npos) {
+	    Log::Critical("Something is not right here, didn't find ':'");
+	    return;
+	}
 	
-private:	
-	point3D stoxyz(const std::string& msg);
-	void CheckStartupLine(const std::string& msg);
-	void DecodeParameters(const std::string& msg);
-	void DecodeStartupBlock(const std::string& msg) ;
-	void DecodeMode(const std::string& msg);
-	void SetState(const std::string& state);
-	void DecodeStatus(const std::string& msg);
-	std::string DecodeSettings(const std::string& msg);
+	// lock the mutex
+	//std::lock_guard<std::mutex> guard(m_mutex);
+	{
+		
+	    // retrieve value of response ('ok' or 'error:x')
+	    std::string response = msg.substr(a+1, msg.length()-a-1);
+	    if(response == "ok")
+		return;
+		
+	    size_t b = response.find(":");
+	    if(b != std::string::npos) {
+		int errCode = stoi(response.substr(b+1));
+		Log::Critical("Startup Line Execution has encountered an error: %d", errCode);
+	    }
+	    else
+		Log::Critical("Something is not right here, didn't find 2nd ':'");
+	}
+    }	
+
+    // decodes GCode Parameters
+    // and stores inside grbl Parameters
+    void decodeCoords(const std::string& msg) 
+    {
+	// get name i.e 'G54'
+	std::string param = msg.substr(1, 3);
+	// get number std::string i.e. '4.000,0.000,0.000'
+	std::string num = msg.substr(5, msg.length()-6);
+	{
+	    // lock the mutex
+	    std::lock_guard<std::mutex> guard(coords.m_mutex);
+	    // [G54:4.000,0.000,0.000] - [G59:4.000,0.000,0.000]
+	    if(!param.compare("G54")) 
+		coords.m_vals.workCoords[0] = stoxyz(num);
+	    else if(!param.compare("G55")) 
+		coords.m_vals.workCoords[1] = stoxyz(num);
+	    else if(!param.compare("G56")) 
+		coords.m_vals.workCoords[2] = stoxyz(num);
+	    else if(!param.compare("G57")) 
+		coords.m_vals.workCoords[3] = stoxyz(num);
+	    else if(!param.compare("G58")) 
+		coords.m_vals.workCoords[4] = stoxyz(num);
+	    else if(!param.compare("G59")) 
+		coords.m_vals.workCoords[5] = stoxyz(num);
+	    // [G28:1.000,2.000,0.000]  / [G30:4.000,6.000,0.000]
+	    else if(!param.compare("G28")) 
+		coords.m_vals.homeCoords[0] = stoxyz(num);
+	    else if(!param.compare("G30")) 
+		coords.m_vals.homeCoords[1] = stoxyz(num);
+	    // [G92:0.000,0.000,0.000]
+	    else if(!param.compare("G92")) 
+		coords.m_vals.offsetCoords = stoxyz(num);
+	    // [TLO:0.000]	
+	    else if(!param.compare("TLO")) 
+		coords.m_vals.toolLengthOffset = stof(num);
+	    // [PRB:0.000,0.000,0.000:0]
+	    else if(!param.compare("PRB")) {
+		coords.m_vals.probeOffset = stoxyz(msg.substr(5, msg.length()-8));
+		coords.m_vals.probeSuccess = (bool)stoi(msg.substr(msg.length()-2, 1));
+	    }
+	    else {
+		Log::Error("Something's not right... Parameter unrecognised: %s", msg.c_str());
+	    }
+	}
+    }
+    // decodes the startup block
+    void decodeStartupBlock(const std::string& msg) 
+    {
+	int blockNum = stoi(msg.substr(2, 1));
+	{ 	// lock the mutex
+	    std::lock_guard<std::mutex> guard(mode.m_mutex);
+	    if(blockNum == 0 || blockNum == 1)
+		mode.m_vals.StartupBlock[blockNum] = msg.substr(4);
+	    else {
+		Log::Error("Something's not right... Startup block number unrecognised: %s", msg.c_str());
+	    }
+	}
+    }
+    // decodes modal groups
+    // and stores inside grbl Parameters
+    void decodeMode(const std::string& msg) 
+    {
+	std::string s = msg.substr(4, msg.length()-5);
+	std::stringstream stream(s);
 	
-	friend class GRBL;
+	{    // lock the mutex
+	    std::lock_guard<std::mutex> guard(mode.m_mutex);
+	    
+	    do {
+		std::string code;
+		stream >> code;
+		// [GC:G0 G54 G17 G21 G90 G94 M0 M5 M9 T0 S0.0 F500.0]
+		if(code == "")
+		    {/*do nothing*/}
+		else if(code == "G0" || code == "G1" || code ==  "G2" || code ==  "G3" || code ==  "G38.2" || code ==  "G38.3" || code ==  "G38.4 "|| code ==  "G38.5" || code ==  "G80")
+		    mode.m_vals.MotionMode = code;
+		else if(code == "G54" || code == "G55" || code == "G56" || code == "G57" || code ==  "G58" || code == "G59")
+		    mode.m_vals.CoordinateSystem = code;
+		else if(code == "G17" || code == "G18" || code == "G19")
+		    mode.m_vals.Plane = code;
+		else if(code == "G90" || code == "G91")
+		    mode.m_vals.DistanceMode = code;
+		else if(code == "G91.1")
+		    mode.m_vals.ArcIJKDistanceMode = code;
+		else if(code == "G93" || code == "G94")
+		    mode.m_vals.FeedRateMode = code;
+		else if(code == "G20" || code == "G21")
+		    mode.m_vals.UnitsMode = code;
+		else if(code == "G40")
+		    mode.m_vals.CutterRadCompensation = code;
+		else if(code == "G43.1" || code == "G49")
+		    mode.m_vals.ToolLengthOffset = code;
+		else if(code == "M0" || code == "M1" || code == "M2" || code == "M30")
+		    mode.m_vals.ProgramMode = code;
+		else if(code == "M3" || code == "M4" || code == "M5")
+		    mode.m_vals.SpindleState = code;
+		else if(code == "M7" || code == "M8" || code == "M9")
+		    mode.m_vals.CoolantState = code;
+		else if(code.compare(0, 1, "T"))
+		    mode.m_vals.toolNumber = stoi(code.substr(1, code.length()-1));
+		else if(code.compare(0, 1, "S"))
+		    mode.m_vals.spindleSpeed = stof(code.substr(1, code.length()-1));
+		else if(code.compare(0, 1, "F"))
+		    mode.m_vals.feedRate = stof(code.substr(1, code.length()-1));
+		else {
+		    Log::Error("Something's not right... Mode unrecognised: %s", code.c_str());
+		}
+	    } while (stream);
+	}
+    }
+
+
+    // decodes status response 
+    // and stores inside grbl Parameters
+    // The $10 status report mask setting can alter what data is present and certain data fields can be reported intermittently (see descriptions for details.)
+    // The $13 report inches settings alters the units of some data values. $13=0 false indicates mm-mode, while $13=1 true indicates inch-mode reporting.
+    // "<Idle|WPos:828.000,319.000,49.100|FS:0,0|Pn:PXYZ>"
+    void decodeStatus(const std::string& msg) 
+    {
+    
+	std::stringstream stream(msg.substr(1, msg.length()-2));
+	// reserve enough space for all possible segments
+	static std::vector<std::string> segs;
+	segs.clear();
+	segs.reserve(16);
+
+	static std::string segment(32, 0);
+	// iterate backwards through segs[i]s
+	// this is to ensure WCO can be calculated after MPos / WPos
+	while(getline(stream, segment, '|')) {
+	    segs.emplace_back(segment);
+	}
+	
+	{    // lock the mutex
+	    std::lock_guard<std::mutex> guard(status.m_mutex);
+
+	    for (int i = segs.size()-1; i >= 0; i--) 
+	    {
+		// Idle, Run, Hold, Jog, Alarm, Door, Check, Home, Sleep
+		//- `Hold:0` Hold complete. Ready to resume.
+		//- `Hold:1` Hold in-progress. Reset will throw an alarm.
+		//- `Door:0` Door closed. Ready to resume.
+		//- `Door:1` Machine stopped. Door still ajar. Can't resume until closed.
+		//- `Door:2` Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm.
+		//- `Door:3` Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm.
+		if (segs[i] == "Idle")
+		    status.m_vals.state = status.Status_Idle;
+		else if(segs[i] == "Sleep")
+		    status.m_vals.state = status.Status_Sleep;
+		else if(segs[i] == "Run")
+		    status.m_vals.state = status.Status_Run;
+		else if(segs[i] == "Jog")
+		    status.m_vals.state = status.Status_Jog;
+		else if(segs[i] == "Check")
+		    status.m_vals.state = status.Status_Check;
+		else if(segs[i] == "Home")
+		    status.m_vals.state = status.Status_Home;
+		else if(segs[i] == "Alarm")
+		    status.m_vals.state = status.Status_Alarm;
+		else if(segs[i].substr(0, 4)	== "Hold")
+		    status.m_vals.state = (segs[i].substr(5, 1) == "0") ? status.Status_Hold0 : status.Status_Hold1;
+		else if(segs[i].substr(0, 4) == "Door") 
+		{
+		    if(segs[i].substr(5, 1) == "0")
+			status.m_vals.state = status.Status_Door0;
+		    else if(segs[i].substr(5, 1) == "1")
+			status.m_vals.state = status.Status_Door1;
+		    else if(segs[i].substr(5, 1) == "2")
+			status.m_vals.state = status.Status_Door2;
+		    else // == 3
+			status.m_vals.state = status.Status_Door3;
+		}
+    
+		// MPos:0.000,-10.000,5.000 machine position  or  WPos:-2.500,0.000,11.000 work position
+		// WPos = MPos - WCO
+		else if(segs[i].substr(0, 4) == "MPos") {
+		    status.m_vals.MPos = stoxyz(segs[i].substr(5));
+		    status.m_vals.WPos = status.m_vals.MPos - status.m_vals.WCO;
+		}
+		else if(segs[i].substr(0, 4) == "WPos") {
+		    status.m_vals.WPos = stoxyz(segs[i].substr(5));
+		    status.m_vals.MPos = status.m_vals.WPos + status.m_vals.WCO;
+		}
+		// work coord offset - shown every 10-30 times
+		// the current work coordinate system, G92 offsets, and G43.1 tool length offset
+		else if(segs[i].substr(0, 3) == "WCO") {
+		    status.m_vals.WCO = stoxyz(segs[i].substr(4));
+		}
+    
+		// Buffer State - mainly used for debugging
+		// Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer.
+		else if(segs[i].substr(0, 2) == "Bf") 
+		{
+		    size_t a = segs[i].find(",");
+		    if (a != std::string::npos) {
+			status.m_vals.bufferPlannerAvail = stof(segs[i].substr(3, a-3)); 
+			status.m_vals.bufferSerialAvail = stoi(segs[i].substr(a+1)); 
+		    } else
+			Log::Error("Can't find ',' in Bf");
+		}
+		// line number Ln:99999
+		else if(segs[i].substr(0, 2) == "Ln") {
+		    status.m_vals.lineNum = stoi(segs[i].substr(3)); 
+		}
+		// feed & speed
+		// FS:500,8000 (feed rate / spindle speed)
+		else if(segs[i].substr(0, 2) == "FS") 
+		{
+		    size_t a = segs[i].find(",");
+		    if (a != std::string::npos) {
+			status.m_vals.feedRate = stof(segs[i].substr(3, a-3)); 
+			status.m_vals.spindleSpeed = stoi(segs[i].substr(a+1)); 
+		    } else
+			Log::Error("Can't find ',' in FS");
+		}
+		// feed only
+		// F:500 (feed rate only) - when VARIABLE_SPINDLE is disabled in config.h
+		else if(segs[i].substr(0, 1) == "F") 
+		{
+		    status.m_vals.feedRate = stof(segs[i].substr(2)); 
+		}
+		// Input Pin State
+		// Pn:XYZPDHRS - can be any number of letters
+		else if(segs[i].substr(0, 2) == "Pn") 
+		{
+		    // set all pins to default
+		    status.m_vals.inputPin_LimX = false;
+		    status.m_vals.inputPin_LimY = false;
+		    status.m_vals.inputPin_LimZ = false;
+		    status.m_vals.inputPin_Probe = false;
+		    status.m_vals.inputPin_Door = false;
+		    status.m_vals.inputPin_Hold = false;
+		    status.m_vals.inputPin_SoftReset = false;
+		    status.m_vals.inputPin_CycleStart = false;
+		    
+		    std::string str = segs[i].substr(3);
+		    for (size_t j = 0; j < str.length(); j++) {
+			if(str[j] == 'X')
+			    status.m_vals.inputPin_LimX = true;
+			else if(str[j] == 'Y')
+			    status.m_vals.inputPin_LimY = true;
+			else if(str[j] == 'Z')
+			    status.m_vals.inputPin_LimZ = true;
+			else if(str[j] == 'P')
+			    status.m_vals.inputPin_Probe = true;
+			else if(str[j] == 'D')
+			    status.m_vals.inputPin_Door = true;
+			else if(str[j] == 'H')
+			    status.m_vals.inputPin_Hold = true;
+			else if(str[j] == 'R')
+			    status.m_vals.inputPin_SoftReset = true;
+			else if(str[j] == 'S')
+			    status.m_vals.inputPin_CycleStart = true;
+			else
+			    Log::Error("Input pin unrecognised: %c", str[j]);
+		    }
+		    
+		}
+		//Override Values:
+		// Ov:100,100,100 current override values in percent of programmed values for feed, rapids, and spindle speed, respectively.
+		else if(segs[i].substr(0, 2) == "Ov") 
+		{
+		    point3D ov = stoxyz(segs[i].substr(3));
+		    status.m_vals.override_Feedrate = (int)ov.x;
+		    status.m_vals.override_RapidFeed = (int)ov.y;
+		    status.m_vals.override_SpindleSpeed = (int)ov.z;
+		}
+		// Accessory State
+		// 	'A:SFM' - can be any number of letters
+		// S indicates spindle is enabled in the CW direction. This does not appear with C.
+		// C indicates spindle is enabled in the CCW direction. This does not appear with S.
+		// F indicates flood coolant is enabled.
+		// M indicates mist coolant is enabled.
+		else if(segs[i].substr(0, 2) == "A:") {
+		    // set all pins to default
+		    status.m_vals.accessory_SpindleDir = false;
+		    status.m_vals.accessory_FloodCoolant = false;
+		    status.m_vals.accessory_MistCoolant = false;
+		    
+		    std::string str = segs[i].substr(2);
+		    for (size_t j = 0; j < str.length(); j++) 
+		    {
+			if(str[j] == 'S')
+			    status.m_vals.accessory_SpindleDir = CLOCKWISE;	// (1)
+			else if(str[j] == 'C')
+			    status.m_vals.accessory_SpindleDir = ANTICLOCKWISE;	// (-1)
+			else if(str[j] == 'F')
+			    status.m_vals.accessory_FloodCoolant = true;
+			else if(str[j] == 'M')
+			    status.m_vals.accessory_MistCoolant = true;
+			else
+			    Log::Error("Accessory pin unrecognised: %c", str[j]);
+		    }
+		}
+		else {
+		    Log::Error(std::string("Unknown segment in status report: ") + segs[i]);
+		}
+	    }
+	}
+    }
+    /*	
+    $0 = 10 (us) : Step pulse time
+    $1 = 25 (ms) : Step idle delay
+    $2 = 7 (00000111) : Step pulse invert
+    $3 = 6 (00000110) : Step direction invert
+    $4 = 0 (boolean) : Invert step enable pin
+    $5 = 0 (boolean) : Invert limit pins
+    $6 = 1 (boolean) : Invert probe pin
+    $10 = 2 (00000010) : Status report options
+    $11 = 0.01 (mm) : Junction deviation
+    $12 = 0.002 (mm) : Arc tolerance
+    $13 = 0 (boolean) : Report in inches
+    $20 = 0 (boolean) : Soft limits enable
+    $21 = 1 (boolean) : Hard limits enable
+    $22 = 1 (boolean) : Homing cycle enable
+    $23 = 3 (00000011) : Homing direction invert
+    $24 = 25 (mm/min) : Homing locate feed rate
+    $25 = 2500 (mm/min) : Homing search seek rate
+    $26 = 25 (ms) : Homing switch debounce delay
+    $27 = 1 (mm) : Homing switch pull-off distance
+    $30 = 24000 (RPM) : Maximum spindle speed
+    $31 = 0 (RPM) : Minimum spindle speed
+    $32 = 0 (boolean) : Laser-mode enable
+    $100 = 320 (step/mm) : X-axis travel resolution
+    $101 = 320 (step/mm) : Y-axis travel resolution
+    $102 = 640 (step/mm) : Z-axis travel resolution
+    $110 = 6000 (mm/min) : X-axis maximum rate
+    $111 = 6000 (mm/min) : Y-axis maximum rate
+    $112 = 3000 (mm/min) : Z-axis maximum rate
+    $120 = 200 (mm/sec^2) : X-axis acceleration
+    $121 = 200 (mm/sec^2) : Y-axis acceleration
+    $122 = 200 (mm/sec^2) : Z-axis acceleration
+    $130 = 950 (mm) : X-axis maximum travel
+    $131 = 530 (mm) : Y-axis maximum travel
+    $132 = 160 (mm) : Z-axis maximum travel
+    */
+    // decodes the settings froms grbl
+    // just prints them for now
+    std::string decodeSettings(const std::string& msg) 
+    {
+	// retrieve settings code & current value
+	size_t a = msg.find("=");
+	
+	// checks to prevent errors
+	if((a == std::string::npos) || (a <= 0) || msg.length() <= a)
+	    return "";
+	
+	int settingsCode = stoi(msg.substr(1, a-1));
+	float value = stof(msg.substr(a+1));
+	
+	{   
+	    // lock the mutex
+	    std::unique_lock<std::mutex> locker(settings.m_mutex);
+
+	    //determine which units we are using
+	    // this has its own lock
+	    if(settingsCode == 13) {
+		locker.unlock();
+		settings.setUnitsInches((int)value);
+	    }
+		
+	    if(settingsCode == 30)
+		settings.m_vals.max_SpindleSpeed = value;
+	    if(settingsCode == 31)
+		settings.m_vals.min_SpindleSpeed = value;
+    
+	    if(settingsCode == 110 || settingsCode == 111 || settingsCode == 112) 
+	    {
+		if(settingsCode == 110)
+		    settings.m_vals.max_FeedRateX = value;
+		if(settingsCode == 111)
+		    settings.m_vals.max_FeedRateY = value;
+		if(settingsCode == 112)
+		    settings.m_vals.max_FeedRateZ = value;
+		// set largest value to max_feedrate
+		settings.m_vals.max_FeedRate = std::max(settings.m_vals.max_FeedRateX, settings.m_vals.max_FeedRateY);
+		settings.m_vals.max_FeedRate = std::max(settings.m_vals.max_FeedRate, settings.m_vals.max_FeedRateZ);
+	    }
+	}
+    
+	// retrieve name, desc & unit of setting
+	std::string name, unit, desc;
+	if(getSettingsMsg(settingsCode, &name, &unit, &desc)) {	
+	    Log::Error("Error %d: Can't find settings code", settingsCode);
+	}
+
+	// display unit and name for setting
+	std::stringstream s;
+	s << " (";
+	// if it's a mask, display as in binary instead of unit
+	(unit == "mask") ? (s << std::bitset<8>(value)) : (s << unit);
+	// append the name
+	s << ") : " << name; //<< " (" << desc << ")";
+	return s.str();
+	
+    }
+ /*   point3D stoxyz(const std::string& msg);
+    void CheckStartupLine(const std::string& msg);
+    void DecodeParameters(const std::string& msg);
+    void DecodeStartupBlock(const std::string& msg) ;
+    void DecodeMode(const std::string& msg);
+    void DecodeStatus(const std::string& msg);
+    std::string DecodeSettings(const std::string& msg);
+    */
+    friend class GRBL;
+};
+ 
+ 
+
+class GRBL 
+{
+public:
+    
+    GCList gcList;
+    Serial serial;
+    GRBLSystem sys;
+    
+    GRBL()
+    {
+	shutdown_flag = false;
+    }
+    
+    void connect()
+    {	    
+	Log::Info("Connecting...");
+	serial.connect();
+	softReset();
+	// request settings
+	//send("$$");
+	Log::Info("Connected");
+    }
+    
+    void disconnect()
+    {	    
+	Log::Info("Disconnecting...");
+	softReset();
+	serial.disconnect();
+	Log::Info("Disconnected");
+    }
+    
+    bool isConnected() {
+	return serial.isConnected();
+    }
+    
+    // this makes a copy of a const std::string (i.e Send("G90")) 
+    // so that we can pass it to and manipulate it in lower 
+    // down functions (i.e. removing whitespace etc)
+    int send(const std::string& cmd) 
+    {
+	std::string str = cmd;
+	return send(str);
+    }
+    // adds to the GCode list, ready to be written when buffer has space
+    // sending a pointer is slightly quicker as it wont have to be be copied, 
+    // it will however, modify the original std::string to remove whitespace and comments etc
+    // returns 0 on success, -1 on failure
+    int send(std::string& cmd) 
+    {
+	int err = send_preChecks();
+	if(err) return err;	
+	
+	#ifdef DEBUG
+	    Log::Info(std::string("Adding to buffer: ") + cmd);
+	#endif
+	// add command to GCList
+	if(gcList.add(cmd)) 
+	    return -1;	// line was longer than GRBL_MAX_BUFFER
+
+	return 0;
+    }
+    int sendFile(const std::string& file) 
+    {	
+	auto executeLine = [this](std::string& str) {
+	    
+	    #ifdef DEBUG
+		Log::Info(std::string("Adding to buffer: ") + str);
+	    #endif
+	   
+	     // add command to GCList
+	    if(gcList.addMany(str)) 
+		return -1;	// line was longer than GRBL_MAX_BUFFER
+
+	    return 0;
+	}; 
+	
+	// do pre checks
+	int err = send_preChecks();
+	if(err) return err;	
+	
+	if(File::Read(file, executeLine)) {
+	    Log::Error(std::string("Could not open file ") + file);
+	    gcList.addManyEnd();
+	    return -1;
+	}
+	gcList.addManyEnd();
+	return 0;
+    }
+    
+    bool isFileRunning() {
+	return gcList.isFileRunning();
+    }
+    void getFilePos(uint& pos, uint& total) {
+	gcList.getFilePos(pos, total);
+    }
+    // checks to be done prior to sending gcodes
+    // this is seperated to allow checks to be done just once
+    // if lots of gcodes are to be sent
+    // these checks require mutexes to be locked and therefor may slow
+    // down transfer if done many times
+    int send_preChecks()
+    {
+	if(!serial.isConnected()) {
+	    Log::Error("Connect to GRBL before sending commands");
+	    return -2;
+	}
+	if(gcList.isFileRunning()) {
+	    Log::Error("File is already running");
+	    return -3;
+	}
+	return 0;
+    }
+    // Sends an incremental jog to p
+    // jogs do not affect the parser state 
+    // therefore you do not need to set the machine back to G90 after using a G91 command
+    // and the feedrate is not modal
+    void sendJog(const point3D& p, int feedrate) {
+	// cancel with Grbl.SendRT(GRBL_RT_JOG_CANCEL);
+	
+	if(p == point3D(0,0,0)) {
+	    Log::Error("Jog requires a distance");
+	    return;
+	}
+	// example: $J=G91 X10 F1000
+	std::stringstream s;
+	s << "$J=G91";
+	
+	if(p.x) s << "X" << p.x;
+	if(p.y) s << "Y" << p.y;
+	if(p.z) s << "Z" << p.z;
+	
+	s << "F" << feedrate;
+       
+	if(send(s.str())) {
+	    // cannot send
+	    return;
+	}
+    }
+    /* sends a REALTIME COMMAND
+     * 	- These are not considered as part of the streaming protocol and are executed instantly
+     * 	- They do not require a line feed or carriage return after them.
+     * 	- None of these respond with 'ok' or 'error'
+     *	see https://github.com/gnea/grbl/wiki/Grbl-v1.1-Commands
+     */ 
+    void sendRT(char cmd) 
+    {
+	switch (cmd) {
+	case GRBL_RT_SOFT_RESET:
+	    Log::Info("Sent: 'Soft Reset'");
+	    break;
+	case GRBL_RT_STATUS_QUERY:
+	    Log::Info("Sent: 'Status Query'");
+	    break;
+	case GRBL_RT_HOLD:
+	    Log::Info("Sent: 'Hold'");
+	    break;
+	case GRBL_RT_RESUME:
+	    Log::Info("Sent: 'Resume'");
+	    break;
+	    
+	case GRBL_RT_DOOR:
+	    Log::Info("Sent: 'Door'");
+	    break;
+	case GRBL_RT_JOG_CANCEL:
+	    Log::Info("Sent: 'Cancel Jog'");
+	    break;
+	    
+	case GRBL_RT_OVERRIDE_FEED_100PERCENT:
+	    Log::Info("Sent: 'Override Feedrate (Set to 100%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_FEED_ADD_10PERCENT:
+	    Log::Info("Sent: 'Override Feedrate (+10%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_FEED_MINUS_10PERCENT:
+	    Log::Info("Sent: 'Override Feedrate (-10%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_FEED_ADD_1PERCENT:
+	    Log::Info("Sent: 'Override Feedrate (+1%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_FEED_MINUS_1PERCENT:
+	    Log::Info("Sent: 'Override Feedrate (-1%)'");
+	    break;
+	    
+	case GRBL_RT_OVERRIDE_RAPIDFEED_100PERCENT:
+	    Log::Info("Sent: 'Override Rapid Feedrate (Set to 100%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_RAPIDFEED_50PERCENT:
+	    Log::Info("Sent: 'Override Rapid Feedrate (Set to 50%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_RAPIDFEED_25PERCENT:
+	    Log::Info("Sent: 'Override Rapid Feedrate (Set to 25%)'");
+	    break;
+	    
+	case GRBL_RT_OVERRIDE_SPINDLE_100PERCENT:
+	    Log::Info("Sent: 'Override Spindle Speed (Set to 100%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_SPINDLE_ADD_10PERCENT:
+	    Log::Info("Sent: 'Override Spindle Speed (+10%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_SPINDLE_MINUS_10PERCENT:
+	    Log::Info("Sent: 'Override Spindle Speed (-10%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_SPINDLE_ADD_1PERCENT:
+	    Log::Info("Sent: 'Override Spindle Speed (+1%)'");
+	    break;
+	case GRBL_RT_OVERRIDE_SPINDLE_MINUS_1PERCENT:
+	    Log::Info("Sent: 'Override Spindle Speed (-1%)'");
+	    break;
+	    
+	case GRBL_RT_SPINDLE_STOP:
+	    Log::Info("Sent: 'Stop Spindle'");
+	    break;
+	case GRBL_RT_FLOOD_COOLANT:
+	    Log::Info("Sent: 'Flood Coolant'");
+	    break;
+	case GRBL_RT_MIST_COOLANT:
+	    Log::Info("Sent: 'Mist Coolant'");
+	    break;
+
+	default:
+	    Log::Error("Realtime command unrecognised: %c", cmd);
+	    return;
+	}
+	serial.sendRT(cmd);
+    }
+    // clears any gcodes which havent received a reponse 
+    // (but ones left in grbl's buffer will still exectute)
+    void cancel() {
+	gcList.clearUnsent();
+    }
+
+    // soft reset 
+    void softReset() {
+	gcList.clearSent();
+	serial.softReset();
+    }
+    
+    // clears any completed GCodes in the buffer
+    // used for clearing old commands in log
+    void clearCompleted() {
+	return gcList.clearCompleted();
+    }
+    // returns items in the gcode list for viewing
+    GCItem& getGCItem(uint index) {
+	return gcList.getItem(index);
+    }
+        // returns items in the gcode list for viewing
+    uint getGCListSize() {
+	return gcList.getSize();
+    }
+/* THIS IS NOT THREAD SAFE
+    #define WAIT_FOR_STATUS_TIMEOUT 10000 // 10s
+
+    // A blocking loop until we recieve next status report (waitingForStatus is set to false)
+    // returns 0 when recieved and is idle, -1 on timeout or not idle
+    int GRBL::WaitForIdle() { 
+	    
+	std::string grblReponse;
+	waitingForStatus = true;
+	uint timeout = millis() + WAIT_FOR_STATUS_TIMEOUT;
+	// send status query
+	SendRT(GRBL_RT_STATUS_QUERY);
+	do {
+		// just in case we receive a message before the status report
+		Read();
+	// return error if timeout
+		if(millis() > timeout) {
+			Log::Error("Timeout, no response recieved from grbl");
+			return -1;
+		}
+	} while (waitingForStatus);
+	
+	GrblStatus& s = Param.status;
+	if(s.state() != s.Status_Idle  &&  s.state() != s.Status_Check) {
+	    Log::Error("Grbl is not 'Idle'");
+		return -2;
+	}
+	
+	return 0;
+    }	
+*/	
+
+    void setViewStatusReport(bool isViewable) {
+	fflush(stdout);
+	std::lock_guard<std::mutex> guard(m_mutex);
+	viewStatusReport = isViewable;
+    }
+    bool getViewStatusReport() {
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return viewStatusReport;
+    }
+    // set the interval timer for the status report
+    // no faster than 5Hz (200ns)
+    void setStatusInterval(uint ms) {
+	std::lock_guard<std::mutex> guard(m_mutex);
+	statusTimerInterval = ms;
+    }
+    uint getStatusInterval() {
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return statusTimerInterval;
+    }
+    
+    void shutdown() {
+	shutdown_flag = true;
+	serial.shutdown();
+	gcList.shutdown();
+    }
+    
+private:
+    std::mutex m_mutex;
+    bool viewStatusReport = false;
+    uint statusTimerInterval = 100;	// ms
+    std::atomic<bool> shutdown_flag;		// signal to shutdown all threads
+    
+    // returns true if end of execution of gcode from grbl ('ok' or 'error' received)
+    int processResponse(const std::string& msg)
+    {
+	// Response for an 'error'
+	 auto errorResponse = [](const std::string& msg) 
+	 {  // retrieve error code
+	    int errCode = stoi(msg.substr(6));
+	    // get error description and add to log
+	    std::string errName, errDesc;
+	    if(getErrMsg(errCode, &errName, &errDesc)) 
+		Log::Error("Error %d: Can't find error code", errCode);
+	    else
+		Log::Response("Error %d: %s (%s)", errCode, errName.c_str(), errDesc.c_str());
+	    return errCode;
+	 };
+	// Response for an 'alarm'
+	auto alarmResponse = [](const std::string& msg) 
+	{	// retrieve alarm code
+	    int alarmCode = stoi(msg.substr(6));
+	    // add response to log
+	    std::string alarmName, alarmDesc;
+	    if(getAlarmMsg(alarmCode, &alarmName, &alarmDesc))
+		Log::Error("ALARM %d: Can't find alarm code", alarmCode);
+	    else	
+		Log::Response("ALARM %d: %s (%s)", alarmCode, alarmName.c_str(), alarmDesc.c_str());
+	};
+	
+	// ignore blank responses
+	if(!msg.compare(0, 1, "")) {
+	}
+	// match up an 'ok' or 'error' to the corrosponding sent gcode and set it's status
+	else if(!msg.compare("ok")) {
+	    Log::Response("ok");
+	    return STATUS_OK;
+	} 
+	// error messages
+	else if(!msg.compare(0, 6, "error:")) {
+	    return errorResponse(msg);
+	}
+	// alarm messages
+	else if(!msg.compare(0, 6, "ALARM:")) {		
+	    alarmResponse(msg);
+	    // status report stops getting sent from grbl so we update state manually
+	    sys.status.setState(sys.status.Status_Alarm); 
+	    // end if file running so that the progress doesn't keep counting
+	    gcList.setFileEnded();
+	}
+        else if(!msg.compare(0, 1, "<")) {
+	    // Flag used to make sure we receice status before we carry out next task
+// TODO	    waitingForStatus = false;
+	    sys.decodeStatus(msg);
+	    
+	    if(getViewStatusReport()) 
+		Log::Response(msg);
+	}
+	// Startup Line Execution	">G54G20:ok" or ">G54G20:error:X"
+	else if(!msg.compare(0, 1, ">")) {	
+	    sys.checkStartupLine(msg);
+	    Log::Response(msg);
+	}
+	// just print out message
+	else if(!msg.compare(0, 4, "Grbl") || !msg.compare(0, 4, "[MSG") || !msg.compare(0, 4, "[HLP") || !msg.compare(0, 4, "[echo")) {
+	    Log::Response(msg);
+	}
+	// View build info - just print out	
+	// This response hasnt been decoded as seen as unnesessary
+	// For more details, see: https://github.com/gnea/grbl/wiki/Grbl-v1.1-Interface
+	else if(!msg.compare(0, 4, "[VER") || !msg.compare(0, 4, "[OPT")) {	
+	    Log::Response(msg);
+	}
+
+	else if(!msg.compare(0, 3, "[GC")) {
+	    sys.decodeMode(msg);
+	    Log::Response(msg);
+	}
+	else if(!msg.compare(0, 1, "[")) {
+	    sys.decodeCoords(msg);				
+	    Log::Response(msg);
+	}
+	// if startup block added, it will look like this on starup: '>G20G54G17:ok' or error
+	else if(!msg.compare(0, 2, "$N")) {	
+	    sys.decodeStartupBlock(msg);
+	    Log::Response(msg);
+	}
+	// settings codes
+	else if(!msg.compare(0, 1, "$")) {
+	    std::string setting = sys.decodeSettings(msg);
+	    Log::Response(msg + setting);
+	}
+	else {	
+	    Log::Error("Unsupported GRBL message: %s", msg.c_str());
+	}
+	return STATUS_MSG;
+    }
+    
+    void thread_statusReport() 
+    {
+	serial.sendRT(GRBL_RT_STATUS_QUERY);
+	delay(getStatusInterval());
+    }
+
+    // read from q
+    // write to serial
+    void thread_write() 
+    {   
+	// retrieve next item from GCode list
+	const GCItem& item = gcList.getNextItem();
+	// send item to serial
+	serial.send(item.str);
+	// sets item to pending and increments
+	gcList.nextItem();
+	// log the gcode
+	Log::Info(std::string("Sent: ") + item.str);
+    }
+
+    // read from serial
+    // write back onto q
+    void thread_read() 
+    {   
+	
+	// static so we dont have to keep allocating memory for it
+	static std::string msg(128, ' ');
+	// get data from serial
+	if(serial.receive(msg))
+	    return; // serial had no data available
+	#ifdef DEBUG
+	    Log::Info(std::string("Recieved (raw): ") + msg);
+	#endif
+	// process data
+	int response = processResponse(msg);
+	// if message
+	if(response == STATUS_MSG) {
+	    return;
+	}
+	// if error
+	else if(response > 0) {
+	    // we have recieved an error in check mode
+	    if(sys.status.isCheckMode()) {
+		gcList.addCheckModeError();
+	    }  
+	    else if(gcList.isFileRunning()) {
+		Log::Error("An error occured mid file transfer. The machine has been reset for safety. Consider using check mode before running file");
+		softReset();
+		return;
+	    }
+	}
+	// reponse was ok or error, therefore grbl 
+	// has acknowledged the last sent command
+	// we can remove it from our queue
+	if(serial.bufferRemove()) {
+	    softReset();
+	    return;
+	}
+	// set response in gcode list
+	gcList.setNextResponse(response);
+    }
+
+    friend void thread_statusReport(GRBL& grbl);
+    friend void thread_write(GRBL& grbl);
+    friend void thread_read(GRBL& grbl);
 };
 
-class GRBL {
-	public:
-		GRBLParams Param;
-		GCList gcList;	
-		// flag to show status reponse in console
-		bool viewStatusReport = false;
-		 
-		GRBL();
-		~GRBL();
-		
-		// flushes the serial buffer
-		void Flush();
-		// initialises connection to the serial port
-		int Connect();
-		// disconnects connection to the serial port
-		void Disconnect();
-		// returns connection status
-		bool IsConnected() { return connected; }
-		// send command to serial port
-		int Send(std::string& cmd);
-		int Send(const std::string& cmd);
-		// send a file to GRBL
-		int SendFile(const std::string& file);
-		// send jog command to p
-		void SendJog(point3D p, int feedrate);
-		// Writes realtime command to serial port
-		void SendRT(char cmd);
-		// stops any more commands being sent to grbl
-		// note: any remaining command grbl has in it's buffer will still be executed
-		void Cancel();
-		// Resets GRBL and clears program running flag
-		void SoftReset() ;
-		// Something has gone very wrong and we need to reset everything
-		void Reset();
-		// Writes line to serial port
-		void Write();
-		// Reads block off serial port
-		// returns true if new reponse
-		void Read();
-		// sets the interval time between status requests
-		void SetStatusInterval(uint timems);
-		// Sends a request to GRBL for a status report
-		void RequestStatus();
-		// a blocking function which waits for status to be read from grbl
-		// returns 0 when status recieved, -1 on timeout
-		int WaitForIdle();
-		// returns true when mid file transfer
-		bool IsFileRunning();	
-		
-	private:
-		std::queue<int> q;
-		bool connected = false;
-		// flag to force-wait until we recieve a status repsonse
-		bool waitingForStatus = false;
-		int fd;
-		int grblBufferSize = MAX_GRBL_BUFFER;
-		// status report timer
-		uint statusTimer = 0;
-		uint statusTimerInterval = 100;
-		// Reads line of serial port. 
-		// Returns string and length in msg
-		void ReadLine(std::string& msg);
-		int BufferRemove();
-		int BufferAdd(int len);
-			
-};

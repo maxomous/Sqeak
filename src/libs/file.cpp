@@ -7,16 +7,15 @@
 using namespace std;
 
 // internal functions
-string File::IGetWorkingDir() 
+ 
+string File::IThisDir() 
 {
+	// lock the mutex
+	std::unique_lock<std::mutex> locker(m_mutex);
     char result[255];
     ssize_t count = readlink("/proc/self/exe", result, 255);
     string out = string(result, (count > 0) ? count : 0);
     return out.substr(0, out.find_last_of("/") + 1);
-}
-string File::IGetWorkingDir(const string& location) 
-{
-	return string(IGetWorkingDir() + location);
 }
 
 string File::ICombineDirPath(const string& dir, const string& name) {
@@ -29,6 +28,8 @@ string File::ICombineDirPath(const string& dir, const string& name) {
 }
 
 void File::IWrite(const string& filename, const string& str) {
+	// lock the mutex
+	std::unique_lock<std::mutex> locker(m_mutex);
 	
 	fstream f(filename, ios::out);
 	if (f.is_open()) {
@@ -38,6 +39,8 @@ void File::IWrite(const string& filename, const string& str) {
 }
 
 void File::IAppend(const string& filename, const string& str) {
+	// lock the mutex
+	std::unique_lock<std::mutex> locker(m_mutex);
 
 	fstream f(filename, ios::out | ios::app);
 	if (f.is_open()) {
@@ -57,7 +60,10 @@ void File::IAppend(const string& filename, const string& str) {
 
 // reads a line of a file and invokes the callback function with a pointer to the string 
 // returns 0 on success / 1 if unsuccessful
-int File::IRead(const string& filename, const function<int(string&)>& func) {
+int File::IRead(const string& filename, const function<int(string&)>& func) 
+{
+	// lock the mutex
+	std::unique_lock<std::mutex> locker(m_mutex);
 	
 	ifstream openFile(filename);
 	if(!openFile) {
@@ -75,11 +81,33 @@ int File::IRead(const string& filename, const function<int(string&)>& func) {
 	return 0;
 }
 
+int File::IGetNumLines(const string& filename) 
+{
+	// lock the mutex
+	std::unique_lock<std::mutex> locker(m_mutex);
+	
+	ifstream openFile(filename);
+	if(!openFile) {
+		cout << "Error: Couldn't open file" << endl;
+		return -1;
+	}
+	string unused;
+	int count = 0;
+	while(getline(openFile, unused)) {
+		count++;
+	}
+	openFile.close();
+	return count;
+}
+
 // take a directory location and returns the files and directories within it in the vector files
 // if extensions is not an empty string, it will only return files with given extensions (can be seperated by ',' e.g. "exe,ini")
 // returns 1 on failure
 int File::IGetFilesInDir(const string& location, const string& extensions, vector<filedesc_t>& files)
 {
+	// lock the mutex
+	std::unique_lock<std::mutex> locker(m_mutex);
+	
 	auto buildExtensionsList = [](const string& ext) 
 	{
 		istringstream stream(ext);

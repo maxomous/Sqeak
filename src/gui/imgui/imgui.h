@@ -2652,7 +2652,7 @@ struct ImFontAtlas
     const ImFontBuilderIO*      FontBuilderIO;      // Opaque interface to a font builder (default to stb_truetype, can be changed to use FreeType by defining IMGUI_ENABLE_FREETYPE).
     unsigned int                FontBuilderFlags;   // Shared flags (for all fonts) for custom font builder. THIS IS BUILD IMPLEMENTATION DEPENDENT. Per-font override is also available in ImFontConfig.
 
-    // [Internal] Packing data
+    // [Internal] Packing dataImGui::NewFrame(
     int                         PackIdMouseCursors; // Custom texture rectangle ID for white pixel and mouse cursors
     int                         PackIdLines;        // Custom texture rectangle ID for baked anti-aliased lines
 

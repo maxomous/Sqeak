@@ -17,6 +17,7 @@
 // for getting current filepath
 #include <limits.h>
 #include <unistd.h>
+#include <mutex>
 
 #define FOLDER_TYPE	1
 #define FILE_TYPE	2
@@ -40,10 +41,10 @@ class File
 	    static File instance;
 	    return instance;
 	}
-	// Returns the directory of this executable from argv
-	static std::string GetWorkingDir() { return Get().IGetWorkingDir(); }
-	// Returns string of "directory/location"
-	static std::string GetWorkingDir(const std::string& location) { return Get().IGetWorkingDir(location); }
+	// Returns the directory of this executable
+	static std::string ThisDir() { return Get().IThisDir(); }
+	// Returns the directory of this executable and appends location to it
+	static std::string ThisDir(const std::string& location) { return Get().IThisDir() + location; }
 	// Combines dir & name to give a file location
 	static std::string CombineDirPath(const std::string& dir, const std::string& name) { return Get().ICombineDirPath(dir, name); };
 	// Writes to a new file or overwrites existing file
@@ -62,6 +63,9 @@ class File
 //	}
 	
 	static int Read(const std::string& filename, const std::function<int(std::string&)>& func) { return Get().IRead(filename, func); };
+	// returns the number of lines in a file
+	// returns -1 on failure
+	static int GetNumLines(const std::string& filename) { return Get().IGetNumLines(filename); }
 	// retrieves information about the files within a given directory
 	// if extensions is not an empty string, it will only return files with given extensions (can be seperated by ',' e.g. "exe,ini")
 	// returns 1 on failure
@@ -69,14 +73,15 @@ class File
     
     private:
 	// internal functions
-	std::string IGetWorkingDir();
-	std::string IGetWorkingDir(const std::string& location);
+	std::string IThisDir();
 	std::string ICombineDirPath(const std::string& dir, const std::string& name);
 	void IWrite(const std::string& filename, const std::string& str);
 	void IAppend(const std::string& filename, const std::string& str);
 	int IRead(const std::string& filename, const std::function<int(std::string&)>& func);
+	int IGetNumLines(const std::string& filename);
 	int IGetFilesInDir(const std::string& location, const std::string& extensions, std::vector<filedesc_t>& files);
 
+	std::mutex m_mutex;
 	// prevent class from being instatiated
 	File() {}
 	// deleted copy constructor
