@@ -15,7 +15,8 @@ int gui(GRBL& grbl)
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
         return 1;
-
+   
+                                                                             
     // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
@@ -37,7 +38,6 @@ int gui(GRBL& grbl)
         fprintf(stderr, "Failed to initialize OpenGL loader!\n");
         return 1;
     }
-
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -134,10 +134,12 @@ int gui(GRBL& grbl)
 
         // Our state
     bool show_demo_window = true;
- 
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
+        
+        
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
@@ -149,20 +151,12 @@ int gui(GRBL& grbl)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
-
+    
         drawFrames(grbl);
-		(void)grbl;
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+        
+        // Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         if (show_demo_window)
             ImGui::ShowDemoWindow(&show_demo_window);
-
-        // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
-        {
-            ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-            ImGui::End();
-        }
 
         // Rendering
         ImGui::Render();
@@ -171,8 +165,9 @@ int gui(GRBL& grbl)
         glViewport(0, 0, display_w, display_h);
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
+    
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+        
         glfwSwapBuffers(window);
      
     }

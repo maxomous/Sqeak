@@ -31,6 +31,7 @@
 #include <functional>
 // threads
 #include <thread>
+#include <pthread.h> // for priority
 #include <mutex>
 #include <condition_variable>
 #include <queue>
@@ -47,6 +48,8 @@
 #include "gui/imgui/imgui_impl_glfw.h"
 #include "gui/imgui/imgui_impl_opengl3.h"
 #include "gui/imgui/imgui_stdlib.h"	// to use string
+#include "gui/imgui/imgui_memory_editor.h"	// to use string
+
 // for loading images
 #include "gui/stb_image/imgui_stb_image.h"	// wrapper to use stb_image with ImGui buttons
 // fonts
@@ -57,19 +60,29 @@
 // Include glfw3.h after our OpenGL definitions
 #include <GLFW/glfw3.h>
 
+#include "dev/ads1115.h"
+#include "libs/geom.h"
+#include "libs/file.h"
 
-// *********************** //
-//     GRBL Settings 	   //
-// *********************** //
-#define SERIAL_DEVICE 			"/dev/ttyAMA0"
-#define SERIAL_BAUDRATE 		115200
+#include "serial.h"
+#include "gclist.h"
 
-#define MAX_GRBL_BUFFER 		128
-#define MAX_GRBL_RECEIVE_BUFFER 	128
+#include "grblcodes.h"
+#include "grbl.h"
+
+#include "gui/gui.h"
+#include "gui/frames.h"
+
 
 // *********************** //
 // GRBL specific constants //
 // *********************** //
+
+// used for signalling to threads what to do
+#define GRBL_CMD_RUN 			0
+#define GRBL_CMD_SHUTDOWN 		1
+#define GRBL_CMD_RESET 			2
+
 #define STATUS_MSG			-3	// resonse is message, just continue reading serial
 #define STATUS_UNSENT			-2	// not sent yet to grbl
 #define STATUS_PENDING 			-1	// sent to grbl but no status received
@@ -157,12 +170,16 @@ public:
         std::lock_guard<std::mutex> guard(get().m_mutex);
 	get().consoleLog.clear();
     }
-    static const std::vector<std::string>& GetConsoleLog() { 
+    static const std::string& GetConsoleLog(size_t index) { 
 	// lock the mutex
         std::lock_guard<std::mutex> guard(get().m_mutex);
-	return get().consoleLog; 
+	return get().consoleLog[index]; 
+    } 
+    static size_t GetConsoleLogSize() { 
+	// lock the mutex
+        std::lock_guard<std::mutex> guard(get().m_mutex);
+	return get().consoleLog.size(); 
     }
-
     static void Critical(const std::string& msg) 		{ get().Print(LevelCritical, 	msg.c_str()); }
     static void Error(const std::string& msg) 			{ get().Print(LevelError, 	msg.c_str()); }
     static void Warning(const std::string& msg) 		{ get().Print(LevelWarning,  	msg.c_str()); }
@@ -234,7 +251,7 @@ private:
 	if(logLevelConsole <= level) {
 	    std::string str = levelPrefix(level);
 	    str += va_str(msg, args...);
-	    consoleLog.emplace_back(str); 
+	    consoleLog.emplace_back(move(str)); 
 	}
     }
 
@@ -247,17 +264,3 @@ private:
     Log(const Log&) = delete;
     Log& operator= (const Log&) = delete;
 };
-
-
-#include "dev/ads1115.h"
-#include "libs/geom.h"
-#include "libs/file.h"
-
-#include "serial.h"
-#include "gclist.h"
-
-#include "grblcodes.h"
-#include "grbl.h"
-
-#include "gui/gui.h"
-#include "gui/frames.h"

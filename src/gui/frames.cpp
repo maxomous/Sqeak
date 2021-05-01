@@ -19,10 +19,10 @@ struct GRBLVals {
     bool isFileRunning;
     uint curLine;	// position in file
     uint totalLines;
-    GRBLCoords::GRBLCoords_vals coords;
-    GRBLModal::GRBLModal_vals modal;
-    GRBLStatus::GRBLStatus_vals status;
-    MainSettings::MainSettings_vals settings;
+    GRBLCoords_vals coords;
+    GRBLModal_vals modal;
+    GRBLStatus_vals status;
+    MainSettings_vals settings;
 };
 
 
@@ -97,18 +97,20 @@ struct Console
 	{	
 	    log_Tab_Open = true;
 	    // Console    
-	    ImGui::BeginChild("Log", ImVec2(0, ImGui::GetWindowHeight() - ImGui::GetFrameHeightWithSpacing() * 3 - 16), false, ImGuiWindowFlags_HorizontalScrollbar);
-	    const vector<string>& console = Log::GetConsoleLog();
+	    float h = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+	    ImGui::BeginChild("Log", ImVec2(0, -h), false, ImGuiWindowFlags_AlwaysHorizontalScrollbar);
 	    // Clip only visible lines
 	    ImGuiListClipper clipper;
-	    clipper.Begin(console.size());
+	    clipper.Begin(Log::GetConsoleLogSize());
 	    while (clipper.Step()) {
 		for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++) {
-		    ImGui::TextUnformatted(console[line_no].c_str());
+		    ImGui::TextUnformatted(Log::GetConsoleLog(line_no).c_str());
 		}
 	    }
 	    clipper.End();
 	    
+	    
+	    //printf("scroll_To_Bottom = %d   ImGui::GetScrollY() = %g  ImGui::GetScrollMaxY() = %g\n", scroll_To_Bottom, ImGui::GetScrollY(), ImGui::GetScrollMaxY());
 	    if (scroll_To_Bottom || (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
 		ImGui::SetScrollHereY(1.0f); // set to bottom of last item
     
@@ -123,9 +125,10 @@ struct Console
 	{	
 	    log_Tab_Open = false;
 	    // Commands    
-	    ImGui::BeginChild("Commands", ImVec2(0, ImGui::GetWindowHeight() - ImGui::GetFrameHeightWithSpacing() * 3 - 16));
-    
-	    if(ImGui::BeginTable("Commands", 3, ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV, ImVec2(ImGui::GetWindowWidth(), 0)))
+	    float h = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+	    ImGui::BeginChild("Commands", ImVec2(0, -h));
+	    ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV;
+	    if(ImGui::BeginTable("Commands", 3, flags, ImVec2(0, 0)))
 	    {	// Make top row always visible
 		ImGui::TableSetupScrollFreeze(0, 1); 
 		// Set up headers
@@ -147,7 +150,7 @@ struct Console
 			ImGui::TableNextColumn();
 		    
 			//GCItem_t gcItem = grbl.gcList.GetItem(row_n);
-			GCItem& gcItem = grbl.getGCItem(row_n);
+			const GCItem& gcItem = grbl.getGCItem(row_n); 
 			
 			ImGui::TextUnformatted(gcItem.str.c_str());
 			ImGui::TableNextColumn();
@@ -202,7 +205,7 @@ struct Console
 	    
 	    scroll_To_Bottom = false;
 	    reclaim_focus = false;
-	    
+	
 	    ImGui::EndTabBar();
 	}
 	
@@ -652,9 +655,6 @@ struct FileController {
 	    Log::Error("File is already running");
 	    return;
 	}
-	// check grbl is idle - not neccessarily needed but a good sanity check
-	//if(grbl.waitForIdle())
-	    //return;
 	// get filepath of file
 	string filepath = File::CombineDirPath(fileBrowser.curDir, fileBrowser.curFile);
 	// add to log
@@ -921,8 +921,6 @@ struct Stats
     void DrawConnect(GRBL& grbl, GRBLVals& grblVals)
     {
 	int buttonWidth = 100;
-	// right align
-	//ImGui::SetCursorPosX(ImGui::GetWindowWidth() - buttonWidth - ImGui::GetStyle().WindowPadding.x);
 	// centre align
 	ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth)/2);
 	if(!grblVals.isConnected) {
@@ -940,9 +938,9 @@ struct Stats
     {
 	// current state colour
 	ImVec4 colour;
-	if(grblVals.status.state <= GRBLStatus::GRBLState::Status_Sleep)	// idle
+	if(grblVals.status.state <= GRBLState::Status_Sleep)	// idle
 	    colour = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
-	else if(grblVals.status.state <= GRBLStatus::GRBLState::Status_Home)	// motion
+	else if(grblVals.status.state <= GRBLState::Status_Home)	// motion
 	    colour = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
 	else 						// alert
 	    colour = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
@@ -991,8 +989,8 @@ struct Stats
     }
     void DrawMotion(GRBLVals& grblVals) 
     { 
-	GRBLStatus::GRBLStatus_vals& status = grblVals.status;
-	MainSettings::MainSettings_vals& settings = grblVals.settings;
+	GRBLStatus_vals& status = grblVals.status;
+	MainSettings_vals& settings = grblVals.settings;
 		
 	static float f[] = { 0.0f };
         static float s[] = { 0.0f };
@@ -1028,7 +1026,7 @@ struct Stats
     void DrawInputPins(GRBLVals& grblVals) {
 	if (ImGui::BeginTable("InputPins", 4, ImGuiTableFlags_NoSavedSettings, ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 2)))
 	{ 
-	    GRBLStatus::GRBLStatus_vals& status = grblVals.status;
+	    GRBLStatus_vals& status = grblVals.status;
 	    
 	    // orange
 	    ImVec4 colour = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);;
@@ -1125,14 +1123,14 @@ struct Stats
 	    ImGui::TableSetColumnIndex(1);
 	    
 	    
-	    if(grblVals.status.state >= GRBLStatus::GRBLState::Status_Alarm) { // alert
+	    if(grblVals.status.state >= GRBLState::Status_Alarm) { // alert
 		ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImVec4(1.0f, 0.5f, 0.0f, 0.6f)));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImGui::GetColorU32(ImVec4(1.0f, 0.8f, 0.8f, 0.6f)));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImGui::GetColorU32(ImVec4(1.0f, 0.8f, 0.6f, 0.6f)));
 	    }
 	    if(ImGui::Button(" Clear\nAlarms", sizeL)) 
 		grbl.send("$X");
-	    if(grblVals.status.state >= GRBLStatus::GRBLState::Status_Alarm)  // alert
+	    if(grblVals.status.state >= GRBLState::Status_Alarm)  // alert
 		ImGui::PopStyleColor(3);
 		    
 	    ImGui::TableSetColumnIndex(2);
@@ -1294,7 +1292,7 @@ struct JogController
     JogController(GRBLVals& grblVals) {
 	feedRate = (int)grblVals.settings.max_FeedRate; // intialise to max feed
     }
-/*   
+  /*
     float calcuateJogDistance(float feedrate, float acc) 
     {
 	    float v = feedrate / 60; // mm/s
@@ -1570,7 +1568,7 @@ struct Overrides
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 10));
 	
 	
-	GRBLStatus::GRBLStatus_vals status = grblVals.status;
+	GRBLStatus_vals status = grblVals.status;
 	// Override Spindle Speed
 	ImGui::Text("Override Spindle Speed: %d%%", status.override_SpindleSpeed);
 	// unused parameter, we read directly from status reports instead
@@ -1641,6 +1639,192 @@ struct Overrides
     }
 };
 
+struct ValsViewer 
+{
+    void showName(const char* name) 
+    {
+	ImGui::TextUnformatted(name);
+	ImGui::SameLine();
+    };
+    void addEntry(const char* name, bool val) 
+    {
+	showName(name);
+	ImGui::TextUnformatted(val ? "True" : "False");
+    };
+    auto addEntry(const char* name, int val) 
+    {
+	showName(name);
+	ImGui::Text("%d", val);
+    };
+    auto addEntry(const char* name, float val) 
+    {
+	showName(name);
+	ImGui::Text("%f", val);
+    };
+    auto addEntry(const char* name, point3D val) 
+    {
+	showName(name);
+	ImGui::Text("(%f, %f, %f)", val.x, val.y, val.z);
+    };
+    auto addEntry(const char* name, string val) 
+    {
+	showName(name);
+	ImGui::TextUnformatted(val.c_str());
+    };
+    auto addEntry(const char* name, char* val) 
+    {
+	showName(name);
+	ImGui::TextUnformatted(val);
+    };
+    auto addEntry(const char* name, const char* format, ... ) 
+    {
+	showName(name);
+	va_list arglist;
+	va_start( arglist, format );
+	ImGui::TextV(format, arglist);
+	va_end( arglist );
+    };
+    
+    
+    void Draw(GRBL& grbl, GRBLVals& grblVals) 
+    {
+	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
+	if (!ImGui::Begin("Debug", NULL)) {
+	    ImGui::End();
+	    return;
+	}
+	
+	GRBLVals& v = grblVals;
+	
+	if(ImGui::TreeNode("System")) 
+	{
+	    addEntry("OpenGl Version", (char*)glGetString(GL_VERSION));
+	    addEntry("Frame Rate", "%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+	    
+	    static bool debugGCList = false;
+	    if(ImGui::Checkbox("Debug GCode List", &(debugGCList))) {
+		grbl.gcList.debug(debugGCList);
+	    }
+	    static bool debugSerial = false;
+	    bool update = ImGui::Checkbox("Debug Serial", &(debugSerial));
+	    ImGui::SameLine();
+	    
+	    static bool debugSerial_ShowStatus = false;
+	    update |= ImGui::Checkbox("Show Status", &(debugSerial_ShowStatus)); 
+	    if(update)
+		grbl.serial.debug(debugSerial ? debugSerial + !debugSerial_ShowStatus : 0);
+	
+            ImGui::TreePop();
+	}
+	if(ImGui::TreeNode("General")) 
+	{ 
+	    addEntry("Connected", v.isConnected);
+	    addEntry("Check Mode", v.isCheckMode);
+	    addEntry("File: Running", v.isFileRunning);
+	    addEntry("File: Current Line", (int)v.curLine);
+	    addEntry("File: Total Lines", (int)v.totalLines);
+	    
+            ImGui::TreePop();
+	}
+	if(ImGui::TreeNode("Coordinates")) 
+	{
+	    if(ImGui::Button("Update '$#'"))
+		grbl.send("$#");
+	    addEntry("Work Coordinates (G54)", v.coords.workCoords[0]);
+	    addEntry("Work Coordinates (G55)", v.coords.workCoords[1]);
+	    addEntry("Work Coordinates (G56)", v.coords.workCoords[2]);
+	    addEntry("Work Coordinates (G57)", v.coords.workCoords[3]);
+	    addEntry("Work Coordinates (G58)", v.coords.workCoords[4]);
+	    addEntry("Work Coordinates (G59)", v.coords.workCoords[5]);
+	    
+	    addEntry("Home Coordinates (G28)", v.coords.homeCoords[0]);
+	    addEntry("Home Coordinates (G30)", v.coords.homeCoords[1]);
+	    
+	    addEntry("Offset Coordinates (G92)", v.coords.offsetCoords);
+	    addEntry("Tool Length Offset", v.coords.toolLengthOffset);
+	    addEntry("Probe Offset", v.coords.probeOffset);
+	    addEntry("Probe Success", v.coords.probeSuccess);
+	    
+            ImGui::TreePop();
+	}	
+	if(ImGui::TreeNode("Modal")) 
+	{      
+	    
+	    if(ImGui::Button("Update '$N'"))
+		grbl.send("$N");
+	    addEntry("Startup Block 1", v.modal.StartupBlock[0]);
+	    addEntry("Startup Block 2", v.modal.StartupBlock[1]);
+	    
+	    if(ImGui::Button("Update '$G'"))
+		grbl.send("$G");
+	    addEntry("MotionMode", v.modal.MotionMode);
+	    
+	    addEntry("Coordinate System", v.modal.CoordinateSystem);
+	    addEntry("Plane", v.modal.Plane);
+	    addEntry("Distance Mode", v.modal.DistanceMode);
+	    addEntry("Arc IJK DistanceMode", v.modal.ArcIJKDistanceMode);
+	    addEntry("Feedrate Mode", v.modal.FeedRateMode);
+	    addEntry("Units Mode", v.modal.UnitsMode);
+	    addEntry("Cutter Radius Compensation", v.modal.CutterRadCompensation);
+	    addEntry("Tool Length Offset", v.modal.ToolLengthOffset);
+	    addEntry("Program Mode", v.modal.ProgramMode);
+	    addEntry("Spindle State", v.modal.SpindleState);
+	    addEntry("Coolant State", v.modal.CoolantState);
+	    addEntry("Tool Number", v.modal.toolNumber);
+	    addEntry("Spindle Speed", v.modal.spindleSpeed);
+	    addEntry("Feed Rate", v.modal.feedRate);
+	    
+            ImGui::TreePop();
+	}	
+	if(ImGui::TreeNode("Status")) 
+	{
+	    if(ImGui::Button("Update '?'"))
+		grbl.send("?");
+	    addEntry("State", grbl.sys.status.stateStr(v.status.state));
+	    addEntry("Machine Position", v.status.MPos);
+	    addEntry("Work Position", v.status.WPos);
+	    addEntry("Work Coordinate Offset", v.status.WCO);
+	    
+	    addEntry("Line Number", v.status.lineNum);
+	    addEntry("Feedrate", v.status.feedRate);
+	    addEntry("Spindle Speed", v.status.spindleSpeed);
+	    addEntry("Input Pin: Limit X", v.status.inputPin_LimX);
+	    addEntry("Input Pin: Limit Y", v.status.inputPin_LimY);
+	    addEntry("Input Pin: Limit Z", v.status.inputPin_LimZ);
+	    addEntry("Input Pin: Probe", v.status.inputPin_Probe);
+	    addEntry("Input Pin: Door", v.status.inputPin_Door);
+	    addEntry("Input Pin: Hold", v.status.inputPin_Hold);
+	    addEntry("Input Pin: SoftReset", v.status.inputPin_SoftReset);
+	    addEntry("Input Pin: CycleStart", v.status.inputPin_CycleStart);
+	    addEntry("Override Feedrate", v.status.override_Feedrate);
+	    addEntry("Override Rapid Feed", v.status.override_RapidFeed);
+	    addEntry("Override Spindle Speed", v.status.override_SpindleSpeed);
+	    addEntry("Accessory Spindle Direction", v.status.accessory_SpindleDir);
+	    addEntry("Accessory Flood Coolant", v.status.accessory_FloodCoolant);
+	    addEntry("Accessory Mist Coolant", v.status.accessory_MistCoolant);
+	    addEntry("Planner Buffer Available", v.status.bufferPlannerAvail);
+	    addEntry("Serial Buffer Available", v.status.bufferSerialAvail);
+	    
+            ImGui::TreePop();
+	}	
+	if(ImGui::TreeNode("Settings")) 
+	{
+	    if(ImGui::Button("Update '$$'"))
+		grbl.send("$$");
+	    addEntry("Min Spindle Speed", v.settings.min_SpindleSpeed);
+	    addEntry("Max Spindle Speed", v.settings.max_SpindleSpeed);
+	    addEntry("Max FeedRate X", v.settings.max_FeedRateX);
+	    addEntry("Max FeedRate Y", v.settings.max_FeedRateY);
+	    addEntry("Max FeedRate Z", v.settings.max_FeedRateZ);
+	    addEntry("Max FeedRate", v.settings.max_FeedRate);
+	    addEntry("Units: Distance", v.settings.units_Distance);
+	    addEntry("Units: Feedrate", v.settings.units_Feed);
+            ImGui::TreePop();
+	}
+	
+	ImGui::End();
+    }
+};
 
 void drawFrames(GRBL& grbl)
 {
@@ -1651,15 +1835,17 @@ void drawFrames(GRBL& grbl)
     static GRBLVals grblVals;
     
     grblVals.coords = grbl.sys.coords.getVals();
-    grblVals.modal = grbl.sys.mode.getVals();
+    grblVals.modal = grbl.sys.modal.getVals();
     grblVals.status = grbl.sys.status.getVals();
     grblVals.settings = grbl.sys.settings.getVals();
     
     grblVals.isConnected = grbl.isConnected();
-    grblVals.isCheckMode = (grblVals.status.state == GRBLStatus::GRBLState::Status_Check);
+    grblVals.isCheckMode = (grblVals.status.state == GRBLState::Status_Check);
     grblVals.isFileRunning = grbl.isFileRunning();
     grbl.getFilePos(grblVals.curLine, grblVals.totalLines);
     
+    static ValsViewer valsViewer;
+    valsViewer.Draw(grbl, grblVals);
     
     static Console console;
     console.Draw(grbl, grblVals);

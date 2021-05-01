@@ -5,65 +5,40 @@ using namespace std;
 
 
 
-/*		UNSURE ABOUT:
- * 
- * Options:
- * 	Direct Read
- * 	Atomic(cant have atomic for vectors)
- * 	Mutex  
- *
- * This applies to:
- * 	Log::GetConsoleLog()
- * 	getGCItem()	can't access index before running (we do know size) so have to mutex for now 
- * 		currently requires mutex for size, and then another mutex for data
-
-
-	 * threads not shutting down correctly
-	 * 
-	 * move all of headers into c files
-	 * move includes in common to top
-	 * '??' settings mm/inch had its own lock ??
- * 	- do we want waitforidle?
- *	- no way to have condition variable for serial recieve
- * 	- TODO's
- * 	- prioritise threads
- * 	- test every value is coming through correctly
- * 	- should reset all values to default when disconnect (maybe at least just state?) check mode could still be active
- * 	- in soft reset, we should lock mutexes of gcList.clearSent(); and serial.softReset(); to stop any overlap
- * 	- check addManyLocker is working for file transfers - try multiple transfers
-	[Error] We are reading more than we have sent... size = 42
+/*		TODO:
+  
+ 	No way to have condition variable for serial recieve
+ 	   * Workaround: Use a timer
+  	How best to read items for clipper (reading Log::GetConsoleLog & getGCItem)
+  	   * Workaround: Use a mutex for size, and then another mutex for each element of data
+	
+	
+	Out of sync bug where not the same number of commands is received as sent - cant actually reproduce...
+	possibly this? [Error] We are reading more than we have sent... size = 42
 	    - this seems to happen after canceling the file transfer
+
+	Scroll to bottom isnt working with always horizontal scroll
+
 	Jogging
-	* 	lots of jogs can crash grbl
-	* 	combine buttons/keyboards/joystick
-	* 
-	* pop up for message?
-	* or messages below commands
-	* 
-	* scrolling bug when line is longer that console
-	* sendtoconsole()
-	* console run / run button?
+	 	lots of jogs can crash grbl
+	 	combine buttons/keyboards/joystick
+	 
+	Pop up for message? or messages below commands
+	  
+	sendtoconsole()
+	console run / run button?
  */
  
  
 
-/* **********PROBLEMS FOR LATER************
- * 
- * should recieve this: - i get this when i send a $X reset?
+ /* should recieve this: - i get this when i send a $X reset?
 		Once connected you should get  the Grbl-prompt, which looks like this:
 		Grbl 1.1e ['$' for help]
 
 
 // - Inlcudes are probably for c std libraries
-// - grblBufferSize is a global variable in grbl.cpp are global, should I do these differently?
-// - do i need to destruct gcList?
-// test all value are coming through ok - in particular coord systems as i modified the code
-* 		// maybe a test which sends a tonnes of values and checks they match?
-// - should check if in mm or inches ($13) as everything returned from grbl is based on those units
+* 
 // - check buffer state response in status report matches our buffer (Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer)  - mask needs to be enabled first $_=_
-// on error, halt rest of commands
-// handle alarms
-// - is the buffer cleared out when theres an alarm ?? - i think so
 
 // other notes
 * // $C (check) should be called on open file?
@@ -81,10 +56,9 @@ using namespace std;
 */
 	
 
-
 void thread_statusReport(GRBL& grbl) 
-{
-    while(!grbl.shutdown_flag) {
+{      
+    while(grbl.m_runCommand != GRBL_CMD_SHUTDOWN) {
 	grbl.thread_statusReport();
     }
 }
@@ -92,8 +66,8 @@ void thread_statusReport(GRBL& grbl)
 // read from q
 // write to serial
 void thread_write(GRBL& grbl) 
-{    
-    while(!grbl.shutdown_flag) {
+{
+    while(grbl.m_runCommand != GRBL_CMD_SHUTDOWN) {
 	grbl.thread_write();
     }
 }
@@ -101,11 +75,14 @@ void thread_write(GRBL& grbl)
 // read from serial
 // write back onto q
 void thread_read(GRBL& grbl) 
-{   
-    while(!grbl.shutdown_flag) {
+{
+    while(grbl.m_runCommand != GRBL_CMD_SHUTDOWN) {
 	grbl.thread_read();
     }
 }
+
+
+
 
 
 /*
@@ -155,7 +132,7 @@ int main()
     // initialise WiringPi
     if(wiringPiSetup() == -1)
 	Log::Critical("Could not start wiringPi: %s", strerror(errno));
-
+ 
     // create GRBL
     GRBL grbl;
     
