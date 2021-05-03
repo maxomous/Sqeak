@@ -6,11 +6,11 @@
 #include "common.h"
 
 using namespace std; 
-
-
  
+ 
+  
 string va_str(const char* format, ... )
-{
+{ 
     va_list arglist;
     char buf[255];
     va_start( arglist, format );

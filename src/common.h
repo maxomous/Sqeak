@@ -5,36 +5,22 @@
 
 #pragma once
 
-//#define DEBUG
-//#define DEBUG_SERIAL
-
- 
-
-// pre compiled headers
-//#include "pch.hpp"
 #include <iostream>
-#include <time.h>
-#include <bitset>
-#include <memory>
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdarg.h>
-#include <string>
-#include <string.h>
-#include <string_view>
 #include <sstream>
+#include <string>
+#include <bitset>
 #include <algorithm>
-#include <ctype.h>
 #include <assert.h>
-#include <vector>
 #include <functional>
+#include <vector>
+#include <queue>
+#include <optional>
 // threads
 #include <thread>
 #include <pthread.h> // for priority
 #include <mutex>
 #include <condition_variable>
-#include <queue>
 #include <atomic>
 // wiring pi
 #include <wiringPi.h>
@@ -75,23 +61,24 @@
 
 
 // *********************** //
-// GRBL specific constants //
+//       GRBL defines      //
 // *********************** //
 
-// used for signalling to threads what to do
-#define GRBL_CMD_RUN 			0
-#define GRBL_CMD_SHUTDOWN 		1
-#define GRBL_CMD_RESET 			2
+// used for signalling to threads to stop execution
+#define GRBL_CMD_RUN 			 0
+#define GRBL_CMD_SHUTDOWN 		 1
+#define GRBL_CMD_RESET 			 2
+#define GRBL_CMD_CANCEL			 3
 
 #define STATUS_MSG			-3	// resonse is message, just continue reading serial
 #define STATUS_UNSENT			-2	// not sent yet to grbl
-#define STATUS_PENDING 			-1	// sent to grbl but no status received
-#define STATUS_OK			0	// 'ok' received by grbl
-// ERROR STATUS NOW MATCHES GRBL's 	#define STATUS_ERROR		3	// 'error' received by grbl
-
-#define GRBL_STATE_COLOUR_IDLE 		0
-#define GRBL_STATE_COLOUR_MOTION 	1
-#define GRBL_STATE_COLOUR_ALERT 	2
+#define STATUS_SENT 			-1	// sent to grbl but no status received
+#define STATUS_OK			 0	// 'ok' received by grbl
+// positive numbers represent errors recieved from grbl
+ 
+#define GRBL_STATE_COLOUR_IDLE 		 0
+#define GRBL_STATE_COLOUR_MOTION 	 1
+#define GRBL_STATE_COLOUR_ALERT 	 2
 
 // REALTIME COMMANDS
 #define GRBL_RT_SOFT_RESET 				(char)0x18
@@ -126,19 +113,26 @@
 // *********************** //
 // General constants //
 // *********************** //
-#define MAX_STRING 		255 
+#define MAX_STRING 			255 
 
-#define CLOCKWISE		1
-#define ANTICLOCKWISE		-1
+#define CLOCKWISE			1
+#define ANTICLOCKWISE		       -1
 
-#define FORWARD			1
-#define BACKWARD		-1
+#define FORWARD				1
+#define BACKWARD		       -1
 
-#define X_AXIS			1
-#define Y_AXIS			2
-#define Z_AXIS			3
+#define X_AXIS				1
+#define Y_AXIS				2
+#define Z_AXIS				3
 
 
+// debug flags
+#define DEBUG_NONE			0x0
+#define DEBUG_GCLIST_BUILD		0x1 << 0
+#define DEBUG_CHAR_COUNTING		0x1 << 1
+#define DEBUG_GCLIST			0x1 << 2
+#define DEBUG_SERIAL			0x1 << 3
+#define DEBUG_THREAD_BLOCKING		0x1 << 4
 
 // converts variable arguments to a string
 std::string va_str(const char* format, ... );
@@ -149,60 +143,87 @@ extern void upperCase(std::string& str);
 // convert seconds into hours, minutes and seconds
 extern void normaliseSecs(uint s, uint& hr, uint& min, uint& sec);
 
- 
 class Log {  
 public:
     enum LogLevel{
-	LevelInfo, LevelResponse, LevelWarning, LevelError, LevelCritical
+	LevelInfo, LevelResponse, LevelWarning, LevelError, LevelCritical, LevelDebug
     };
     static void SetLevelTerminal(LogLevel level) { 
 	// lock the mutex
         std::lock_guard<std::mutex> guard(get().m_mutex);
-	get().logLevelTerminal = level; 
+	get().m_logLevelTerminal = level; 
     }
     static void SetLevelConsole(LogLevel level) { 
 	// lock the mutex
         std::lock_guard<std::mutex> guard(get().m_mutex);
-	get().logLevelConsole = level; 
+	get().m_logLevelConsole = level; 
     }
     static void ClearConsoleLog() { 
 	// lock the mutex
         std::lock_guard<std::mutex> guard(get().m_mutex);
-	get().consoleLog.clear();
+	get().m_consoleLog.clear();
     }
     static const std::string& GetConsoleLog(size_t index) { 
 	// lock the mutex
         std::lock_guard<std::mutex> guard(get().m_mutex);
-	return get().consoleLog[index]; 
+	return get().m_consoleLog[index]; 
+    } 
+    static std::optional<const std::string> GetConsoleLogLast() { 
+	// lock the mutex
+        std::lock_guard<std::mutex> guard(get().m_mutex);
+	if(get().m_consoleLog.size() == 0)
+	    return {}; 
+	return get().m_consoleLog.back(); 
     } 
     static size_t GetConsoleLogSize() { 
 	// lock the mutex
         std::lock_guard<std::mutex> guard(get().m_mutex);
-	return get().consoleLog.size(); 
+	return get().m_consoleLog.size(); 
     }
-    static void Critical(const std::string& msg) 		{ get().Print(LevelCritical, 	msg.c_str()); }
-    static void Error(const std::string& msg) 			{ get().Print(LevelError, 	msg.c_str()); }
-    static void Warning(const std::string& msg) 		{ get().Print(LevelWarning,  	msg.c_str()); }
-    static void Response(const std::string& msg) 		{ get().Print(LevelResponse, 	msg.c_str()); }
-    static void Info(const std::string& msg)			{ get().Print(LevelInfo, 	msg.c_str()); }
+    static void SetDebugFlags(int flags) { 
+	// lock the mutex
+        std::lock_guard<std::mutex> guard(get().m_mutex);
+	get().m_debugFlags = flags; 
+    }
+    static void Debug(int flag, const std::string& msg)			{ get().Print(flag, LevelDebug, msg.c_str()); }
+    static void Critical(const std::string& msg) 			{ get().Print(LevelCritical, 	msg.c_str()); }
+    static void Error(const std::string& msg) 				{ get().Print(LevelError, 	msg.c_str()); }
+    static void Warning(const std::string& msg) 			{ get().Print(LevelWarning,  	msg.c_str()); }
+    static void Response(const std::string& msg) 			{ get().Print(LevelResponse, 	msg.c_str()); }
+    static void Info(const std::string& msg)				{ get().Print(LevelInfo, 	msg.c_str()); }
 
     template <typename ... Args>
-    static void Critical(const char* msg, Args... args)		{ get().Print(LevelCritical, 	msg, args...); }
+    static void Debug	(int flag, const char* msg, Args... args)	{ get().Print(flag, LevelDebug, msg, args...); }
     template <typename ... Args>
-    static void Error	(const char* msg, Args... args) 	{ get().Print(LevelError, 	msg, args...); }
+    static void Critical(const char* msg, Args... args)			{ get().Print(LevelCritical, 	msg, args...); }
     template <typename ... Args>
-    static void Warning	(const char* msg, Args... args) 	{ get().Print(LevelWarning, 	msg, args...); }
+    static void Error	(const char* msg, Args... args) 		{ get().Print(LevelError, 	msg, args...); }
     template <typename ... Args>
-    static void Response(const char* msg, Args... args)		{ get().Print(LevelResponse, 	msg, args...); }
+    static void Warning	(const char* msg, Args... args) 		{ get().Print(LevelWarning, 	msg, args...); }
     template <typename ... Args>
-    static void Info	(const char* msg, Args... args)		{ get().Print(LevelInfo, 	msg, args...); }
+    static void Response(const char* msg, Args... args)			{ get().Print(LevelResponse, 	msg, args...); }
+    template <typename ... Args>
+    static void Info	(const char* msg, Args... args)			{ get().Print(LevelInfo, 	msg, args...); }
     
 private:
-    std::vector<std::string> consoleLog;
-    LogLevel logLevelTerminal = LevelInfo; // default show all
-    LogLevel logLevelConsole = LevelInfo; // default show all
+    std::vector<std::string> m_consoleLog;
+    LogLevel m_logLevelTerminal = LevelInfo; // default show all
+    LogLevel m_logLevelConsole = LevelInfo; // default show all
+    int m_debugFlags = false; // default show none
     std::mutex m_mutex;
 
+    bool PrintDebug(int flag) {
+	std::lock_guard<std::mutex> guard(m_mutex);
+	return m_debugFlags & flag;
+    }
+    template <typename ... Args>
+    void Print(int debugFlag, LogLevel level, const char* msg, Args... args) 
+    {
+	if(!PrintDebug(debugFlag))
+	    return;
+	Print(level, msg, args...);
+    }
+    
     template <typename ... Args>
     void Print(LogLevel level, const char* msg, Args... args) 
     {
@@ -228,13 +249,15 @@ private:
 	    return "[Error] ";
 	else if(level == LevelCritical)
 	    return "[Critical] ";
+	else if(level == LevelDebug)
+	    return "[Debug] ";
 	return "";
     }
 
     template <typename ... Args>
     void PrintToTerminal(LogLevel level, const char* msg, Args... args)
     { 
-	if(logLevelTerminal <= level) {
+	if(m_logLevelTerminal <= level) {
 	    char dateStr[32];
 	    time_t t = time(NULL);
 	    strftime(dateStr, 32, "%H:%M:%S", localtime(&t));
@@ -248,10 +271,10 @@ private:
     template <typename ... Args>
     void PrintToConsole(LogLevel level, const char* msg, Args... args) 
     { 
-	if(logLevelConsole <= level) {
+	if(m_logLevelConsole <= level) {
 	    std::string str = levelPrefix(level);
 	    str += va_str(msg, args...);
-	    consoleLog.emplace_back(move(str)); 
+	    m_consoleLog.emplace_back(move(str)); 
 	}
     }
 

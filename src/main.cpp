@@ -2,48 +2,89 @@
 #include "common.h"
 
 using namespace std;
+			
+/*		    
+	The below image shows a rough breakdown of the program stucture:
+    
+    The main class: 
+	GRBL: This is the main class which acts as an interface between the gui and grbl itself. 
+		It allows the gui to send commands to grbl and stores data recieved from it.
+		Within this class there are three main sub-classes and three threads (see below) 
+	
+    There are three main sub-classes:
+		GCode List: This is a list of all gcodes waiting to be sent to grbl, 
+			and includes the status of each code before (unsent / sent) and after response from grbl (ok / error code)
+		Serial: This contains all functions related to the writing/reading to the serial interface.
+			This acts as a barrier between this program and the serial. It limits the number of characters 
+			sent to grbl to 128 at any time.
+		System: This stores all data recieved from grbl for access by the gui
+    
+    There are three threads which run in an infinate loop:
+		Write Thread: This removes the next available gcode from the GCode list (when available) and 
+			writes it to the serial interface (if there is space)
+		Read Thread: This reads data from the serial interface (if available) and writes the status 
+			into the GCode List and any data into system
+		Status Request Thread: This sends realtime status requests at a regular interval to grbl, grbl then sends 
+			back its current status which includes for example: state, position, feedrate etc.
+		
+	There are two types of commands:
+		Standard: This uses the GCode list and character counting buffer to store, and regulate the data respectively.
+			the reponse is then recieved from grbl and added back on to the GCode list
+		Realtime: This bypasses all of the above and directly sends a command to grbl and will not recieve an 'ok' or 
+			'error' response. This is used for things like status request, soft reset, overrides etc.
+		
+		
+	For help with grbl, see: https://github.com/gnea/grbl/wiki/
+ 
+             -------------------------      
+            |  Status Request Thread  |
+             -------------------------  
+                         |     
+                         |
+                         v                                                           
+              -----------------------                  
+             |  Send Status Request  | -------------------------------------------------------------------
+              -----------------------                                                                     |
+                                                                                                          |
+                      ---------------                                                                     |                     
+            ------>  | Send Realtime |  -------------------------------------------------------------     |            
+           |          ---------------                                                                |    |                                                                                               |     
+           |                                                                                         v    v     
+   ------------          ------------          ------------          -------------------          ------------          ------------    
+  |            |  --->  |    Send    |  --->  |            |  --->  |   Write Thread    |  --->  |            |  --->  |            |       
+  |    GRBL    |         ------------         | GCode List |         -------------------         |   Serial   |        |            |   
+  |            |                              |            |                                     |            |        |    GRBL    |   
+  |   Class    |         ------------         |   Class    |         -------------------         |   Class    |        |            |   
+  |            |  --->  |  Send File |  --->  |            |  <---  |    Read Thread    |  <---  |            |  <---  |            |       
+   ------------          ------------          ------------          -------------------          ------------          ------------    
+           ^                                                              |                             
+           |                        ------------                          |              
+           |                       |    GRBL    |                         |
+            ---------------------  |            |  <----------------------                      
+                                   |   System   |  
+                                    ------------                     
+                                    
 
+*/
 
-
+                                                             
 /*		TODO:
   
  	No way to have condition variable for serial recieve
  	   * Workaround: Use a timer
   	How best to read items for clipper (reading Log::GetConsoleLog & getGCItem)
   	   * Workaround: Use a mutex for size, and then another mutex for each element of data
-	
-	
-	Out of sync bug where not the same number of commands is received as sent - cant actually reproduce...
-	possibly this? [Error] We are reading more than we have sent... size = 42
-	    - this seems to happen after canceling the file transfer
-
 	Scroll to bottom isnt working with always horizontal scroll
+	   * Workaround: use word wrapping, but this causes problems with scrolling to bottom so had to bodge that a bit
 
 	Jogging
 	 	lots of jogs can crash grbl
 	 	combine buttons/keyboards/joystick
-	 
-	Pop up for message? or messages below commands
-	  
-	sendtoconsole()
-	console run / run button?
- */
- 
- 
-
- /* should recieve this: - i get this when i send a $X reset?
-		Once connected you should get  the Grbl-prompt, which looks like this:
-		Grbl 1.1e ['$' for help]
-
-
-// - Inlcudes are probably for c std libraries
-* 
-// - check buffer state response in status report matches our buffer (Bf:15,128. number of available blocks in the planner buffer / number of available bytes in the serial RX buffer)  - mask needs to be enabled first $_=_
-
-// other notes
-* // $C (check) should be called on open file?
-* // if we need to sync gui to grbl, use G4 P0.01
-
+	
+	make imgui elements non selectable with keyboard
+	
+	Other notes:
+	* if we need to sync gui to grbl, use G4 P0.01
 
 	EEPROM Issues
 	EEPROM access on the Arduino AVR CPUs turns off all of the interrupts while the CPU writes to EEPROM. This poses a problem for certain features in Grbl, particularly if a user is streaming and running a g-code program, since it can pause the main step generator interrupt from executing on time. Most of the EEPROM access is restricted by Grbl when it's in certain states, but there are some things that developers need to know.
@@ -55,32 +96,6 @@ using namespace std;
 	Grbl's EEPROM read commands: G54-G59, G28, G30, $$, $I, $N, $#
 */
 	
-
-void thread_statusReport(GRBL& grbl) 
-{      
-    while(grbl.m_runCommand != GRBL_CMD_SHUTDOWN) {
-	grbl.thread_statusReport();
-    }
-}
-
-// read from q
-// write to serial
-void thread_write(GRBL& grbl) 
-{
-    while(grbl.m_runCommand != GRBL_CMD_SHUTDOWN) {
-	grbl.thread_write();
-    }
-}
-
-// read from serial
-// write back onto q
-void thread_read(GRBL& grbl) 
-{
-    while(grbl.m_runCommand != GRBL_CMD_SHUTDOWN) {
-	grbl.thread_read();
-    }
-}
-
 
 
 
@@ -135,24 +150,8 @@ int main()
  
     // create GRBL
     GRBL grbl;
-    
-    // create threads
-    thread t1(thread_statusReport, ref(grbl));
-    thread t2(thread_write, ref(grbl));
-    thread t3(thread_read, ref(grbl));
-    
     // start gui loop
     gui(grbl);
-    
-    grbl.shutdown();
-    
-    // join all threads to main thread
-    t1.join();
-    Log::Info("Status Report Thread Joined");
-    t2.join();
-    Log::Info("Write Thread Joined");
-    t3.join();
-    Log::Info("Read Thread Joined");
     
     return 0;
 }

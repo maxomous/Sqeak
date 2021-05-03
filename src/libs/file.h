@@ -62,7 +62,7 @@ class File
 //		cout << "Error: Could not open file" << endl;
 //	}
 	
-	static int Read(const std::string& filename, const std::function<int(std::string&)>& func) { return Get().IRead(filename, func); };
+	static int Read(const std::string& filename, const std::function<int(std::string&)>& func, size_t from = 1, size_t to = 0) { return Get().IRead(filename, func, from, to); };
 	// returns the number of lines in a file
 	// returns -1 on failure
 	static int GetNumLines(const std::string& filename) { return Get().IGetNumLines(filename); }
@@ -77,7 +77,7 @@ class File
 	std::string ICombineDirPath(const std::string& dir, const std::string& name);
 	void IWrite(const std::string& filename, const std::string& str);
 	void IAppend(const std::string& filename, const std::string& str);
-	int IRead(const std::string& filename, const std::function<int(std::string&)>& func);
+	int IRead(const std::string& filename, const std::function<int(std::string&)>& func, size_t from, size_t to);
 	int IGetNumLines(const std::string& filename);
 	int IGetFilesInDir(const std::string& location, const std::string& extensions, std::vector<filedesc_t>& files);
 

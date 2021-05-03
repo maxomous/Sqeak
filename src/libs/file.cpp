@@ -39,7 +39,7 @@ void File::IWrite(const string& filename, const string& str) {
 }
 
 void File::IAppend(const string& filename, const string& str) {
-	// lock the mutex
+	// lock the mutex 
 	std::unique_lock<std::mutex> locker(m_mutex);
 
 	fstream f(filename, ios::out | ios::app);
@@ -60,18 +60,23 @@ void File::IAppend(const string& filename, const string& str) {
 
 // reads a line of a file and invokes the callback function with a pointer to the string 
 // returns 0 on success / 1 if unsuccessful
-int File::IRead(const string& filename, const function<int(string&)>& func) 
+int File::IRead(const string& filename, const function<int(string&)>& func, size_t from = 1, size_t to = 0) 
 {
 	// lock the mutex
 	std::unique_lock<std::mutex> locker(m_mutex);
 	
 	ifstream openFile(filename);
-	if(!openFile) {
+	if(!openFile.is_open()) {
 		cout << "Error: Couldn't open file" << endl;
 		return -1;
 	}
 	string output;
+	uint n = 0;
 	while(getline(openFile, output)) {
+		if(++n < from)
+			continue;
+		if(to != 0 && n > to)
+			break;
 		if(func(output)) {
 			cout << "Error: Cannot execute line of file" << endl;
 			return -1;
@@ -87,7 +92,7 @@ int File::IGetNumLines(const string& filename)
 	std::unique_lock<std::mutex> locker(m_mutex);
 	
 	ifstream openFile(filename);
-	if(!openFile) {
+	if(!openFile.is_open()) {
 		cout << "Error: Couldn't open file" << endl;
 		return -1;
 	}

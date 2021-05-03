@@ -17,8 +17,8 @@ int gui(GRBL& grbl)
         return 1;
    
                                                                              
-    // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
+    // GL 3.3 + GLSL 330
+    const char* glsl_version = "#version 330";
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
@@ -38,6 +38,7 @@ int gui(GRBL& grbl)
         fprintf(stderr, "Failed to initialize OpenGL loader!\n");
         return 1;
     }
+    cout << glGetString(GL_VERSION) << endl;
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -119,7 +120,9 @@ int gui(GRBL& grbl)
     // SLEEP
     //Grbl.Send("$SLP");
     
-    
+    // Coordinate systems
+    // Settings should not be streamed with the character-counting streaming protocols. Only the simple send-response protocol works. This is because during the EEPROM write, the AVR CPU also shuts-down the serial RX interrupt, which means data can get corrupted or lost. This is safe with the send-response protocol, because it's not sending data after commanding Grbl to save data.
+    //  G10 L2, G10 L20, G28.1, G30.1
     
     /* PROBE 
     Grbl.Send("G91 G38.2 Z-200 F100\n");
@@ -138,7 +141,8 @@ int gui(GRBL& grbl)
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
-        
+        // this should be called in main loop
+        grbl.systemChecks();
         
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.

@@ -220,8 +220,7 @@ class GRBL
 {
 public:
     GRBL();
-    GCList gcList;
-    Serial serial;
+    ~GRBL();
     GRBLSystem sys;
     
     void connect();
@@ -257,17 +256,15 @@ public:
      *	see https://github.com/gnea/grbl/wiki/Grbl-v1.1-Commands
      */ 
     void sendRT(char cmd);
-    
-
     // soft reset 
     void softReset();
+    // clears any gcodes which havent received a reponse 
+    // commands remaining in buffer will still be executed 
+    void cancel();
     // triggers a shutdown of all threads
     void shutdown();
     void setCommand(int cmd);
     
-    // clears any gcodes which havent received a reponse 
-    // (but ones left in grbl's buffer will still exectute)
-    void cancel();
     // clears any completed GCodes in the buffer
     // used for clearing old commands in log
     void clearCompleted();
@@ -284,30 +281,43 @@ public:
     // no faster than 5Hz (200ns)
     void setStatusInterval(uint ms);
     uint getStatusInterval();
-    
+    // checks whether thread has signalled to reset/cancel
+    void systemChecks();
 private:
+    GCList gcList;
+    Serial serial;
+	// thread variables
+	std::thread t_Read, t_Write, t_StatusReport;
+    std::atomic<std::thread::id> m_mainThreadID;
     std::mutex m_mutex;
     std::condition_variable m_cond_reset;
     std::condition_variable m_cond_threads;
+    // used across threads to determinine whether we need to reset or shutdown
     int m_runCommand;
+    // The number of threads ready at beginning of loop, used during a change in command (reset / cancel)
     int m_threadsReady = 0;
+    // status report variables
     bool viewStatusReport = false;
     uint statusTimerInterval = 100;	// ms
     
     // returns true if end of execution of gcode from grbl ('ok' or 'error' received)
     int processResponse(const std::string& msg);
-    void thread_statusReport();
+    // commands the threads to stop execution,returns them to beginning of loop, where they are blocked.
+    // once both threads have got there, callback is called.
+    // finally, we restart the threads
+    int resetThreads(int cmd, std::function<void(void)> callback);
     // resets threads when performing soft reset
-    int resetThreads(int thread);
-    // read from q
+    int blockThreads(int thread);
+    // infinate looping thread
+    // read from serial
+    // write back onto GCode list
+    void thread_read();
+    // infinate looping thread
+    // read from GCode list
     // write to serial
     void thread_write();
-    // read from serial
-    // write back onto q
-    void thread_read();
-
-    friend void thread_statusReport(GRBL& grbl);
-    friend void thread_write(GRBL& grbl);
-    friend void thread_read(GRBL& grbl);
+    // infinate looping thread
+    // send status report requests
+    void thread_statusReport();
 };
 
