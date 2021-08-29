@@ -27,7 +27,7 @@ public:
     // sets the item which was just send to serial to pending and increments written
     void nextItem();
     // sets the item which was just recived fron serial to response and increments read
-    int setNextResponse(int response);
+    int setNextResponse(int response, std::string& gcode);
     // set file as ended
     void setFileEnded();
     // adds an error at current position
@@ -59,12 +59,11 @@ private:
     std::mutex m_mutex;
     std::condition_variable m_cond;
     std::unique_lock<std::mutex>* addManyLocker = nullptr; // use lock and unlock
-    std::unique_lock<std::mutex>* unboundLocker = nullptr; // use lock and unlock
     int m_runCommand;
     
-    std::vector<GCItem> m_list;	// a list is of all gcodes waiting to be sent to grbl
-    uint m_written = 0;		// how many sent to grbl
-    uint m_read = 0;		// how many received a response from grbl
+    std::vector<GCItem> m_list;    // a list is of all gcodes waiting to be sent to grbl
+    uint m_written = 0;        // how many sent to grbl
+    uint m_read = 0;        // how many received a response from grbl
     
     uint m_fileStart = 0;
     uint m_fileEnd = 0;

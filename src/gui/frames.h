@@ -5,4 +5,9 @@
 
 #pragma once
 
-extern void drawFrames(GRBL& grbl);
+void BeginDisableWidgets(GRBLVals &grblVals);
+void EndDisableWidgets(GRBLVals &grblVals);
+void HelpMarker(const char *desc);
+void HereButton(GRBLVals &grblVals, glm::vec3& p);
+
+void drawFrames(GRBL& grbl, GRBLVals& grblVals);

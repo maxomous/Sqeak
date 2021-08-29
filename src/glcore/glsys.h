@@ -1,0 +1,236 @@
+#pragma once
+
+#include <iostream>
+#include <string>
+#include <vector>
+#include <functional>
+#include "glcore.h"
+
+struct Event_WindowResize
+{
+	GLFWwindow* m_Window;
+    int Width;
+    int Height;
+};
+struct Event_KeyInput
+{
+	GLFWwindow* m_Window;
+    int Key;
+    int Scancode;
+    int Action;
+    int Modifier;
+};
+struct Event_CharInput
+{
+	GLFWwindow* m_Window;
+    uint32_t keycode;
+};
+struct Event_MouseMove
+{
+	GLFWwindow* m_Window;
+    double PosX; 
+    double PosY;
+};
+struct Event_MouseButton
+{
+	GLFWwindow* m_Window;
+    int Button; 
+    int Action; 
+    int Modifier;
+};
+struct Event_MouseScroll
+{
+	GLFWwindow* m_Window;
+    double OffsetX; 
+    double OffsetY;
+};
+
+// EventDispatcher singleton
+template<typename T_Data>
+class Event
+{
+public:
+    // returns unique id of handler
+    static uint RegisterHandler(const std::function<void(T_Data data)>& eventHandler)
+    {
+        get().m_EventHandlers.push_back(eventHandler);
+        return get().m_EventHandlers.size() - 1;
+    }
+    static void UnregisterHandler(uint id)
+    {
+        get().m_EventHandlers.erase(get().m_EventHandlers.begin() + id);
+    }
+    
+    static void Dispatch(T_Data newEvent) 
+    {        
+        for(const std::function<void(T_Data)>& eventHandler : get().m_EventHandlers) {
+            eventHandler(newEvent);
+        }
+    }
+private:
+    std::vector<std::function<void(T_Data)>> m_EventHandlers;
+    
+    static Event& get() 
+    {
+		static Event instance;
+        return instance;
+    }
+    // delete constructor / copy constructor / assignment operator
+    Event() {}
+    Event(const Event&) = delete;
+    Event& operator= (const Event&) = delete;
+};
+
+template<typename T_Data>
+class EventHandler
+{
+public:
+    EventHandler(const std::function<void(T_Data data)>& eventHandler) {
+        m_ID = Event<T_Data>::RegisterHandler(eventHandler);
+    }
+    ~EventHandler() {
+        Event<T_Data>::UnregisterHandler(m_ID);
+    }
+private:
+    uint m_ID;
+};
+
+class Window
+{
+public:
+	static int GetWidth()           { return get().m_Width; }
+	static int GetHeight()          { return get().m_Height; }
+	static void SetWidth(int w)     { get().m_Width = w; }
+	static void SetHeight(int h)    { get().m_Height = h; }
+	
+	// opengl's origin is the bottom left of the screen, this makes it the top left
+	static glm::vec2 InvertYCoord(glm::vec2 pos) { return { pos.x, get().m_Height - pos.y }; };
+	
+    static void Resize(int w, int h)
+	{
+		get().m_Width = w;
+		get().m_Height = h;
+	}
+    
+	static void ResizeEvent(Event_WindowResize data) { Resize(data.Width, data.Height); }
+	
+private:
+	int m_Width = 0;
+	int m_Height = 0;
+	
+	static Window& get() {
+		static Window Window;
+		return Window;
+    }
+
+    Window();
+    Window(const Window&) = delete;
+    Window& operator= (const Window&) = delete;
+};
+
+class Mouse
+{
+public:
+	static bool IsLeftClicked() 		    { return get().m_Buttons[0]; }
+	static bool IsRightClicked() 		    { return get().m_Buttons[1]; }
+	static bool IsMiddleClicked() 		    { return get().m_Buttons[2]; }
+	static glm::vec2 GetPosition() 			{ return get().m_Position; }
+	static glm::vec2 GetPositionDif() 	    { return get().m_Position - get().m_PositionLast; }
+	static glm::vec2 GetPositionClicked() 	{ return get().m_PositionClicked; }
+	
+	static void MousePositionEvent(Event_MouseMove data) 
+    { 
+        get().m_PositionLast = get().m_Position;
+        get().m_Position = { data.PosX, data.PosY }; 
+    }
+	
+	static void ButtonPressEvent(Event_MouseButton data)
+	{
+        if((data.Button != GLFW_MOUSE_BUTTON_LEFT) && (data.Button != GLFW_MOUSE_BUTTON_RIGHT) && (data.Button != GLFW_MOUSE_BUTTON_MIDDLE))
+            return;
+        if(data.Action == GLFW_PRESS) {
+            get().m_PositionClicked = get().m_Position;
+        }
+        get().m_Buttons[data.Button] = data.Action;
+	} 
+        
+private:
+	glm::vec2 m_Position;
+	glm::vec2 m_PositionLast;
+	glm::vec2 m_PositionClicked;
+	bool m_Buttons[3] = { false, false, false };
+	
+    static Mouse& get() {
+		static Mouse mouse;
+		return mouse;
+    }
+
+    Mouse();
+    Mouse(const Mouse&) = delete;
+    Mouse& operator= (const Mouse&) = delete;
+};
+
+class ActiveItem
+{
+public:
+
+    static bool IsViewportHovered(Camera& camera);
+    static bool IsViewport(Camera& camera);
+   	static void ButtonPressEvent(Event_MouseButton data);
+    
+private:
+    bool m_ImGuiClicked = false;  
+    
+    static ActiveItem& get() {
+		static ActiveItem activeItem;
+		return activeItem;
+    }
+
+    ActiveItem();
+    ActiveItem(const ActiveItem&) = delete;
+    ActiveItem& operator= (const ActiveItem&) = delete;      
+};
+
+class Timer
+{
+public:
+    Timer() { m_CurrentTime = m_PreviousTime = glfwGetTime(); }
+    float Update()
+    {
+        m_CurrentTime = glfwGetTime();
+		m_dt = m_CurrentTime - m_PreviousTime;
+		m_PreviousTime = m_CurrentTime;
+        return m_CurrentTime;
+    }
+    float dt() { return m_dt; }
+private:
+    float m_CurrentTime = 0.0f;
+    float m_PreviousTime = 0.0f;
+    float m_dt = 0.0f;
+};
+
+class GLSystem
+{
+public:
+    GLSystem(int w, int h, const char* name, const char* glsl_version);
+    ~GLSystem();
+    
+    GLFWwindow*& GetWindow() { return m_Window; };
+    
+    int glfw_InitWindow(int w, int h, const char* name);
+    int glew_Init();
+    void imgui_Init(const char* glsl_version);
+    
+    void glfw_ConfigVersion();
+    void glfw_Config();
+    void imgui_Config();
+          
+    void imgui_NewFrame();
+    void imgui_Render();
+
+    void imgui_Shutdown();
+    void glfw_Shutdown();
+private:
+    GLFWwindow* m_Window = nullptr;
+};
+

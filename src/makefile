@@ -2,17 +2,21 @@
 
 
 TARGET = ../grbl
-DIRS = dev libs gui gui/imgui gui/stb_image gui/fonts 
-LDLIBS = -lwiringPi -lGL -lglfw -lGLEW -lpthread
-# -lm -lrt -lGLU -lglut -lfreetype 
 
-# add to libs for debugging gdb -v -da -Q
+DIRS = \
+dev \
+libs \
+gui \
+glcore \
+glcore/deps/imgui \
+glcore/deps/stb_image \
+glcore/deps/tinyobjloader
+
+LDLIBS = -lwiringPi -lGL -lglfw -lGLEW -lpthread
+
 CXX = g++
 
-# -g   for debugging
-# -Wall -Werror   to show all errors
 CXXFLAGS= -std=c++17 -g -Wall -Werror -Wextra
-#-pthread  -I/usr/include/freetype2  -I/usr/include/libpng16 
 
 # this ensures that if there is a file called default, all or clean, it will still be compiled
 .PHONY: default all clean
@@ -22,10 +26,9 @@ all: default
 
 # substitute '.cpp' with '.o' in any *.cpp 
 OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp $(addsuffix /*.cpp, $(DIRS))))
-HEADERS = $(wildcard *.h)
 
 # build the executable
-%.o: %.c $(HEADERS)
+%.o: %.cpp 
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 	
 # if make is interupted, dont delete any object file

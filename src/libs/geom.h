@@ -6,11 +6,13 @@
 
 #include <iostream>
 
+// returns the sign (1. 0 or -1) of a number
+template <typename T> int sign(T val) {
+    return (T(0) < val) - (val < T(0));
+}
 
 #define deg2rad(deg) (deg * M_PI / 180.0) 
 #define rad2deg(rad) (rad * 180.0f / M_PI)
-
-
 
 // Returns Angle between 0 - 2PI
 extern double cleanAngle(double Angle);
