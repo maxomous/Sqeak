@@ -6,4 +6,7 @@
 
 #pragma once
 
-extern int gui(GRBL& grbl);
+extern ImFont* font_medium;
+extern ImFont* font_large;
+
+extern int gui(GRBL& grbl, Settings& settings);

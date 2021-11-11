@@ -4,26 +4,24 @@
 // *********************** //
 //     GRBL Settings        //
 // *********************** //
-#define SERIAL_DEVICE                 "/dev/ttyAMA0"
-#define SERIAL_BAUDRATE             115200
 
 #define MAX_GRBL_BUFFER             128
 #define MAX_GRBL_RECEIVE_BUFFER     128
 
 
 struct GRBLCoords_vals{
-    glm::vec3 workCoords[6];            //     [G54:4.000,0.000,0.000]        work coords        can be changed with     G10 L2 Px or G10 L20 Px
+    glm::vec3 workCoords[6];        //    [G54:4.000,0.000,0.000]        work coords        can be changed with     G10 L2 Px or G10 L20 Px
                                     //    [G55:4.000,6.000,7.000]
                                     //    [G56:0.000,0.000,0.000]
                                     //    [G57:0.000,0.000,0.000]
                                     //    [G58:0.000,0.000,0.000]
                                     //    [G59:0.000,0.000,0.000]
-    glm::vec3 homeCoords[2];            //     [G28:1.000,2.000,0.000]        pre-defined positions     can be changed with     G28.1
+    glm::vec3 homeCoords[2];        //    [G28:1.000,2.000,0.000]        pre-defined positions     can be changed with     G28.1
                                     //    [G30:4.000,6.000,0.000]                                 G30.1
-    glm::vec3 offsetCoords;            //    [G92:0.000,0.000,0.000]        coordinate offset 
-    float toolLengthOffset = 0.0f;    //    [TLO:0.000]            tool length offsets
-    glm::vec3 probeOffset;            //    [PRB:0.000,0.000,0.000:0]    probing
-    bool probeSuccess = false;        //                   ^
+    glm::vec3 offsetCoords;         //    [G92:0.000,0.000,0.000]        coordinate offset 
+    float toolLengthOffset = 0.0f;  //    [TLO:0.000]            tool length offsets
+    glm::vec3 probeOffset;          //    [PRB:0.000,0.000,0.000:0]    probing
+    bool probeSuccess = false;      //                   ^
 };
     
 // GRBL GCode Coords
@@ -47,11 +45,11 @@ struct GRBLModal_vals{
     uint CoordinateSystem       = 0;        // *G54, G55, G56, G57, G58, G59
     uint Plane                  = 0;        // *G17, G18, G19
     uint DistanceMode           = 0;        // *G90, G91
-    float ArcIJKDistanceMode    = 91.1f;     // *G91.1
+    float ArcIJKDistanceMode    = 91.1f;    // *G91.1
     uint FeedRateMode           = 0;        // G93, *G94
     uint UnitsMode              = 0;        // G20, *G21
-    uint CutterRadCompensation  = 40;        // *G40
-    float ToolLengthOffset      = 49.0f;     // G43.1, *G49
+    uint CutterRadCompensation  = 40;       // *G40
+    float ToolLengthOffset      = 49.0f;    // G43.1, *G49
     uint ProgramMode            = 0;        // *M0, M1, M2, M30
     uint SpindleState           = 0;        // M3, M4, *M5
     uint CoolantState           = 0;        // M7, M8, *M9
@@ -153,29 +151,31 @@ private:
     friend class GRBLSystem;
 };
 
-struct MainSettings_vals 
+struct GRBLSettings_vals 
 {
-    int min_SpindleSpeed        = 0;
-    int max_SpindleSpeed        = 24000;
-    float max_FeedRateX         = 6000;
-    float max_FeedRateY         = 6000;
-    float max_FeedRateZ         = 6000;
-    float max_FeedRate          = 6000;    // internal use only
-    std::string units_Distance  = "mm";
-    std::string units_Feed      = "mm/min";
+    int min_SpindleSpeed;
+    int max_SpindleSpeed;
+    float max_FeedRateX;
+    float max_FeedRateY;
+    float max_FeedRateZ;
+    float max_FeedRate;
+    std::string units_Distance;
+    std::string units_Feed;
+    
+    std::map<int, float> RawValues;
 };
 
-class MainSettings 
+class GRBLSettings 
 {
 public:
     // returns a copy of vals
-    const MainSettings_vals getVals();
+    const GRBLSettings_vals getVals();
     // sets units to mm or inches
     void setUnitsInches(bool isInches);
     
 private:
     std::mutex m_mutex;
-    MainSettings_vals m_vals;
+    GRBLSettings_vals m_vals;
     friend class GRBLSystem;
 };
 
@@ -186,12 +186,14 @@ struct GRBLVals {
     bool isConnected;
     bool isCheckMode;
     bool isFileRunning;
-    uint curLine; // position in file
+    uint curLineIndex;  // position in gcList
+    uint curLine;       // position in file
     uint totalLines;
     GRBLCoords_vals coords;
     GRBLModal_vals modal;
     GRBLStatus_vals status;
-    MainSettings_vals settings;
+    GRBLSettings_vals settings;
+    
     glm::vec3 ActiveCoordSys()
     {
         uint coordSys = modal.CoordinateSystem;
@@ -206,13 +208,10 @@ public:
     GRBLCoords       coords;
     GRBLModal        modal;
     GRBLStatus       status;
-    MainSettings     settings;
+    GRBLSettings     settings;
 
 private:
 
-    // This takes a std::string of 3 values seperated by commas (,) and will return a 3DPoint
-    // 4.000,0.000,0.000
-    glm::vec3 stoxyz(const std::string& msg);   
     // checks Startup Line Execution for error    msg = ">G54G20:ok" or ">G54G20:error:X"
     // it is very unlikely that there will be an error as this is checked before it is saves onto the eeprom
     void checkStartupLine(const std::string& msg);
@@ -236,6 +235,15 @@ private:
     friend class GRBL;
 };
  
+enum PreCheck {
+    SerialIsConnected   = 0x1 << 0,
+    NoFileRunning       = 0x1 << 1,
+    GRBLIsIdle          = 0x1 << 2
+};
+// allow bitwise operation
+inline PreCheck operator|(PreCheck a, PreCheck b) {
+    return static_cast<PreCheck>(static_cast<int>(a) | static_cast<int>(b));
+}
 
 class GRBL 
 {
@@ -244,27 +252,28 @@ public:
     ~GRBL();
     GRBLSystem sys;
     
-    void connect();
+    void connect(std::string device, int baudrate);
     void disconnect();
     bool isConnected();
     // this makes a copy of a const std::string (i.e Send("G90")) 
     // so that we can pass it to and manipulate it in lower 
     // down functions (i.e. removing whitespace etc)
-    int send(const std::string& cmd);
+    int send(const std::string& cmd, PreCheck prechecks = (PreCheck::SerialIsConnected | PreCheck::NoFileRunning)); //PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle
     // adds to the GCode list, ready to be written when buffer has space
     // sending a pointer is slightly quicker as it wont have to be be copied, 
     // it will however, modify the original std::string to remove whitespace and comments etc
     // returns 0 on success, -1 on failure
-    int send(std::string& cmd);
+    int send(std::string& cmd, PreCheck prechecks = (PreCheck::SerialIsConnected | PreCheck::NoFileRunning));
     int sendFile(const std::string& file);
+    int sendArray(const std::vector<std::string>& gcodes);
     bool isFileRunning();
-    void getFilePos(uint& pos, uint& total);
+    void getFilePos(uint& posIndex, uint& pos, uint& total);
     // checks to be done prior to sending gcodes
     // this is seperated to allow checks to be done just once
     // if lots of gcodes are to be sent
     // these checks require mutexes to be locked and therefor may slow
     // down transfer if done many times
-    int send_preChecks();
+    int send_preChecks(PreCheck prechecks);
     // update all settings
     void sendUpdateSettings();
     // Sends an incremental jog to p
@@ -330,7 +339,7 @@ private:
     // commands the threads to stop execution,returns them to beginning of loop, where they are blocked.
     // once both threads have got there, callback is called.
     // finally, we restart the threads
-    int resetThreads(int cmd, std::function<void(void)> callback);
+    int resetThreads(int cmd, std::function<void(void)> callback); 
     // resets threads when performing soft reset
     int blockThreads(int thread);
     // infinate looping thread
@@ -345,4 +354,3 @@ private:
     // send status report requests
     void thread_statusReport();
 };
-

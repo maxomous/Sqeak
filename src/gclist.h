@@ -42,7 +42,7 @@ public:
     // returns true if file is running
     bool isFileRunning();
     // gets position and number of lines in file running
-    void getFilePos(uint& pos, uint& total);
+    void getFilePos(uint& posIndex, uint& pos, uint& total);
     // clears any completed GCodes in the buffer
     // used for clearing old commands in log
     void clearCompleted();

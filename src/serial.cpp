@@ -16,18 +16,19 @@ Serial::Serial()
     m_connected     = false;
 }
 Serial::~Serial() 
-{
+{ 
     disconnect();
 }
+
 // controlled by grbl
-int Serial::connect() 
+int Serial::connect(std::string device, int baudrate) 
 {
     // lock the mutex
     std::lock_guard<std::mutex> gaurd(m_mutex);
     if(m_connected)
         return -1;
     // open serial connection
-    m_fd = serialOpen(SERIAL_DEVICE, SERIAL_BAUDRATE);
+    m_fd = serialOpen(device.c_str(), baudrate);
     if(m_fd < 0) {
         Log::Error("Could not open serial device");
         return -1;
@@ -117,7 +118,7 @@ int Serial::receive(std::string& msg)
     
     // if not status report
     if(msg[0] != '<')
-        Log::Debug(DEBUG_SERIAL, "Serial: Reading (status ignored) = %s", msg.c_str());
+        Log::Debug(DEBUG_SERIAL, "Serial: Reading (status's are ignored) = %s", msg.c_str());
 
     return 0;
 }
@@ -182,7 +183,7 @@ void Serial::readLine(std::string& msg)
         if (buf == '\n') 
             break;
         if(msg.length() >= MAX_GRBL_BUFFER) {
-            Log::Warning("Serial input length is greater than input buffer, allocating more memory");
+            Log::Warning("Serial input length is greater than input buffer, allocating more memory. Msg = %s", msg.c_str());
             msg.resize(2 * msg.capacity());
         }
         // add to buffer - skip non-printable characters

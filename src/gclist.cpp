@@ -183,14 +183,16 @@ bool GCList::isFileRunning() {
     return m_fileEnd;
 }
 
-void GCList::getFilePos(uint& pos, uint& total) {
+void GCList::getFilePos(uint& posIndex, uint& pos, uint& total) {
     // lock the mutex
     std::lock_guard<std::mutex> guard(m_mutex);
     // if file is running
     if(m_fileEnd) {
+        posIndex = m_read;
         pos = m_read - m_fileStart;
         total = m_fileEnd - m_fileStart;
     } else {
+        posIndex = 0;
         pos = 0;
         total = 0;
     }

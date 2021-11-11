@@ -79,4 +79,10 @@ private:
     void MotionLinear();
     // G2/G3
     void MotionArc(int direction); 
+    // returns point relative to selected plane (set convertDirection to -1 to reverse)
+    glm::vec3 PointRelativeToPlane(glm::vec3 p, Plane plane, int convertDirection = 1);
+    // reverse of above
+    glm::vec3 ReversePointRelativeToPlane(glm::vec3 p, Plane plane);
+    // calculates centre from radius, start & end points (-r will return the second possible arc)
+    glm::vec2 ArcCentreFromRadius(glm::vec2 p0, glm::vec2 p1, float r, int direction);
 };

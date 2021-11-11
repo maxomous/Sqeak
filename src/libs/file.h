@@ -48,6 +48,8 @@ public:
     static void Write(const std::string& filename, const std::string& str);
     // Writes to a new file or appends to the end of an existing file
     static void Append(const std::string& filename, const std::string& str);
+    // Writes many strings in one go to a file
+    static void WriteArray(const std::string& filename, const std::vector<std::string>& array);
     // Reads contents of file and calls func callback
     // returns 0 on success / 1 if unsuccessful
     // Usage:

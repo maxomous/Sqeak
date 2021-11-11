@@ -63,22 +63,129 @@ using namespace std;
             ---------------------  |            |  <----------------------                      
                                    |   System   |  
                                     ------------                     
-                                    
+
+To Reinstall Raspberry Pi with Protoneer CNC Hat:
+    Use Raspberry
+    https://forum.protoneer.co.nz/viewtopic.php?f=22&t=7460
+       
+To Wipe The EEPROM:
+    - Open Arduino IDE
+    - File > Examples > EEPROM > eeprom_clear
+    - Upload
+    
+To Reinstall GRBL:
+    - Open Arduino IDE
+    - File > Examples > grbl > grblUpload
+    - Upload
 
 */
-                                                
+
+/* MY GRBL SETTINGS
+ * 
+[G54:0.000,0.000,0.000]
+[G55:-949.000,-529.000,-60.759]
+[G56:-949.000,-529.000,-60.759]
+[G57:-949.000,-529.000,-60.759]
+[G58:-949.000,-529.000,-60.759]
+[G59:-949.000,-529.000,-60.759]
+[G28:-949.000,-529.000,-1.000]
+[G30:-949.000,-529.000,-1.000]
+[G92:0.000,0.000,0.000]
+[TLO:0.000]
+[PRB:0.000,0.000,0.000:0]
+
+$N0=G54G17G90G94G21
+$N1=
+
+[GC:G0 G54 G17 G21 G90 G94 M5 M9 T0 F0 S0]
+
+$0=10 (us) : Step pulse time
+$1=25 (ms) : Step idle delay
+$2=7 (00000111) : Step pulse invert
+$3=6 (00000110) : Step direction invert
+$4=0 (boolean) : Invert step enable pin
+$5=0 (boolean) : Invert limit pins
+$6=1 (boolean) : Invert probe pin
+$10=2 (00000010) : Status report options
+$11=0.010 (mm) : Junction deviation
+$12=0.002 (mm) : Arc tolerance
+$13=0 (boolean) : Report in inches
+$20=0 (boolean) : Soft limits enable
+$21=1 (boolean) : Hard limits enable
+$22=1 (boolean) : Homing cycle enable
+$23=3 (00000011) : Homing direction invert
+$24=25.000 (mm/min) : Homing locate feed rate
+$25=2500.000 (mm/min) : Homing search seek rate
+$26=25 (ms) : Homing switch debounce delay
+$27=1.000 (mm) : Homing switch pull-off distance
+$30=24000 (RPM) : Maximum spindle speed
+$31=0 (RPM) : Minimum spindle speed
+$32=0 (boolean) : Laser-mode enable
+$100=320.000 (step/mm) : X-axis travel resolution
+$101=320.000 (step/mm) : Y-axis travel resolution
+$102=640.000 (step/mm) : Z-axis travel resolution
+$110=6000.000 (mm/min) : X-axis maximum rate
+$111=6000.000 (mm/min) : Y-axis maximum rate
+$112=3000.000 (mm/min) : Z-axis maximum rate
+$120=200.000 (mm/sec^2) : X-axis acceleration
+$121=200.000 (mm/sec^2) : Y-axis acceleration
+$122=200.000 (mm/sec^2) : Z-axis acceleration
+$130=1400.000 (mm) : X-axis maximum travel
+$131=700.000 (mm) : Y-axis maximum travel
+$132=350.000 (mm) : Z-axis maximum travel
+
+
+*/         
+                           
 /*     
  
 TODO: 
+* 
+* 
+* 
+
+Hardware
+    Quiet VFD Fan
+    rpi 4
+
+Software
+    Not scrolling down console
+    Limit switch / probe etc orange things not updating
+    Quicker reset?
+
+    cant disconnect and connect again when nothing moved - just hangs
+
+    Reuse Functions
+        (Home) $H; G91;
+        (Move to Tool Setter) G0 Y53; 
+        (To Probe) G38.2 Z-125 F500; 
+        (From Probe) G38.4 Z10 F50; 
+        
+        (Move to Work Surface) G0 Z55.25; 
+        (Return to Home) G91 G28 Z0; G91 G28 X0 Y0; 
+        G90;
+
+        // FOR WHEN REFACING
+        (Set Z To 0) G10 L20 P1 Z0; G10 L20 P2 Z0; G10 L20 P3 Z0; G10 L20 P4 Z0; G10 L20 P5 Z0; G10 L20 P6 Z0; 
+        
+                (Home) $H; G91;        (Move to Tool Setter) G0 X2.3 Y53;         (To Probe) G38.2 Z-125 F500;         (From Probe) G38.4 Z10 F50;         (Move to Work Surface) G0 Z55.25;         (Set Z To 0) G10 L20 P1 Z0; G10 L20 P2 Z0; G10 L20 P3 Z0; G10 L20 P4 Z0; G10 L20 P5 Z0; G10 L20 P6 Z0;         (Return to Home) G91 G28 Z0; G91 G28 X0 Y0; G90
+                
+    Sending lots of $G's? (try set tool height)
+    
+    Dragging a sindow moves 3d viewer
+
+    Disconnect on exit if not already
+
+    Send() checks if PreCheck::NoFileRunning, is this a problem if running in check mode or something else where execution halts mid-file transfer?
+
+    Move frames inside viewport if outside
+
+* 
+* 
      No way to have condition variable for serial recieve
         * Workaround: Use a timer
       How best to read items for clipper (reading Log::GetConsoleLog & getGCItem)
          * Workaround: Use a mutex for size, and then another mutex for each element of data
-    Scroll to bottom isnt working with always horizontal scroll
-       * Workaround: use word wrapping, but this causes problems with scrolling to bottom so had to bodge that a bit
-
-    
-    Scrolling the log...
     
     GCReader has a few things to do - e.g. coord systems
     check everything (e.g. g28) works with offset coord
@@ -100,6 +207,15 @@ TODO:
     
     Dont allow jogs to be sent when inside command input box
     
+    limit switch / probe etc (Orange) is left on, should turn off when Pn: = blank
+    
+    show eta of file on open
+    check z min of file
+    show overall dimensions of file
+    gcode viewer needs to update if we set x0/y0/z0
+    *   and the grid doesnt wqant to move....
+    * 
+    allow rotation on file G10 R
     
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01
@@ -160,17 +276,25 @@ void joystickTest()
 }
 */
 
+
+
+
 int main()
 {
-    
     // initialise WiringPi
     if(wiringPiSetup() == -1)
         Log::Critical("Could not start wiringPi: %s", strerror(errno));
  
+    cout << "This Directory: " << File::ThisDir() << endl;
+ 
+    // load settings
+    // Config ini File
+    string iniFile = File::ThisDir(CONFIG_FILE);
+    Settings settings(iniFile);
     // create GRBL
     GRBL grbl;
     // start gui loop
-    gui(grbl);
+    gui(grbl, settings);
     
     return 0;
 }

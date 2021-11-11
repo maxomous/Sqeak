@@ -1,7 +1,7 @@
 /*
  * frames.cpp
  *  Max Peglar-Willis 2021
- */
+ */ 
 
 using namespace std;
 
@@ -10,134 +10,80 @@ using namespace std;
 #define MAX_HISTORY 100
 
 //******************************************************************************//
-//******************************CUSTOM WIDGETS**********************************//
-
-// Disable all widgets when not connected to grbl
-void BeginDisableWidgets(GRBLVals &grblVals) {
-    if (!grblVals.isConnected) {
-        // disable all widgets
-        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha,
-                            ImGui::GetStyle().Alpha * 0.5f);
-    }
-}
-void EndDisableWidgets(GRBLVals &grblVals) {
-    if (!grblVals.isConnected) {
-        ImGui::PopStyleVar();
-        ImGui::PopItemFlag();
-    }
-}
-
-// Helper to display a little (?) mark which shows a tooltip when hovered.
-void HelpMarker(const char *desc) {
-    ImGui::TextDisabled("(?)");
-    if (ImGui::IsItemHovered()) {
-        ImGui::BeginTooltip();
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
-}
-
-void HereButton(GRBLVals &grblVals, glm::vec3& p) 
-{
-    ImGui::SameLine();
-    ImGui::PushID(&p[0]);
-        if(ImGui::SmallButton("Here")) {
-            p = grblVals.status.WPos;
-        }
-    ImGui::PopID();
-}
-
-/*
-static void RecentMessage()
-{
-   std::optional<const std::string> log = Log::GetConsoleLogLast();
-   if(!log)
-   return;
-
-   ImGuiViewportP* viewport = (GImGui)->Viewports[0];
-   // initialise
-   ImGui::SetNextWindowPos(ImVec2(10, viewport->Size.y - 50));
-
-   ImGui::SetNextWindowSize(ImVec2(0,0), ImGuiCond_None);
-   if (!ImGui::Begin("RecentMessage", NULL, ImGuiWindowFlags_NoDecoration)) {
-   ImGui::End();
-   return;
-   }
-   ImGui::Text(log->c_str());
-
-   ImGui::End();
-
-}*/
-
-template <typename T>
-int Incrementer(const char *id, const char *str, T increment, T &modifyValue,
-                bool allowNegative = true) {
-    int buttonPress = 0;
-    ImGui::PushID(id);
-    if (ImGui::SmallButton("-")) {
-        modifyValue = (allowNegative || modifyValue - increment > 0)
-                          ? modifyValue - increment
-                          : 0;
-        buttonPress = -1;
-    }
-    ImGui::SameLine();
-    ImGui::TextUnformatted(str);
-    ImGui::SameLine();
-    if (ImGui::SmallButton("+")) {
-        modifyValue += increment;
-        buttonPress = 1;
-    }
-    ImGui::PopID();
-    return buttonPress;
-};
+//**********************************COLOURS*************************************//
+ 
+ImVec4 colour_Heading = ImGuiModules::ConvertColourHexToVec4(0xA8BE9E);
 
 //******************************************************************************//
 //**********************************FRAMES**************************************//
 
 struct Console {
     bool log_Tab_Open = true;
-    bool scroll_To_Bottom = false;
-    bool reclaim_focus;
+    bool reclaim_focus;    
+    bool autoScroll = true;
+    
     vector<string> history;
     int historyPos = 0;
 
+    Console() {
+        Event<Event_ConsoleScrollToBottom>::RegisterHandler([this](Event_ConsoleScrollToBottom data) {
+            (void)data;
+            autoScroll = true;
+        });
+    }
     void DrawLogTab() {
         if (ImGui::BeginTabItem("Log")) {
             log_Tab_Open = true;
             // Console
-            float h = ImGui::GetStyle().ItemSpacing.y +
-                      ImGui::GetFrameHeightWithSpacing();
-            ImGui::BeginChild("Log", ImVec2(0, -h), false,
-                              ImGuiWindowFlags_None);
+            float h = ImGui::GetStyle().ItemSpacing.y + ImGui::GetFrameHeightWithSpacing();
+            ImGui::BeginChild("Log", ImVec2(0, -h), false,  ImGuiWindowFlags_AlwaysHorizontalScrollbar);
             // Clip only visible lines
             ImGuiListClipper clipper;
             clipper.Begin(Log::GetConsoleLogSize());
             while (clipper.Step()) {
                 for (int line_no = clipper.DisplayStart;
-                     line_no < clipper.DisplayEnd; line_no++) {
-                    ImGui::TextWrapped(Log::GetConsoleLog(line_no).c_str());
+                    line_no < clipper.DisplayEnd; line_no++) {
+                    ImGui::TextUnformatted(Log::GetConsoleLog(line_no).c_str());
                 }
             }
             clipper.End();
 
-            // printf("scroll_To_Bottom = %d   ImGui::GetScrollY() = %g
-            // ImGui::GetScrollMaxY() = %g\n", scroll_To_Bottom,
-            // ImGui::GetScrollY(), ImGui::GetScrollMaxY());
-
-            if (scroll_To_Bottom ||
-                (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
-                ImGui::SetScrollY(ImGui::GetScrollMaxY());
-
+            // scroll to bottom
+            float lineHeight = ImGui::GetTextLineHeightWithSpacing();
+            
+            float autoScroll_AvoidFlickeringDistance = lineHeight;
+            float autoScroll_DetatchDistance = 2.0f * lineHeight;
+            float autoScroll_JoinDistance = lineHeight - 1.0f;
+             
+            // scroll to bottom
+            float yScrollDif = ImGui::GetScrollMaxY() - ImGui::GetScrollY();
+            //cout << "lineHeight = " << lineHeight << "  AutoScroll = " << autoScroll << "  yScrollDif = " << yScrollDif << endl;
+            // there is a frame lag from where the y scroll changes which causes a flickering of scroll position, this is a workaround
+            if(!ImGui::GetIO().MouseWheel) {
+                if(autoScroll && (yScrollDif > autoScroll_AvoidFlickeringDistance)) {
+                    ImGui::SetScrollY(ImGui::GetScrollMaxY());
+                } 
+            }
+            // if user scroll above, turn off autoscroll
+            else if (yScrollDif > autoScroll_DetatchDistance) { // make line height * mult
+                autoScroll = false;
+            }
+            // if user scrolled to bottom, set to autoscroll
+            else if (yScrollDif < autoScroll_JoinDistance) { // make line height
+                autoScroll = true;
+            }
+    
+    
             ImGui::EndChild();
+            //ImGui::Checkbox("Auto-scroll", &AutoScroll);
             ImGui::EndTabItem();
-        }
+        } 
     }
 
-    void DrawCommandsTab(GRBL &grbl) {
+    void DrawCommandsTab(GRBL &grbl, GRBLVals& grblVals) {
+        
         if (ImGui::BeginTabItem("Commands")) {
+        
             log_Tab_Open = false;
             // Commands
             float h = ImGui::GetStyle().ItemSpacing.y +
@@ -148,9 +94,7 @@ struct Console {
                 ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY |
                 ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter |
                 ImGuiTableFlags_BordersV;
-            if (ImGui::BeginTable(
-                    "Commands", 3, flags,
-                    ImVec2(0, 0))) { // Make top row always visible
+            if (ImGui::BeginTable("Commands", 3, flags, ImVec2(0, 0))) { // Make top row always visible
                 ImGui::TableSetupScrollFreeze(0, 1);
                 // Set up headers
                 ImGui::TableSetupColumn("Sent", ImGuiTableColumnFlags_None,
@@ -198,35 +142,67 @@ struct Console {
                                             errDesc.c_str());
                             }
                         }
-                    }
+                    } 
                 }
-                if (scroll_To_Bottom ||
-                    (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
+                
+                if(grblVals.isFileRunning && autoScroll) {
+                    // go down 2 cells further than the most recently acknowledged in gclist
+                    uint index = grblVals.curLineIndex < 2 ? 0 : grblVals.curLineIndex - 2;
+                    float curPos = index * ImGui::GetTextLineHeightWithSpacing();
+                    ImGui::SetScrollY(curPos);
+                }
+                else if (autoScroll || (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
                     ImGui::SetScrollHereY(1.0f);
 
                 ImGui::EndTable();
             }
             ImGui::EndChild();
+            
+                
             ImGui::EndTabItem();
         }
     }
 
-    void Draw(GRBL &grbl, GRBLVals &grblVals) {
+    void LockWindowToScreenEdge(ImVec2 distance) {
+        ImVec2 screenSize = ImGui::GetIO().DisplaySize;
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        
+        ImVec2 newPos = distance;
+        if(distance.x == 0.0f)
+            newPos.x = windowPos.x;
+        if(distance.y == 0.0f)
+            newPos.y = windowPos.y;
+        if(distance.x < 0)
+            newPos.x += screenSize.x - windowSize.x;
+        if(distance.y < 0)
+            newPos.y += screenSize.y - windowSize.y;
+        ImGui::SetWindowPos(newPos);
+    }
+
+
+    void Draw(GRBL &grbl, GRBLVals& grblVals) {
         // initialise
         ImGui::SetNextWindowSize(ImVec2(570, 270), ImGuiCond_Appearing);
         if (!ImGui::Begin("Console", NULL)) {
             ImGui::End();
             return;
         }
+        
+        static float x = 0.0f, y = -30.0f;
+        //ImGui::SliderFloat("X", &x, -500.0f, 500.0f);
+        //ImGui::SliderFloat("Y", &y, -500.0f, 500.0f);
+        LockWindowToScreenEdge(ImVec2(x, y));
+        
         // Disable all widgets when not connected to grbl
-        BeginDisableWidgets(grblVals);
+        ImGuiModules::BeginDisableWidgets(grblVals);
 
         if (ImGui::BeginTabBar("Console", ImGuiTabBarFlags_None)) {
             DrawLogTab();
-            DrawCommandsTab(grbl);
+            DrawCommandsTab(grbl, grblVals);
 
             if (!log_Tab_Open)
-                scroll_To_Bottom = false;
+                autoScroll = false;
             reclaim_focus = false;
 
             ImGui::EndTabBar();
@@ -272,7 +248,7 @@ struct Console {
         }
 
         // Disable all widgets when not connected to grbl
-        EndDisableWidgets(grblVals);
+        ImGuiModules::EndDisableWidgets(grblVals);
         ImGui::End();
     }
 
@@ -291,7 +267,6 @@ struct Console {
             strncpy(str, "", 128);
         }
         reclaim_focus = true;
-        scroll_To_Bottom = true;
     }
 
     // In C++11 you'd be better off using lambdas for this sort of forwarding
@@ -344,9 +319,8 @@ struct FileBrowser {
     ImageTexture img_File, img_Folder;
     uint timeStart = 0;
     uint timeCur = 0;
-
+    string* curDir;
     string curFile;
-    string curDir;
     string curFilePath;
     vector<string> curDirFolders; // list of all folders inside curDir
     int selectedFileID = -1;
@@ -357,16 +331,19 @@ struct FileBrowser {
     vector<filedesc_t> files;
     string showFileTypes = fileTypesRaw[0]; // filetypes to show in browser
 
-    FileBrowser() {
+    FileBrowser(Settings& settings) 
+        : curDir(&settings.p.system.curDir)
+    {
         img_File.Init(File::ThisDir("img/img_file.png").c_str());
         img_Folder.Init(File::ThisDir("img/img_folder.png").c_str());
+        updateDirAndFiles(*curDir); 
     }
 
     void setCurrentDirectory(const string &dir) {
         // empty array if already full
         curDirFolders.clear();
         // set curDir string for easy access
-        curDir = dir;
+        *curDir = dir;
         // split dir into folders onto curDir
         istringstream stream(dir);
         string segment;
@@ -374,14 +351,14 @@ struct FileBrowser {
         for (string segment; getline(stream, segment, '/');) {
             if (segment != "")
                 curDirFolders.push_back(segment);
-        }
+        } 
         nodeSelected = curDirFolders.size() - 1;
     }
 
     // update list of files and directories from within curDir
     void updateFiles() {
-        if (File::GetFilesInDir(curDir, showFileTypes, files)) {
-            Log::Error("Can't access directory: %s", curDir);
+        if (File::GetFilesInDir(*curDir, showFileTypes, files)) {
+            Log::Error("Can't access directory: %s", curDir->c_str());
             return;
         }
     }
@@ -392,8 +369,6 @@ struct FileBrowser {
         resort = true;
         selectedFileID = -1;
     }
-    // initialisation
-    void Init() { updateDirAndFiles(File::ThisDir()); }
     // shortens file path to "...path/at/place.gc" if length >
     // MAX_DISPLAY_STRING
     string shortenFilePath(const string &str) {
@@ -439,7 +414,7 @@ struct FileBrowser {
 
         if (filetype == FILE_TYPE) {
             curFile = filename;
-            string filepath = File::CombineDirPath(curDir, curFile);
+            string filepath = File::CombineDirPath(*curDir, curFile);
             Log::Info(string("Opening file: ") + filepath);
             curFilePath = shortenFilePath(filepath);
             
@@ -448,7 +423,7 @@ struct FileBrowser {
             
             ImGui::CloseCurrentPopup();
         } else { // folder
-            updateDirAndFiles(File::CombineDirPath(curDir, filename));
+            updateDirAndFiles(File::CombineDirPath(*curDir, filename));
         }
     }
 
@@ -619,7 +594,8 @@ struct FileBrowser {
                             ImGuiSelectableFlags_SpanAllColumns |
                                 ImGuiSelectableFlags_AllowItemOverlap |
                                 ImGuiSelectableFlags_AllowDoubleClick,
-                            ImVec2(0, 0))) {
+                            ImVec2(0, 0))) 
+                    {
                         selectedFileID = item->id;
 
                         if (ImGui::IsMouseDoubleClicked(0))
@@ -635,7 +611,7 @@ struct FileBrowser {
 
                             if (filetype == FOLDER_TYPE)
                                 updateDirAndFiles(
-                                    File::CombineDirPath(curDir, filename));
+                                    File::CombineDirPath(*curDir, filename));
                         }
                     }
                     ImGui::TableNextColumn();
@@ -660,7 +636,7 @@ struct FileBrowser {
         if (ImGui::Combo("Type", &selectedFileType, fileTypesDisplay,
                          IM_ARRAYSIZE(fileTypesDisplay))) {
             showFileTypes = fileTypesRaw[selectedFileType];
-            updateDirAndFiles(curDir);
+            updateDirAndFiles(*curDir);
         }
 
         if (ImGui::Button("OK", ImVec2(120, 0)))
@@ -674,49 +650,33 @@ struct FileBrowser {
 };
 
 struct FileController {
-
-    FileBrowser fileBrowser;
+    
+    // button dimensions
+    const int w = 70;
+    const int h = 30;
+    // dimensions of play/pause image
+    int w2 = 18;
+    int h2 = 18;
+    
+    std::unique_ptr<FileBrowser> fileBrowser;
     ImageTexture img_Play, img_Pause;
     uint timeStart = 0;
     uint timeCur = 0;
 
-    FileController() {
-        fileBrowser.Init();
+    FileController(Settings& settings) {
+        fileBrowser = std::make_unique<FileBrowser>(settings);
         img_Play.Init(File::ThisDir("img/img_restart.png").c_str());
         img_Pause.Init(File::ThisDir("img/img_pause.png").c_str());
     }
-/*
-    void Run(GRBL &grbl, GRBLVals &grblVals) {
-        (void)grbl; (void)grblVals;
-        // get filepath of file
-        string filepath = File::CombineDirPath(fileBrowser.curDir, fileBrowser.curFile);
-        // add to log
-        Log::Info(string("Sending File: ") + filepath);
-        
-        //GCodeViewer gcViewer;
-        
-        //gcViewer.ViewFile(filepath);
-    }
-*/
-
-    void Run(GRBL &grbl, GRBLVals &grblVals) {
+    
+    void Run(GRBL &grbl, Settings settings) {
         // check we have selected a file
-        if (fileBrowser.curFile == "") {
+        if (fileBrowser->curFile == "") {
             Log::Error("No file has been selected");
             return;
         }
-        // Check we haven't already got a file running
-        if (grblVals.isFileRunning) {
-            Log::Error("File is already running");
-            return;
-        }
-        if (grblVals.status.state != Status_Idle) {
-            Log::Error("Machine is not idle");
-            return;
-        }
         // get filepath of file
-        string filepath =
-            File::CombineDirPath(fileBrowser.curDir, fileBrowser.curFile);
+        string filepath = File::CombineDirPath(settings.p.system.curDir, fileBrowser->curFile);
         // add to log
         Log::Info(string("Sending File: ") + filepath);
         // start time
@@ -725,45 +685,81 @@ struct FileController {
         if (grbl.sendFile(filepath)) {
             // couldn't open file
             Log::Error("Couldn't send file to grbl");
+            timeStart = 0;
         }
     }
 
-    void Draw(GRBL &grbl, GRBLVals &grblVals) {
+    void Draw(GRBL &grbl, Settings& settings) 
+    {
+        GRBLVals& grblVals = settings.grblVals;
         // initialise
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always); // ImVec2(520,
                                                                   // 100)
-        if (!ImGui::Begin("Run From File", NULL)) {
+        if (!ImGui::Begin("Run", NULL)) {
             ImGui::End();
             return;
         }
         // Disable all widgets when not connected to grbl
-        BeginDisableWidgets(grblVals);
+        ImGuiModules::BeginDisableWidgets(grblVals);
 
-        // button dimensions
-        const int w = 70;
-        const int h = 30;
-
+        bool openFileBrowser = false;
+        
+        if (ImGui::BeginTabBar("File/Functions"))
+        {
+            if (ImGui::BeginTabItem("File Browser"))
+            {
+                ImGui::Dummy(ImVec2());
+                openFileBrowser = DrawOpenFile(grblVals, fileBrowser->curFilePath.c_str());
+                ImGui::EndTabItem();
+            }
+            if (ImGui::BeginTabItem("Functions"))
+            {
+                static Functions functions;
+                ImGui::Dummy(ImVec2());
+                functions.Draw(grbl, settings);
+                ImGui::EndTabItem();
+            }
+            ImGui::EndTabBar();
+        }
+        
+        ImGui::Separator();
+        
+        DrawPlayButtons(grbl, settings);
+        DrawFileBrowser(openFileBrowser);
+        
+        // Disable all widgets when not connected to grbl
+        ImGuiModules::EndDisableWidgets(grblVals);
+        ImGui::End();
+    }
+    
+    bool DrawOpenFile(GRBLVals& grblVals, const char* currentFile)
+    {
         if (ImGui::Button("Open..", ImVec2(w, h))) {
-            if(grblVals.isFileRunning)
-                Log::Error("A file is running. This must finish before opening another");
+            if(!grblVals.isFileRunning)
+                return true;
             else
-                ImGui::OpenPopup("Open File");
+                Log::Error("A file is running. This must finish before opening another");
         }
         ImGui::SameLine();
         ImGui::TextUnformatted("Current File:");
         ImGui::SameLine();
-        ImGui::TextUnformatted(fileBrowser.curFilePath.c_str());
-
+        ImGui::TextUnformatted(currentFile);
+        
+        return false;
+    }
+    
+    void DrawPlayButtons(GRBL& grbl, Settings& settings)
+    {
+        GRBLVals& grblVals = settings.grblVals;
+        
         if (ImGui::Button("Run", ImVec2(w, h)))
-            Run(grbl, grblVals);
+            Run(grbl, settings);
 
         ImGui::SameLine();
 
         if (ImGui::Button("Cancel", ImVec2(w, h))) {
             if (grblVals.isFileRunning) {
-                Log::Info("Cancelling... Note: Any commands remaining in "
-                          "grbl's buffer "
-                          "will still execute.");
+                Log::Info("Cancelling... Note: Any commands remaining in grbl's buffer will still execute.");
                 grbl.cancel();
             }
         }
@@ -771,26 +767,27 @@ struct FileController {
         ImGui::Dummy(ImVec2(50, 0));
         ImGui::SameLine();
 
-        // dimensions of play/pause image
-        int w2 = 18;
-        int h2 = 18;
         // padding around image (i.e. button width = width of image + 2*padding)
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,
-                            ImVec2((w - w2) / 2, (h - h2) / 2));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2((w - w2) / 2, (h - h2) / 2));
 
-        ImGui::SameLine();
-        if (ImGui::ImageButton(img_Pause, ImVec2(w2, h2))) {
-            Log::Info("Pausing...");
-            grbl.sendRT(GRBL_RT_HOLD);
-        }
+            ImGui::SameLine();
+            if (ImGui::ImageButton(img_Pause, ImVec2(w2, h2))) {
+                Log::Info("Pausing...");
+                grbl.sendRT(GRBL_RT_HOLD);
+            }
 
-        ImGui::SameLine();
-        if (ImGui::ImageButton(img_Play, ImVec2(w2, h2))) {
-            Log::Info("Resuming...");
-            grbl.sendRT(GRBL_RT_RESUME);
-        }
+            ImGui::SameLine();
+            if (ImGui::ImageButton(img_Play, ImVec2(w2, h2))) {
+                Log::Info("Resuming...");
+                grbl.sendRT(GRBL_RT_RESUME);
+            }
         ImGui::PopStyleVar();
 
+        DrawTimeElapsed(grblVals);
+    }
+    
+    void DrawTimeElapsed(GRBLVals& grblVals)
+    {
         // show the total time elapsed after completion
         static bool showTotalTime = false;
 
@@ -800,11 +797,9 @@ struct FileController {
                 showTotalTime = true;
 
             // how far through file we are
-            float percComplete =
-                (float)grblVals.curLine / (float)grblVals.totalLines;
+            float percComplete = (float)grblVals.curLine / (float)grblVals.totalLines;
 
-            if (ImGui::BeginTable("FileRunning", 2,
-                                  ImGuiTableFlags_NoSavedSettings)) {
+            if (ImGui::BeginTable("FileRunning", 2, ImGuiTableFlags_NoSavedSettings)) {
                 ImGui::TableNextRow();
                 ImGui::TableSetColumnIndex(0);
 
@@ -832,8 +827,7 @@ struct FileController {
             ImGui::PushItemWidth(-FLT_MIN);
             // progress bar
             char buf[64];
-            snprintf(buf, 64, "%d/%d (%.2f%%)", grblVals.curLine,
-                     grblVals.totalLines, 100 * percComplete);
+            snprintf(buf, 64, "%d/%d (%.2f%%)", grblVals.curLine, grblVals.totalLines, 100 * percComplete);
             ImGui::ProgressBar(percComplete, ImVec2(0.0f, 0.0f), buf);
             ImGui::PopItemWidth();
         } else {
@@ -845,20 +839,21 @@ struct FileController {
                 showTotalTime = false;
             }
         }
-
-        // Always center the fileviewer windoe
+    }
+    
+    void DrawFileBrowser(bool openFileBrowser)
+    {
+        if(openFileBrowser) {
+            ImGui::OpenPopup("Open File");
+        } 
+        // Always center the fileviewer window
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing,
-                                ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
-        if (ImGui::BeginPopupModal("Open File", NULL,
-                                   ImGuiWindowFlags_AlwaysAutoResize)) {
-            fileBrowser.Draw();
+        if (ImGui::BeginPopupModal("Open File", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+            fileBrowser->Draw();
             ImGui::EndPopup();
         }
-        // Disable all widgets when not connected to grbl
-        EndDisableWidgets(grblVals);
-        ImGui::End();
     }
 };
 
@@ -894,12 +889,7 @@ x    glm::vec3 WPos;
 */
 
 struct Stats {
-    typedef struct {
-        string name;
-        string gcode; // may be seperated by ';'
-    } customGC_t;
 
-    vector<customGC_t> customGC;
     // sizes of buttons
     ImVec2 sizeL = {80.0f, 60.0f};
     ImVec2 sizeS = {55.0f, 30.0f};
@@ -909,12 +899,22 @@ struct Stats {
     ImVec2 sizeCustNew = {25.0, 25.0f};
     ImVec2 posCustNew = (sizeCust - sizeCustNew) / 2;
 
-    Stats() { importCustomGCs(); }
+    //Stats() { importCustomGCs(); }
 
-#define IMPORT_TYPE_NONE 0
-#define IMPORT_TYPE_CUSTOMGC 1
-
-    void importCustomGCs() {
+//#define IMPORT_TYPE_NONE 0
+//#define IMPORT_TYPE_CUSTOMGC 1
+/*
+    void importCustomGCs(Settings& settings) {
+        
+        if(settings.UpdateFromFile()) {
+            Log::Error("Could not update settings from file");
+        }
+        
+        return;
+        
+        
+        
+        
         vector<string> fileBuf;
 
         auto executeLine = [&fileBuf](string &str) {
@@ -925,7 +925,7 @@ struct Stats {
 
         string filename = File::ThisDir("config.ini");
         if (File::Read(filename, executeLine)) {
-            // no config file made yet
+            Log::Error("No config file found");
             return;
         }
 
@@ -962,95 +962,176 @@ struct Stats {
                 break;
             }
         }
-    }
+    }   
+*/
 
-    void exportCustomsGCs() {
-        ostringstream stream;
-        for (size_t i = 0; i < customGC.size(); i++) {
-            stream << "[CustomGCode][" << i << "]" << endl;
-            stream << "Name=" << customGC[i].name << endl;
-            stream << "GCode=" << customGC[i].gcode << endl << endl;
-        }
-        string filename = File::ThisDir("config.ini");
-        File::Write(filename, stream.str());
-    }
 
-    void DrawConnect(GRBL &grbl, GRBLVals &grblVals) {
-        int buttonWidth = 100;
-        // centre align
-        ImGui::SetCursorPosX((ImGui::GetWindowWidth() - buttonWidth) / 2);
-        if (!grblVals.isConnected) {
-            if (ImGui::Button("Connect", ImVec2(buttonWidth, 0))) {
-                grbl.connect();
+  
+
+    void DrawConnect(GRBL &grbl, Settings& settings) {
+        GRBLVals& grblVals = settings.grblVals;
+        
+        ImGui::Dummy(ImVec2(1.0f, 0.0f));
+        ImGui::SameLine();
+        
+        ImGui::BeginGroup();
+            ImVec2 buttonSize = ImVec2(90.0f, ImGui::GetTextLineHeight() * 2);
+            ImGuiModules::CentreItemVertically(2, buttonSize.y);
+            if (!grblVals.isConnected) {
+                if (ImGui::Button("Connect", buttonSize)) {
+                    grbl.connect(settings.p.system.serialDevice, stoi(settings.p.system.serialBaudrate));
+                }
+            } else if (grblVals.isConnected) {
+                if (ImGui::Button("Disconnect", buttonSize)) {
+                    grbl.disconnect();
+                }
             }
-        } else if (grblVals.isConnected) {
-            if (ImGui::Button("Disconnect", ImVec2(buttonWidth, 0))) {
-                grbl.disconnect();
-            }
-        }
+        ImGui::EndGroup();
+        
+        ImGui::SameLine();
+        ImGui::Dummy(ImVec2(1.0f, 0.0f));
+        ImGui::SameLine();
+        
+        ImGui::BeginGroup();
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::InputText("Device", &settings.p.system.serialDevice);
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::InputText("Baudrate", &settings.p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
+        ImGui::EndGroup();
+        
     }
-    void DrawStatus(GRBL &grbl, GRBLVals &grblVals) {
+    void DrawStatus(GRBL &grbl, GRBLVals& grblVals, float dt) {
         // current state colour
         ImVec4 colour;
         if (grblVals.status.state <= GRBLState::Status_Sleep) // idle
             colour = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
         else if (grblVals.status.state <= GRBLState::Status_Home) // motion
             colour = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-        else // alert
-            colour = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);
+        else { // alert
+            // timer used to flash alarm state
+            static float time = 0.0f;
+            static float flashTime = 1.0f; // seconds
+            time += dt;
+            colour = (time < flashTime) ? ImVec4(1.0f, 0.0f, 0.0f, 1.0f) : ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+            if(time >= 2.0f * flashTime) {
+                time = 0.0f;
+            }
+        }
 
         // current state
-        ImGui::TextColored(
-            colour, grbl.sys.status.stateStr(grblVals.status.state).c_str());
-        ImGui::SameLine();
-        ImGui::Text("%d, %d", grblVals.status.bufferPlannerAvail,
-                    grblVals.status.bufferSerialAvail);
-    }
+        ImGui::PushFont(font_large);
+            ImGui::PushStyleColor(ImGuiCol_Text, colour);
+                ImGuiModules::TextUnformattedCentredHorizontallyInTable(grbl.sys.status.stateStr(grblVals.status.state).c_str());
+            ImGui::PopStyleColor();
+        ImGui::PopFont();
+        
+        static bool showBufferState = false;
+        showBufferState = ImGui::IsItemHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        
+        if(showBufferState) {
+            ImGui::SameLine();
+            ImGui::Text("%d, %d", grblVals.status.bufferPlannerAvail, grblVals.status.bufferSerialAvail);
+        }
+         
+    } 
+    
+    void DrawPosition(GRBLVals& grblVals) {
 
-    void DrawPosition(GRBLVals &grblVals) {
         static bool showMachineCoords = false;
-
-        ImGui::TextUnformatted(showMachineCoords ? "MPos" : "WPos");
-
+        
         if (ImGui::BeginTable("Position", 3, ImGuiTableFlags_NoSavedSettings)) {
             ImGui::TableNextRow();
-            ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted("X");
-            ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted("Y");
-            ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted("Z");
+            ImGui::TableSetColumnIndex(0); 
+            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
+                ImGuiModules::TextUnformattedCentredHorizontallyInTable("X");
+                ImGui::TableSetColumnIndex(1);
+                ImGuiModules::TextUnformattedCentredHorizontallyInTable("Y");
+                ImGui::TableSetColumnIndex(2);
+                ImGuiModules::TextUnformattedCentredHorizontallyInTable("Z"); 
+            ImGui::PopStyleColor();
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            ImGui::Text("%.3f", showMachineCoords ? grblVals.status.MPos.x
-                                                  : grblVals.status.WPos.x);
+            ImGuiModules::TextCentredHorizontallyInTable("%.3f", showMachineCoords ? grblVals.status.MPos.x : grblVals.status.WPos.x);
             ImGui::TableSetColumnIndex(1);
-            ImGui::Text("%.3f", showMachineCoords ? grblVals.status.MPos.y
-                                                  : grblVals.status.WPos.y);
+            ImGuiModules::TextCentredHorizontallyInTable("%.3f", showMachineCoords ? grblVals.status.MPos.y : grblVals.status.WPos.y);
             ImGui::TableSetColumnIndex(2);
-            ImGui::Text("%.3f", showMachineCoords ? grblVals.status.MPos.z
-                                                  : grblVals.status.WPos.z);
+            ImGuiModules::TextCentredHorizontallyInTable("%.3f", showMachineCoords ? grblVals.status.MPos.z : grblVals.status.WPos.z);
 
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
-            ImGui::TextUnformatted(
-                grblVals.settings.units_Distance.c_str()); // mm
+            ImGuiModules::TextUnformattedCentredHorizontallyInTable( grblVals.settings.units_Distance.c_str()); // mm
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(grblVals.settings.units_Distance.c_str());
+            ImGuiModules::TextUnformattedCentredHorizontallyInTable(grblVals.settings.units_Distance.c_str());
             ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted(grblVals.settings.units_Distance.c_str());
+            ImGuiModules::TextUnformattedCentredHorizontallyInTable(grblVals.settings.units_Distance.c_str());
 
             ImGui::EndTable();
         }
-        showMachineCoords = (ImGui::IsItemHovered() &&
-                             ImGui::IsMouseDown(ImGuiMouseButton_Left))
-                                ? true
-                                : false;
+        showMachineCoords = ImGui::IsItemHovered() && ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        if(showMachineCoords) {
+            ImGui::TextUnformatted("MPos");
+        }
     }
-    void DrawMotion(GRBLVals &grblVals) {
+    
+    /*
+    struct GRBLModal_vals{
+        std::string StartupBlock[2];
+        float MotionMode            = 0.0f;     // *G0, G1, G2, G3, G38.2, G38.3, G38.4, G38.5, G80
+        uint CoordinateSystem       = 0;        // *G54, G55, G56, G57, G58, G59
+        uint Plane                  = 0;        // *G17, G18, G19
+        uint DistanceMode           = 0;        // *G90, G91
+        float ArcIJKDistanceMode    = 91.1f;    // *G91.1
+        uint FeedRateMode           = 0;        // G93, *G94
+        uint UnitsMode              = 0;        // G20, *G21
+        uint CutterRadCompensation  = 40;       // *G40
+        float ToolLengthOffset      = 49.0f;    // G43.1, *G49
+        uint ProgramMode            = 0;        // *M0, M1, M2, M30
+        uint SpindleState           = 0;        // M3, M4, *M5 
+        uint CoolantState           = 0;        // M7, M8, *M9
+
+        uint toolNumber             = 0;
+        float spindleSpeed          = 0.0f;
+        float feedRate              = 0.0f;    
+    };
+     */  
+      
+    void DrawCurrentMode(GRBLVals& grblVals) {
+                
+        if (ImGui::BeginTable("Modals", 4, ImGuiTableFlags_NoSavedSettings)) {
+
+            ImGui::TableNextRow();
+            
+            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
+                ImGui::TableNextColumn();
+                ImGuiModules::TextCentredHorizontallyInTable("Motion");
+                ImGui::TableNextColumn();
+                ImGuiModules::TextCentredHorizontallyInTable("Coord");
+                ImGui::TableNextColumn();
+                ImGuiModules::TextCentredHorizontallyInTable("Plane");
+                ImGui::TableNextColumn();
+                ImGuiModules::TextCentredHorizontallyInTable("Mode");
+            ImGui::PopStyleColor();
+            
+            
+            ImGui::TableNextRow();
+            
+            ImGui::TableNextColumn();
+            ImGuiModules::TextCentredHorizontallyInTable("G%g", grblVals.modal.MotionMode);
+            ImGui::TableNextColumn();
+            ImGuiModules::TextCentredHorizontallyInTable("G%u", grblVals.modal.CoordinateSystem);
+            ImGui::TableNextColumn();
+            ImGuiModules::TextCentredHorizontallyInTable("G%u", grblVals.modal.Plane);
+            ImGui::TableNextColumn();
+            ImGuiModules::TextCentredHorizontallyInTable("G%u", grblVals.modal.DistanceMode);
+                
+            ImGui::EndTable();
+        }
+    }
+    
+    void DrawMotion(GRBLVals& grblVals) {
         GRBLStatus_vals &status = grblVals.status;
-        MainSettings_vals &settings = grblVals.settings;
+        GRBLSettings_vals &settings = grblVals.settings;
 
         static float f[] = {0.0f};
         static float s[] = {0.0f};
@@ -1066,7 +1147,9 @@ struct Stats {
                 ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
 
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted("Feed Rate");
+            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
+                ImGui::TextUnformatted("Feed Rate");
+            ImGui::PopStyleColor();
             ImGui::Text("%.0f", status.feedRate);
             ImGui::TextUnformatted(settings.units_Feed.c_str());
 
@@ -1080,7 +1163,9 @@ struct Stats {
                 ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
 
             ImGui::TableSetColumnIndex(3);
-            ImGui::TextUnformatted("Spindle");
+            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
+                ImGui::TextUnformatted("Spindle");
+            ImGui::PopStyleColor();
             ImGui::Text("%.0d", status.spindleSpeed);
             ImGui::TextUnformatted("RPM");
 
@@ -1088,15 +1173,12 @@ struct Stats {
         }
     }
 
-    void DrawInputPins(GRBLVals &grblVals) {
-        if (ImGui::BeginTable(
-                "InputPins", 4, ImGuiTableFlags_NoSavedSettings,
-                ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 2))) {
+    void DrawInputPins(GRBLVals& grblVals) {
+        if (ImGui::BeginTable("InputPins", 4, ImGuiTableFlags_NoSavedSettings, ImVec2(0, ImGui::GetFrameHeightWithSpacing() * 2))) {
             GRBLStatus_vals &status = grblVals.status;
 
             // orange
             ImVec4 colour = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);
-            ;
 
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
@@ -1149,14 +1231,14 @@ struct Stats {
             if (ImGui::Button("Zero X", sizeS)) {
                 Log::Info(
                     "Setting current X position to 0 for this coord system");
-                grbl.send("G10 L20 P0 X0");
+                grbl.send("G10 L20 P0 X0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
             }
             ImGui::TableSetColumnIndex(1);
             ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
             if (ImGui::Button("Zero Y", sizeS)) {
                 Log::Info(
                     "Setting current Y position to 0 for this coord system");
-                grbl.send("G10 L20 P0 Y0");
+                grbl.send("G10 L20 P0 Y0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
             }
 
             ImGui::TableSetColumnIndex(2);
@@ -1164,7 +1246,7 @@ struct Stats {
             if (ImGui::Button("Zero Z", sizeS)) {
                 Log::Info(
                     "Setting current Z position to 0 for this coord system");
-                grbl.send("G10 L20 P0 Z0");
+                grbl.send("G10 L20 P0 Z0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
             }
             // position cursor to bottom corner of cell so it doesnt clip
             // ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
@@ -1173,7 +1255,7 @@ struct Stats {
         }
     }
 
-    void DrawCommands(GRBL &grbl, GRBLVals &grblVals) {
+    void DrawCommands(GRBL &grbl, GRBLVals& grblVals) {
 
         if (ImGui::BeginTable("Commands", 3, ImGuiTableFlags_NoSavedSettings)) {
             ImGui::TableNextRow();
@@ -1243,7 +1325,7 @@ struct Stats {
         }
     }
 
-    void DrawCustomGCodes(GRBL &grbl) { // splits string using
+    void DrawCustomGCodes(GRBL &grbl, Settings& settings) { // splits string using
         auto sendCustomGCode = [&grbl](string gcodestr) {
             istringstream s(gcodestr);
             string segment;
@@ -1255,9 +1337,11 @@ struct Stats {
 
         static int customGCIndex = 0;
 
-        if (ImGui::BeginTable("Commands", 3, ImGuiTableFlags_NoSavedSettings)) {
-
-            for (size_t i = 0; i <= customGC.size(); i++) {
+        if (ImGui::BeginTable("Commands", 3, ImGuiTableFlags_NoSavedSettings)) 
+        {
+            size_t gcodeCount = settings.p.customGCodes.size();
+            
+            for (size_t i = 0; i <= gcodeCount; i++) {
                 if (i < MAX_CUSTOM_GCODES) {
                     int rowIndex = i % 3;
                     // New row for every 3 custom gcodes
@@ -1266,18 +1350,18 @@ struct Stats {
                     ImGui::TableSetColumnIndex(rowIndex);
                     // ImGui::SetCursorPos(posM);
                     // Add new button
-                    if (i == customGC.size()) {
+                    if (i == gcodeCount) {
                         // centre button in cell
                         ImGui::SetCursorPos(ImGui::GetCursorPos() + posCustNew);
                         if (ImGui::Button("+", sizeCustNew)) {
-                            if (customGC.size() < MAX_CUSTOM_GCODES)
-                                customGC.push_back((customGC_t){"", ""});
-                        }
+                            if (gcodeCount < MAX_CUSTOM_GCODES)
+                                settings.p.customGCodes.push_back({ "", "" });
+                        }  
                         // Custom GCode button
                     } else {
 
-                        if (ImGui::Button(customGC[i].name.c_str(), sizeCust))
-                            sendCustomGCode(customGC[i].gcode);
+                        if (ImGui::Button(settings.p.customGCodes[i].name.c_str(), sizeCust))
+                            sendCustomGCode(settings.p.customGCodes[i].gcode);
 
                         if (ImGui::IsItemHovered() &&
                             ImGui::IsMouseReleased(ImGuiMouseButton_Right)) {
@@ -1292,7 +1376,7 @@ struct Stats {
                 popupOpen = true;
                 ImGui::Text("Custom GCode #%d", customGCIndex + 1);
                 ImGui::SameLine();
-                HelpMarker("GCode lines should be seperated with a semi-colon ("
+                ImGuiModules::HelpMarker("GCode lines should be seperated with a semi-colon ("
                            ";"
                            ")");
                 ImGui::SameLine();
@@ -1301,16 +1385,16 @@ struct Stats {
                 ImGui::SetCursorPosX(ImGui::GetWindowWidth() -
                                      (delButtonW + 10));
                 if (ImGui::Button("Delete", ImVec2(delButtonW, 0))) {
-                    customGC.erase(customGC.begin() + customGCIndex);
+                    settings.p.customGCodes.erase(settings.p.customGCodes.begin() + customGCIndex);
                     ImGui::CloseCurrentPopup();
                 }
-                ImGui::InputText("Name", &customGC[customGCIndex].name);
-                ImGui::InputTextMultiline("GCode", &customGC[customGCIndex].gcode);
+                ImGui::InputText("Name", &settings.p.customGCodes[customGCIndex].name);
+                ImGui::InputTextMultiline("GCode", &settings.p.customGCodes[customGCIndex].gcode);
 
                 ImGui::EndPopup();
             } else { // if popup has just been closed
                 if (popupOpen == true) {
-                    exportCustomsGCs();
+                    Event<Event_SaveSettings>::Dispatch({ }); 
                     popupOpen = false;
                 }
             }
@@ -1318,7 +1402,8 @@ struct Stats {
         }
     }
 
-    void Draw(GRBL &grbl, GRBLVals &grblVals) {
+    void Draw(GRBL &grbl, Settings& settings, float dt) {
+        GRBLVals& grblVals = settings.grblVals;
         // Initialise
         // ImGui::SetNextWindowSize(ImVec2(250, 300), ImGuiCond_FirstUseEver);
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
@@ -1327,15 +1412,21 @@ struct Stats {
             return;
         }
         // Connect / disconnect button
-        DrawConnect(grbl, grblVals);
+        DrawConnect(grbl, settings);
         // Disable all widgets when not connected to grbl
-        BeginDisableWidgets(grblVals);
+        ImGuiModules::BeginDisableWidgets(grblVals);
+        ImGui::Separator();
         // grbl State
-        DrawStatus(grbl, grblVals);
+        DrawStatus(grbl, grblVals, dt);
         ImGui::Separator();
         // Current x y z location
         DrawPosition(grblVals);
         ImGui::Separator();
+        //Current modal state
+        if(grblVals.isConnected) {
+            DrawCurrentMode(grblVals);
+            ImGui::Separator();
+        }
         // Current feedrate & spindle speed
         DrawMotion(grblVals);
         ImGui::Separator();
@@ -1349,7 +1440,7 @@ struct Stats {
         DrawCommands(grbl, grblVals);
         ImGui::Separator();
 
-        DrawCustomGCodes(grbl);
+        DrawCustomGCodes(grbl, settings);
         ImGui::Separator();
 
         static bool viewStatus = grbl.getViewStatusReport();
@@ -1358,7 +1449,7 @@ struct Stats {
         }
 
         // Disable all widgets when not connected to grbl
-        EndDisableWidgets(grblVals);
+        ImGuiModules::EndDisableWidgets(grblVals);
 
         ImGui::End();
     }
@@ -1370,8 +1461,9 @@ struct JogController {
     float jogDistance = 10;
     int feedRate;
 
-    JogController(GRBLVals &grblVals) {
-        feedRate = (int)grblVals.settings.max_FeedRate; // intialise to max feed
+    JogController(GRBLVals& grblVals) {
+        (void)grblVals;
+        feedRate = 6000;//(int)grblVals.settings.max_FeedRate; // intialise to max feed
     }
     /*
       float calcuateJogDistance(float feedrate, float acc)
@@ -1597,17 +1689,17 @@ struct JogController {
 
         ImGui::EndGroup();
     }
-    void DrawJogSetting(GRBLVals &grblVals) {
+    void DrawJogSetting(GRBLVals& grblVals) {
         ImGui::PushItemWidth(100);
         ImGui::Indent();
         ImGui::InputFloat("Jog Distance", &jogDistance);
         ImGui::Unindent();
 
-        Incrementer("Jog0.1", "0.1", 0.1f, jogDistance, false);
+        ImGuiModules::Incrementer("Jog0.1", "0.1", 0.1f, jogDistance, false);
         ImGui::SameLine();
-        Incrementer("Jog1", "1", 1.0f, jogDistance, false);
+        ImGuiModules::Incrementer("Jog1", "1", 1.0f, jogDistance, false);
         ImGui::SameLine();
-        Incrementer("Jog10", "10", 10.0f, jogDistance, false);
+        ImGuiModules::Incrementer("Jog10", "10", 10.0f, jogDistance, false);
 
         ImGui::Separator();
 
@@ -1618,7 +1710,7 @@ struct JogController {
         ImGui::PopItemWidth();
     }
 
-    void Draw(GRBL &grbl, GRBLVals &grblVals) { // initialise
+    void Draw(GRBL &grbl, GRBLVals& grblVals) { // initialise
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
         if (!ImGui::Begin("Jog Controller", NULL)) {
             ImGui::End();
@@ -1626,7 +1718,7 @@ struct JogController {
         }
 
         // Disable all widgets when not connected to grbl
-        BeginDisableWidgets(grblVals);
+        ImGuiModules::BeginDisableWidgets(grblVals);
 
         ImGui::Separator();
 
@@ -1641,7 +1733,7 @@ struct JogController {
         ImGui::PopStyleVar();
 
         // Disable all widgets when not connected to grbl
-        EndDisableWidgets(grblVals);
+        ImGuiModules::EndDisableWidgets(grblVals);
         ImGui::End();
     }
 };
@@ -1652,39 +1744,39 @@ struct Overrides {
         grbl.SendRT(GRBL_RT_FLOOD_COOLANT);
         grbl.SendRT(GRBL_RT_MIST_COOLANT);
     */
-    void Draw(GRBL &grbl, GRBLVals &grblVals) {
+    void Draw(GRBL &grbl, GRBLVals& grblVals) {
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
         if (!ImGui::Begin("Overrides", NULL)) {
             ImGui::End();
-            return;
-        }
-        // Disable all widgets when not connected to grbl
-        BeginDisableWidgets(grblVals);
-
+            return;  
+        }            
+        // Disable all widgets when not connected to grbl  
+        ImGuiModules::BeginDisableWidgets(grblVals);
+  
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 10));
-
-        GRBLStatus_vals status = grblVals.status;
+  
+        GRBLStatus_vals status = grblVals.status; 
         // Override Spindle Speed
         ImGui::Text("Override Spindle Speed: %d%%",
                     status.override_SpindleSpeed);
         // unused parameter, we read directly from status reports instead
-        static int spindleSpeed = 0;
-
+        static int spindleSpeed = 0; 
+        
         int buttonPress =
-            Incrementer("ORSpindle1", "1%", 1, spindleSpeed, false);
+            ImGuiModules::Incrementer("ORSpindle1", "1%", 1, spindleSpeed, false);
         if (buttonPress == -1)
             grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_MINUS_1PERCENT);
         else if (buttonPress == 1)
             grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_ADD_1PERCENT);
-
+  
         ImGui::SameLine();
-        buttonPress =
-            Incrementer("ORSpindle10", "10%", 10, spindleSpeed, false);
+        buttonPress = 
+            ImGuiModules::Incrementer("ORSpindle10", "10%", 10, spindleSpeed, false);
         if (buttonPress == -1)
             grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_MINUS_10PERCENT);
         else if (buttonPress == 1)
             grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_ADD_10PERCENT);
-
+ 
         ImGui::SameLine();
         if (ImGui::SmallButton("Reset##ORSpindleReset"))
             grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_100PERCENT);
@@ -1696,14 +1788,14 @@ struct Overrides {
         // Unused parameter, we read directly from status reports instead
         static int feedRate = 0;
 
-        buttonPress = Incrementer("ORFeed1", "1%", 1, feedRate, false);
+        buttonPress = ImGuiModules::Incrementer("ORFeed1", "1%", 1, feedRate, false);
         if (buttonPress == -1)
             grbl.sendRT(GRBL_RT_OVERRIDE_FEED_MINUS_1PERCENT);
         else if (buttonPress == 1)
             grbl.sendRT(GRBL_RT_OVERRIDE_FEED_ADD_1PERCENT);
 
         ImGui::SameLine();
-        buttonPress = Incrementer("ORFeed10", "10%", 10, feedRate, false);
+        buttonPress = ImGuiModules::Incrementer("ORFeed10", "10%", 10, feedRate, false);
         if (buttonPress == -1)
             grbl.sendRT(GRBL_RT_OVERRIDE_FEED_MINUS_10PERCENT);
         else if (buttonPress == 1)
@@ -1731,7 +1823,7 @@ struct Overrides {
         ImGui::PopStyleVar();
 
         // Disable all widgets when not connected to grbl
-        EndDisableWidgets(grblVals);
+        ImGuiModules::EndDisableWidgets(grblVals);
         ImGui::End();
     }
 };
@@ -1777,7 +1869,8 @@ struct ValsViewer {
         va_end(arglist);
     };
 
-    void Draw(GRBL &grbl, GRBLVals &grblVals) {
+    void Draw(GRBL &grbl, Settings& settings) {
+        GRBLVals& grblVals = settings.grblVals;
         ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
         if (!ImGui::Begin("Debug", NULL)) {
             ImGui::End();
@@ -1800,37 +1893,40 @@ struct ValsViewer {
             static bool debugGCReader = false;
             bool needUpdate = false;
 
-            ImGui::TextUnformatted("Debug");
-            ImGui::Indent();
-            needUpdate |= ImGui::Checkbox("GCode List Build", &(debugGCListBuild));
-            needUpdate |= ImGui::Checkbox("Character Counting", &(debugCharacterCounting));
-            needUpdate |= ImGui::Checkbox("GCode List", &(debugGCList));
-            needUpdate |= ImGui::Checkbox("Serial", &(debugSerial));
-            needUpdate |= ImGui::Checkbox("Thread Blocking", &(debugThreadBlocking));
-            needUpdate |= ImGui::Checkbox("GCode Reader (For 3D Viewer)", &(debugGCReader));
-            ImGui::Unindent();
+            static bool showDebugMenu = false;
+            ImGui::Checkbox("Show Debug Menu", &showDebugMenu);
+            if(showDebugMenu) {
+                ImGui::TextUnformatted("Debug");
+                ImGui::Indent();
+                needUpdate |= ImGui::Checkbox("GCode List Build", &(debugGCListBuild));
+                needUpdate |= ImGui::Checkbox("Character Counting", &(debugCharacterCounting));
+                needUpdate |= ImGui::Checkbox("GCode List", &(debugGCList));
+                needUpdate |= ImGui::Checkbox("Serial", &(debugSerial));
+                needUpdate |= ImGui::Checkbox("Thread Blocking", &(debugThreadBlocking));
+                needUpdate |= ImGui::Checkbox("GCode Reader (For 3D Viewer)", &(debugGCReader));
+                ImGui::Unindent();
+            
+                if (needUpdate) {
+                    int flags = DEBUG_NONE;
 
-            if (needUpdate) {
-                int flags = DEBUG_NONE;
+                    if (debugGCListBuild)
+                        flags |= DEBUG_GCLIST_BUILD;
+                    if (debugCharacterCounting)
+                        flags |= DEBUG_CHAR_COUNTING;
+                    if (debugGCList)
+                        flags |= DEBUG_GCLIST;
+                    if (debugSerial)
+                        flags |= DEBUG_SERIAL;
+                    if (debugThreadBlocking)
+                        flags |= DEBUG_THREAD_BLOCKING;
+                    if (debugGCReader)
+                        flags |= DEBUG_GCREADER;
 
-                if (debugGCListBuild)
-                    flags |= DEBUG_GCLIST_BUILD;
-                if (debugCharacterCounting)
-                    flags |= DEBUG_CHAR_COUNTING;
-                if (debugGCList)
-                    flags |= DEBUG_GCLIST;
-                if (debugSerial)
-                    flags |= DEBUG_SERIAL;
-                if (debugThreadBlocking)
-                    flags |= DEBUG_THREAD_BLOCKING;
-                if (debugGCReader)
-                    flags |= DEBUG_GCREADER;
-
-                Log::SetDebugFlags(flags);
+                    Log::SetDebugFlags(flags);
+                }
             }
-
             ImGui::TreePop();
-        }
+        }        
         if (ImGui::TreeNode("General")) {
             addEntry("Connected", v.isConnected);
             addEntry("Check Mode", v.isCheckMode);
@@ -1920,9 +2016,66 @@ struct ValsViewer {
 
             ImGui::TreePop();
         }
-        if (ImGui::TreeNode("Settings")) {
+        if (ImGui::TreeNode("GRBL Settings")) {
             if (ImGui::Button("Update '$$'"))
                 grbl.send("$$");
+                
+            ImGuiTableFlags flags =
+                ImGuiTableFlags_SizingFixedSame | ImGuiTableFlags_Resizable |
+                ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY |
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter |
+                ImGuiTableFlags_BordersV;
+            if (ImGui::BeginTable("GRBLSettings", 5, flags, ImVec2(0, 32 * ImGui::GetFrameHeight()))) { 
+                ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+                // Set up headers
+                ImGui::TableSetupColumn("ID", ImGuiTableColumnFlags_None, 55.0f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_None, 55.0f);
+                ImGui::TableSetupColumn("Unit", ImGuiTableColumnFlags_None, 55.0f);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_None, 95.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_None, 300.0f);
+                ImGui::TableHeadersRow();
+
+                for(const auto& [id, value] : grblVals.settings.RawValues) {
+                    // retrieve name, desc & unit of setting
+                    std::string name, unit, desc;
+                    if(getSettingsMsg(id, &name, &unit, &desc)) {    
+                        Log::Error("Error %d: Can't find settings code", id);
+                    }
+                    
+                    char valueStr[MAX_STRING];
+                    if(unit == "mask") {
+                        snprintf(valueStr, MAX_STRING, "%g (%s)", value, std::bitset<8>(value).to_string().c_str());
+                    } else {
+                        snprintf(valueStr, MAX_STRING, "%g", value);
+                    }
+                    
+                    ImGui::TableNextRow();
+                    // id
+                    ImGui::TableNextColumn();
+                    string textBuffer = string("$ ") + std::to_string(id);
+                    float idTextWidth = ImGui::CalcTextSize(textBuffer.c_str()).x;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth()/2 - idTextWidth/2);
+                    ImGui::TextUnformatted(textBuffer.c_str());
+
+                    // value
+                    ImGui::TableNextColumn();
+                    float valueTextWidth = ImGui::CalcTextSize(valueStr).x;
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth()/2 - valueTextWidth/2); //  - ImGui::CalcTextSize(valueStr).x / 2 - ImGui::GetStyle().CellPadding.x
+                    ImGui::Text(valueStr);
+                    
+                    // unit
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(unit.c_str());
+                    // name
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(name.c_str());
+                    // description
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(desc.c_str());
+                }
+                ImGui::EndTable();
+            }
+          
             addEntry("Min Spindle Speed", v.settings.min_SpindleSpeed);
             addEntry("Max Spindle Speed", v.settings.max_SpindleSpeed);
             addEntry("Max FeedRate X", v.settings.max_FeedRateX);
@@ -1933,27 +2086,38 @@ struct ValsViewer {
             addEntry("Units: Feedrate", v.settings.units_Feed);
             ImGui::TreePop();
         }
-
+        if (ImGui::TreeNode("Sqeak Settings")) {
+            if(ImGui::Button("Save Config")) {
+                Event<Event_SaveSettings>::Dispatch({ }); 
+                //settings.SaveToFile();
+            }
+            if(ImGui::Button("Load Config")) {
+                Event<Event_UpdateSettingsFromFile>::Dispatch({ }); 
+                //settings.UpdateFromFile(); 
+            }
+            ImGui::TreePop();
+        }
         ImGui::End();
     }
 };
+ 
 
-
-void drawFrames(GRBL& grbl, GRBLVals& grblVals) {
+        
+void drawFrames(GRBL& grbl, Settings& settings, float dt) {
     // ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-
+    GRBLVals& grblVals = settings.grblVals;
 
     static ValsViewer valsViewer;
-    valsViewer.Draw(grbl, grblVals);
+    valsViewer.Draw(grbl, settings);
 
     static Console console;
     console.Draw(grbl, grblVals);
 
-    static FileController fileController;
-    fileController.Draw(grbl, grblVals);
+    static FileController fileController(settings);
+    fileController.Draw(grbl, settings);
 
     static Stats stats;
-    stats.Draw(grbl, grblVals);
+    stats.Draw(grbl, settings, dt);
 
     static JogController jogController(grblVals);
     jogController.Draw(grbl, grblVals);
@@ -1961,7 +2125,5 @@ void drawFrames(GRBL& grbl, GRBLVals& grblVals) {
     static Overrides overrides;
     overrides.Draw(grbl, grblVals);
 
-    static Functions functions;
-    functions.Draw(grbl, grblVals);
     // ImGui::PopStyleVar();
 }

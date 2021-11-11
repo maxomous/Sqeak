@@ -12,7 +12,7 @@ public:
     Serial();
     ~Serial();
     // connects to grbl
-    int connect();
+    int connect(std::string device, int baudrate);
     // disconnects from grbl
     void disconnect();
     // returns true if connected

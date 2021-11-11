@@ -4,23 +4,176 @@ using namespace std;
 
 #include "../common.h" 
 
-/*
-float angleIncr = 10; // degs
+float dAngle = 10.0f; // degrees
 
 vector<glm::vec3> shape_Cylinder;
+vector<glm::vec3> shape_Cylinder_Outline;
 void initShape_Cylinder()
 {
-    for (float th = 0; th <= M_2_PI; i += angleIncr)
-    {
-        glm::vec3 v = { 0.5f*cos(th), -0.5f*sin(th) };
-        shape_Cylinder.push_back(v);
-        glm::vec3 v = { 0.5f*cos(th+angleIncr), -0.5f*sin(th+angleIncr) };
-        shape_Cylinder.push_back(v);
-        glm::vec3 v = { 0.0f, 0.0f };
-        shape_Cylinder.push_back(v);
+    // bottom face - circle facing down 
+    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
+        float th2 = th + dAngle;
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 0.0f));
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
+        shape_Cylinder.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+    }
+    // walls
+    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
+        float th2 = th + dAngle;
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 0.0f));
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 1.0f));
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
+    }
+    // top face - circle facing up
+    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
+        float th2 = th + dAngle;
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
+        shape_Cylinder.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
+        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 1.0f));
+    }
+    
+    // outline bottom
+    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
+        float th2 = th + dAngle;
+        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 0.0f));
+        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
+    }
+    // outline top
+    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
+        float th2 = th + dAngle;
+        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
+        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 1.0f));
+    }
+    
+}
+
+    /* Square
+    // bottom square
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
+    // top square           
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
+    // sides                
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
+    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
+    */
+   
+DynamicBuffer::DynamicBuffer(GLenum primitiveType, int maxVertices, int maxIndices)
+    : m_PrimitiveType(primitiveType), m_MaxVertexCount(maxVertices), m_MaxIndexCount(maxIndices) 
+{ 
+    std::vector<uint> indices;
+    indices.reserve(m_MaxIndexCount);
+    for (uint i = 0; i < m_MaxIndexCount; i++)
+        indices.push_back(i);
+    m_Vertices.reserve(m_MaxVertexCount);
+    
+    m_Shader = make_unique<Shader>(Viewer_VertexShader, Viewer_FragmentShader);
+    // make dynamic vertex buffer
+    m_VertexBuffer = make_unique<VertexBuffer>(m_MaxVertexCount * sizeof(Vertex));
+    VertexBufferLayout layout;
+    
+    layout.Push<float>(m_Shader->GetAttribLocation("in_Position"), 3);
+    layout.Push<float>(m_Shader->GetAttribLocation("in_Colour"), 3);
+    
+    m_VAO = make_unique<VertexArray>();
+    m_VAO->AddBuffer(*m_VertexBuffer, layout);
+    
+    m_IndexBuffer = make_unique<IndexBuffer>(indices.data(), m_MaxIndexCount);
+    
+}
+
+void DynamicBuffer::ClearVertices()
+{
+    m_Vertices.clear();
+    m_VertexCount = 0;
+}
+
+void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour)
+{
+    m_Vertices.emplace_back( position, colour ); 
+    m_VertexCount++;
+}
+
+void DynamicBuffer::AddGrid(Settings& settings)
+{   
+    ParametersList::Viewer3DParameters::Grid& grid = settings.p.viewer.grid;
+    if(grid.Spacing <= 0)
+        return;
+    glm::vec2 gridOrientation = glm::vec2(sign(grid.Size.x), sign(grid.Size.y));
+    glm::vec3 offset = settings.grblVals.ActiveCoordSys() + grid.Position;
+    
+    for (float i = 0.0f; i <= abs(grid.Size.x); i += grid.Spacing) {
+        AddVertex(offset + glm::vec3(gridOrientation.x * i, 0.0f, 0.0f), grid.Colour);
+        AddVertex(offset + glm::vec3(gridOrientation.x * i, grid.Size.y, 0.0f), grid.Colour);
+    }
+    for (float j = 0.0f; j <= abs(grid.Size.y); j += grid.Spacing) {
+        AddVertex(offset + glm::vec3(0.0f, gridOrientation.y * j, 0.0f), grid.Colour);
+        AddVertex(offset + glm::vec3(grid.Size.x, gridOrientation.y * j, 0.0f), grid.Colour);
     }
 }
-*/
+
+void DynamicBuffer::AddAxes(float size, glm::vec3 origin)
+{
+    // draw axis
+    AddVertex(origin + glm::vec3(0.0f,      0.0f,       0.0f),  { 1.0f, 0.0f, 0.0f });
+    AddVertex(origin + glm::vec3(size,      0.0f,       0.0f),  { 1.0f, 0.0f, 0.0f });
+    AddVertex(origin + glm::vec3(0.0f,      0.0f,       0.0f),  { 0.0f, 1.0f, 0.0f });
+    AddVertex(origin + glm::vec3(0.0f,      size,       0.0f),  { 0.0f, 1.0f, 0.0f });
+    AddVertex(origin + glm::vec3(0.0f,      0.0f,       0.0f),  { 0.0f, 0.0f, 1.0f });
+    AddVertex(origin + glm::vec3(0.0f,      0.0f,       size),  { 0.0f, 0.0f, 1.0f });
+}
+
+void DynamicBuffer::AddShape(const vector<glm::vec3>& shape, glm::vec3 colour, const glm::vec3& position, const glm::vec3& scale, float rotateX, float rotateZ) 
+{
+    for (const glm::vec3& vertex : shape) 
+    {
+        glm::vec3 v = vertex * scale;
+        v = glm::rotate(v, glm::radians(rotateX), glm::vec3(1.0f, 0.0f, 0.0f));
+        v = glm::rotate(v, glm::radians(rotateZ), glm::vec3(0.0f, 0.0f, 1.0f));
+        v += position;
+        AddVertex(move(v), colour);
+    }
+}   
+
+void DynamicBuffer::Update() {
+    m_VertexBuffer->DynamicUpdate(0, m_Vertices.size() * sizeof(Vertex), m_Vertices.data());
+}
+
+void DynamicBuffer::Draw(glm::mat4& proj, glm::mat4& view) {
+    Renderer renderer(m_PrimitiveType); 
+    
+    m_Shader->Bind();
+    m_Shader->SetUniformMat4f("u_MVP", proj * view * glm::mat4(1.0f));
+    
+    if(m_VertexCount > m_MaxIndexCount || m_VertexCount > m_MaxVertexCount) {
+        Log::Error("Too many vertices to display. Vertex Count: %d", m_VertexCount);
+        return;
+    }
+    renderer.Draw(*m_VAO, *m_IndexBuffer, *m_Shader, m_VertexCount);
+}
+
 
 Viewer::Viewer() 
   : m_Camera(Window::GetWidth(), Window::GetHeight(), glm::vec3(0.0f, 0.0f, 0.0f), 80.0f)
@@ -36,6 +189,10 @@ Viewer::Viewer()
     auto MouseDragEvent = [&](Event_MouseMove data) {
         // we can just use the data already sent to mouse
         (void)data;
+        // ignore if a window is hovered over
+        if(ImGui::GetIO().WantCaptureMouse)
+            return;
+        
         // rotate on mouse click
         if(Mouse::IsLeftClicked() && ActiveItem::IsViewport(m_Camera)) {
             m_Camera.ChangeDirection(Mouse::GetPositionDif());
@@ -80,7 +237,8 @@ Viewer::Viewer()
     m_Camera.SetZoomMinMax(1.0f, 3000.0f);
     m_Camera.SetZoom(2000.0f);
     
-    DynamicBufferInit();
+    initShape_Cylinder();
+    
 }
 Viewer::~Viewer()
 {
@@ -88,45 +246,17 @@ Viewer::~Viewer()
 
 
 
-const int m_DynVertexMax = 100;
-const int maxDynIndexCount = m_DynVertexMax;
-uint m_DynVertexCount = 0;
 
 
-void Viewer::DynamicBufferInit()
-{
-    std::array<uint, maxDynIndexCount> indices;
-    for (int i = 0; i < maxDynIndexCount; i++)
-        indices[i] = i;
-    
-    m_Shader_Dynamic = make_unique<Shader>(Viewer_VertexShader, Viewer_FragmentShader);
-    // make dynamic vertex buffer
-    m_VertexBuffer_Dynamic = make_unique<VertexBuffer>(m_DynVertexMax * sizeof(Vertex));
-    VertexBufferLayout layout;
-    
-    layout.Push<float>(m_Shader_Dynamic->GetAttribLocation("in_Position"), 3);
-    layout.Push<float>(m_Shader_Dynamic->GetAttribLocation("in_Colour"), 3);
-    
-    m_VAO_Dynamic = make_unique<VertexArray>();
-    m_VAO_Dynamic->AddBuffer(*m_VertexBuffer_Dynamic, layout);
-    
-    m_IndexBuffer_Dynamic = make_unique<IndexBuffer>(indices.data(), maxDynIndexCount);
 
-    m_Vertices.reserve(m_DynVertexMax);
-}
-
-void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<uint>& indices)
+void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std::vector<uint>& indices)
 {
     vector<Vertex> vertices;
     vertices.reserve(positions.size());
     
-    glm::vec3 pathColour = { 0.0f, 0.2f, 0.8f };
-    
-    for (size_t i = 0; i < positions.size(); i++)
-    {
-        vertices.emplace_back(positions[i], pathColour);
+    for (size_t i = 0; i < positions.size(); i++) {
+        vertices.emplace_back(positions[i], settings.p.viewer.ToolpathColour);
     }
-    
     
     m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
    
@@ -144,6 +274,17 @@ void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<uint>& indic
     m_DrawCount = m_DrawMax = m_IndexBuffer->GetCount();
     
     m_Initialised = true;
+}
+
+void Viewer::Clear()
+{
+    m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
+    m_VertexBuffer.reset(new VertexBuffer(nullptr, 0));
+    m_VAO.reset(new VertexArray());
+    m_IndexBuffer.reset(new IndexBuffer(nullptr, 0));
+    
+    m_DrawCount = m_DrawMax = 0;
+    m_Initialised = false;
 }
 
 void Viewer::Draw2DText(const char* label, glm::vec3 position)
@@ -167,94 +308,42 @@ void Viewer::Draw2DAxesLabels(glm::vec3 position, float axisLength)
     Draw2DText("Z", glm::vec3(0.0f, 0.0f, axisLength) + position);
 }
 
-void Viewer::ClearDynamicVertices()
-{
-    m_Vertices.clear();
-    m_DynVertexCount = 0;
-}
 
-void Viewer::AddDynamicVertex(const glm::vec3& position, const glm::vec3& colour)
-{
-    m_Vertices.emplace_back( position, colour ); 
-    m_DynVertexCount++;
-}
-
-void Viewer::AddDynamicAxes(glm::vec3 origin)
-{
-    // draw axis
-    AddDynamicVertex(origin + glm::vec3(0.0f,        0.0f,        0.0f), { 1.0f, 0.0f, 0.0f });
-    AddDynamicVertex(origin + glm::vec3(m_AxisSize, 0.0f,        0.0f), { 1.0f, 0.0f, 0.0f });
-    AddDynamicVertex(origin + glm::vec3(0.0f,        0.0f,        0.0f), { 0.0f, 1.0f, 0.0f });
-    AddDynamicVertex(origin + glm::vec3(0.0f,    m_AxisSize,     0.0f), { 0.0f, 1.0f, 0.0f });
-    AddDynamicVertex(origin + glm::vec3(0.0f,        0.0f,        0.0f), { 0.0f, 0.0f, 1.0f });
-    AddDynamicVertex(origin + glm::vec3(0.0f,        0.0f, m_AxisSize), { 0.0f, 0.0f, 1.0f });
-}
- 
-
-void Viewer::DrawGrid()
-{   
-    if(m_GridSpacing <= 0)
-        return;
-    glm::vec2 gridSizeSign = glm::vec2(sign(m_GridSize.x), sign(m_GridSize.y));
         
-    for (float i = 0.0f; i <= abs(m_GridSize.x); i += m_GridSpacing) {
-        AddDynamicVertex(m_GridPosition + glm::vec3(gridSizeSign.x * i, 0.0f, 0.0f), m_GridColour);
-        AddDynamicVertex(m_GridPosition + glm::vec3(gridSizeSign.x * i, m_GridSize.y, 0.0f), m_GridColour);
-    }
-    for (float j = 0.0f; j <= abs(m_GridSize.y); j += m_GridSpacing) {
-        AddDynamicVertex(m_GridPosition + glm::vec3(0.0f, gridSizeSign.y * j, 0.0f), m_GridColour);
-        AddDynamicVertex(m_GridPosition + glm::vec3(m_GridSize.x, gridSizeSign.y * j, 0.0f), m_GridColour);
-    }
-}
-
-void Viewer::Update(float dt, const glm::vec3& currentMPos, const glm::vec3& coordSysPos)
+void Viewer::Update(Settings& settings, float dt)
 {    
     (void)dt;
-    // add axis letters
-    Draw2DAxesLabels(coordSysPos, m_AxisSize);
-    // reset buffer
-    ClearDynamicVertices();
+    GRBLVals& grblVals = settings.grblVals;
+    float axisSize = settings.p.viewer.axis.Size;
+    const glm::vec3& zeroPos = grblVals.ActiveCoordSys();
+    // Add axis letters
+    Draw2DAxesLabels(zeroPos, axisSize);
+    Draw2DText("H", grblVals.coords.homeCoords[0]);
+    // Reset buffer
+    m_DynamicLines.ClearVertices();
+    m_DynamicFaces.ClearVertices();
 // ---------------------------------
-    // could be in static buffer    
-    DrawGrid();
+    // this could be in static buffer...
+    m_DynamicLines.AddGrid(settings);
+    // Draw coord system axis
+    m_DynamicLines.AddAxes(axisSize, zeroPos);
     
-    // draw machine zero axis
-    //AddDynamicAxes(glm::vec3(0.0f, 0.0f, 0.0f));
-    // draw coord system axis
-    AddDynamicAxes(coordSysPos);
+    // Draw Current Position
+    glm::vec3 scaleTool;
+
+    ParametersList::Tools& tools = settings.p.tools;
+    if(tools.toolList.HasItemSelected()) {
+        ParametersList::Tools::Tool& tool = tools.toolList.CurrentItem();
+        scaleTool = glm::vec3(tool.Diameter, tool.Diameter, tool.Length);
+    } else {
+        scaleTool = glm::vec3(6.0f, 6.0f, 20.0f);
+    }
+    m_DynamicFaces.AddShape(shape_Cylinder,           settings.p.viewer.spindle.toolColour,         grblVals.status.MPos, scaleTool);
+    m_DynamicLines.AddShape(shape_Cylinder_Outline,   settings.p.viewer.spindle.toolColourOutline,  grblVals.status.MPos, scaleTool);
     
-    float w = 2;
-    glm::vec3 currentPosColour = { 0.8f, 0.8f, 0.2f };
     
-    // bottom square
-    AddDynamicVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
-    // top square           
-    AddDynamicVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
-    // sides                
-    AddDynamicVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
-    AddDynamicVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
-    
-    m_VertexBuffer_Dynamic->DynamicUpdate(0, m_Vertices.size() * sizeof(Vertex), m_Vertices.data());
+    m_DynamicLines.Update();
+    m_DynamicFaces.Update();
 }
 
 
@@ -262,24 +351,12 @@ void Viewer::Render()
 {
     m_Proj = m_Camera.GetProjectionMatrix();
     m_View = m_Camera.GetViewMatrix();
-    DrawDynamicBuffer();
+ 
+    Renderer::Clear();
+    
+    m_DynamicLines.Draw(m_Proj, m_View);
+    m_DynamicFaces.Draw(m_Proj, m_View);
     DrawPath();
-}
-
-void Viewer::DrawDynamicBuffer()
-{
-    Renderer renderer(GL_LINES);
-    renderer.Clear();
-    
-    m_Shader_Dynamic->Bind();
-    m_Shader_Dynamic->SetUniformMat4f("u_MVP", m_Proj * m_View * glm::mat4(1.0f));
-    
-    // We need more vertices
-    if(m_DynVertexCount > maxDynIndexCount) {
-        Log::Error("Too many vertices to display");
-        return;
-    }
-    renderer.Draw(*m_VAO_Dynamic, *m_IndexBuffer_Dynamic, *m_Shader_Dynamic, m_DynVertexCount);
 }
 
 void Viewer::DrawPath()
@@ -293,28 +370,51 @@ void Viewer::DrawPath()
     
     renderer.Draw(*m_VAO, *m_IndexBuffer, *m_Shader, (uint)m_DrawCount);
 }
-void Viewer::ImGuiRender(GRBLVals& grblVals)
-{
-    ImGui::Begin("GCode Viewer", NULL, ImGuiWindowFlags_None);
+ 
+
+void Viewer::ImGuiRender(Settings& settings)  
+{ 
+    ImGui::Begin("GCode Viewer", NULL, ImGuiWindowFlags_None);   
+     
+    ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
+    ImGui::ColorEdit3("Toolpath Colour", &settings.p.viewer.ToolpathColour[0]);
+     
+        ImGui::Separator();
+        
+    ImGui::TextUnformatted("GCode Viewer"); 
+        
+        ImGui::Separator();
+        
+    ImGui::ColorEdit3("Background Colour", &settings.p.viewer.BackgroundColour[0]);
     
-    ImGui::TextUnformatted("GCode Viewer");
-    ImGui::Checkbox("Show", &m_Show);
-    ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax);
+        ImGui::Separator();
+        
+    ImGui::SliderFloat("Axis Size", &settings.p.viewer.axis.Size, 0.0f, 500.0f);
     
-    ImGui::Dummy(ImVec2());
+        ImGui::Separator();
+        
+    ImGui::ColorEdit3("Tool Colour", &settings.p.viewer.spindle.toolColour[0]);
+    ImGui::ColorEdit3("Tool Colour Outline", &settings.p.viewer.spindle.toolColourOutline[0]);
+    
+        ImGui::Separator();
     
     ImGui::TextUnformatted("Grid");
     
-    HereButton(grblVals, m_GridPosition);
-    ImGui::SliderFloat3("Position", &m_GridPosition[0], -3000.0f, 3000.0f);
-    ImGui::SliderFloat2("Size", &m_GridSize[0], -3000.0f, 3000.0f);
-    ImGui::SliderFloat("Spacing", &m_GridSpacing, 0.0f, 1000.0f);
-    ImGui::SliderFloat3("Colour", &m_GridColour[0], 0.0f, 1.0f);
-    /*
-    glm::vec3   m_GridPosition;
-    glm::vec2   m_GridSize = glm::vec2(1200, 600);
-    float       m_GridSpacing = 100.0f;
-    glm::vec3   m_GridColour = glm::vec3(0.6f, 0.6f, 0.6f);
-    */
+    ImGui::SliderFloat3("Position", &settings.p.viewer.grid.Position[0], -3000.0f, 3000.0f);
+    ImGui::SameLine();
+    ImGuiModules::HereButton(settings.grblVals, settings.p.viewer.grid.Position);
+    ImGui::SliderFloat2("Size", &settings.p.viewer.grid.Size[0], -3000.0f, 3000.0f);
+    ImGui::SliderFloat("Spacing", &settings.p.viewer.grid.Spacing, 0.0f, 1000.0f);
+    ImGui::ColorEdit3("Colour", &settings.p.viewer.grid.Colour[0]);
+    
+        ImGui::Separator();
+    
+        
+    if(ImGui::Button("Clear")) {
+        Clear();
+    }
+    ImGui::SameLine();
+    ImGui::Checkbox("Show", &m_Show);
+    
     ImGui::End();
 }

@@ -17,6 +17,8 @@
 #define GLM_FORCE_CTOR_INIT // ensure 
 #include <glm/glm.hpp> 						
 #include <glm/gtc/matrix_transform.hpp> 
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/rotate_vector.hpp> 
 
 #include "camera.h"
 #include "glsys.h"

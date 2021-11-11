@@ -4,6 +4,7 @@
 TARGET = ../grbl
 
 DIRS = \
+functions \
 dev \
 libs \
 gui \
@@ -12,7 +13,7 @@ glcore/deps/imgui \
 glcore/deps/stb_image \
 glcore/deps/tinyobjloader
 
-LDLIBS = -lwiringPi -lGL -lglfw -lGLEW -lpthread
+LDLIBS = -lwiringPi -ldl -lGL -lglfw -lGLEW -lpthread
 
 CXX = g++
 

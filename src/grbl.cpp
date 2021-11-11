@@ -1,7 +1,7 @@
   /*
  * grbl.cpp
  *  Max Peglar-Willis 2021
- */   
+ */    
 
 #include "common.h" 
 using namespace std;
@@ -29,6 +29,13 @@ const GRBLStatus_vals GRBLStatus::getVals() {
     return m_vals;
 }
 
+//- `Hold:0` Hold complete. Ready to resume.
+//- `Hold:1` Hold in-progress. Reset will throw an alarm.
+//- `Door:0` Door closed. Ready to resume.
+//- `Door:1` Machine stopped. Door still ajar. Can't resume until closed.
+//- `Door:2` Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm.
+//- `Door:3` Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm.
+
 // returns value 
 const std::string GRBLStatus::stateStr(GRBLState state)
 {
@@ -37,23 +44,23 @@ const std::string GRBLStatus::stateStr(GRBLState state)
     case Status_Idle:
         return "Idle";
     case Status_Hold0:
-        return "Hold 0";
+        return "Hold (Ready)";
     case Status_Hold1:
-        return "Hold 1";
+        return "Hold (Busy)";
     case Status_Sleep:
         return "Sleep";
     case Status_Run:
-        return "Run";
+        return "Running";
     case Status_Jog:
-        return "Jog";
+        return "Jogging";
     case Status_Check:
-        return "Check";
+        return "Check Mode";
     case Status_Home:
-        return "Home";
+        return "Homimg";
     case Status_Alarm:
         return "Alarm";
     case Status_Door0:
-        return "Door 0";
+        return "Door (Ready)";
     case Status_Door1:
         return "Door 1";
     case Status_Door2:
@@ -74,12 +81,23 @@ void GRBLStatus::setState(GRBLState state) {
 }
     
 // returns a copy of vals
-const MainSettings_vals MainSettings::getVals() { 
-    std::lock_guard<std::mutex> guard(m_mutex);
-    return m_vals;
+const GRBLSettings_vals GRBLSettings::getVals() { 
+    GRBLSettings_vals vals;
+    {
+        std::unique_lock<std::mutex> locker(m_mutex);
+        vals = m_vals;
+    }
+    vals.min_SpindleSpeed = (int)vals.RawValues[31];
+    vals.max_SpindleSpeed = (int)vals.RawValues[30];
+    vals.max_FeedRateX = vals.RawValues[110];
+    vals.max_FeedRateY = vals.RawValues[111];
+    vals.max_FeedRateZ = vals.RawValues[112];
+    vals.max_FeedRate = std::max(std::max(vals.max_FeedRateX, vals.max_FeedRateY), vals.max_FeedRateZ);
+    
+    return move(vals);
 }
 // sets units to mm or inches
-void MainSettings::setUnitsInches(bool isInches) 
+void GRBLSettings::setUnitsInches(bool isInches) 
 {
     std::lock_guard<std::mutex> guard(m_mutex);
     
@@ -93,22 +111,7 @@ void MainSettings::setUnitsInches(bool isInches)
     }    
 }
 
- 
-// This takes a std::string of 3 values seperated by commas (,) and will return a 3DPoint
-// 4.000,0.000,0.000
-glm::vec3 GRBLSystem::stoxyz(const std::string& msg) {
 
-    std::stringstream stream(msg);
-    std::string segment;
-    float val[3];
-
-    for (int i = 0; i < 3; i++) {
-        getline(stream, segment, ',');
-        val[i] = stof(segment);
-    }
-
-    return {val[0], val[1], val[2]};
-}
     
 // checks Startup Line Execution for error    msg = ">G54G20:ok" or ">G54G20:error:X"
 // it is very unlikely that there will be an error as this is checked before it is saves onto the eeprom
@@ -137,7 +140,7 @@ void GRBLSystem::checkStartupLine(const std::string& msg)
         }
         else
             Log::Critical("Something is not right here, didn't find 2nd ':'");
-    }
+    } 
 }    
 
 // decodes GCode Parameters
@@ -152,36 +155,36 @@ void GRBLSystem::decodeCoords(const std::string& msg)
     std::lock_guard<std::mutex> guard(coords.m_mutex);
     // [G54:4.000,0.000,0.000] - [G59:4.000,0.000,0.000]
     if(!param.compare("G54")) 
-        coords.m_vals.workCoords[0] = stoxyz(num);
+        coords.m_vals.workCoords[0] = stoVec3(num);
     else if(!param.compare("G55")) 
-        coords.m_vals.workCoords[1] = stoxyz(num);
+        coords.m_vals.workCoords[1] = stoVec3(num);
     else if(!param.compare("G56")) 
-        coords.m_vals.workCoords[2] = stoxyz(num);
+        coords.m_vals.workCoords[2] = stoVec3(num);
     else if(!param.compare("G57")) 
-        coords.m_vals.workCoords[3] = stoxyz(num);
+        coords.m_vals.workCoords[3] = stoVec3(num);
     else if(!param.compare("G58")) 
-        coords.m_vals.workCoords[4] = stoxyz(num);
+        coords.m_vals.workCoords[4] = stoVec3(num);
     else if(!param.compare("G59")) 
-        coords.m_vals.workCoords[5] = stoxyz(num);
+        coords.m_vals.workCoords[5] = stoVec3(num);
     // [G28:1.000,2.000,0.000]  / [G30:4.000,6.000,0.000]
     else if(!param.compare("G28")) 
-        coords.m_vals.homeCoords[0] = stoxyz(num);
+        coords.m_vals.homeCoords[0] = stoVec3(num);
     else if(!param.compare("G30")) 
-        coords.m_vals.homeCoords[1] = stoxyz(num);
+        coords.m_vals.homeCoords[1] = stoVec3(num);
     // [G92:0.000,0.000,0.000]
     else if(!param.compare("G92")) 
-        coords.m_vals.offsetCoords = stoxyz(num);
+        coords.m_vals.offsetCoords = stoVec3(num);
     // [TLO:0.000]    
     else if(!param.compare("TLO")) 
         coords.m_vals.toolLengthOffset = stof(num);
     // [PRB:0.000,0.000,0.000:0]
     else if(!param.compare("PRB")) {
-        coords.m_vals.probeOffset = stoxyz(msg.substr(5, msg.length()-8));
+        coords.m_vals.probeOffset = stoVec3(msg.substr(5, msg.length()-8));
         coords.m_vals.probeSuccess = (bool)stoi(msg.substr(msg.length()-2, 1));
     }
     else {
         Log::Error("Something's not right... Parameter unrecognised: %s", msg.c_str());
-    }
+    } 
     
 }
 // decodes the startup block
@@ -316,17 +319,17 @@ void GRBLSystem::decodeStatus(const std::string& msg)
         // MPos:0.000,-10.000,5.000 machine position  or  WPos:-2.500,0.000,11.000 work position
         // WPos = MPos - WCO
         else if(segs[i].substr(0, 4) == "MPos") {
-            status.m_vals.MPos = stoxyz(segs[i].substr(5));
+            status.m_vals.MPos = stoVec3(segs[i].substr(5));
             status.m_vals.WPos = status.m_vals.MPos - status.m_vals.WCO;
         }
         else if(segs[i].substr(0, 4) == "WPos") {
-            status.m_vals.WPos = stoxyz(segs[i].substr(5));
+            status.m_vals.WPos = stoVec3(segs[i].substr(5));
             status.m_vals.MPos = status.m_vals.WPos + status.m_vals.WCO;
         }
         // work coord offset - shown every 10-30 times
         // the current work coordinate system, G92 offsets, and G43.1 tool length offset
         else if(segs[i].substr(0, 3) == "WCO") {
-            status.m_vals.WCO = stoxyz(segs[i].substr(4));
+            status.m_vals.WCO = stoVec3(segs[i].substr(4));
         }
 
         // Buffer State - mainly used for debugging
@@ -402,7 +405,7 @@ void GRBLSystem::decodeStatus(const std::string& msg)
         // Ov:100,100,100 current override values in percent of programmed values for feed, rapids, and spindle speed, respectively.
         else if(segs[i].substr(0, 2) == "Ov") 
         {
-            glm::vec3 ov = stoxyz(segs[i].substr(3));
+            glm::vec3 ov = stoVec3(segs[i].substr(3));
             status.m_vals.override_Feedrate = (int)ov.x;
             status.m_vals.override_RapidFeed = (int)ov.y;
             status.m_vals.override_SpindleSpeed = (int)ov.z;
@@ -499,6 +502,8 @@ std::string GRBLSystem::decodeSettings(const std::string& msg)
         // lock the mutex
         std::unique_lock<std::mutex> locker(settings.m_mutex);
             
+        settings.m_vals.RawValues[settingsCode] = value;
+            
         if(settingsCode == 30)
             settings.m_vals.max_SpindleSpeed = value;
         if(settingsCode == 31)
@@ -560,10 +565,10 @@ GRBL::~GRBL() {
     Log::Info("Status Report Thread Joined");
 }
 
-void GRBL::connect()
+void GRBL::connect(std::string device, int baudrate)
 {        
     Log::Info("Connecting...");
-    serial.connect();
+    serial.connect(device, baudrate);
     softReset();
     Log::Info("Connected");
     sendUpdateSettings();
@@ -585,21 +590,21 @@ bool GRBL::isConnected() {
 // this makes a copy of a const std::string (i.e Send("G90")) 
 // so that we can pass it to and manipulate it in lower 
 // down functions (i.e. removing whitespace etc)
-int GRBL::send(const std::string& cmd) 
+int GRBL::send(const std::string& cmd, PreCheck prechecks) 
 {
     std::string str = cmd;
-    return send(str);
+    return send(str, prechecks);
 }
 // adds to the GCode list, ready to be written when buffer has space
 // sending a pointer is slightly quicker as it wont have to be be copied, 
 // it will however, modify the original std::string to remove whitespace and comments etc
 // returns 0 on success, -1 on failure
-int GRBL::send(std::string& cmd) 
+int GRBL::send(std::string& cmd, PreCheck prechecks) 
 {
-    int err = send_preChecks();
+    int err = send_preChecks(prechecks);
     if(err) return err;    
     
-    Log::Debug(DEBUG_GCLIST_BUILD, "Adding to buffer = %s", cmd.c_str());
+    Log::Debug(DEBUG_GCLIST_BUILD, "Adding streamed item = %s", cmd.c_str());
     
     // add command to GCList
     if(gcList.add(cmd)) 
@@ -607,11 +612,12 @@ int GRBL::send(std::string& cmd)
 
     return 0;
 }
+
 int GRBL::sendFile(const std::string& file) 
 {    
     auto executeLine = [this](std::string& str) {
            
-        Log::Debug(DEBUG_GCLIST_BUILD, "Adding to buffer = %s", str.c_str());
+        Log::Debug(DEBUG_GCLIST_BUILD, "Adding streamed item from file = %s", str.c_str());
         
          // add command to GCList
         if(gcList.addMany(str)) 
@@ -621,7 +627,7 @@ int GRBL::sendFile(const std::string& file)
     }; 
     
     // do pre checks
-    int err = send_preChecks();
+    int err = send_preChecks(PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
     if(err) return err;    
     
     if(File::Read(file, executeLine)) {
@@ -634,26 +640,53 @@ int GRBL::sendFile(const std::string& file)
     return 0;
 }
 
+int GRBL::sendArray(const vector<string>& gcodes) 
+{    
+    // do pre checks
+    int err = send_preChecks(PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
+    if(err) return err;    
+
+    for(string gcode : gcodes) {
+         // add command to GCList
+        if(gcList.addMany(gcode))
+            return -1;    // line was longer than GRBL_MAX_BUFFER
+    }
+    
+    gcList.addManyEnd();
+    sendUpdateSettings();
+    return 0;
+}
+
 bool GRBL::isFileRunning() {
     return gcList.isFileRunning();
 }
-void GRBL::getFilePos(uint& pos, uint& total) {
-    gcList.getFilePos(pos, total);
+void GRBL::getFilePos(uint& posIndex, uint& pos, uint& total) {
+    gcList.getFilePos(posIndex, pos, total);
 }
 // checks to be done prior to sending gcodes
 // this is seperated to allow checks to be done just once
 // if lots of gcodes are to be sent
 // these checks require mutexes to be locked and therefor may slow
 // down transfer if done many times
-int GRBL::send_preChecks()
+int GRBL::send_preChecks(PreCheck prechecks)
 {
-    if(!serial.isConnected()) {
-        Log::Error("Connect to GRBL before sending commands");
-        return -2;
+    if(prechecks & PreCheck::SerialIsConnected) {
+        if(!serial.isConnected()) {
+            Log::Error("Connect to GRBL before sending commands");
+            return -1;
+        }
     }
-    if(gcList.isFileRunning()) {
-        Log::Error("File is already running");
-        return -3;
+    if(prechecks & PreCheck::NoFileRunning) {
+        if(gcList.isFileRunning()) {
+            Log::Error("File is already running");
+            return -1;
+        }
+    }
+    if(prechecks & PreCheck::GRBLIsIdle) {
+        if(sys.status.getVals().state != GRBLState::Status_Idle) {
+            Log::Error("Machine is not idle");
+            return -1;
+        }
     }
     return 0;
 }
@@ -688,7 +721,7 @@ void GRBL::sendJog(const glm::vec3& p, int feedrate) {
     
     s << "F" << feedrate;
    
-    if(send(s.str())) {
+    if(send(s.str(), PreCheck::SerialIsConnected | PreCheck::NoFileRunning)) {
         // cannot send
         return;
     }
@@ -979,7 +1012,7 @@ void GRBL::checkGCodeAction(const string& gcode)
 {
     auto findAndSend = [&](const string& findStr, const string& trueCond) {
         if(gcode.find(findStr) != string::npos)
-            send(trueCond);
+            send(trueCond, PreCheck::SerialIsConnected);
     }; 
     // tool length offset
     findAndSend("G43.1", "$#");
@@ -989,6 +1022,21 @@ void GRBL::checkGCodeAction(const string& gcode)
     findAndSend("G28.1", "$#");
     findAndSend("G30.1", "$#");
     findAndSend("G92", "$#");
+    
+    // change coord system
+    findAndSend("G0", "$G");
+    findAndSend("G1", "$G");
+    findAndSend("G2", "$G");
+    findAndSend("G3", "$G");
+    findAndSend("G38.2", "$G");
+    findAndSend("G38.3", "$G");
+    findAndSend("G38.4", "$G");
+    findAndSend("G38.5", "$G");
+    findAndSend("G80", "$G");
+    
+    // change feedrate mode
+    findAndSend("G93", "$G");
+    findAndSend("G94", "$G");
     
     // change coord system
     findAndSend("G54", "$G");
@@ -1008,6 +1056,20 @@ void GRBL::checkGCodeAction(const string& gcode)
     // change units
     findAndSend("G20", "$G");
     findAndSend("G21", "$G");
+    
+    // ProgramMode
+    findAndSend("M0", "$G");
+    findAndSend("M1", "$G");
+    findAndSend("M2", "$G");
+    findAndSend("M30", "$G");
+    // SpindleState
+    findAndSend("M3", "$G");
+    findAndSend("M4", "$G");
+    findAndSend("M5", "$G");
+    // CoolantState
+    findAndSend("M7", "$G");
+    findAndSend("M8", "$G");
+    findAndSend("M9", "$G");
     
     // any setting
     findAndSend("$0", "$$");
@@ -1188,3 +1250,4 @@ void GRBL::thread_statusReport()
         delay(getStatusInterval());
     }
 }
+ 

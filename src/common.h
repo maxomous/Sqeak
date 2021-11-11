@@ -1,6 +1,6 @@
 /*
  * common.hpp
- *  Max Peglar-Willis & Luke Mitchell 2021
+ *  Max Peglar-Willis 2021
  */
 
 #pragma once
@@ -16,6 +16,7 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include <variant>
 #include <memory>
 // threads
 #include <atomic>
@@ -30,9 +31,10 @@
 // OpenGL / ImGui
 #include "glcore/glcore.h"
 
-#include "dev/ads1115.h"
 #include "libs/file.h"
 #include "libs/geom.h"
+#include "dev/ads1115.h"
+#include "dev/joystick.h"
 
 #include "gclist.h"
 #include "serial.h"
@@ -40,12 +42,27 @@
 #include "grbl.h"
 #include "grblcodes.h"
 
-#include "gcreader.h"
+#include "settings.h"
 
-#include "functions.h"
+#include "gcreader.h"
+#include "functions/functions.h"
+
 #include "gui/frames.h"
 #include "gui/gui.h"
 #include "gui/viewer.h"
+
+
+#define GUI_WINDOW_NAME     "Sqeak"
+#define GUI_WINDOW_W        1280
+#define GUI_WINDOW_H        720
+#define GUI_WINDOW_WMIN     200
+#define GUI_WINDOW_HMIN     200
+
+#define CONFIG_FILE         "config.ini"        // both created in the directory of the executable
+#define GUI_CONFIG_FILE     "uiconfig.ini"
+
+#define GUI_IMG_ICON        "/img/icon.png"
+
 
 // *********************** //
 //       Events            //
@@ -57,14 +74,11 @@ struct Event_SettingsUpdated_Coords {
     Event_SettingType type;
 };
 */
-struct Event_Update3DModelFromFile
-{
-    std::string filename;
-};
-struct Event_Update3DModelFromVector
-{
-    std::vector<std::string> gcodes;
-};
+struct Event_Update3DModelFromFile { std::string filename; };
+struct Event_Update3DModelFromVector { std::vector<std::string> gcodes; };
+struct Event_ConsoleScrollToBottom {};
+struct Event_SaveSettings {};
+struct Event_UpdateSettingsFromFile {};
 
 // *********************** //
 //       GRBL defines      //
@@ -138,14 +152,18 @@ struct Event_Update3DModelFromVector
 #define DEBUG_THREAD_BLOCKING                       0x1 << 4
 #define DEBUG_GCREADER                              0x1 << 5
 
+
 // converts variable arguments to a string
 std::string va_str(const char *format, ...);
 // modifies string to lower case
-extern void lowerCase(std::string &str);
+void lowerCase(std::string &str);
 // modifies string to upper case
-extern void upperCase(std::string &str);
+void upperCase(std::string &str);
 // convert seconds into hours, minutes and seconds
-extern void normaliseSecs(uint s, uint &hr, uint &min, uint &sec);
+void normaliseSecs(uint s, uint &hr, uint &min, uint &sec);
+// This takes a std::string of 2/3 values seperated by commas (.000,0.000,2.222) and will return a vec2 / vec3
+glm::vec2 stoVec2(const std::string& msg);
+glm::vec3 stoVec3(const std::string& msg);
 
 class Log {
 public:
@@ -279,6 +297,7 @@ private:
             std::string str = levelPrefix(level);
             str += va_str(msg, args...);
             m_consoleLog.emplace_back(move(str));
+            Event<Event_ConsoleScrollToBottom>::Dispatch({});
         }
     }
 

@@ -20,7 +20,7 @@ class Renderer
 public:
 	Renderer();
 	Renderer(int primitive);
-	void Clear() const;
+	static void Clear();
 	void Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader) const;
     void Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader, uint drawCount) const;
 private:

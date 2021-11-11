@@ -6,16 +6,6 @@ using namespace std;
 #include "../common.h"
 #include "gui.h"
 
-#define GUI_WINDOW_NAME     "Sqeak"
-#define GUI_WINDOW_W        1280
-#define GUI_WINDOW_H        720
-#define GUI_WINDOW_WMIN     200
-#define GUI_WINDOW_HMIN     200
-
-#define GUI_CONFIG_FILE     "uiconfig.ini"    // created in the directory of the executable
-
-#define GUI_IMG_ICON        "/img/img_restart.png"
-
 void GLSystem::glfw_ConfigVersion()
 {
    	/*
@@ -31,6 +21,10 @@ void GLSystem::glfw_Config()
     glfwSetWindowSizeLimits(m_Window, GUI_WINDOW_WMIN, GUI_WINDOW_HMIN, GLFW_DONT_CARE, GLFW_DONT_CARE); 
 }
 
+// Fonts
+ImFont* font_medium;
+ImFont* font_large;
+
 void GLSystem::imgui_Config()
 {
     // Style
@@ -38,9 +32,11 @@ void GLSystem::imgui_Config()
     // Get IO
     ImGuiIO& io = ImGui::GetIO();
     
-    // Ini File
+    // ImGui ini File
     static string iniFile = File::ThisDir(GUI_CONFIG_FILE);
     io.IniFilename = iniFile.c_str();
+    
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     ImGui::GetStyle().ScrollbarRounding = 3.0f; // scroll bars
@@ -51,9 +47,13 @@ void GLSystem::imgui_Config()
         Log::Error(string("Could not find icon: ") + filename);
     
     // Load Fonts
-    ImFont* font_geomanist = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 17.0f);
-    if(!font_geomanist)
-        cout << "Error: Could not find font: Geomanist" << endl;
+    font_medium = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 17.0f);
+    if(!font_medium)
+        cout << "Error: Could not find font: Geomanist 17" << endl;
+        
+    font_large = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 24.0f);
+    if(!font_large)
+        cout << "Error: Could not find font: Geomanist 24" << endl;
 }
 
     // get all grbl values (this is much quicker than getting
@@ -68,27 +68,25 @@ void UpdateGRBLVals(GRBL& grbl, GRBLVals& grblVals)
     grblVals.isConnected = grbl.isConnected();
     grblVals.isCheckMode = (grblVals.status.state == GRBLState::Status_Check);
     grblVals.isFileRunning = grbl.isFileRunning();
-    grbl.getFilePos(grblVals.curLine, grblVals.totalLines);
+    grbl.getFilePos(grblVals.curLineIndex, grblVals.curLine, grblVals.totalLines);
 }
 
 
 //void globalEvents()
 
-
-int gui(GRBL& grbl)
+int gui(GRBL& grbl, Settings& settings)
 {
-    GLSystem glsys(GUI_WINDOW_W, GUI_WINDOW_H, GUI_WINDOW_NAME, "#version 140"); // glsl version   
+    GLSystem glsys(GUI_WINDOW_W, GUI_WINDOW_H, GUI_WINDOW_NAME, "#version 300 es"); // glsl version   
 
 	// blending (allows translucence)
 	GLCall(glEnable(GL_BLEND));
 	// what to do with source (overlapping item) / what to do with destination (item we are overlapping)
 	GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-    // set background colour
-    GLCall(glClearColor(0.45f, 0.55f, 0.60f, 1.00f));
     
     Timer timer;
-        
-    GRBLVals grblVals;
+    
+    GRBLVals& grblVals = settings.grblVals;
+    
     GCodeReader gcReader(grblVals);
     Viewer viewer;
     
@@ -100,21 +98,23 @@ int gui(GRBL& grbl)
         delay(100);
     };
     
-    Event<Event_Update3DModelFromFile>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromFile data) {
+    Event<Event_Update3DModelFromFile>::RegisterHandler([&updateGRBL, &gcReader, &viewer, &settings](Event_Update3DModelFromFile data) {
         updateGRBL();
         gcReader.OpenFile(data.filename);
-        viewer.SetPath(gcReader.GetVertices(), gcReader.GetIndices());
+        viewer.SetPath(settings, gcReader.GetVertices(), gcReader.GetIndices());
     });
     
-    Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromVector data) {
+    Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer, &settings](Event_Update3DModelFromVector data) {
         updateGRBL();
         gcReader.OpenVector(data.gcodes);
-        viewer.SetPath(gcReader.GetVertices(), gcReader.GetIndices());
+        viewer.SetPath(settings, gcReader.GetVertices(), gcReader.GetIndices());
     });
-    
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(glsys.GetWindow()))
     {    
+        // set background colour
+		GLCall(glClearColor(settings.p.viewer.BackgroundColour.r, settings.p.viewer.BackgroundColour.g, settings.p.viewer.BackgroundColour.b, 1.0f));
+        
         grbl.systemChecks();
         UpdateGRBLVals(grbl, grblVals);
         
@@ -123,10 +123,10 @@ int gui(GRBL& grbl)
         // ImGui
         glsys.imgui_NewFrame();
 		{
-            viewer.Update(timer.dt(), grblVals.status.MPos, grblVals.ActiveCoordSys()); 
+            viewer.Update(settings, timer.dt()); 
             viewer.Render();
-            viewer.ImGuiRender(grblVals);
-            drawFrames(grbl, grblVals);
+            viewer.ImGuiRender(settings);
+            drawFrames(grbl, settings, timer.dt());
             ImGui::ShowDemoWindow(NULL);
 		}
 		glsys.imgui_Render();
@@ -135,5 +135,7 @@ int gui(GRBL& grbl)
         // Poll for and process events 
         GLCall(glfwPollEvents());
     }
+    // save settings on close
+    Event<Event_SaveSettings>::Dispatch({ }); 
     return 0;
 }

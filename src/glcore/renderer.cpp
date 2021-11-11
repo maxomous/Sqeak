@@ -41,7 +41,7 @@ Renderer::Renderer(int primitive)
 	: m_Primitive(primitive)
 {}
 
-void Renderer::Clear() const
+void Renderer::Clear()
 {
 	GLCall(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }

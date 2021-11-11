@@ -1,8 +1,18 @@
 #pragma once
-#include "common.h" 
-#include "functions/function_facingcut.h"
+#include "../common.h" 
 
+/*
+    ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
+    ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();
 
+    std::string material    = "Material";
+    float speed             = 10000.0f;
+    float feedCutting       = 1000.0f;
+    float feedPlunge        = 300.0f;
+    float cutDepth          = 1.0f;
+    float cutWidth          = 1.0f;
+    */
+    
 class FunctionGCodes
 {
 public:
@@ -10,8 +20,8 @@ public:
     void Clear();
     void MoveToZPlane();
     void MoveToHomePosition();
-    void InitSequence();
-    void EndSequence();
+    void InitCommands(float spindleSpeed);
+    void EndCommands();
 
     std::vector<std::string> Get() {
         return m_gcodes;
@@ -54,9 +64,8 @@ public:
     bool DrawActive() {
         return ImGui::Button(m_Name.c_str(), ImVec2(100, 40));
     }
-    virtual bool DrawPopup(GRBL& grbl, Settings& settings) { 
-        (void)grbl; (void)settings; 
-        return false; 
+    virtual void DrawPopup(Settings& settings) { 
+        (void)settings;
     }
     virtual std::pair<bool, std::vector<std::string>> ExportGCode(Settings& settings) { (void)settings; return make_pair(false, std::vector<std::string>()); }
 

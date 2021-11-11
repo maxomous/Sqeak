@@ -54,10 +54,12 @@ void File::Write(const string& filename, const string& str) {
     // lock the mutex
     std::unique_lock<std::mutex> locker(get().m_mutex);
     
-    fstream f(filename, ios::out);
+    ofstream f(filename, ios::out);
     if (f.is_open()) {
         f << str;
         f.close();
+    } else {
+        std::cout << "Error: " << filename << " is not open" << endl;
     }
 }
 
@@ -65,10 +67,27 @@ void File::Append(const string& filename, const string& str) {
     // lock the mutex 
     std::unique_lock<std::mutex> locker(get().m_mutex);
 
-    fstream f(filename, ios::out | ios::app);
+    ofstream f(filename, ios::out | ios::app);
     if (f.is_open()) {
         f << str;
         f.close();
+    } else {
+        std::cout << "Error: " << filename << " is not open" << endl;
+    }
+}
+
+void File::WriteArray(const string& filename, const vector<string>& array) {
+    // lock the mutex 
+    std::unique_lock<std::mutex> locker(get().m_mutex);
+
+    ofstream f(filename, ios::out);
+    if (f.is_open()) {
+        for(const string& str : array) {
+            f << str << '\n';
+        }
+        f.close();
+    } else {
+        std::cout << "Error: " << filename << " is not open" << endl;
     }
 }
 
@@ -81,7 +100,7 @@ int File::Read(const string& filename, const function<int(string&)>& callback, u
     
     ifstream openFile(filename);
     if(!openFile.is_open()) {
-        cout << "Error: Couldn't open file" << endl;
+        cout << "Error: Couldn't open file " << filename << endl;
         return -1;
     }
     string output;
@@ -92,7 +111,7 @@ int File::Read(const string& filename, const function<int(string&)>& callback, u
         if(lastLine != 0 && n > lastLine)
             break;
         if(callback(output)) {
-            cout << "Error: Cannot execute line of file" << endl;
+            cout << "Error: Cannot execute line of file " << filename << endl;
             return -1;
         }
     }
@@ -107,7 +126,7 @@ int File::GetNumLines(const string& filename)
     
     ifstream openFile(filename);
     if(!openFile.is_open()) {
-        cout << "Error: Couldn't open file" << endl;
+        cout << "Error: Couldn't open file " << filename << endl;
         return -1;
     }
     string unused;

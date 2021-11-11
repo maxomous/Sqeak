@@ -429,8 +429,6 @@ void GCodeReader::ReturnToHome(int homePos) {
     GRBLCoords_vals& coords = m_GrblVals.coords;
     size_t index = (homePos == 28) ? 0 : 1;
     
-    glm::vec3 p_XYZ;
-    
     if(m_XYZ_Set == XYZ_SET_FLAG_NONE) {
         glm::vec3 p = coords.homeCoords[index];
         AddVertex(p, CoordSystem::Machine);
@@ -438,7 +436,7 @@ void GCodeReader::ReturnToHome(int homePos) {
     else {
         glm::vec3 pFirst = m_WPos;
         glm::vec3 pSecond = m_WPos;
-        p_XYZ = GetAbsoluteWPos(m_XYZ);
+        glm::vec3 p_XYZ = GetAbsoluteWPos(m_XYZ);
         
         if(m_XYZ_Set & XYZ_SET_FLAG_X) {
             pFirst.x = p_XYZ.x;
@@ -484,102 +482,115 @@ void GCodeReader::MotionLinear()
 * 
 *     Plane selection (G17/18/19) is possible for G02 & G03 
 *----------------------------------------------------------------------------*/
-void GCodeReader::MotionArc(int direction)
+void GCodeReader::MotionArc(int Direction)
 {
-    (void)direction;
+    // get start & end coords relative to the selected plane 
+    glm::vec3 xyz_Start   = PointRelativeToPlane(m_WPos, m_Plane);
+    glm::vec3 xyz_End     = PointRelativeToPlane(GetAbsoluteWPos(m_XYZ), m_Plane);
     
-    glm::vec3 p_XYZ = GetAbsoluteWPos(m_XYZ);
+    glm::vec2 xy_Start = { xyz_Start.x, xyz_Start.y }; 
+    glm::vec2 xy_End   = { xyz_End.x, xyz_End.y };
     
+    // flip direction if XZ Plane
+    int direction = (m_Plane == Plane::XZ) ? -Direction : Direction;
+     
+    glm::vec2 xy_Centre;
+    float r;
     
- //   p_IJK = m_IJK + m_WPos; // always incremental
+    if(m_R) { // r
+        // calculate centre from the radius, start & end points
+        xy_Centre = ArcCentreFromRadius(xy_Start, xy_End, m_R, direction);
+        // -r is the second (larger) version of the arc
+        r = fabsf(m_R);
+    } 
+    else { // ijk
+        // ijk is always incremental (G90/G91 doesnt matter) 
+        xy_Centre = PointRelativeToPlane(m_WPos + m_IJK, m_Plane);
+        // calculate r
+        glm::vec2 dif = xy_End - xy_Centre;
+        r = hypotf(dif.x, dif.y);
+    }
     
-    /*if(Plane == XZPLANE)
-        Direction = -direction;
-	// get start & end coords relative to the selected plane 
-	Stepper_GetRelativeToPlane_XYZ(&x0, &y0, &z0, Plane);
-	Stepper_GetRelativeToPlane_XYZ(&x1, &y1, &z1, Plane);
+    glm::vec2 v_Start = xy_Start - xy_Centre;
+    glm::vec2 v_End = xy_End - xy_Centre;
     
-    */
+    double th_Start  = atan2(v_Start.x, v_Start.y);
+    double th_End    = atan2(v_End.x, v_End.y);
     
-//    glm::vec3 dif = p_XYZ - p_IJK;
-        
-		//r1 = sqrt((i_r-x0)*(i_r-x0) + (j_r-y0)*(j_r-y0));
-//    float r = (m_R) ? m_R : sqrt(dif.x*dif.x + dif.y*dif.y);
-//    float th_Start = 
-//    float th_End = 
-//    float th_Incr = 
+    cleanAngles(th_Start, th_End, direction);
     
-//    for (float th = th_Start; th < th_End; th += th_Incr) {
-//        x = r * cos(th);
-//        y = r * sin(th);
-//    }
+    float th_Incr   = direction * deg2rad(5);
     
+    int nIncrements = floorf(fabsf((th_End - th_Start) / th_Incr));
+    float zIncrement = (xyz_End.z - xyz_Start.z) / nIncrements;
     
-    AddVertex(p_XYZ);
-    return;
-  /*  
+    glm::vec3 p;
+    for (int n = 0; n < nIncrements; n++) {
+        float th = th_Start + n * th_Incr;
+        p.x = xy_Centre.x + r * sin(th);
+        p.y = xy_Centre.y + r * cos(th);
+        p.z = xyz_Start.z + n * zIncrement;
+        glm::vec3 v = PointRelativeToPlane(p, m_Plane, -1);
+        AddVertex(v);
+    }
     
-    float radius = m_R;
-    
-    err = Stepper_Motion_ArcToCoord(XEnd, YEnd, ZEnd, iEnd, jEnd, kEnd, radius, m_feed_Val, m_Plane, m_IJK_or_R_Flag, direction);
-    
-    return err;
-    * */
+    AddVertex(GetAbsoluteWPos(m_XYZ));
 }
 
-/*
+
 //convert point relative to plane selected
-glm::vec3 PointRelativeToPlane(glm::vec3 p, Plane plane)
+glm::vec3 GCodeReader::PointRelativeToPlane(glm::vec3 p, Plane plane, int convertDirection)
 {    
 	if (plane == Plane::XY) {
-        out = { p.x, p.y, p.z };
+        return { p.x, p.y, p.z };
     }
 	else if (plane == Plane::XZ) {
-        out = { p.x, p.z, p.y };
+        return { p.x, p.z, p.y };
     }
-	else //if (plane == Plane::YZ) {
-        out = { p.y, p.z, p.x };
+	else {//if (plane == Plane::YZ) 
+        if(convertDirection == -1) {
+            return { p.z, p.x, p.y };
+        } else {
+            return { p.y, p.z, p.x };
+        }
     }
 }
-*/
-/*
-void ArcCentreFromRadius(glm::vec2 p0, glm::vec2 p1, float r, int Direction)
+
+glm::vec2 GCodeReader::ArcCentreFromRadius(glm::vec2 p0, glm::vec2 p1, float r, int direction)
 {			
     glm::vec2 dif = p1 - p0;
 	// midpoint of start to end	
-    glm::vec2 pMid = (p0 + p1) / 2;
+    glm::vec2 pMid = (p0 + p1) / 2.0f;
     
     // length between start and end points
 	float 	L = sqrt(dif.x * dif.x + dif.y * dif.y);
     
 	//	angle between x axis & line from start to end
 	float theta_G = fabs(atan(dif.y / dif.x));
-	float h = sqrt(r*r - (L/2)*(L/2));
+	float h = sqrt(r*r - (L/2.0f)*(L/2.0f));
 	
-    h = Direction * h;
+    h = direction * h;
 	// 2nd version of the curve (when the centrepoint is past the midway line between start and end) 
-	if(r < 0)	
+	if(r < 0.0f)	
 		h = -h;
     
     glm::vec2 pCentre;
-    glm::vec3 invert = { ((p0.y > p1.y) ? -1 : 1), ((p1.x > p0.x) ? -1 : 1) };
+    glm::vec2 invert = { ((p0.y > p1.y) ? -1.0f : 1.0f), ((p1.x > p0.x) ? -1.0f : 1.0f) };
         
 	// if start to end is vertical
-	if(dif.x == 0)
-	{
-        pCentre.x = x0 + invert.y * h;
+	if(dif.x == 0.0f) {
+        pCentre.x = p0.x + invert.y * h;
 		pCentre.y = pMid.y;
 	}	
 	// if start to end is horizontal
-	else if(dif.y == 0)
-	{ 
+	else if(dif.y == 0.0f) { 
 		pCentre.x = pMid.x;
-        pCentre.y = y0 + invert.x * h;
+        pCentre.y = p0.y + invert.x * h;
 	}
-	else 
-    {        
+	else  {        
         glm::vec2 hyp = { h*sin(theta_G), h*cos(theta_G) };
         pCentre = pMid + invert * hyp;
     }
+    return pCentre;
 };
-*/
+

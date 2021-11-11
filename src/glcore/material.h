@@ -12,7 +12,8 @@ struct Material {
 
 
 static std::string material_VertexShader = R"(
-#version 140
+// #version 140
+#version 300 es
 
 in vec3 in_Position;
 in vec3 in_Normal;
@@ -44,7 +45,8 @@ void main(void)
 // phong lighting model
 
 static std::string material_FragmentShader = R"(
-#version 140
+// #version 140
+#version 300 es
 
 precision highp float; // needed only for version 1.30
 

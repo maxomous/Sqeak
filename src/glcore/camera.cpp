@@ -86,7 +86,6 @@ glm::vec3 Camera::GetWorldPosition(glm::vec2 px)
 	glm::mat4 model = glm::mat4(1.0f);
 	return glm::unProject(glm::vec3(px, 0.0f), model * m_View, m_Proj, m_Viewport);
 }
-
 glm::vec2 Camera::GetWorldVector(glm::vec2 mouseMove)
 {
 	// invert y when below xy plane
@@ -99,8 +98,6 @@ glm::vec2 Camera::GetWorldVector(glm::vec2 mouseMove)
 	output *= m_Zoom;
 	return { output.x, -output.y };
 }
-
-
 Camera_CentreObject::Camera_CentreObject(int screenWidth, int screenHeight, glm::vec3 centre, float yaw, float pitch)
 {
 	SetViewport(0, 0, screenWidth, screenHeight);

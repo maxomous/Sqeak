@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <mutex>
+
 // ADC pins
 #define ADS1115_PIN_A0						(int)0x0000
 #define ADS1115_PIN_A1 						(int)0x1000
