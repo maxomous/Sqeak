@@ -8,9 +8,10 @@ using namespace std;
 
 void GLSystem::glfw_ConfigVersion()
 {
-   	/*
+   	
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    /*
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
 	*/ 
@@ -37,9 +38,15 @@ void GLSystem::imgui_Config()
     io.IniFilename = iniFile.c_str();
     
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
     
     io.ConfigWindowsMoveFromTitleBarOnly = true;
-    ImGui::GetStyle().ScrollbarRounding = 3.0f; // scroll bars
+    
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowMenuButtonPosition  = ImGuiDir_Right;   // icon in menu of window
+    //style.ColorButtonPosition       = ImGuiDir_Left;    // colour icon side for changing colours 
+    style.ScrollbarRounding         = 3.0f;             // scroll bars
+    style.FrameRounding             = 1.0f;             // frames i.e. buttons, textboxes etc.
     
     // Load icon
     static string filename = File::ThisDir(GUI_IMG_ICON);
@@ -112,6 +119,9 @@ int gui(GRBL& grbl, Settings& settings)
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(glsys.GetWindow()))
     {    
+       
+             // Poll for and process events 
+        GLCall(glfwPollEvents());
         // set background colour
 		GLCall(glClearColor(settings.p.viewer.BackgroundColour.r, settings.p.viewer.BackgroundColour.g, settings.p.viewer.BackgroundColour.b, 1.0f));
         
@@ -125,6 +135,8 @@ int gui(GRBL& grbl, Settings& settings)
 		{
             viewer.Update(settings, timer.dt()); 
             viewer.Render();
+            // draw ImGui windows
+            drawDockSpace();
             viewer.ImGuiRender(settings);
             drawFrames(grbl, settings, timer.dt());
             ImGui::ShowDemoWindow(NULL);
@@ -132,9 +144,8 @@ int gui(GRBL& grbl, Settings& settings)
 		glsys.imgui_Render();
         // Swap front and back buffers 
         GLCall(glfwSwapBuffers(glsys.GetWindow()));
-        // Poll for and process events 
-        GLCall(glfwPollEvents());
     }
+    
     // save settings on close
     Event<Event_SaveSettings>::Dispatch({ }); 
     return 0;

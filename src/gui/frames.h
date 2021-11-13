@@ -11,6 +11,25 @@
 
 struct ImGuiModules
 {
+    static void KeepWindowInsideViewport() {
+        ImVec2 screenSize = ImGui::GetIO().DisplaySize;
+        ImVec2 windowPos = ImGui::GetWindowPos();
+        ImVec2 windowSize = ImGui::GetWindowSize();
+        
+        ImVec2 newPos = windowPos;
+        
+        if(windowPos.x < 0.0f)
+            newPos.x = 0.0f;
+        if(windowPos.y < 0.0f)
+            newPos.y = 0.0f;
+        if(windowPos.x + windowSize.x > screenSize.x)
+            newPos.x = screenSize.x - windowSize.x;
+        if(windowPos.y + windowSize.y > screenSize.y)
+            newPos.y = screenSize.y - windowSize.y;
+            
+        ImGui::SetWindowPos(newPos);
+    }
+    
     // Converts hex colours e.g. 0xBFE0E0 to ImVec4
     static ImVec4 ConvertColourHexToVec4(ImU32 hexCol) {
         float s = 1.0f / 255.0f;
@@ -184,25 +203,14 @@ struct ImGuiModules
 
 
     // Disable all widgets when not connected to grbl
-    static void BeginDisableWidget() {
-        // disable all widgets
-        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
-        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
-    }
-    static void EndDisableWidget() {
-        ImGui::PopStyleVar();
-        ImGui::PopItemFlag();
-    }
-
-    // Disable all widgets when not connected to grbl
     static void BeginDisableWidgets(GRBLVals& grblVals) {
         if (!grblVals.isConnected) {
-            ImGuiModules::BeginDisableWidget();
+            ImGui::BeginDisabled();
         }
     }
     static void EndDisableWidgets(GRBLVals& grblVals) {
         if (!grblVals.isConnected) {
-            EndDisableWidget();
+            ImGui::EndDisabled();
         }
     }
 
@@ -241,7 +249,7 @@ struct ImGuiModules
        ImGui::SetNextWindowPos(ImVec2(10, viewport->Size.y - 50));
 
        ImGui::SetNextWindowSize(ImVec2(0,0), ImGuiCond_None);
-       if (!ImGui::Begin("RecentMessage", NULL, ImGuiWindowFlags_NoDecoration)) {
+       if (!ImGui::Begin("RecentMessage", NULL, general_window_flags | ImGuiWindowFlags_NoDecoration)) {
        ImGui::End();
        return;
        }
@@ -253,4 +261,6 @@ struct ImGuiModules
 
 };
 
+void drawDockSpace();
 void drawFrames(GRBL& grbl, Settings& settings, float dt);
+extern ImGuiWindowFlags general_window_flags;

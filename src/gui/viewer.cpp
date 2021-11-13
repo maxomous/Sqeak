@@ -371,11 +371,17 @@ void Viewer::DrawPath()
     renderer.Draw(*m_VAO, *m_IndexBuffer, *m_Shader, (uint)m_DrawCount);
 }
  
-
+ 
 void Viewer::ImGuiRender(Settings& settings)  
 { 
-    ImGui::Begin("GCode Viewer", NULL, ImGuiWindowFlags_None);   
+
+    if (!ImGui::Begin("GCode Viewer", NULL, general_window_flags)) {
+        ImGui::End();
+        return;
+    }  
      
+    ImGuiModules::KeepWindowInsideViewport();
+        
     ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
     ImGui::ColorEdit3("Toolpath Colour", &settings.p.viewer.ToolpathColour[0]);
      

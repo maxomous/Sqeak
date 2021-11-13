@@ -234,7 +234,7 @@ struct ToolSettings
         ImGui::SameLine();
         // grey out if no item selected
         if(!isToolSelected) {
-            ImGuiModules::BeginDisableWidget();
+            ImGui::BeginDisabled();
         } 
         if(ImGui::Button("-##RemoveTool")) {
             if(isToolSelected) {
@@ -243,7 +243,7 @@ struct ToolSettings
             }
         }
         if(!isToolSelected) {
-            ImGuiModules::EndDisableWidget();
+            ImGui::EndDisabled();
         }
         return 0;
     }
@@ -284,7 +284,7 @@ struct ToolSettings
             
             // grey out if no material selected
             if(!isMaterialSelected)
-                ImGuiModules::BeginDisableWidget();
+                ImGui::BeginDisabled();
                 
             if(ImGui::Button("-##RemoveToolData")) {
                 if(isMaterialSelected) {
@@ -293,8 +293,8 @@ struct ToolSettings
                 }
             }
             
-            if(!isMaterialSelected)
-                ImGuiModules::EndDisableWidget();   
+            if(!isMaterialSelected) 
+                ImGui::EndDisabled();  
         }
         return 0;
     }

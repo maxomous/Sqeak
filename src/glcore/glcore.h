@@ -2,7 +2,7 @@
 
 #define IMGUI_DEFINE_MATH_OPERATORS 
 #include "deps/imgui/imgui.h"
-#include "deps/imgui/imgui_internal.h"
+#include "deps/imgui/imgui_internal.h" // for vector math overrides
 #include "deps/imgui/imgui_impl_glfw.h"
 #include "deps/imgui/imgui_impl_opengl3.h"
 #include "deps/imgui/imgui_stdlib.h"

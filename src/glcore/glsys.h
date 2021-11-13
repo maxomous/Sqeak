@@ -219,7 +219,8 @@ public:
     
     int glfw_InitWindow(int w, int h, const char* name);
     int glew_Init();
-    void imgui_Init(const char* glsl_version);
+    void imgui_Init();
+    void imgui_Impl(const char* glsl_version);
     
     void glfw_ConfigVersion();
     void glfw_Config();

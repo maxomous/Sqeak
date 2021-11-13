@@ -8,7 +8,7 @@ using namespace std;
 #include "../common.h"
 #define MAX_CUSTOM_GCODES 12 // should be divisible by 3
 #define MAX_HISTORY 100
-
+ 
 //******************************************************************************//
 //**********************************COLOURS*************************************//
  
@@ -16,6 +16,9 @@ ImVec4 colour_Heading = ImGuiModules::ConvertColourHexToVec4(0xA8BE9E);
 
 //******************************************************************************//
 //**********************************FRAMES**************************************//
+
+ImGuiWindowFlags general_window_flags = ImGuiWindowFlags_None;
+
 
 struct Console {
     bool log_Tab_Open = true;
@@ -163,37 +166,16 @@ struct Console {
         }
     }
 
-    void LockWindowToScreenEdge(ImVec2 distance) {
-        ImVec2 screenSize = ImGui::GetIO().DisplaySize;
-        ImVec2 windowPos = ImGui::GetWindowPos();
-        ImVec2 windowSize = ImGui::GetWindowSize();
-        
-        ImVec2 newPos = distance;
-        if(distance.x == 0.0f)
-            newPos.x = windowPos.x;
-        if(distance.y == 0.0f)
-            newPos.y = windowPos.y;
-        if(distance.x < 0)
-            newPos.x += screenSize.x - windowSize.x;
-        if(distance.y < 0)
-            newPos.y += screenSize.y - windowSize.y;
-        ImGui::SetWindowPos(newPos);
-    }
-
 
     void Draw(GRBL &grbl, GRBLVals& grblVals) {
         // initialise
-        ImGui::SetNextWindowSize(ImVec2(570, 270), ImGuiCond_Appearing);
-        if (!ImGui::Begin("Console", NULL)) {
+        ImGui::SetNextWindowSize(ImVec2(570, 270), ImGuiCond_Once);
+        if (!ImGui::Begin("Console", NULL, general_window_flags)) {
             ImGui::End();
             return;
         }
         
-        static float x = 0.0f, y = -30.0f;
-        //ImGui::SliderFloat("X", &x, -500.0f, 500.0f);
-        //ImGui::SliderFloat("Y", &y, -500.0f, 500.0f);
-        LockWindowToScreenEdge(ImVec2(x, y));
-        
+        ImGuiModules::KeepWindowInsideViewport();
         // Disable all widgets when not connected to grbl
         ImGuiModules::BeginDisableWidgets(grblVals);
 
@@ -693,12 +675,13 @@ struct FileController {
     {
         GRBLVals& grblVals = settings.grblVals;
         // initialise
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always); // ImVec2(520,
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once); // ImVec2(520,
                                                                   // 100)
-        if (!ImGui::Begin("Run", NULL)) {
+        if (!ImGui::Begin("Run", NULL, general_window_flags)) {
             ImGui::End();
             return;
         }
+        ImGuiModules::KeepWindowInsideViewport();
         // Disable all widgets when not connected to grbl
         ImGuiModules::BeginDisableWidgets(grblVals);
 
@@ -848,7 +831,7 @@ struct FileController {
         } 
         // Always center the fileviewer window
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowPos(center, ImGuiCond_Once, ImVec2(0.5f, 0.5f));
 
         if (ImGui::BeginPopupModal("Open File", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
             fileBrowser->Draw();
@@ -1406,11 +1389,12 @@ struct Stats {
         GRBLVals& grblVals = settings.grblVals;
         // Initialise
         // ImGui::SetNextWindowSize(ImVec2(250, 300), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
-        if (!ImGui::Begin("Stats", NULL)) {
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        if (!ImGui::Begin("Stats", NULL, general_window_flags)) {
             ImGui::End();
             return;
         }
+        ImGuiModules::KeepWindowInsideViewport();
         // Connect / disconnect button
         DrawConnect(grbl, settings);
         // Disable all widgets when not connected to grbl
@@ -1711,12 +1695,13 @@ struct JogController {
     }
 
     void Draw(GRBL &grbl, GRBLVals& grblVals) { // initialise
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
-        if (!ImGui::Begin("Jog Controller", NULL)) {
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        if (!ImGui::Begin("Jog Controller", NULL, general_window_flags)) {
             ImGui::End();
             return;
         }
 
+        ImGuiModules::KeepWindowInsideViewport();
         // Disable all widgets when not connected to grbl
         ImGuiModules::BeginDisableWidgets(grblVals);
 
@@ -1745,11 +1730,12 @@ struct Overrides {
         grbl.SendRT(GRBL_RT_MIST_COOLANT);
     */
     void Draw(GRBL &grbl, GRBLVals& grblVals) {
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
-        if (!ImGui::Begin("Overrides", NULL)) {
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        if (!ImGui::Begin("Overrides", NULL, general_window_flags)) {
             ImGui::End();
             return;  
         }            
+        ImGuiModules::KeepWindowInsideViewport();
         // Disable all widgets when not connected to grbl  
         ImGuiModules::BeginDisableWidgets(grblVals);
   
@@ -1871,12 +1857,13 @@ struct ValsViewer {
 
     void Draw(GRBL &grbl, Settings& settings) {
         GRBLVals& grblVals = settings.grblVals;
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Always);
-        if (!ImGui::Begin("Debug", NULL)) {
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        if (!ImGui::Begin("Debug", NULL, general_window_flags)) {
             ImGui::End();
             return;
         }
 
+        ImGuiModules::KeepWindowInsideViewport();
         GRBLVals &v = grblVals;
 
         if (ImGui::TreeNode("System")) {
@@ -2101,12 +2088,33 @@ struct ValsViewer {
     }
 };
  
-
+     
+void drawDockSpace()
+{
+    // fullscreen dockspace
+    const ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(viewport->WorkPos);
+    ImGui::SetNextWindowSize(viewport->WorkSize);
+    ImGui::SetNextWindowViewport(viewport->ID);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+    
+    ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
+        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+    
+    ImGui::Begin("DockSpace", NULL, window_flags);
+        // for full screen options
+        ImGui::PopStyleVar(2);
+        // Submit the DockSpace
+        ImGui::DockSpace(ImGui::GetID("DockSpace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode);
+    ImGui::End();
+}    
         
-void drawFrames(GRBL& grbl, Settings& settings, float dt) {
+void drawFrames(GRBL& grbl, Settings& settings, float dt) 
+{
     // ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
     GRBLVals& grblVals = settings.grblVals;
-
+    
     static ValsViewer valsViewer;
     valsViewer.Draw(grbl, settings);
 

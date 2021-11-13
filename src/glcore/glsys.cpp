@@ -93,8 +93,9 @@ GLSystem::GLSystem(int w, int h, const char* name, const char* glsl_version)
     if(glew_Init())
         exit(1);
    
-    imgui_Init(glsl_version); // glsl version        
+    imgui_Init(); // glsl version        
     imgui_Config();
+    imgui_Impl(glsl_version);
 }
 GLSystem::~GLSystem()
 {
@@ -148,17 +149,20 @@ int GLSystem::glew_Init()
     return 0;
 }
 
-void GLSystem::imgui_Init(const char* glsl_version)
+void GLSystem::imgui_Init()
 {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+}
 
+void GLSystem::imgui_Impl(const char* glsl_version)
+{
     // Setup Platform/Renderer backends
     ImGui_ImplGlfw_InitForOpenGL(m_Window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
-}
-      
+}   
+
 void GLSystem::imgui_NewFrame()
 {
     ImGui_ImplOpenGL3_NewFrame();
@@ -169,6 +173,17 @@ void GLSystem::imgui_Render()
 {
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());	
+
+    // Update and Render additional Platform Windows
+    // (Platform functions may change the current OpenGL context, so we save/restore it to make it easier to paste this code elsewhere.
+    //  For this specific demo app we could also call glfwMakeContextCurrent(window) directly)
+    if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+    {
+        GLFWwindow* backup_current_context = glfwGetCurrentContext();
+        ImGui::UpdatePlatformWindows();
+        ImGui::RenderPlatformWindowsDefault();
+        glfwMakeContextCurrent(backup_current_context);
+    }
 }
 void GLSystem::imgui_Shutdown()
 {
