@@ -12,7 +12,12 @@
     float cutDepth          = 1.0f;
     float cutWidth          = 1.0f;
     */
-    
+
+enum CompensateCutter {
+    None, Left, Right
+};
+
+
 class FunctionGCodes
 {
 public:

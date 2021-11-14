@@ -6,14 +6,16 @@ class VertexBuffer
 {
 private:
 	uint m_RendererID;
+    bool isDynamicBuffer;
+    void Resize(uint size, const void* data = nullptr) ;
 	
 public:
 	// static
-	VertexBuffer(const void* data, uint size);
+	VertexBuffer(uint size, const void* data);
 	// dynamic
 	VertexBuffer(uint size);
 	~VertexBuffer();
-
+    
 	void Bind() const;
 	void Unbind() const;
 	void DynamicUpdate(GLintptr offset, GLsizeiptr size, const void* data) const;
@@ -25,9 +27,10 @@ class IndexBuffer
 private:
 	uint m_RendererID;
 	uint m_Count;
+    void Resize(uint count, const uint* data);
 	
 public:
-	IndexBuffer(const uint* data, uint count);
+	IndexBuffer(uint count, const uint* data);
 	~IndexBuffer();
 	
 	void Bind() const;

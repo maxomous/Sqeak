@@ -55,6 +55,7 @@ class DynamicBuffer
 public:
     DynamicBuffer(GLenum primitiveType, int maxVertices, int maxIndices);
     
+    void Resize(int maxVertices, int maxIndices);
     void ClearVertices();
     void AddVertex(const glm::vec3& position, const glm::vec3& colour);
     void AddGrid(Settings& settings);
@@ -66,8 +67,8 @@ public:
     
 private:
     GLenum m_PrimitiveType;
-    const uint m_MaxVertexCount;
-    const uint m_MaxIndexCount;
+    uint m_MaxVertexCount;
+    uint m_MaxIndexCount;
     uint m_VertexCount = 0;
     
     std::vector<Vertex> m_Vertices;
@@ -104,9 +105,10 @@ private:
     std::unique_ptr<EventHandler<Event_KeyInput>> event_Keyboard;
     //std::unique_ptr<EventHandler<Event_UpdateCamera>> event_UpdateCamera;
     
-    DynamicBuffer m_DynamicLines = { GL_LINES, 230, 230 };
+    DynamicBuffer m_DynamicLines = { GL_LINES, 600, 600 };
     DynamicBuffer m_DynamicFaces = { GL_TRIANGLES, 444, 444 };
     
+    // static buffer for path
     std::unique_ptr<Shader> m_Shader;
     std::unique_ptr<VertexArray> m_VAO;
     std::unique_ptr<VertexBuffer> m_VertexBuffer;
@@ -118,6 +120,10 @@ private:
     int m_DrawCount = 0;
     int m_DrawMax = 0;
     
+        int m_LinePolygonType = 0;
+        float m_Offset = 6.0f;
+        int m_QuadrantSegments = 30;
+        
     void Draw2DText(const char* label, glm::vec3 position);
     void Draw2DAxesLabels(glm::vec3 position, float axisLength);
     

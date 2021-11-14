@@ -6,33 +6,38 @@
 #include "globjects.h"
 
 // static
-VertexBuffer::VertexBuffer(const void* data, uint size)
+VertexBuffer::VertexBuffer(uint size, const void* data) 
+    : isDynamicBuffer(false)
 {
 	// generate a vertex buffer
-	// bind the buffer
     GLCall(glGenBuffers(1, &m_RendererID));
-    // bind data to buffer
-    GLCall(glBindBuffer(GL_ARRAY_BUFFER, m_RendererID));
-    // state how data should be read
-	GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW)); // use dynamic for constantly changing
+    // set size of buffer
+    Resize(size, data);
 }
 // dynamic
 VertexBuffer::VertexBuffer(uint size)
+    : isDynamicBuffer(true)
 {
 	// generate a vertex buffer
-	// bind the buffer
     GLCall(glGenBuffers(1, &m_RendererID));
-    // bind data to buffer
-    GLCall(glBindBuffer(GL_ARRAY_BUFFER, m_RendererID));
-    // state how data should be read
-	GLCall(glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW)); // use dynamic for constantly changing
+    // set size of buffer
+    Resize(size);
 }
-
 VertexBuffer::~VertexBuffer()
 {
 	GLCall(glDeleteBuffers(1, &m_RendererID));
 }
-
+void VertexBuffer::Resize(uint size, const void* data) 
+{
+    // bind the buffer
+    Bind();
+    // state how data should be read
+	if(isDynamicBuffer) {
+        GLCall(glBufferData(GL_ARRAY_BUFFER, size, nullptr, GL_DYNAMIC_DRAW)); // use dynamic for constantly changing
+    } else {
+        GLCall(glBufferData(GL_ARRAY_BUFFER, size, data, GL_STATIC_DRAW));
+    }
+}
 void VertexBuffer::Bind() const
 {
     // bind data to buffer
@@ -51,23 +56,25 @@ void VertexBuffer::DynamicUpdate(GLintptr offset, GLsizeiptr size, const void* d
 }
 
 
-IndexBuffer::IndexBuffer(const uint* data, uint count)
+IndexBuffer::IndexBuffer(uint count, const uint* data)
 	: m_Count(count)
 {
 	ASSERT(sizeof(uint) == sizeof(GLuint));
-	// generate a index buffer object
-	// bind the buffer
+	// generate an index buffer object
     GLCall(glGenBuffers(1, &m_RendererID));
-    // bind data to buffer
-    GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_RendererID));
-    // state how data should be read
-    GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint), data, GL_STATIC_DRAW));
+    Resize(count, data);
 }
 IndexBuffer::~IndexBuffer()
 {
 	GLCall(glDeleteBuffers(1, &m_RendererID));
 }
-
+void IndexBuffer::Resize(uint count, const uint* data) 
+{
+    // bind the buffer
+    Bind();
+    // state how data should be read
+    GLCall(glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(uint), data, GL_STATIC_DRAW));
+}
 void IndexBuffer::Bind() const
 {
     // bind data to buffer
@@ -99,7 +106,7 @@ VertexArray::VertexArray()
 } 
 VertexArray::~VertexArray()
 {
-	GLCall(glGenVertexArrays(1, &m_RendererID));
+	GLCall(glDeleteVertexArrays(1, &m_RendererID));
 }
 
 void VertexArray::Bind() const

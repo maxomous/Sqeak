@@ -27,12 +27,12 @@
 // wiring pi
 #include <wiringPi.h>
 #include <wiringSerial.h>
-
 // OpenGL / ImGui
 #include "glcore/glcore.h"
 
 #include "libs/file.h"
 #include "libs/geom.h"
+#include "libs/geos.h"
 #include "dev/ads1115.h"
 #include "dev/joystick.h"
 
@@ -50,7 +50,6 @@
 #include "gui/frames.h"
 #include "gui/gui.h"
 #include "gui/viewer.h"
-
 
 #define GUI_WINDOW_NAME     "Sqeak"
 #define GUI_WINDOW_W        1280

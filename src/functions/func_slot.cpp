@@ -15,6 +15,7 @@ void FunctionType_Slot::DrawPopup(Settings& settings)
     ImGui::InputFloat3("End", &m_Params.p1[0]); 
     ImGuiModules::HereButton(settings.grblVals, m_Params.p1);
     
+    ImGui::Combo("combo 2 (one-liner)", &m_Params.compensateCutter, "None\0Left\0Right\0\0");
 }
     
 std::pair<bool, std::vector<std::string>> FunctionType_Slot::ExportGCode(Settings& settings) {
@@ -42,10 +43,22 @@ std::pair<bool, std::vector<std::string>> FunctionType_Slot::ExportGCode(Setting
     std::ostringstream stream;
     stream << "; Function: " << m_Name << '\n';
     stream << "; \tBetween: " << p.p0 << " and " << p.p1 << '\n';
+    
+    if(m_Params.compensateCutter == CompensateCutter::None) stream << "; \tCompensate: None\n";
+    if(m_Params.compensateCutter == CompensateCutter::Left) stream << "; \tCompensate: Left\n";
+    if(m_Params.compensateCutter == CompensateCutter::Right) stream << "; \tCompensate: Right\n";
+    
     stream << "; Tool: " << tool.Name << '\n';
     stream << "; \tDiameter: " << tool.Diameter << '\n';
     stream << "; \tCut Depth: " << toolData.cutDepth << '\n';
     gcodes.Add(stream.str());
+    
+    
+    
+    //glm::vec3 p0, glm::vec3 p1
+    
+    
+    
     
     gcodes.InitCommands(toolData.speed);
     // move to initial x & y position

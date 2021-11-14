@@ -5,7 +5,7 @@ using namespace std;
 #include "../common.h" 
 
 float dAngle = 10.0f; // degrees
-
+ 
 vector<glm::vec3> shape_Cylinder;
 vector<glm::vec3> shape_Cylinder_Outline;
 void initShape_Cylinder()
@@ -100,10 +100,79 @@ DynamicBuffer::DynamicBuffer(GLenum primitiveType, int maxVertices, int maxIndic
     m_VAO = make_unique<VertexArray>();
     m_VAO->AddBuffer(*m_VertexBuffer, layout);
     
-    m_IndexBuffer = make_unique<IndexBuffer>(indices.data(), m_MaxIndexCount);
+    m_IndexBuffer = make_unique<IndexBuffer>(m_MaxIndexCount, indices.data());
     
 }
+  
+void DynamicBuffer::Resize(int maxVertices, int maxIndices)
+{ 
+    m_MaxVertexCount = maxVertices;
+    m_MaxIndexCount = maxIndices;
+    
+    std::vector<uint> indices;
+    indices.reserve(m_MaxIndexCount);
+    for (uint i = 0; i < m_MaxIndexCount; i++)
+        indices.push_back(i);
+    m_Vertices.reserve(m_MaxVertexCount);
+    
+    m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
+    // make dynamic vertex buffer
+    m_VertexBuffer.reset(new VertexBuffer(m_MaxVertexCount * sizeof(Vertex)));
+    VertexBufferLayout layout;
+    
+    layout.Push<float>(m_Shader->GetAttribLocation("in_Position"), 3);
+    layout.Push<float>(m_Shader->GetAttribLocation("in_Colour"), 3);
+    
+    m_VAO.reset(new VertexArray());
+    m_VAO->AddBuffer(*m_VertexBuffer, layout);
+    
+    m_IndexBuffer.reset(new IndexBuffer(m_MaxIndexCount, indices.data()));
+    
+}
+/*
+void DynamicBuffer::Resize(int maxVertices, int maxIndices)
+{ 
+    m_MaxVertexCount = maxVertices;
+    m_MaxIndexCount = maxIndices;
+    std::vector<uint> indices;
+    indices.reserve(m_MaxIndexCount);
+    for (uint i = 0; i < m_MaxIndexCount; i++)
+        indices.push_back(i);
+    m_Vertices.reserve(m_MaxVertexCount);
+    // resize buffers
+    m_VertexBuffer->Resize(m_MaxVertexCount * sizeof(Vertex));
+    m_IndexBuffer->Resize(m_MaxIndexCount, indices.data());    
+}
 
+
+
+void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std::vector<uint>& indices)
+{
+    vector<Vertex> vertices;
+    vertices.reserve(positions.size());
+    
+    for (size_t i = 0; i < positions.size(); i++) {
+        vertices.emplace_back(positions[i], settings.p.viewer.ToolpathColour);
+    }
+    
+    m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
+   
+    m_VertexBuffer.reset(new VertexBuffer(vertices.size() * sizeof(Vertex), vertices.data()));
+    VertexBufferLayout layout;
+    
+    layout.Push<float>(m_Shader->GetAttribLocation("in_Position"), 3);
+    layout.Push<float>(m_Shader->GetAttribLocation("in_Colour"), 3);
+    
+    m_VAO.reset(new VertexArray());
+    m_VAO->AddBuffer(*m_VertexBuffer, layout);
+    
+    m_IndexBuffer.reset(new IndexBuffer(indices.size(), indices.data()));
+    
+    m_DrawCount = m_DrawMax = m_IndexBuffer->GetCount();
+    
+    m_Initialised = true;
+}
+*/
 void DynamicBuffer::ClearVertices()
 {
     m_Vertices.clear();
@@ -143,7 +212,7 @@ void DynamicBuffer::AddAxes(float size, glm::vec3 origin)
     AddVertex(origin + glm::vec3(0.0f,      size,       0.0f),  { 0.0f, 1.0f, 0.0f });
     AddVertex(origin + glm::vec3(0.0f,      0.0f,       0.0f),  { 0.0f, 0.0f, 1.0f });
     AddVertex(origin + glm::vec3(0.0f,      0.0f,       size),  { 0.0f, 0.0f, 1.0f });
-}
+} 
 
 void DynamicBuffer::AddShape(const vector<glm::vec3>& shape, glm::vec3 colour, const glm::vec3& position, const glm::vec3& scale, float rotateX, float rotateZ) 
 {
@@ -157,6 +226,8 @@ void DynamicBuffer::AddShape(const vector<glm::vec3>& shape, glm::vec3 colour, c
     }
 }   
 
+i think we're recalculing the offset each time which is why its slow... do a test with lots of vertices but no offset calc
+
 void DynamicBuffer::Update() {
     m_VertexBuffer->DynamicUpdate(0, m_Vertices.size() * sizeof(Vertex), m_Vertices.data());
 }
@@ -168,16 +239,30 @@ void DynamicBuffer::Draw(glm::mat4& proj, glm::mat4& view) {
     m_Shader->SetUniformMat4f("u_MVP", proj * view * glm::mat4(1.0f));
     
     if(m_VertexCount > m_MaxIndexCount || m_VertexCount > m_MaxVertexCount) {
-        Log::Error("Too many vertices to display. Vertex Count: %d", m_VertexCount);
-        return;
+        Log::Info("Too many vertices to display, resizing buffer to %d vertices, %d indices", m_MaxVertexCount*2, m_MaxIndexCount*2);
+        // double size of buffer
+        Resize(m_MaxVertexCount*2, m_MaxIndexCount*2);
     }
     renderer.Draw(*m_VAO, *m_IndexBuffer, *m_Shader, m_VertexCount);
 }
 
-
+ 
+    vector<glm::vec2> points;
+    
 Viewer::Viewer() 
   : m_Camera(Window::GetWidth(), Window::GetHeight(), glm::vec3(0.0f, 0.0f, 0.0f), 80.0f)
 {     
+    
+        
+    points.push_back({ 0.0f, 0.0f });
+    points.push_back({ 0.0f, 50.0f });
+    points.push_back({ 50.0f, 50.0f });
+    points.push_back({ 50.0f, 0.0f });
+    points.push_back({ 30.0f, 20.0f });
+    points.push_back({ 20.0f, 20.0f });
+    
+    
+    
     auto WindowResizeEvent = [&](Event_WindowResize data) {
         m_Camera.SetViewport(0, 0, data.Width, data.Height);
     };
@@ -260,7 +345,7 @@ void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std:
     
     m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
    
-    m_VertexBuffer.reset(new VertexBuffer(vertices.data(), vertices.size() * sizeof(Vertex)));
+    m_VertexBuffer.reset(new VertexBuffer(vertices.size() * sizeof(Vertex), vertices.data()));
     VertexBufferLayout layout;
     
     layout.Push<float>(m_Shader->GetAttribLocation("in_Position"), 3);
@@ -269,7 +354,7 @@ void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std:
     m_VAO.reset(new VertexArray());
     m_VAO->AddBuffer(*m_VertexBuffer, layout);
     
-    m_IndexBuffer.reset(new IndexBuffer(indices.data(), indices.size()));
+    m_IndexBuffer.reset(new IndexBuffer(indices.size(), indices.data()));
     
     m_DrawCount = m_DrawMax = m_IndexBuffer->GetCount();
     
@@ -279,9 +364,9 @@ void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std:
 void Viewer::Clear()
 {
     m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
-    m_VertexBuffer.reset(new VertexBuffer(nullptr, 0));
+    m_VertexBuffer.reset(new VertexBuffer(0, nullptr));
     m_VAO.reset(new VertexArray());
-    m_IndexBuffer.reset(new IndexBuffer(nullptr, 0));
+    m_IndexBuffer.reset(new IndexBuffer(0, nullptr));
     
     m_DrawCount = m_DrawMax = 0;
     m_Initialised = false;
@@ -309,6 +394,7 @@ void Viewer::Draw2DAxesLabels(glm::vec3 position, float axisLength)
 }
 
 
+        
         
 void Viewer::Update(Settings& settings, float dt)
 {    
@@ -340,6 +426,31 @@ void Viewer::Update(Settings& settings, float dt)
     }
     m_DynamicFaces.AddShape(shape_Cylinder,           settings.p.viewer.spindle.toolColour,         grblVals.status.MPos, scaleTool);
     m_DynamicLines.AddShape(shape_Cylinder_Outline,   settings.p.viewer.spindle.toolColourOutline,  grblVals.status.MPos, scaleTool);
+    
+    
+    
+    static Geos geos;
+    
+
+        vector<glm::vec2> offsetPath;
+        
+        if(m_LinePolygonType == 0)
+            offsetPath = geos.offsetLine(points, m_Offset, m_QuadrantSegments);
+        else
+            offsetPath = geos.offsetPolygon(points, m_Offset, m_QuadrantSegments);
+        // buffer is for lines, so need to define start and end of each
+        for (size_t i = 0; i < points.size(); i++) {
+            if(m_LinePolygonType == 0 && i==0) // dont connect last and first points if not a polygon
+                continue; 
+            size_t iPrev = (i == 0) ? points.size()-1 : i-1;
+            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(points[iPrev], 0.0f), { 0.0f, 1.0f, 0.0f });
+            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(points[i], 0.0f), { 0.0f, 1.0f, 0.0f });
+        }
+        for (size_t i = 1; i < offsetPath.size(); i++) {
+            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(offsetPath[i-1], 0.0f), { 1.0f, 0.0f, 0.0f });
+            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(offsetPath[i], 0.0f), { 1.0f, 0.0f, 0.0f });
+        }
+        
     
     
     m_DynamicLines.Update();
@@ -382,6 +493,18 @@ void Viewer::ImGuiRender(Settings& settings)
      
     ImGuiModules::KeepWindowInsideViewport();
         
+         
+        ImGui::Separator();
+        ImGui::Separator();
+        
+    ImGui::Combo("Type", &m_LinePolygonType, "Line\0Polygon\0\0");
+    
+    ImGui::SliderFloat("Offset", &m_Offset, -50.0f, 50.0f);
+    ImGui::SliderInt("Quadrant Segments", &m_QuadrantSegments, 0, 100);
+        
+        ImGui::Separator();
+        ImGui::Separator();
+        
     ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
     ImGui::ColorEdit3("Toolpath Colour", &settings.p.viewer.ToolpathColour[0]);
      
@@ -412,8 +535,7 @@ void Viewer::ImGuiRender(Settings& settings)
     ImGui::SliderFloat2("Size", &settings.p.viewer.grid.Size[0], -3000.0f, 3000.0f);
     ImGui::SliderFloat("Spacing", &settings.p.viewer.grid.Spacing, 0.0f, 1000.0f);
     ImGui::ColorEdit3("Colour", &settings.p.viewer.grid.Colour[0]);
-    
-        ImGui::Separator();
+   
     
         
     if(ImGui::Button("Clear")) {

@@ -6,6 +6,7 @@ class FunctionType_Slot : public FunctionType
     typedef struct {
         glm::vec3 p0; 
         glm::vec3 p1;
+        int compensateCutter = CompensateCutter::None;
     } Slot_Parameters;
 
 public:

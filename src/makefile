@@ -13,7 +13,7 @@ glcore/deps/imgui \
 glcore/deps/stb_image \
 glcore/deps/tinyobjloader
 
-LDLIBS = -lwiringPi -ldl -lGL -lglfw -lGLEW -lpthread
+LDLIBS = -lwiringPi -ldl -lGL -lglfw -lGLEW -lpthread -lgeos_c
 
 CXX = g++
 
