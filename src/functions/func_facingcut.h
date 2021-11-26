@@ -6,7 +6,7 @@ class FunctionType_FacingCut : public FunctionType
     typedef struct {
         glm::vec3 p0; 
         glm::vec3 p1;
-        
+        int isYFirst = false;
     } FacingCut_Parameters;
 
 public:
@@ -27,6 +27,6 @@ public:
 private:
     FacingCut_Parameters m_Params;
     
-    // executes length in one axis and then moves width of cutter in other axis
-    void FacingCutXY(Settings& settings, FacingCut_Parameters& p, FunctionGCodes& gcodes);
+    bool IsValidInputs(Settings& settings);
+    std::string HeaderText(Settings& settings);
 };

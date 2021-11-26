@@ -105,14 +105,18 @@ GLSystem::~GLSystem()
 
 int GLSystem::glfw_InitWindow(int w, int h, const char* name)
 {
+    // maximise window
+    glfwWindowHint(GLFW_MAXIMIZED, GLFW_TRUE);
 	/* Create a windowed mode window and its OpenGL context */
 	m_Window = glfwCreateWindow(w, h, name, nullptr, nullptr);
+	// m_Window = glfwCreateWindow(w, h, name, glfwGetPrimaryMonitor(), nullptr); // fullscreen
 	if (!m_Window) {
 		std::cerr << "Error: Couldn't initialise window" << std::endl;
 		glfwTerminate();
 		return -1;
 	}
 	glfwMakeContextCurrent(m_Window);
+    
 	// initialise the m_Window size
     Window::SetWidth(w); 
     Window::SetHeight(h);

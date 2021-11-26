@@ -28,12 +28,21 @@ void Settings::AddSettings()
     s.AddParameter("Spacing", &p.viewer.grid.Spacing);
     s.AddParameter("Colour", &p.viewer.grid.Colour);
     m_SettingsList.push_back(s);
-    
+      
     s = Setting("Viewer-Spindle", 0);
     s.AddParameter("ToolColour", &p.viewer.spindle.toolColour);
     s.AddParameter("ToolColourOutline", &p.viewer.spindle.toolColourOutline);
+    m_SettingsList.push_back(s); 
+     
+    s = Setting("PathCutter", 0);
+    s.AddParameter("CutTabs", &p.pathCutter.CutTabs);
+    s.AddParameter("TabSpacing", &p.pathCutter.TabSpacing);
+    s.AddParameter("TabHeight", &p.pathCutter.TabHeight);
+    s.AddParameter("TabWidth", &p.pathCutter.TabWidth);
+    s.AddParameter("ShapeColour", &p.pathCutter.ShapeColour);
+    s.AddParameter("ShapeOffsetColour", &p.pathCutter.ShapeOffsetColour);
+    s.AddParameter("QuadrantSegments", &p.pathCutter.QuadrantSegments);
     m_SettingsList.push_back(s);
-    
 }
 
 void Settings::AddDynamicSettings()
@@ -44,12 +53,12 @@ void Settings::AddDynamicSettings()
     Tool             t = (*(const std::vector<Tool>*)data)[idx]
     vector<Tool>     v = (*(const std::vector<Tool>*)data)
     *vector<Tool>     vptr = (const std::vector<Tool>*)data
-*/
+*/ 
     DynamicSetting d = DynamicSetting("CustomGCode", (void*)&p.customGCodes, 
-        // get size
+        // get size  
         [](void* data) { 
             return (*(const std::vector<ParametersList::CustomGCode>*)data).size();
-        }, 
+        },  
         // add parameters
         [](Setting& setting, void* data, uint id) { 
             ParametersList::CustomGCode& d = (*(std::vector<ParametersList::CustomGCode>*)data)[id];
@@ -128,9 +137,29 @@ void Settings::AddDynamicSettings()
     
 // ****************************************** END OF USER SETTINGS *********************************************
 // *************************************************************************************************************
- 
 
-    
+bool ParametersList::Tools::IsToolAndMaterialSelected() 
+{        
+    if(!toolList.HasItemSelected()) {
+        Log::Error("No Tool Selected");
+        return true;
+    }
+    if(!toolList.CurrentItem().Data.HasItemSelected()) {
+        Log::Error("No Material Selected");
+        return true;
+    }
+    return false;
+}
+glm::vec3 ParametersList::Tools::GetToolScale()
+{
+    if(toolList.HasItemSelected()) {
+        ParametersList::Tools::Tool& tool = toolList.CurrentItem();
+        return glm::vec3(tool.Diameter, tool.Diameter, tool.Length);
+    } // else get default tool dimensions
+    ParametersList::Tools::Tool defaultTool("default tool");
+    return glm::vec3(defaultTool.Diameter, defaultTool.Diameter, defaultTool.Length);
+}
+
 std::string Setting::GetParamName(size_t i) { 
     return std::string(data[i].first); 
 }

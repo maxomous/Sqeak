@@ -1,22 +1,37 @@
 
 #include <iostream>
-#include "func_slot.h"
+#include "func_draw.h"
 using namespace std;
      
-
-void FunctionType_Slot::DrawPopup(Settings& settings)
+     
+void FunctionType_Draw::DrawPopup(Settings& settings)
 {
     ImGui::InputText("Name", &m_Name);
     
     ImGui::Dummy(ImVec2());
     
     bool isChanged = false;
-    
     isChanged |= ImGui::Combo("Cut Side", &m_Params.cutSide, "None\0Left\0Right\0\0");
-    isChanged |= ImGui::InputFloat3("Start", &m_Params.p0[0]);
-    isChanged |= ImGuiModules::HereButton(settings.grblVals, m_Params.p0);
-    isChanged |= ImGui::InputFloat3("End", &m_Params.p1[0]); 
-    isChanged |= ImGuiModules::HereButton(settings.grblVals, m_Params.p1);
+    isChanged |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
+    
+    ImGui::Separator();
+    
+    for (size_t i = 0; i < m_Params.path.size(); i++) {
+        glm::vec2& point = m_Params.path[i];
+        isChanged |= ImGui::InputFloat2(va_str("Point %d##%d", i+1, (int)&point[0]).c_str(), &point[0]); // use pointer as hidden ImGui ID
+    }
+
+    if(ImGui::Button("+##AddPoint")) {
+        m_Params.path.push_back({});
+        isChanged = true;
+    }
+    ImGui::SameLine();
+    if(ImGui::Button("-##RemovePoint")) {
+        if(m_Params.path.size() >= 1) {
+            m_Params.path.pop_back();
+            isChanged = true;
+        }
+    }
     
     // calls Export GCode and updates viewer
     if(isChanged) {
@@ -24,18 +39,18 @@ void FunctionType_Slot::DrawPopup(Settings& settings)
     }
 }
         
-bool FunctionType_Slot::IsValidInputs(Settings& settings) 
+bool FunctionType_Draw::IsValidInputs(Settings& settings) 
 {
     // check tool and material is selected
     if(settings.p.tools.IsToolAndMaterialSelected())
         return false;
     // start and end point
-    if(m_Params.p1 == m_Params.p0) {
-        Log::Error("Start and end points must be different");
+    if(m_Params.path.size() < 2) {
+        Log::Error("2 or more points required");
         return false;
     }
     // z top and bottom
-    if(m_Params.p1.z > m_Params.p0.z) {
+    if(m_Params.z[1] > m_Params.z[0]) {
         Log::Error("Z Bottom must be below or equal to Z Top");
         return false;
     }
@@ -48,16 +63,20 @@ bool FunctionType_Slot::IsValidInputs(Settings& settings)
     return true;
 }   
 
-std::string FunctionType_Slot::HeaderText(Settings& settings) 
+std::string FunctionType_Draw::HeaderText(Settings& settings) 
 {
-    Slot_Parameters& p = m_Params;
+    Draw_Parameters& p = m_Params;
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();    
     
     // write header
     std::ostringstream stream;
     stream << "; Function: " << m_Name << '\n';
-    stream << "; \tBetween: " << p.p0 << " and " << p.p1 << '\n';
+    stream << "; \tBetween: " << p.z[0] << " and " << p.z[1] << '\n';
+    stream << "; \tPoints:" << '\n';
+    for(glm::vec2 point : m_Params.path) {
+        stream << "; \t\t " << point << '\n';
+    }
     
     if(p.cutSide == CompensateCutter::None) stream << "; \tCompensate: None\n";
     if(p.cutSide == CompensateCutter::Left) stream << "; \tCompensate: Left\n";
@@ -71,7 +90,7 @@ std::string FunctionType_Slot::HeaderText(Settings& settings)
     return stream.str();
 }
     
-std::pair<bool, std::vector<std::string>> FunctionType_Slot::ExportGCode(Settings& settings) 
+std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Settings& settings) 
 {
     auto err = make_pair(false, std::vector<std::string>());;
     // error check
@@ -79,7 +98,7 @@ std::pair<bool, std::vector<std::string>> FunctionType_Slot::ExportGCode(Setting
         return err;
     }
     
-    //Slot_Parameters& p = m_Params;
+    //Draw_Parameters& p = m_Params;
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
     
@@ -88,25 +107,27 @@ std::pair<bool, std::vector<std::string>> FunctionType_Slot::ExportGCode(Setting
     gcodes.Add(HeaderText(settings));
     gcodes.InitCommands(toolData.speed);
     
-    // define initial path
-    std::vector<glm::vec2> path;    
-    path.push_back({ m_Params.p0.x, m_Params.p0.y });
-    path.push_back({ m_Params.p1.x, m_Params.p1.y });
-    
     // define offset path parameters
     int compensateCutter = (m_Params.cutSide == CompensateCutter::None || m_Params.cutSide == CompensateCutter::Left) ? m_Params.cutSide : -1; /* if Right */ // 0 = no compensation, 1 = compensate left, -1 = compensate right
     float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
     // define cut path parameters & offset path
     Geos geos;
     FunctionsGeneral::CutPathParams pathParams;
-    pathParams.points = geos.offsetLine(path, compensateCutter * toolRadius, settings.p.pathCutter.QuadrantSegments);
-    
-    pathParams.z0 = m_Params.p0.z;
-    pathParams.z1 = m_Params.p1.z;
+    bool isLoop = m_Params.path[0] == m_Params.path.back();
+    // calculate offset
+    if(isLoop) {
+        pathParams.points = geos.offsetPolygon(m_Params.path, compensateCutter * toolRadius, settings.p.pathCutter.QuadrantSegments);
+    } else {
+        pathParams.points = geos.offsetLine(m_Params.path, compensateCutter * toolRadius, settings.p.pathCutter.QuadrantSegments);
+    }
+
+    // populate parameters
+    pathParams.z0 = m_Params.z[0];
+    pathParams.z1 = m_Params.z[1];
     pathParams.cutDepth = toolData.cutDepth;
     pathParams.feedPlunge = toolData.feedPlunge;
     pathParams.feedCutting = toolData.feedCutting;
-    pathParams.isLoop = false;
+    pathParams.isLoop = isLoop;
     
     // add gcodes for path at depths
     if(FunctionsGeneral::CutPath(settings, gcodes, pathParams)) {
@@ -116,7 +137,7 @@ std::pair<bool, std::vector<std::string>> FunctionType_Slot::ExportGCode(Setting
     gcodes.EndCommands();
     
     // draw path and offset path in viewer
-    Event<Event_DisplayShapeOffset>::Dispatch( { path, pathParams.points, pathParams.isLoop } );
+    Event<Event_DisplayShapeOffset>::Dispatch( { m_Params.path, pathParams.points, pathParams.isLoop } );
     
     return make_pair(true, gcodes.Get());
 }

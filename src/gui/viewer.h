@@ -4,9 +4,6 @@
 #include "../glcore/glcore.h"
 
 
-
-
-
 static std::string Viewer_VertexShader = R"(
 // #version 140
 #version 300 es
@@ -61,6 +58,7 @@ public:
     void AddGrid(Settings& settings);
     void AddAxes(float size, glm::vec3 origin);
     void AddShape(const std::vector<glm::vec3>& shape, glm::vec3 colour, const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f), float rotateX = 0.0f, float rotateZ = 0.0f);
+    void AddPath(const std::vector<glm::vec2>& vertices, glm::vec3 colour, const glm::vec3& position, bool isLoop = false);
 
     void Update();
     void Draw(glm::mat4& proj, glm::mat4& view);
@@ -92,7 +90,7 @@ public:
     void Update(Settings& settings, float dt);
     void Render();
     void ImGuiRender(Settings& settings);
-    
+       
 private:
     bool m_Initialised = false;
     bool m_Show = true;
@@ -103,10 +101,15 @@ private:
     std::unique_ptr<EventHandler<Event_MouseScroll>> event_MouseScroll;
     std::unique_ptr<EventHandler<Event_MouseMove>> event_MouseDrag;
     std::unique_ptr<EventHandler<Event_KeyInput>> event_Keyboard;
+    std::unique_ptr<EventHandler<Event_DisplayShapeOffset>> event_DisplayShapeOffset;
     //std::unique_ptr<EventHandler<Event_UpdateCamera>> event_UpdateCamera;
     
     DynamicBuffer m_DynamicLines = { GL_LINES, 600, 600 };
     DynamicBuffer m_DynamicFaces = { GL_TRIANGLES, 444, 444 };
+    
+    std::vector<glm::vec2> m_Shape;
+    std::vector<glm::vec2> m_ShapeOffset;
+    bool m_ShapeIsLoop = false;
     
     // static buffer for path
     std::unique_ptr<Shader> m_Shader;
@@ -120,10 +123,6 @@ private:
     int m_DrawCount = 0;
     int m_DrawMax = 0;
     
-        int m_LinePolygonType = 0;
-        float m_Offset = 6.0f;
-        int m_QuadrantSegments = 30;
-        
     void Draw2DText(const char* label, glm::vec3 position);
     void Draw2DAxesLabels(glm::vec3 position, float axisLength);
     

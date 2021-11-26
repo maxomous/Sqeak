@@ -17,7 +17,7 @@ ImVec4 colour_Heading = ImGuiModules::ConvertColourHexToVec4(0xA8BE9E);
 //******************************************************************************//
 //**********************************FRAMES**************************************//
 
-ImGuiWindowFlags general_window_flags = ImGuiWindowFlags_None;
+ImGuiWindowFlags general_window_flags = ImGuiWindowFlags_AlwaysAutoResize;
 
 
 struct Console {
@@ -169,8 +169,8 @@ struct Console {
 
     void Draw(GRBL &grbl, GRBLVals& grblVals) {
         // initialise
-        ImGui::SetNextWindowSize(ImVec2(570, 270), ImGuiCond_Once);
-        if (!ImGui::Begin("Console", NULL, general_window_flags)) {
+        ImGui::SetNextWindowSize(ImVec2(570, 270), ImGuiCond_Appearing);
+        if (!ImGui::Begin("Console", NULL, ImGuiWindowFlags_None)) {
             ImGui::End();
             return;
         }
@@ -633,12 +633,6 @@ struct FileBrowser {
 
 struct FileController {
     
-    // button dimensions
-    const int w = 70;
-    const int h = 30;
-    // dimensions of play/pause image
-    int w2 = 18;
-    int h2 = 18;
     
     std::unique_ptr<FileBrowser> fileBrowser;
     ImageTexture img_Play, img_Pause;
@@ -649,6 +643,11 @@ struct FileController {
         fileBrowser = std::make_unique<FileBrowser>(settings);
         img_Play.Init(File::ThisDir("img/img_restart.png").c_str());
         img_Pause.Init(File::ThisDir("img/img_pause.png").c_str());
+        
+        Event<Event_ResetFileTimer>::RegisterHandler([&](Event_ResetFileTimer data) {
+            (void)data;
+            timeStart = millis();
+        });
     }
     
     void Run(GRBL &grbl, Settings settings) {
@@ -661,8 +660,10 @@ struct FileController {
         string filepath = File::CombineDirPath(settings.p.system.curDir, fileBrowser->curFile);
         // add to log
         Log::Info(string("Sending File: ") + filepath);
-        // start time
-        timeStart = millis();
+        
+        // start file timer
+        Event<Event_ResetFileTimer>::Dispatch({});
+         
         // send file to grbl
         if (grbl.sendFile(filepath)) {
             // couldn't open file
@@ -670,20 +671,25 @@ struct FileController {
             timeStart = 0;
         }
     }
-
+ 
     void Draw(GRBL &grbl, Settings& settings) 
-    {
-        GRBLVals& grblVals = settings.grblVals;
-        // initialise
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once); // ImVec2(520,
-                                                                  // 100)
-        if (!ImGui::Begin("Run", NULL, general_window_flags)) {
+    {        
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        float padding = settings.guiSettings.dockPadding;
+        
+        ImGui::SetNextWindowPos(viewport->WorkPos + ImVec2(padding, padding));
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - 2.0f * padding, settings.guiSettings.toolbarHeight));
+        
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
+        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+        
+        if (!ImGui::Begin("Run", NULL, general_window_flags | window_flags)) {
             ImGui::End();
             return;
         }
         ImGuiModules::KeepWindowInsideViewport();
         // Disable all widgets when not connected to grbl
-        ImGuiModules::BeginDisableWidgets(grblVals);
+        ImGuiModules::BeginDisableWidgets(settings.grblVals);
 
         bool openFileBrowser = false;
         
@@ -691,14 +697,14 @@ struct FileController {
         {
             if (ImGui::BeginTabItem("File Browser"))
             {
-                ImGui::Dummy(ImVec2());
-                openFileBrowser = DrawOpenFile(grblVals, fileBrowser->curFilePath.c_str());
+                //ImGui::Dummy(ImVec2());
+                openFileBrowser = DrawOpenFile(settings, fileBrowser->curFilePath.c_str());
                 ImGui::EndTabItem();
             }
             if (ImGui::BeginTabItem("Functions"))
             {
                 static Functions functions;
-                ImGui::Dummy(ImVec2());
+                //ImGui::Dummy(ImVec2());
                 functions.Draw(grbl, settings);
                 ImGui::EndTabItem();
             }
@@ -711,37 +717,49 @@ struct FileController {
         DrawFileBrowser(openFileBrowser);
         
         // Disable all widgets when not connected to grbl
-        ImGuiModules::EndDisableWidgets(grblVals);
+        ImGuiModules::EndDisableWidgets(settings.grblVals);
         ImGui::End();
     }
     
-    bool DrawOpenFile(GRBLVals& grblVals, const char* currentFile)
+    bool DrawOpenFile(Settings& settings, const char* currentFile)
     {
-        if (ImGui::Button("Open..", ImVec2(w, h))) {
-            if(!grblVals.isFileRunning)
-                return true;
-            else
-                Log::Error("A file is running. This must finish before opening another");
-        }
-        ImGui::SameLine();
-        ImGui::TextUnformatted("Current File:");
-        ImGui::SameLine();
-        ImGui::TextUnformatted(currentFile);
+        ImVec2& buttonSize = settings.guiSettings.buttonSize[0];
         
-        return false;
+        bool fileHasBeenOpened = false;
+        
+        ImGui::BeginGroup();
+            if (ImGui::Button("Open..", buttonSize)) {
+                if(settings.grblVals.isFileRunning)
+                    Log::Error("A file is running. This must finish before opening another");
+                else
+                    fileHasBeenOpened = true;
+            }
+        ImGui::EndGroup();
+        
+        ImGui::SameLine();
+        
+        ImGui::BeginGroup();
+            ImGuiModules::CentreItemVerticallyAboutItem(buttonSize.y);
+            ImGui::TextUnformatted("Current File:");
+            ImGui::SameLine();
+            ImGui::TextUnformatted(currentFile);
+        ImGui::EndGroup();
+        
+        return fileHasBeenOpened;
     }
     
     void DrawPlayButtons(GRBL& grbl, Settings& settings)
     {
-        GRBLVals& grblVals = settings.grblVals;
+        ImVec2& buttonSize = settings.guiSettings.buttonSize[1];
+        ImVec2& buttonImgSize = settings.guiSettings.buttonImageSize[1];
         
-        if (ImGui::Button("Run", ImVec2(w, h)))
+        if (ImGui::Button("Run", buttonSize))
             Run(grbl, settings);
 
         ImGui::SameLine();
 
-        if (ImGui::Button("Cancel", ImVec2(w, h))) {
-            if (grblVals.isFileRunning) {
+        if (ImGui::Button("Cancel", buttonSize)) {
+            if (settings.grblVals.isFileRunning) {
                 Log::Info("Cancelling... Note: Any commands remaining in grbl's buffer will still execute.");
                 grbl.cancel();
             }
@@ -751,22 +769,22 @@ struct FileController {
         ImGui::SameLine();
 
         // padding around image (i.e. button width = width of image + 2*padding)
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2((w - w2) / 2, (h - h2) / 2));
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, (buttonSize - buttonImgSize) / 2.0f);
 
             ImGui::SameLine();
-            if (ImGui::ImageButton(img_Pause, ImVec2(w2, h2))) {
+            if (ImGui::ImageButton(img_Pause, buttonImgSize)) {
                 Log::Info("Pausing...");
                 grbl.sendRT(GRBL_RT_HOLD);
             }
 
             ImGui::SameLine();
-            if (ImGui::ImageButton(img_Play, ImVec2(w2, h2))) {
+            if (ImGui::ImageButton(img_Play, buttonImgSize)) {
                 Log::Info("Resuming...");
                 grbl.sendRT(GRBL_RT_RESUME);
             }
         ImGui::PopStyleVar();
 
-        DrawTimeElapsed(grblVals);
+        DrawTimeElapsed(settings.grblVals);
     }
     
     void DrawTimeElapsed(GRBLVals& grblVals)
@@ -831,7 +849,7 @@ struct FileController {
         } 
         // Always center the fileviewer window
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Once, ImVec2(0.5f, 0.5f));
+        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 
         if (ImGui::BeginPopupModal("Open File", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
             fileBrowser->Draw();
@@ -949,7 +967,7 @@ struct Stats {
 */
 
 
-  
+   
 
     void DrawConnect(GRBL &grbl, Settings& settings) {
         GRBLVals& grblVals = settings.grblVals;
@@ -1116,7 +1134,7 @@ struct Stats {
         GRBLStatus_vals &status = grblVals.status;
         GRBLSettings_vals &settings = grblVals.settings;
 
-        static float f[] = {0.0f};
+        //static float f[] = {0.0f};
         static float s[] = {0.0f};
 
         if (ImGui::BeginTable("Motion", 4, ImGuiTableFlags_NoSavedSettings)) {
@@ -1124,10 +1142,22 @@ struct Stats {
             ImGui::TableSetColumnIndex(0);
             // ImGui::Dummy(ImVec2(10.0f,0));
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 30);
-            f[0] = status.feedRate;
-            ImGui::PlotHistogram(
-                "", f, IM_ARRAYSIZE(f), 0, NULL, 0.0f, settings.max_FeedRate,
-                ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
+            
+            // feed rate
+            static float feedValues[50] = {};
+            static int f_offset = 0;
+            //f[0] = status.feedRate;
+            feedValues[f_offset] = status.feedRate;
+            f_offset = (f_offset + 1) % IM_ARRAYSIZE(feedValues);
+            
+            //ImGui::PlotHistogram("", feedValues, IM_ARRAYSIZE(feedValues), 0, NULL, 0.0f, settings.max_FeedRate, ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
+            
+            ImGui::PlotLines("", feedValues, IM_ARRAYSIZE(feedValues), f_offset, NULL, 0.0f, settings.max_FeedRate, ImVec2(0.0f, 80.0f));
+            
+            
+            
+            
+            
 
             ImGui::TableSetColumnIndex(1);
             ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
@@ -1139,11 +1169,7 @@ struct Stats {
             ImGui::TableSetColumnIndex(2);
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 30);
             s[0] = (float)status.spindleSpeed;
-            ImGui::PlotHistogram(
-                "", s, IM_ARRAYSIZE(s), 0, NULL,
-                (float)settings.min_SpindleSpeed,
-                (float)settings.max_SpindleSpeed,
-                ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
+            ImGui::PlotHistogram("", s, IM_ARRAYSIZE(s), 0, NULL, (float)settings.min_SpindleSpeed, (float)settings.max_SpindleSpeed, ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
 
             ImGui::TableSetColumnIndex(3);
             ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
@@ -1389,7 +1415,7 @@ struct Stats {
         GRBLVals& grblVals = settings.grblVals;
         // Initialise
         // ImGui::SetNextWindowSize(ImVec2(250, 300), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
         if (!ImGui::Begin("Stats", NULL, general_window_flags)) {
             ImGui::End();
             return;
@@ -1431,7 +1457,6 @@ struct Stats {
         if (ImGui::Checkbox("Status Report", &(viewStatus))) {
             grbl.setViewStatusReport(viewStatus);
         }
-
         // Disable all widgets when not connected to grbl
         ImGuiModules::EndDisableWidgets(grblVals);
 
@@ -1695,7 +1720,7 @@ struct JogController {
     }
 
     void Draw(GRBL &grbl, GRBLVals& grblVals) { // initialise
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
         if (!ImGui::Begin("Jog Controller", NULL, general_window_flags)) {
             ImGui::End();
             return;
@@ -1730,7 +1755,7 @@ struct Overrides {
         grbl.SendRT(GRBL_RT_MIST_COOLANT);
     */
     void Draw(GRBL &grbl, GRBLVals& grblVals) {
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
         if (!ImGui::Begin("Overrides", NULL, general_window_flags)) {
             ImGui::End();
             return;  
@@ -1857,7 +1882,7 @@ struct ValsViewer {
 
     void Draw(GRBL &grbl, Settings& settings) {
         GRBLVals& grblVals = settings.grblVals;
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
         if (!ImGui::Begin("Debug", NULL, general_window_flags)) {
             ImGui::End();
             return;
@@ -1865,6 +1890,14 @@ struct ValsViewer {
 
         ImGuiModules::KeepWindowInsideViewport();
         GRBLVals &v = grblVals;
+
+        if (ImGui::TreeNode("GUI Settings")) {
+            
+            ImGui::SliderFloat("Dock Padding", &settings.guiSettings.dockPadding, 0.0f, 100.0f);
+
+            ImGui::TreePop();
+        }
+
 
         if (ImGui::TreeNode("System")) {
             addEntry("OpenGl Version", (char *)glGetString(GL_VERSION));
@@ -2089,22 +2122,25 @@ struct ValsViewer {
 };
  
      
-void drawDockSpace()
+void drawDockSpace(Settings& settings)
 {
     // fullscreen dockspace
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->WorkPos);
-    ImGui::SetNextWindowSize(viewport->WorkSize);
+    
+    float padding = settings.guiSettings.dockPadding;
+    float toolbarHeight = settings.guiSettings.toolbarHeight;
+    
+    ImGui::SetNextWindowPos(viewport->WorkPos + ImVec2(padding, toolbarHeight + 2.0f*padding));
+    ImGui::SetNextWindowSize(viewport->WorkSize - ImVec2(padding*2.0f, toolbarHeight + 3.0f*padding));
     ImGui::SetNextWindowViewport(viewport->ID);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
     
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
         | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-    
+     
+    // remove window padding as this is controlled by position + size
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
     ImGui::Begin("DockSpace", NULL, window_flags);
-        // for full screen options
-        ImGui::PopStyleVar(2);
+    ImGui::PopStyleVar();
         // Submit the DockSpace
         ImGui::DockSpace(ImGui::GetID("DockSpace"), ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_NoDockingInCentralNode | ImGuiDockNodeFlags_PassthruCentralNode);
     ImGui::End();

@@ -66,13 +66,16 @@ struct ParametersList
             float Length;    
         };
         VectorSelectable<Tool> toolList;
+        // check if tool & material is selected
+        bool IsToolAndMaterialSelected();
+        glm::vec3 GetToolScale();
         
     } tools;
 
     struct Viewer3DParameters {
         
         glm::vec3 BackgroundColour = { 0.45f, 0.55f, 0.60f };
-        glm::vec3 ToolpathColour = glm::vec3(13.0f, 132.0f, 211.0f) / 255.0f;
+        glm::vec3 ToolpathColour = { 0.851f, 0.697f, 0.086f };
         
         struct Axis {
             float Size = 50.0f;
@@ -92,6 +95,18 @@ struct ParametersList
         
     } viewer;
 
+    struct PathCutter {
+        // Tab Parameters
+        bool CutTabs = true;
+        float TabSpacing = 50.0f;
+        float TabHeight = 4.0f;
+        float TabWidth = 8.0f;
+        // shape offset
+        glm::vec3 ShapeColour       = { 0.0f, 1.0f, 0.0f };
+        glm::vec3 ShapeOffsetColour = { 1.0f, 0.0f, 0.0f };
+        int QuadrantSegments        = 30;
+    } pathCutter;
+    
     struct CustomGCode {
         std::string name;
         std::string gcode;
@@ -99,7 +114,21 @@ struct ParametersList
     std::vector<CustomGCode> customGCodes;
 };
 
+// internal settings (not added to user settings ini file)
+struct GUISettings 
+{
+    
+    ImVec2 buttonSize[2]        =  {{ 100.0f, 40.0f },
+                                    { 70.0f,  30.0f }};
 
+    ImVec2 buttonImageSize[2]   =  {{ 18.0f,  18.0f },
+                                    { 18.0f,  18.0f }};
+    
+    float dockPadding           =   9.0f;
+    float toolbarHeight         =   150.0f;
+    float toolbarSpacer         =   10.0f;
+    float toolbarComboBoxWidth  =   150.0f;
+};
 
 // for setting static variables
 class Setting 
@@ -189,6 +218,8 @@ private:
     // removes old settings from and updates m_SettingsList to the contents of customGCodes
     void UpdateDynamicSettings();
     void UpdateDynamicSetting(DynamicSetting& dSetting);
-    
+
+public:
+    GUISettings guiSettings;
 };
 

@@ -1,5 +1,5 @@
 /*
- * frames.hpp
+ * frames.h
  *  Max Peglar-Willis 2021
  */
 
@@ -51,10 +51,13 @@ struct ImGuiModules
         return ((float)nItems * ImGui::GetFrameHeightWithSpacing() - (float)GImGui->Style.ItemSpacing.y) / 2.0f;
     }
     // Sets the cursor y position such that an item of height 'itemHeight' is centred about 'nItems' of standard height
-    static void CentreItemVertically(uint nItems, float itemHeight = ImGui::GetFrameHeight()) {
-        ImGuiModules::MoveCursorPosY(ImGuiModules::GetVerticalCentreOfItems(nItems) - itemHeight / 2.0f);
+    static void CentreItemVertically(uint nItems, float thisItemHeight = ImGui::GetFrameHeight()) {
+        ImGuiModules::MoveCursorPosY(ImGuiModules::GetVerticalCentreOfItems(nItems) - thisItemHeight / 2.0f);
     }
-    
+    // Sets the cursor y position such that an item of height 'itemHeight' is centred about an arbitrary vertical distance
+    static void CentreItemVerticallyAboutItem(float itemHeight, float thisItemHeight = ImGui::GetFrameHeight()) {
+        ImGuiModules::MoveCursorPosY((itemHeight - thisItemHeight) / 2.0f);
+    }
     static void TextUnformattedCentredHorizontally(const char* text, float width = ImGui::GetWindowSize().x) {
         // calculate centre position from length of text
         ImGuiModules::MoveCursorPosX((width - ImGui::CalcTextSize(text).x) / 2.0f);
@@ -226,15 +229,18 @@ struct ImGuiModules
         }
     }
 
-    static void HereButton(GRBLVals& grblVals, glm::vec3& p) 
+    static bool HereButton(GRBLVals& grblVals, glm::vec3& p) 
     {
+        bool isClicked = false;
         ImGui::SameLine();
         // use pointer as unique id
         ImGui::PushID(&p[0]);
             if(ImGui::SmallButton("Here")) {
+                isClicked = true;
                 p = grblVals.status.WPos;
             }
         ImGui::PopID();
+        return isClicked;
     }
 
     /*
@@ -261,6 +267,8 @@ struct ImGuiModules
 
 };
 
-void drawDockSpace();
+static inline std::ostream& operator<<(std::ostream& os, const ImVec2& p) { os << "(" << p.x << ", " << p.y << ")"; return os; }
+
+void drawDockSpace(Settings& settings);
 void drawFrames(GRBL& grbl, Settings& settings, float dt);
 extern ImGuiWindowFlags general_window_flags;

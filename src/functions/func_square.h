@@ -1,18 +1,18 @@
 #pragma once
 #include "../common.h"
 
-class FunctionType_Slot : public FunctionType
+class FunctionType_Square : public FunctionType
 {
     typedef struct {
         glm::vec3 p0; 
         glm::vec3 p1;
         int cutSide = CompensateCutter::None;
-    } Slot_Parameters;
+    } Square_Parameters;
 
 public:
-    FunctionType_Slot() : FunctionType("Slot") { } 
-    FunctionType_Slot(uint count) : FunctionType("Slot " + std::to_string(count)) { } 
-    ~FunctionType_Slot() override {}
+    FunctionType_Square() : FunctionType("Square") { } 
+    FunctionType_Square(uint count) : FunctionType("Square " + std::to_string(count)) { } 
+    ~FunctionType_Square() override {}
     
     void DrawPopup(Settings& settings) override;
     std::pair<bool, std::vector<std::string>> ExportGCode(Settings& settings) override;
@@ -20,12 +20,12 @@ public:
     std::unique_ptr<FunctionType> CreateNew() override
     {
         static uint counter = 0;
-        std::unique_ptr<FunctionType_Slot> newFunction = std::make_unique<FunctionType_Slot>(++counter);
+        std::unique_ptr<FunctionType_Square> newFunction = std::make_unique<FunctionType_Square>(++counter);
         return move(newFunction);
     }
     
 private:
-    Slot_Parameters m_Params;
+    Square_Parameters m_Params;
     
     // error checks
     bool IsValidInputs(Settings& settings);

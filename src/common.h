@@ -1,9 +1,11 @@
 /*
- * common.hpp
+ * common.h
  *  Max Peglar-Willis 2021
  */
 
 #pragma once
+
+
 
 #include <algorithm>
 #include <assert.h>
@@ -36,6 +38,26 @@
 #include "dev/ads1115.h"
 #include "dev/joystick.h"
 
+
+// *********************** //
+//       Events            //
+// *********************** //
+
+
+
+/*
+struct Event_SettingsUpdated_Coords {
+    Event_SettingType type;
+};
+*/
+struct Event_Update3DModelFromFile { std::string filename; };
+struct Event_Update3DModelFromVector { std::vector<std::string> gcodes; };
+struct Event_DisplayShapeOffset { std::vector<glm::vec2> shape; std::vector<glm::vec2> shapeOffset; bool isLoop; };
+struct Event_ResetFileTimer {};
+struct Event_ConsoleScrollToBottom {};
+struct Event_SaveSettings {};
+struct Event_UpdateSettingsFromFile {};
+
 #include "gclist.h"
 #include "serial.h"
 
@@ -45,11 +67,12 @@
 #include "settings.h"
 
 #include "gcreader.h"
-#include "functions/functions.h"
 
 #include "gui/frames.h"
 #include "gui/gui.h"
 #include "gui/viewer.h"
+
+#include "functions/functions.h"
 
 #define GUI_WINDOW_NAME     "Sqeak"
 #define GUI_WINDOW_W        1280
@@ -63,21 +86,6 @@
 #define GUI_IMG_ICON        "/img/icon.png"
 
 
-// *********************** //
-//       Events            //
-// *********************** //
-
-
-/*
-struct Event_SettingsUpdated_Coords {
-    Event_SettingType type;
-};
-*/
-struct Event_Update3DModelFromFile { std::string filename; };
-struct Event_Update3DModelFromVector { std::vector<std::string> gcodes; };
-struct Event_ConsoleScrollToBottom {};
-struct Event_SaveSettings {};
-struct Event_UpdateSettingsFromFile {};
 
 // *********************** //
 //       GRBL defines      //

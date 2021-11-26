@@ -39,6 +39,7 @@ void GLSystem::imgui_Config()
     
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigDockingAlwaysTabBar = true;
     
     io.ConfigWindowsMoveFromTitleBarOnly = true;
     
@@ -83,7 +84,11 @@ void UpdateGRBLVals(GRBL& grbl, GRBLVals& grblVals)
 
 int gui(GRBL& grbl, Settings& settings)
 {
+
     GLSystem glsys(GUI_WINDOW_W, GUI_WINDOW_H, GUI_WINDOW_NAME, "#version 300 es"); // glsl version   
+
+
+    
 
 	// blending (allows translucence)
 	GLCall(glEnable(GL_BLEND));
@@ -112,10 +117,15 @@ int gui(GRBL& grbl, Settings& settings)
     });
     
     Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer, &settings](Event_Update3DModelFromVector data) {
-        updateGRBL();
-        gcReader.OpenVector(data.gcodes);
-        viewer.SetPath(settings, gcReader.GetVertices(), gcReader.GetIndices());
+        if(data.gcodes.size() > 0) {
+            updateGRBL();
+            gcReader.OpenVector(data.gcodes);
+            viewer.SetPath(settings, gcReader.GetVertices(), gcReader.GetIndices());
+        } else {
+            viewer.Clear();
+        }
     });
+    
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(glsys.GetWindow()))
     {    
@@ -136,10 +146,10 @@ int gui(GRBL& grbl, Settings& settings)
             viewer.Update(settings, timer.dt()); 
             viewer.Render();
             // draw ImGui windows
-            drawDockSpace();
+            drawDockSpace(settings);
+            ImGui::ShowDemoWindow(NULL);
             viewer.ImGuiRender(settings);
             drawFrames(grbl, settings, timer.dt());
-            ImGui::ShowDemoWindow(NULL);
 		}
 		glsys.imgui_Render();
         // Swap front and back buffers 

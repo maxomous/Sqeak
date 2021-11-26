@@ -197,7 +197,7 @@ Software
     
     Sort tabs / spacs...
     
-    Positioning of frames on first open
+    Positioning of frames inside window on first open / changing screen size
     
     Jogging
          lots of jogs can crash grbl
@@ -216,7 +216,9 @@ Software
     *   and the grid doesnt wqant to move....
     * 
     allow rotation on file G10 R
-    
+     
+    - 2 tabs can overlap internally - draw function with 30mm cutter
+
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01
 

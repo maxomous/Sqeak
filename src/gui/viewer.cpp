@@ -129,50 +129,6 @@ void DynamicBuffer::Resize(int maxVertices, int maxIndices)
     m_IndexBuffer.reset(new IndexBuffer(m_MaxIndexCount, indices.data()));
     
 }
-/*
-void DynamicBuffer::Resize(int maxVertices, int maxIndices)
-{ 
-    m_MaxVertexCount = maxVertices;
-    m_MaxIndexCount = maxIndices;
-    std::vector<uint> indices;
-    indices.reserve(m_MaxIndexCount);
-    for (uint i = 0; i < m_MaxIndexCount; i++)
-        indices.push_back(i);
-    m_Vertices.reserve(m_MaxVertexCount);
-    // resize buffers
-    m_VertexBuffer->Resize(m_MaxVertexCount * sizeof(Vertex));
-    m_IndexBuffer->Resize(m_MaxIndexCount, indices.data());    
-}
-
-
-
-void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std::vector<uint>& indices)
-{
-    vector<Vertex> vertices;
-    vertices.reserve(positions.size());
-    
-    for (size_t i = 0; i < positions.size(); i++) {
-        vertices.emplace_back(positions[i], settings.p.viewer.ToolpathColour);
-    }
-    
-    m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
-   
-    m_VertexBuffer.reset(new VertexBuffer(vertices.size() * sizeof(Vertex), vertices.data()));
-    VertexBufferLayout layout;
-    
-    layout.Push<float>(m_Shader->GetAttribLocation("in_Position"), 3);
-    layout.Push<float>(m_Shader->GetAttribLocation("in_Colour"), 3);
-    
-    m_VAO.reset(new VertexArray());
-    m_VAO->AddBuffer(*m_VertexBuffer, layout);
-    
-    m_IndexBuffer.reset(new IndexBuffer(indices.size(), indices.data()));
-    
-    m_DrawCount = m_DrawMax = m_IndexBuffer->GetCount();
-    
-    m_Initialised = true;
-}
-*/
 void DynamicBuffer::ClearVertices()
 {
     m_Vertices.clear();
@@ -226,7 +182,18 @@ void DynamicBuffer::AddShape(const vector<glm::vec3>& shape, glm::vec3 colour, c
     }
 }   
 
-i think we're recalculing the offset each time which is why its slow... do a test with lots of vertices but no offset calc
+void DynamicBuffer::AddPath(const vector<glm::vec2>& vertices, glm::vec3 colour, const glm::vec3& position, bool isLoop) 
+{    
+    for (size_t i = 1; i < vertices.size(); i++) {
+        AddVertex(position + glm::vec3(vertices[i-1], 0.0f), colour);
+        AddVertex(position + glm::vec3(vertices[i], 0.0f), colour);
+    }
+    // join end and beginning for loop
+    if(isLoop && vertices.size() > 2) { 
+        AddVertex(position + glm::vec3(vertices[vertices.size()-1], 0.0f), colour);
+        AddVertex(position + glm::vec3(vertices[0], 0.0f), colour);
+    }
+}  
 
 void DynamicBuffer::Update() {
     m_VertexBuffer->DynamicUpdate(0, m_Vertices.size() * sizeof(Vertex), m_Vertices.data());
@@ -247,20 +214,10 @@ void DynamicBuffer::Draw(glm::mat4& proj, glm::mat4& view) {
 }
 
  
-    vector<glm::vec2> points;
     
 Viewer::Viewer() 
   : m_Camera(Window::GetWidth(), Window::GetHeight(), glm::vec3(0.0f, 0.0f, 0.0f), 80.0f)
 {     
-    
-        
-    points.push_back({ 0.0f, 0.0f });
-    points.push_back({ 0.0f, 50.0f });
-    points.push_back({ 50.0f, 50.0f });
-    points.push_back({ 50.0f, 0.0f });
-    points.push_back({ 30.0f, 20.0f });
-    points.push_back({ 20.0f, 20.0f });
-    
     
     
     auto WindowResizeEvent = [&](Event_WindowResize data) {
@@ -299,6 +256,12 @@ Viewer::Viewer()
             }*/
         }
     };
+    auto DisplayShapeOffsetEvent = [&](Event_DisplayShapeOffset data) {
+        m_Shape = data.shape;
+        m_ShapeOffset = data.shapeOffset;
+        m_ShapeIsLoop = data.isLoop;
+    };
+    
    /* auto UpdateCameraEvent = [&](Event_SettingsUpdated data) {
         if(data.type != Event_SettingType::CoordSystems)
             return;
@@ -307,14 +270,17 @@ Viewer::Viewer()
         grblVals.coords.homeCoords[0], 0.0f 
     };
     */
-    event_WindowResize = make_unique<EventHandler<Event_WindowResize>>(WindowResizeEvent);
-    event_MouseScroll = make_unique<EventHandler<Event_MouseScroll>>(MouseScrollEvent);
-    event_MouseDrag = make_unique<EventHandler<Event_MouseMove>>(MouseDragEvent);
-    event_Keyboard = make_unique<EventHandler<Event_KeyInput>>(KeyboardEvent);
+    event_WindowResize          = make_unique<EventHandler<Event_WindowResize>>(WindowResizeEvent);
+    event_MouseScroll           = make_unique<EventHandler<Event_MouseScroll>>(MouseScrollEvent);
+    event_MouseDrag             = make_unique<EventHandler<Event_MouseMove>>(MouseDragEvent);
+    event_Keyboard              = make_unique<EventHandler<Event_KeyInput>>(KeyboardEvent);
+    event_DisplayShapeOffset    = make_unique<EventHandler<Event_DisplayShapeOffset>>(DisplayShapeOffsetEvent); 
     //event_UpdateCamera = make_unique<EventHandler<Event_SettingsUpdated>>(UpdateCameraEvent);
     
     // dont draw vertices outside of our visible depth
-    glEnable(GL_DEPTH_TEST); 
+    glEnable(GL_DEPTH_TEST);
+    // this will always draw the latest thing on top, prevent lines overlapping and looking jittery
+    glDepthFunc(GL_ALWAYS);
     // dont draw triangles facing the wrong way 
     glEnable(GL_CULL_FACE);  
     
@@ -328,7 +294,6 @@ Viewer::Viewer()
 Viewer::~Viewer()
 {
 }
-
 
 
 
@@ -394,7 +359,7 @@ void Viewer::Draw2DAxesLabels(glm::vec3 position, float axisLength)
 }
 
 
-        
+         
         
 void Viewer::Update(Settings& settings, float dt)
 {    
@@ -402,6 +367,7 @@ void Viewer::Update(Settings& settings, float dt)
     GRBLVals& grblVals = settings.grblVals;
     float axisSize = settings.p.viewer.axis.Size;
     const glm::vec3& zeroPos = grblVals.ActiveCoordSys();
+    
     // Add axis letters
     Draw2DAxesLabels(zeroPos, axisSize);
     Draw2DText("H", grblVals.coords.homeCoords[0]);
@@ -411,62 +377,33 @@ void Viewer::Update(Settings& settings, float dt)
 // ---------------------------------
     // this could be in static buffer...
     m_DynamicLines.AddGrid(settings);
-    // Draw coord system axis
-    m_DynamicLines.AddAxes(axisSize, zeroPos);
     
     // Draw Current Position
-    glm::vec3 scaleTool;
-
-    ParametersList::Tools& tools = settings.p.tools;
-    if(tools.toolList.HasItemSelected()) {
-        ParametersList::Tools::Tool& tool = tools.toolList.CurrentItem();
-        scaleTool = glm::vec3(tool.Diameter, tool.Diameter, tool.Length);
-    } else {
-        scaleTool = glm::vec3(6.0f, 6.0f, 20.0f);
-    }
+    glm::vec3 scaleTool = settings.p.tools.GetToolScale();
     m_DynamicFaces.AddShape(shape_Cylinder,           settings.p.viewer.spindle.toolColour,         grblVals.status.MPos, scaleTool);
     m_DynamicLines.AddShape(shape_Cylinder_Outline,   settings.p.viewer.spindle.toolColourOutline,  grblVals.status.MPos, scaleTool);
     
+    // add shape and offset path
+    m_DynamicLines.AddPath(m_Shape,        settings.p.pathCutter.ShapeColour,         zeroPos, m_ShapeIsLoop);
+    m_DynamicLines.AddPath(m_ShapeOffset,  settings.p.pathCutter.ShapeOffsetColour,   zeroPos, false); // geos offsetPolygon() closes path for us
     
+    // Draw coord system axis
+    m_DynamicLines.AddAxes(axisSize, zeroPos);
     
-    static Geos geos;
-    
-
-        vector<glm::vec2> offsetPath;
-        
-        if(m_LinePolygonType == 0)
-            offsetPath = geos.offsetLine(points, m_Offset, m_QuadrantSegments);
-        else
-            offsetPath = geos.offsetPolygon(points, m_Offset, m_QuadrantSegments);
-        // buffer is for lines, so need to define start and end of each
-        for (size_t i = 0; i < points.size(); i++) {
-            if(m_LinePolygonType == 0 && i==0) // dont connect last and first points if not a polygon
-                continue; 
-            size_t iPrev = (i == 0) ? points.size()-1 : i-1;
-            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(points[iPrev], 0.0f), { 0.0f, 1.0f, 0.0f });
-            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(points[i], 0.0f), { 0.0f, 1.0f, 0.0f });
-        }
-        for (size_t i = 1; i < offsetPath.size(); i++) {
-            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(offsetPath[i-1], 0.0f), { 1.0f, 0.0f, 0.0f });
-            m_DynamicLines.AddVertex(grblVals.coords.homeCoords[0] + glm::vec3(offsetPath[i], 0.0f), { 1.0f, 0.0f, 0.0f });
-        }
-        
-    
-    
-    m_DynamicLines.Update();
     m_DynamicFaces.Update();
+    m_DynamicLines.Update();
 }
 
 
 void Viewer::Render()
-{
+{    
     m_Proj = m_Camera.GetProjectionMatrix();
     m_View = m_Camera.GetViewMatrix();
  
     Renderer::Clear();
     
-    m_DynamicLines.Draw(m_Proj, m_View);
     m_DynamicFaces.Draw(m_Proj, m_View);
+    m_DynamicLines.Draw(m_Proj, m_View);
     DrawPath();
 }
 
@@ -481,8 +418,7 @@ void Viewer::DrawPath()
     
     renderer.Draw(*m_VAO, *m_IndexBuffer, *m_Shader, (uint)m_DrawCount);
 }
- 
- 
+  
 void Viewer::ImGuiRender(Settings& settings)  
 { 
 
@@ -493,56 +429,51 @@ void Viewer::ImGuiRender(Settings& settings)
      
     ImGuiModules::KeepWindowInsideViewport();
         
+    ImGui::PushItemWidth(-130.0f);
+            
+        
+        ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_NoInputs;
+            
+        ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
+        ImGui::ColorEdit3("Toolpath Colour", &settings.p.viewer.ToolpathColour[0], flags);
          
-        ImGui::Separator();
-        ImGui::Separator();
+            ImGui::Separator();
+            
+        if(ImGui::Button("Clear")) {
+            Clear();
+        }
+        ImGui::SameLine();
+        ImGui::Checkbox("Show", &m_Show);
         
-    ImGui::Combo("Type", &m_LinePolygonType, "Line\0Polygon\0\0");
-    
-    ImGui::SliderFloat("Offset", &m_Offset, -50.0f, 50.0f);
-    ImGui::SliderInt("Quadrant Segments", &m_QuadrantSegments, 0, 100);
+            ImGui::Separator();
+            
+        ImGui::TextUnformatted("GCode Viewer"); 
+            
+            ImGui::Separator();
+            
+        ImGui::ColorEdit3("Background Colour", &settings.p.viewer.BackgroundColour[0], flags);
         
-        ImGui::Separator();
-        ImGui::Separator();
+            ImGui::Separator();
+            
+        ImGui::SliderFloat("Axis Size", &settings.p.viewer.axis.Size, 0.0f, 500.0f);
         
-    ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
-    ImGui::ColorEdit3("Toolpath Colour", &settings.p.viewer.ToolpathColour[0]);
-     
-        ImGui::Separator();
+            ImGui::Separator();
+            
+        ImGui::ColorEdit3("Tool Colour", &settings.p.viewer.spindle.toolColour[0], flags);
+        ImGui::ColorEdit3("Tool Colour Outline", &settings.p.viewer.spindle.toolColourOutline[0], flags);
         
-    ImGui::TextUnformatted("GCode Viewer"); 
+            ImGui::Separator();
         
-        ImGui::Separator();
+        ImGui::TextUnformatted("Grid");
         
-    ImGui::ColorEdit3("Background Colour", &settings.p.viewer.BackgroundColour[0]);
-    
-        ImGui::Separator();
+        ImGui::SliderFloat3("Position", &settings.p.viewer.grid.Position[0], -3000.0f, 3000.0f);
+        ImGui::SameLine();
+        ImGuiModules::HereButton(settings.grblVals, settings.p.viewer.grid.Position);
+        ImGui::SliderFloat2("Size", &settings.p.viewer.grid.Size[0], -3000.0f, 3000.0f);
+        ImGui::SliderFloat("Spacing", &settings.p.viewer.grid.Spacing, 0.0f, 1000.0f);
+        ImGui::ColorEdit3("Colour", &settings.p.viewer.grid.Colour[0], flags);
+            
+    ImGui::PopItemWidth();
         
-    ImGui::SliderFloat("Axis Size", &settings.p.viewer.axis.Size, 0.0f, 500.0f);
-    
-        ImGui::Separator();
-        
-    ImGui::ColorEdit3("Tool Colour", &settings.p.viewer.spindle.toolColour[0]);
-    ImGui::ColorEdit3("Tool Colour Outline", &settings.p.viewer.spindle.toolColourOutline[0]);
-    
-        ImGui::Separator();
-    
-    ImGui::TextUnformatted("Grid");
-    
-    ImGui::SliderFloat3("Position", &settings.p.viewer.grid.Position[0], -3000.0f, 3000.0f);
-    ImGui::SameLine();
-    ImGuiModules::HereButton(settings.grblVals, settings.p.viewer.grid.Position);
-    ImGui::SliderFloat2("Size", &settings.p.viewer.grid.Size[0], -3000.0f, 3000.0f);
-    ImGui::SliderFloat("Spacing", &settings.p.viewer.grid.Spacing, 0.0f, 1000.0f);
-    ImGui::ColorEdit3("Colour", &settings.p.viewer.grid.Colour[0]);
-   
-    
-        
-    if(ImGui::Button("Clear")) {
-        Clear();
-    }
-    ImGui::SameLine();
-    ImGui::Checkbox("Show", &m_Show);
-    
     ImGui::End();
 }

@@ -1,6 +1,6 @@
 
 /*
- * gui.hpp
+ * gui.h
  *  Max Peglar-Willis 2021
  */
 

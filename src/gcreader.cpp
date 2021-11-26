@@ -148,6 +148,7 @@ int GCodeReader::InputGCodeBlock(string& inputString)
     Log::Debug(DEBUG_GCREADER, "Input: %s", inputString.c_str());   
         
     // reset values
+    float m_G_Val_NonModal    = 0.0f;
     m_IJK               = glm::vec3();
     m_R                 = 0;
     m_XYZ_Set           = XYZ_SET_FLAG_NONE;
@@ -163,11 +164,16 @@ int GCodeReader::InputGCodeBlock(string& inputString)
         switch (letter)
         {
             case 'G' : 
-                // motion commands are modal
-                if(value == 0.0f || value == 1.0f || value == 2.0f || value == 3.0f || value == 28.0f || value == 30.0f || value == 43.1f || value == 92.0f) {
+                // non modal motion commands
+                if(value == 28.0f || value == 30.0f || value == 43.1f || value == 92.0f) {
+                    m_G_Val_NonModal = value;
+                    m_Execute = true; 
+                }
+                // modal motion commands
+                else if(value == 0.0f || value == 1.0f || value == 2.0f || value == 3.0f) {
                     m_G_Val = value;
                     m_Execute = true; 
-                } // otherwise execute now 
+                } // otherwise execute now (other non-modal commands)
                 else {
                     int err = ExecuteGCode(value);
                     if(err) return err;
@@ -233,7 +239,14 @@ int GCodeReader::InputGCodeBlock(string& inputString)
     // if G has a value   and if X or Y or Z or i/j/k or p has changed 
     if(m_Execute) {
         m_Execute = false;    // has XYZ, F or IJK changed
-        return ExecuteGCode(m_G_Val);
+        int err = 0;
+        if(m_G_Val_NonModal) {
+            err = ExecuteGCode(m_G_Val_NonModal);
+            m_G_Val_NonModal = 0.0f;
+        } else {
+            err = ExecuteGCode(m_G_Val);
+        }   
+        return err;
     }
 
     return 0;
