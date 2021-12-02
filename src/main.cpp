@@ -140,15 +140,7 @@ $132=350.000 (mm) : Z-axis maximum travel
 /*     
  
 TODO: 
-* 
-* 
-* 
 
-Hardware
-    Quiet VFD Fan
-    rpi 4
-
-Software
     Not scrolling down console
     Limit switch / probe etc orange things not updating
     Quicker reset?

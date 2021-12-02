@@ -67,8 +67,6 @@ public:
         FunctionType* m_Parent;
         ImGuiElements(FunctionType* parent) : m_Parent(parent) {};
         
-        bool Buttons_ViewRunDelete(GRBL& grbl, Settings& settings);
-        
     } ImGuiElement{this};
 
     FunctionType() : FunctionType("Function") { } 
@@ -85,13 +83,15 @@ public:
     std::string Name() { return m_Name; }
     std::string ImGuiName() { return m_ImGuiName; }
     
-    bool Draw(Settings& settings) {
-        (void)settings;
+    bool Draw() {
         return ImGui::Selectable(m_ImGuiName.c_str());
         //return ImGui::Button(m_ImGuiName.c_str(), settings.guiSettings.buttonSize[0]);
     }
-    bool DrawActive(Settings& settings) {
-        return ImGui::Button(m_Name.c_str(), settings.guiSettings.buttonSize[0]);
+    bool DrawActive(ImVec2 size, bool isCurrentItem) {        
+        if(isCurrentItem) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+        bool isClicked = ImGui::Button(m_Name.c_str(), size);
+        if(isCurrentItem) ImGui::PopStyleColor();
+        return isClicked;
     }
     virtual void DrawPopup(Settings& settings) { 
         (void)settings;
@@ -100,9 +100,9 @@ public:
 
     virtual std::unique_ptr<FunctionType> CreateNew() { return nullptr; }
     
-    int InterpretGCode(Settings& settings, std::function<void(std::vector<std::string> gcode)> callback);
+    int InterpretGCode(Settings& settings, std::function<int(std::vector<std::string> gcode)> callback);
     void Update3DView(Settings& settings);
-    void SaveGCode(Settings& settings, std::string filepath);
+    int SaveGCode(Settings& settings, std::string filepath);
     void RunGCode(GRBL& grbl, Settings& settings);
     
 protected:
@@ -119,21 +119,18 @@ class Functions
     
 public:
     Functions();
-    void RemoveActive(size_t index) {
-        if(index >= m_ActiveFunctions.size()) {
-            //Log::Critical("Index out of range");
-            return;
-        }
-        m_ActiveFunctions.erase(m_ActiveFunctions.begin() + index);
-    }
-    
     void Draw(GRBL& grbl, Settings& settings);
-    
+    void RunActiveFunction(GRBL& grbl, Settings& settings);
+    void Update3DViewOfActiveFunction(Settings& settings);
+    void DeleteActiveFunction(Settings& settings);
+    void SaveActiveFunction(Settings& settings, std::string filename);
+    bool IsActiveFunctionSelected();
+    std::string GetActiveFunctionFilepath(const std::string& folderPath);
+
 private:
-    
     std::vector<std::unique_ptr<FunctionType>> m_FunctionTypes;
-    std::vector<std::unique_ptr<FunctionType>> m_ActiveFunctions;
+    VectorSelectable<std::unique_ptr<FunctionType>> m_ActiveFunctions;
     
     void Draw_Functions(Settings& settings);
-    void Draw_ActiveFunctions(GRBL& grbl, Settings& settings);
+    void Draw_ActiveFunctions(Settings& settings);
 };

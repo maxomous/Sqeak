@@ -194,19 +194,20 @@ private:
 class Timer
 {
 public:
-    Timer() { m_CurrentTime = m_PreviousTime = glfwGetTime(); }
-    float Update()
-    {
-        m_CurrentTime = glfwGetTime();
-		m_dt = m_CurrentTime - m_PreviousTime;
+    Timer() { Reset(); }
+    
+    void Reset() { m_CurrentTime = m_PreviousTime = glfwGetTime(); }
+    // updates the current time
+    void UpdateCurrentTime() { m_CurrentTime = glfwGetTime(); }
+    // moves the interval time each call
+    void UpdateInterval() {
 		m_PreviousTime = m_CurrentTime;
-        return m_CurrentTime;
+        m_CurrentTime = glfwGetTime();
     }
-    float dt() { return m_dt; }
+    float dt() { return m_CurrentTime - m_PreviousTime; }
 private:
     float m_CurrentTime = 0.0f;
     float m_PreviousTime = 0.0f;
-    float m_dt = 0.0f;
 };
 
 class GLSystem

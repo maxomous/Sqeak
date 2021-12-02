@@ -5,7 +5,8 @@ template<typename T>
 class  VectorSelectable
 {
 public:
-    void Add(const T& v)                { m_Items.push_back(v); m_CurrentIndex = m_Items.size()-1; }
+    void Add(const T& v)                { m_Items.push_back(std::move(v)); m_CurrentIndex = m_Items.size()-1; } // lvalue & refs
+    void Add(T&& v)                     { m_Items.push_back(std::move(v)); m_CurrentIndex = m_Items.size()-1; } // rvalue
     void Remove(size_t index) { 
         assert(index < m_Items.size()); 
         m_Items.erase(m_Items.begin() + index);
@@ -39,9 +40,10 @@ struct ParametersList
 {
     // define settings here
     struct System {
-        std::string     serialDevice    = "/dev/ttyS0"; // "/dev/ttyAMA0"
-        std::string     serialBaudrate  = "115200";
-        std::string     curDir          = File::ThisDir();
+        std::string     serialDevice        = "/dev/ttyS0"; // "/dev/ttyAMA0"
+        std::string     serialBaudrate      = "115200";
+        std::string     curDir              = File::ThisDir();
+        std::string     saveFileDirectory   = File::ThisDir();
     } system;
     
 
@@ -117,17 +119,25 @@ struct ParametersList
 // internal settings (not added to user settings ini file)
 struct GUISettings 
 {
-    
-    ImVec2 buttonSize[2]        =  {{ 100.0f, 40.0f },
+    ImVec2 buttonSize[2]        =  {{ 90.0f, 36.0f },
                                     { 70.0f,  30.0f }};
-
+            
     ImVec2 buttonImageSize[2]   =  {{ 18.0f,  18.0f },
                                     { 18.0f,  18.0f }};
     
-    float dockPadding           =   9.0f;
-    float toolbarHeight         =   150.0f;
+    float dockPadding           =   20.0f;
+    float toolbarHeight         =   143.0f;
     float toolbarSpacer         =   10.0f;
     float toolbarComboBoxWidth  =   150.0f;
+    
+    // Fonts
+    ImFont* font_medium;
+    ImFont* font_large;
+
+    ImageTexture img_Restart;
+    ImageTexture img_Pause;
+    ImageTexture img_File;
+    ImageTexture img_Folder;
 };
 
 // for setting static variables

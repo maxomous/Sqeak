@@ -162,12 +162,24 @@ struct Event_UpdateSettingsFromFile {};
 
 // converts variable arguments to a string
 std::string va_str(const char *format, ...);
+
+// Normalises seconds into hours, minutes & seconds
+class Time {
+public:
+    Time(uint seconds);
+    uint Hours() { return m_hr; }
+    uint Mins() { return m_min; }
+    uint Secs() { return m_sec; }
+    std::string TimeString() { return va_str("%u:%.2u:%.2u", m_hr, m_min, m_sec); }
+private:
+    uint m_hr;
+    uint m_min;
+    uint m_sec;
+};
 // modifies string to lower case
 void lowerCase(std::string &str);
 // modifies string to upper case
 void upperCase(std::string &str);
-// convert seconds into hours, minutes and seconds
-void normaliseSecs(uint s, uint &hr, uint &min, uint &sec);
 // This takes a std::string of 2/3 values seperated by commas (.000,0.000,2.222) and will return a vec2 / vec3
 glm::vec2 stoVec2(const std::string& msg);
 glm::vec3 stoVec3(const std::string& msg);

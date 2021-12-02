@@ -2,11 +2,14 @@
 #include "toolsettings.h"
 using namespace std;
 
-void ToolSettings::Draw(Settings& settings) 
+bool ToolSettings::Draw(Settings& settings) 
 { 
     auto& tools = settings.p.tools; 
+  
+    bool isModified = false;
+    
     ImGui::BeginGroup();
-        DrawEditTools(settings);
+        isModified |= DrawEditTools(settings);
     ImGui::EndGroup();
     
     ImGui::SameLine();
@@ -14,39 +17,52 @@ void ToolSettings::Draw(Settings& settings)
     ImGui::BeginGroup();
         ImGui::PushItemWidth(settings.guiSettings.toolbarComboBoxWidth);
             static std::function<std::string(ParametersList::Tools::Tool& item)> cb_GetToolName = [](ParametersList::Tools::Tool& item) { return item.Name; };
-            ImGuiModules::ComboBox("Select Tool", tools.toolList, cb_GetToolName);
+            isModified |= ImGuiModules::ComboBox("Select Tool", tools.toolList, cb_GetToolName);
             
             if(tools.toolList.HasItemSelected()) {
                 static std::function<std::string(ParametersList::Tools::Tool::ToolData& item)> cb_GetMaterialName = [](ParametersList::Tools::Tool::ToolData& item) { return item.material; };
-                ImGuiModules::ComboBox("Select Material", settings.p.tools.toolList.CurrentItem().Data, cb_GetMaterialName);
+                isModified |= ImGuiModules::ComboBox("Select Material", settings.p.tools.toolList.CurrentItem().Data, cb_GetMaterialName);
             } else {
                 static int dummyCombo = 0;
                 ImGui::Combo("Select Material", &dummyCombo, "\0");
             }
         ImGui::PopItemWidth();
     ImGui::EndGroup();
+    // calls Export GCode and updates viewer
+    return isModified;
 }   
 
-void ToolSettings::DrawEditTools(Settings& settings) 
+bool ToolSettings::DrawEditTools(Settings& settings) 
 {
-    ImVec2 buttonSize = settings.guiSettings.buttonSize[1];
+    bool isModified = false;
+    
+    ImVec2 buttonSize = settings.guiSettings.buttonSize[0];
+        
+    ImGui::Dummy(ImVec2(1.0f, 0.0f));
+    ImGui::SameLine();
+        
     ImGuiModules::CentreItemVertically(2, buttonSize.y);
     
     if (ImGui::Button("Edit Tools", buttonSize))
         ImGui::OpenPopup("Edit Tools");
     
+    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(1.0f, 0.0f));
+    
     // Always center this window when appearing
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
+    static bool popupOpen = false;
     if (ImGui::BeginPopupModal("Edit Tools", NULL, ImGuiWindowFlags_AlwaysAutoResize))
     {
+        popupOpen = true;
         ImGui::TextUnformatted("Select Tool");
         ImGui::BeginGroup();
         
             ImGui::BeginGroup(); 
                 if(Draw_SelectTool(settings)) {
-                    ImGui::EndGroup(); ImGui::EndGroup(); ImGui::EndPopup(); return; // to prevent reading an element which doesnt exist anymore
+                    ImGui::EndGroup(); ImGui::EndGroup(); ImGui::EndPopup(); return true; // to prevent reading an element which doesnt exist anymore
                 }
             ImGui::EndGroup();
             
@@ -68,7 +84,7 @@ void ToolSettings::DrawEditTools(Settings& settings)
                  
                 ImGui::BeginGroup();
                     if(Draw_SelectMaterial(settings)) {
-                        ImGui::EndGroup(); ImGui::EndGroup(); ImGui::EndPopup(); return; // to prevent reading an element which doesnt exist anymore
+                        ImGui::EndGroup(); ImGui::EndGroup(); ImGui::EndPopup(); return true; // to prevent reading an element which doesnt exist anymore
                     }
                 ImGui::EndGroup();
                 
@@ -95,7 +111,13 @@ void ToolSettings::DrawEditTools(Settings& settings)
             ImGui::CloseCurrentPopup(); 
         }
         ImGui::EndPopup();
+    } else { // if popup has just been closed
+        if (popupOpen == true) {
+            isModified = true;
+            popupOpen = false;
+        }
     }
+    return isModified;
 }
 
 

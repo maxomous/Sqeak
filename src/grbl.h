@@ -315,6 +315,9 @@ public:
     uint getStatusInterval();
     // checks whether thread has signalled to reset/cancel
     void systemChecks();
+    // get all grbl values, this is much quicker than getting 
+    // individually as it prevent lots of mutexes
+    void UpdateGRBLVals(GRBLVals& grblVals);
 private:
     GCList gcList;
     Serial serial;

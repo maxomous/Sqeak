@@ -22,9 +22,6 @@ void GLSystem::glfw_Config()
     glfwSetWindowSizeLimits(m_Window, GUI_WINDOW_WMIN, GUI_WINDOW_HMIN, GLFW_DONT_CARE, GLFW_DONT_CARE); 
 }
 
-// Fonts
-ImFont* font_medium;
-ImFont* font_large;
 
 void GLSystem::imgui_Config()
 {
@@ -50,56 +47,45 @@ void GLSystem::imgui_Config()
     style.FrameRounding             = 1.0f;             // frames i.e. buttons, textboxes etc.
     
     // Load icon
-    static string filename = File::ThisDir(GUI_IMG_ICON);
-    if(!LoadIconFromFile(m_Window, filename.c_str()))
-        Log::Error(string("Could not find icon: ") + filename);
+    static string iconLocation = File::ThisDir(GUI_IMG_ICON);
+    if(!LoadIconFromFile(m_Window, iconLocation.c_str()))
+        Log::Error(string("Could not find icon: ") + iconLocation);
+}
+      
+void imgui_Settings(Settings& settings)
+{
+    GUISettings& s = settings.guiSettings;
+    ImGuiIO& io = ImGui::GetIO();
     
     // Load Fonts
-    font_medium = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 17.0f);
-    if(!font_medium)
+    s.font_medium = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 17.0f);
+    if(!s.font_medium)
         cout << "Error: Could not find font: Geomanist 17" << endl;
         
-    font_large = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 24.0f);
-    if(!font_large)
+    s.font_large = io.Fonts->AddFontFromMemoryCompressedTTF(geomanist_compressed_data, geomanist_compressed_size, 24.0f);
+    if(!s.font_large)
         cout << "Error: Could not find font: Geomanist 24" << endl;
+        
+    // Images
+    s.img_Restart.Init(File::ThisDir("img/img_restart.png").c_str());
+    s.img_Pause.Init(File::ThisDir("img/img_pause.png").c_str());
+    s.img_File.Init(File::ThisDir("img/img_file.png").c_str());
+    s.img_Folder.Init(File::ThisDir("img/img_folder.png").c_str());
 }
-
-    // get all grbl values (this is much quicker than getting
-    // as required as it does require lots of mutexes)
-void UpdateGRBLVals(GRBL& grbl, GRBLVals& grblVals)
-{
-    grblVals.coords = grbl.sys.coords.getVals();
-    grblVals.modal = grbl.sys.modal.getVals();
-    grblVals.status = grbl.sys.status.getVals();
-    grblVals.settings = grbl.sys.settings.getVals();
-
-    grblVals.isConnected = grbl.isConnected();
-    grblVals.isCheckMode = (grblVals.status.state == GRBLState::Status_Check);
-    grblVals.isFileRunning = grbl.isFileRunning();
-    grbl.getFilePos(grblVals.curLineIndex, grblVals.curLine, grblVals.totalLines);
-}
-
-
-//void globalEvents()
+    
 
 int gui(GRBL& grbl, Settings& settings)
 {
-
     GLSystem glsys(GUI_WINDOW_W, GUI_WINDOW_H, GUI_WINDOW_NAME, "#version 300 es"); // glsl version   
-
-
-    
-
 	// blending (allows translucence)
 	GLCall(glEnable(GL_BLEND));
 	// what to do with source (overlapping item) / what to do with destination (item we are overlapping)
 	GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    // set images / fonts
+    imgui_Settings(settings);
     
     Timer timer;
-    
-    GRBLVals& grblVals = settings.grblVals;
-    
-    GCodeReader gcReader(grblVals);
+    GCodeReader gcReader(settings.grblVals);
     Viewer viewer;
     
     auto updateGRBL = [&grbl]() {
@@ -114,6 +100,8 @@ int gui(GRBL& grbl, Settings& settings)
         updateGRBL();
         gcReader.OpenFile(data.filename);
         viewer.SetPath(settings, gcReader.GetVertices(), gcReader.GetIndices());
+        // clear the offset shape buffer
+        Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
     });
     
     Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer, &settings](Event_Update3DModelFromVector data) {
@@ -129,16 +117,16 @@ int gui(GRBL& grbl, Settings& settings)
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(glsys.GetWindow()))
     {    
-       
-             // Poll for and process events 
+        // Poll for and process events 
         GLCall(glfwPollEvents());
         // set background colour
 		GLCall(glClearColor(settings.p.viewer.BackgroundColour.r, settings.p.viewer.BackgroundColour.g, settings.p.viewer.BackgroundColour.b, 1.0f));
         
         grbl.systemChecks();
-        UpdateGRBLVals(grbl, grblVals);
+        // build a structure of all values so we dont have to constantly be locking mutexes throughout program
+        grbl.UpdateGRBLVals(settings.grblVals);
         
-        timer.Update();
+        timer.UpdateInterval();
         
         // ImGui
         glsys.imgui_NewFrame();
@@ -150,6 +138,8 @@ int gui(GRBL& grbl, Settings& settings)
             ImGui::ShowDemoWindow(NULL);
             viewer.ImGuiRender(settings);
             drawFrames(grbl, settings, timer.dt());
+            // end dockspace
+            ImGui::End();
 		}
 		glsys.imgui_Render();
         // Swap front and back buffers 

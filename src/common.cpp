@@ -17,6 +17,15 @@ string va_str(const char* format, ... )
     return string(buf);
 }
 
+Time::Time(uint seconds) 
+{
+    m_hr = seconds / 3600;
+    seconds %= 3600;
+    m_min = seconds / 60;
+    seconds %= 60;
+    m_sec = seconds; 
+}
+    
 void lowerCase(string& str) {
     transform(str.begin(), str.end(),str.begin(), ::tolower);
 }
@@ -24,17 +33,6 @@ void lowerCase(string& str) {
 void upperCase(string& str) {
     transform(str.begin(), str.end(),str.begin(), ::toupper);
 }
-
-// convert seconds into hours, minutes and seconds
-void normaliseSecs(uint s, uint& hr, uint& min, uint& sec)
-{
-    hr = s / 3600;
-    s %= 3600;
-    min = s / 60 ;
-    s %= 60;
-    sec = s; 
-}
- 
 
  // This takes a std::string of 3 values seperated by commas (,) and will return a 3DPoint
 // 4.000,0.000,0.000

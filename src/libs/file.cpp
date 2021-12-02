@@ -50,6 +50,12 @@ string File::CombineDirPath(const string& dir, const string& name) {
     return str;
 }
 
+bool File::Exists(const std::string& name) 
+{
+    ifstream f(name.c_str());
+    return f.good();
+}
+
 void File::Write(const string& filename, const string& str) {
     // lock the mutex
     std::unique_lock<std::mutex> locker(get().m_mutex);

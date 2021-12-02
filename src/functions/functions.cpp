@@ -241,11 +241,6 @@ int FunctionsGeneral::CutPath(Settings& settings, FunctionGCodes& gcodes, const 
     // get the positions of where tabs should lie and their indexes within points[]
     std::vector<std::pair<size_t, glm::vec2>> tabPositions = GetTabPositions(settings, params);
     
-    for(auto tab : tabPositions) {
-        cout << "Tab: " << tab.second << endl;
-    }
-    cout << endl;
-    
     float zCurrent = params.z0;
     int zDirection = ((params.z1 - params.z0) > 0) ? FORWARD : BACKWARD; // 1 or -1
     bool isMovingForward = true;
@@ -288,7 +283,7 @@ int FunctionsGeneral::CutPath(Settings& settings, FunctionGCodes& gcodes, const 
     return 0;
 }
 
-int FunctionType::InterpretGCode(Settings& settings, std::function<void(std::vector<std::string> gcode)> callback)
+int FunctionType::InterpretGCode(Settings& settings, std::function<int(std::vector<std::string> gcode)> callback)
 {
     // error check
     if(settings.p.tools.IsToolAndMaterialSelected())
@@ -301,24 +296,25 @@ int FunctionType::InterpretGCode(Settings& settings, std::function<void(std::vec
         return -1;
     }
     // gcode was interpretted successfully, call function provided
-    callback(gcodes.second);
-    return 0;
+    return callback(gcodes.second);
 };
 
 void FunctionType::Update3DView(Settings& settings) 
 {
     int err = InterpretGCode(settings, [](auto gcodes){
         Event<Event_Update3DModelFromVector>::Dispatch({ gcodes }); 
+        return 0;
     });
     if(err) { // clear screen
         Event<Event_Update3DModelFromVector>::Dispatch({ std::vector<std::string>(/*empty*/) }); 
         Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
     }
 }
-void FunctionType::SaveGCode(Settings& settings, std::string filepath) 
+int FunctionType::SaveGCode(Settings& settings, std::string filepath) 
 {
-    InterpretGCode(settings, [&](auto gcodes){
+    return InterpretGCode(settings, [&](auto gcodes){
         File::WriteArray(filepath, gcodes);
+        return 0;
     });
 }
 void FunctionType::RunGCode(GRBL& grbl, Settings& settings) 
@@ -329,36 +325,10 @@ void FunctionType::RunGCode(GRBL& grbl, Settings& settings)
         // send gocdes to grbl
         if(grbl.sendArray(gcodes)) {
             Log::Error("Couldn't send file to grbl");
-        }
+            return -1;
+        };
+        return 0;
     });
-}
-
-bool FunctionType::ImGuiElements::Buttons_ViewRunDelete(GRBL& grbl, Settings& settings) 
-{     
-    /* auto updated on open / value change
-    // show in viewer
-    if(ImGui::Button("View 3D", ImVec2(100, 40))) {
-        m_Parent->Update3DView(settings);
-    }
-    ImGui::SameLine();
-    */
-    // add GCodes to file
-    if(ImGui::Button("Export GCode", ImVec2(100, 40))) {
-        m_Parent->SaveGCode(settings, "/home/pi/Desktop/GCODE test.nc");
-    }
-    ImGui::SameLine();
-    
-    // send gcodes to grbl
-    if(ImGui::Button("Run", ImVec2(100, 40))) {
-        m_Parent->RunGCode(grbl, settings);
-    }
-    
-    ImGui::SameLine();
-    
-    if(ImGui::Button("Delete", ImVec2(100, 40))) {
-        return true;
-    }
-    return false;
 }
 
 
@@ -399,133 +369,158 @@ void Functions::Draw(GRBL& grbl, Settings& settings)
     static ToolSettings toolSettings;
     
     ImGui::BeginGroup();
-        ImGui::BeginGroup();
-            ImGui::TextUnformatted("Tool");
-        ImGui::EndGroup();
-        ImGui::BeginGroup();
-            toolSettings.Draw(settings);
-        ImGui::EndGroup();
+        // updates viewer if tool or material is changed
+        if(toolSettings.Draw(settings)) {
+            Update3DViewOfActiveFunction(settings);
+        }
     ImGui::EndGroup();
     
     sameLineSeperator();
+
+    ImGui::BeginGroup();
+        Draw_Functions(settings); 
+    ImGui::EndGroup();
+    
+    ImGui::SameLine();
+    //sameLineSeperator();
     
     ImGui::BeginGroup();
-        ImGui::BeginGroup();
-            ImGui::TextUnformatted("Functions");
-        ImGui::EndGroup();
-        
-        ImGui::BeginGroup();
-            ImGui::BeginGroup();
-                Draw_Functions(settings); 
-            ImGui::EndGroup();
-            
-            ImGui::SameLine();
-            //sameLineSeperator();
-            
-            ImGui::BeginGroup();
-                Draw_ActiveFunctions(grbl, settings); 
-            ImGui::EndGroup();
-        ImGui::EndGroup();
+        Draw_ActiveFunctions(settings); 
     ImGui::EndGroup();
         
 }
 
 void Functions::Draw_Functions(Settings& settings) 
 {  
-    
     ImGui::BeginGroup();
-        ImVec2 buttonSize = settings.guiSettings.buttonSize[1];
+        ImVec2& buttonSize = settings.guiSettings.buttonSize[1];
         ImGuiModules::CentreItemVertically(2, buttonSize.y);
         if (ImGui::Button("New..", buttonSize))
             ImGui::OpenPopup("addFunctionPopup");
     ImGui::EndGroup();
     
+    
+    bool openNewFunctionPopup = false;
+    
     // draw popup
     if (ImGui::BeginPopup("addFunctionPopup")) {
         for (size_t i = 0; i < m_FunctionTypes.size(); i++) { 
-            bool clicked = m_FunctionTypes[i]->Draw(settings);
+            bool clicked = m_FunctionTypes[i]->Draw();
             if(clicked) {
-                m_ActiveFunctions.push_back(m_FunctionTypes[i]->CreateNew());
+                m_ActiveFunctions.Add(m_FunctionTypes[i]->CreateNew());
+                Update3DViewOfActiveFunction(settings);
+                openNewFunctionPopup = true;
             }
         }
         ImGui::EndPopup();
-    }
-    /*
-    ImGui::BeginGroup();
-        for (size_t i = 0; i < m_FunctionTypes.size(); i++) { 
-            if(i > 0) {
-                ImGui::SameLine();
-            }
-            // draw the function buttons
-            bool clicked = m_FunctionTypes[i]->Draw(settings);
-            if(clicked) {
-                //AddActive(m_FunctionTypes[i]); 
-                m_ActiveFunctions.push_back(m_FunctionTypes[i]->CreateNew());
-            }
+    }    
+    if(openNewFunctionPopup) {
+        if(m_ActiveFunctions.HasItemSelected()) {
+            ImGui::OpenPopup(m_ActiveFunctions.CurrentItem()->ImGuiName().c_str());
+        } else {
+            Log::Error("Somehow, no function is active...");
         }
-    ImGui::EndGroup();
-    
-    ImGui::SameLine();
-    
-    ImGui::BeginGroup();
-        ImGuiModules::CentreItemVerticallyAboutItem(40.0f);// + 2.0f*GImGui->Style.FramePadding.y); 
-        ImGui::TextUnformatted("+ Function");
-    ImGui::EndGroup();
-    */
-    
+    }
 }   
  
-void Functions::Draw_ActiveFunctions(GRBL& grbl, Settings& settings)   
+void Functions::Draw_ActiveFunctions(Settings& settings)   
 {
-    /*
+    ImVec2& buttonSize = settings.guiSettings.buttonSize[0];
+
     ImGui::BeginGroup();
-        ImGuiModules::CentreItemVerticallyAboutItem(40.0f);// + 2.0f*GImGui->Style.FramePadding.y); 
-        ImGui::TextUnformatted("Active Functions");
-    ImGui::EndGroup();
-    
-    ImGui::SameLine();
-    */
-    ImGui::BeginGroup();
-        for (size_t i = 0; i < m_ActiveFunctions.size(); i++)  
+        ImGuiModules::CentreItemVertically(2, buttonSize.y);
+        
+        for (size_t i = 0; i < m_ActiveFunctions.Size(); i++)  
         {
             if(i > 0) {
                 ImGui::SameLine();
             }
-            std::unique_ptr<FunctionType>& f = m_ActiveFunctions[i];
+            std::unique_ptr<FunctionType>& f = m_ActiveFunctions.Item(i);
             
-            // draw active functions and open popup if clicked
-            if(f->DrawActive(settings)) { 
+            // draw active functions and make selected if clicked
+            bool isCurrentItem = ((int)i == m_ActiveFunctions.CurrentIndex());
+            if(f->DrawActive(buttonSize, isCurrentItem) || ImGuiModules::RightClickedLastItem()) { 
+                m_ActiveFunctions.SetCurrentIndex(i);
+                Update3DViewOfActiveFunction(settings);
+            }  
+            if(ImGuiModules::RightClickedLastItem()) {
                 ImGui::OpenPopup(f->ImGuiName().c_str()); 
-                f->Update3DView(settings);
             }
-             
-            bool hasBeenDeleted = false;
             
             if (ImGui::BeginPopup(f->ImGuiName().c_str())) {
                 //popupOpen = true;
-                
                 f->DrawPopup(settings);
-                
-                ImGui::Dummy(ImVec2());
-                hasBeenDeleted = f->ImGuiElement.Buttons_ViewRunDelete(grbl, settings);
-                
                 ImGui::EndPopup();
             } 
             /*else { // if popup has just been closed
                 if (popupOpen == true) {
                     //exportFunctionPopups();
                     popupOpen = false;
-                } 
+                }  
            }*/
-           //return hasBeenDeleted;
-            
-       
-            // draw active function popups (if visible)
-            //int deleteThis = f->DrawPopup(grbl, settings);
-            if(hasBeenDeleted) {
-                RemoveActive(i);
-            }
         }
     ImGui::EndGroup();
 } 
 
+void Functions::RunActiveFunction(GRBL& grbl, Settings& settings) 
+{
+    if(!m_ActiveFunctions.HasItemSelected()) {
+        Log::Error("No active function selected");
+        return;
+    }
+    auto& currentFunction = m_ActiveFunctions.CurrentItem();
+    currentFunction->RunGCode(grbl, settings);
+}
+
+void Functions::Update3DViewOfActiveFunction(Settings& settings)
+{
+    if(m_ActiveFunctions.HasItemSelected()) {
+        // Clear path and offset path in 3d viewer
+        Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
+        m_ActiveFunctions.CurrentItem()->Update3DView(settings);
+    }
+}
+
+void Functions::DeleteActiveFunction(Settings& settings)
+{
+    if(m_ActiveFunctions.HasItemSelected()) {
+        m_ActiveFunctions.RemoveCurrent();
+        Update3DViewOfActiveFunction(settings);
+    }
+}
+
+void Functions::SaveActiveFunction(Settings& settings, std::string filename)
+{
+    if(!m_ActiveFunctions.HasItemSelected()) {
+        Log::Error("No active function selected");
+        return;
+    }
+    if(m_ActiveFunctions.CurrentItem()->SaveGCode(settings, filename)) {
+        Log::Error("Unable to save file: %s", filename.c_str());
+    }
+}
+
+bool Functions::IsActiveFunctionSelected()
+{    
+    if(!m_ActiveFunctions.HasItemSelected()) {
+        Log::Error("No active function selected");
+        return false;
+    }
+    return true;
+}
+
+std::string Functions::GetActiveFunctionFilepath(const std::string& folderPath)
+{    
+    if(!m_ActiveFunctions.HasItemSelected()) {
+        Log::Error("No active function selected");
+        return "";
+    }
+    std::string filePath = folderPath;
+    // make sure theres a / at the end of folder
+    if(filePath.empty()) filePath += '/';
+    if(filePath.back() != '/') filePath += '/';
+    
+    filePath += m_ActiveFunctions.CurrentItem()->Name();
+    filePath += ".nc";
+    return filePath;
+}

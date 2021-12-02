@@ -683,7 +683,7 @@ int GRBL::send_preChecks(PreCheck prechecks)
         }
     }
     if(prechecks & PreCheck::GRBLIsIdle) {
-        if(sys.status.getVals().state != GRBLState::Status_Idle) {
+        if(!(sys.status.getVals().state == GRBLState::Status_Idle || sys.status.getVals().state == GRBLState::Status_Check)) {
             Log::Error("Machine is not idle");
             return -1;
         }
@@ -1251,3 +1251,17 @@ void GRBL::thread_statusReport()
     }
 }
  
+// get all grbl values (this is much quicker than getting
+// as required as it does require lots of mutexes)
+void GRBL::UpdateGRBLVals(GRBLVals& grblVals)
+{
+    grblVals.coords = sys.coords.getVals();
+    grblVals.modal = sys.modal.getVals();
+    grblVals.status = sys.status.getVals();
+    grblVals.settings = sys.settings.getVals();
+
+    grblVals.isConnected = isConnected();
+    grblVals.isCheckMode = (grblVals.status.state == GRBLState::Status_Check);
+    grblVals.isFileRunning = isFileRunning();
+    getFilePos(grblVals.curLineIndex, grblVals.curLine, grblVals.totalLines);
+}

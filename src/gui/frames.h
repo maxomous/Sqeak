@@ -45,10 +45,13 @@ struct ImGuiModules
     static void MoveCursorPos(ImVec2 distance) {
         ImGui::SetCursorPos(ImGui::GetCursorPos() + distance);
     }
-    
+    // produces n dummy items at standard frame height
+    static void DummyItemHeight(uint nItems = 1) {
+        ImGui::Dummy(ImVec2(0.0f, ImGui::GetFrameHeight() * (float)nItems + ImGui::GetStyle().ItemSpacing.y));
+    }
     // Returns the vertical centre of n items of standard height
     static float GetVerticalCentreOfItems(uint nItems) {
-        return ((float)nItems * ImGui::GetFrameHeightWithSpacing() - (float)GImGui->Style.ItemSpacing.y) / 2.0f;
+        return ((float)nItems * ImGui::GetFrameHeightWithSpacing() - (float)ImGui::GetStyle().ItemSpacing.y) / 2.0f;
     }
     // Sets the cursor y position such that an item of height 'itemHeight' is centred about 'nItems' of standard height
     static void CentreItemVertically(uint nItems, float thisItemHeight = ImGui::GetFrameHeight()) {
@@ -86,12 +89,16 @@ struct ImGuiModules
             ImGuiModules::TextUnformattedCentredHorizontallyInTable(buf);
         va_end(args);
     }
+    static bool RightClickedLastItem() {
+        return (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right));
+    }
     
     template<typename T>
-    static void ComboBox(const char* name, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString, ImGuiComboFlags flags = 0)
-    {            
+    static bool ComboBox(const char* name, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString, ImGuiComboFlags flags = 0)
+    {         
+        bool isChanged = false;   
         std::string label = (data.Size() <= 0 || !data.HasItemSelected()) ? "" : cb_GetItemString(data.CurrentItem());
-            
+        
         if (ImGui::BeginCombo(name, label.c_str(), flags))
         {
             for (int n = 0; n < (int)data.Size(); n++)
@@ -100,21 +107,24 @@ struct ImGuiModules
                 std::ostringstream stream;
                 stream << cb_GetItemString(data.Item(n)) << "##" << (int)&data.Item(n); // using ptr as unique id
                 
-                const bool isClicked = (data.CurrentIndex() == n);
-                if (ImGui::Selectable(stream.str().c_str(), isClicked))
+                const bool isSelected = (data.CurrentIndex() == n);
+                if (ImGui::Selectable(stream.str().c_str(), isSelected)) {
                     data.SetCurrentIndex((int)n);
+                    isChanged = true;
+                }
 
                 // Set the initial scrolling + keyboard navigation focus
-                if (isClicked)
+                if (isSelected)
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
         }
+        return isChanged;
     } 
     
-    
+    // returns true if item is clicked
     template<typename T>
-    static void DraggableListBox(const char* listboxName, const ImVec2& dimensions, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString)
+    static bool DraggableListBox(const char* listboxName, const ImVec2& dimensions, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString)
     {
         static int n_clicked = -1;
         static int n_current = -1;
@@ -122,8 +132,9 @@ struct ImGuiModules
         static int dragDistance_items = 0;        
         
         int arraySize = (int)data.Size();
-        if(arraySize <= 0) return;
-            
+        if(arraySize <= 0) return false;
+        
+        bool isClicked = false;
         if (ImGui::BeginListBox(listboxName, dimensions))
         {
             for (int n = 0; n < arraySize; n++)
@@ -131,12 +142,14 @@ struct ImGuiModules
                 // Get item name
                 std::ostringstream stream;
                 stream << cb_GetItemString(data.Item(n)) << "##" << (int)&data.Item(n); // using ptr as unique id
-                const bool isClicked = (data.CurrentIndex() == n);
+                const bool isSelected = (data.CurrentIndex() == n);
                 // Draw item
-                if (ImGui::Selectable(stream.str().c_str(), isClicked))
+                if (ImGui::Selectable(stream.str().c_str(), isSelected)) {
                     data.SetCurrentIndex(n);
+                    isClicked = true;
+                }
                 // Set the initial scrolling + keyboard navigation focus
-                if (isClicked)
+                if (isSelected)
                     ImGui::SetItemDefaultFocus();
                 // Set values when item is pressed
                 if(ImGui::IsItemClicked()) {
@@ -183,6 +196,7 @@ struct ImGuiModules
                 updateDragDistanceValue();
             }
         }
+        return isClicked;
     }
 
     template <typename T>

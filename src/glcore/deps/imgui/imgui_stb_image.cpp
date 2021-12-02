@@ -64,6 +64,7 @@ bool LoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_wid
 void ImageTexture::Init(const char* location) { 
     if(!LoadTextureFromFile(location, &textureID, &w, &h))
         cout << "Error: Could not find image " << location << endl;
+
 }
 
 namespace ImGui

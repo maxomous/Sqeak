@@ -3,14 +3,15 @@ using namespace std;
 
 // *************************************************************************************************************
 // ********************************************* USER SETTINGS *************************************************
-
+ 
 void Settings::AddSettings()
 {     
     // Static Settings   
     Setting s = Setting("System", 0);
     s.AddParameter("SerialDevice", &p.system.serialDevice);
     s.AddParameter("SerialBaudrate", &p.system.serialBaudrate);
-    s.AddParameter("CurrentDir", &p.system.curDir);
+    s.AddParameter("CurrentDirectory", &p.system.curDir);
+    s.AddParameter("SaveFileDirectory", &p.system.saveFileDirectory);
     m_SettingsList.push_back(s);
     
     s = Setting("Viewer", 0);
@@ -46,19 +47,19 @@ void Settings::AddSettings()
 }
 
 void Settings::AddDynamicSettings()
-{     
-/*
+{      
+/*   
     char*           str = (*(const std::vector<Tool>*)data)[idx].Name.c_str(); 
     string           s = (*(const std::vector<Tool>*)data)[idx].Name;
     Tool             t = (*(const std::vector<Tool>*)data)[idx]
     vector<Tool>     v = (*(const std::vector<Tool>*)data)
     *vector<Tool>     vptr = (const std::vector<Tool>*)data
-*/ 
+ */  
     DynamicSetting d = DynamicSetting("CustomGCode", (void*)&p.customGCodes, 
-        // get size  
+        // get size   
         [](void* data) { 
             return (*(const std::vector<ParametersList::CustomGCode>*)data).size();
-        },  
+        },      
         // add parameters
         [](Setting& setting, void* data, uint id) { 
             ParametersList::CustomGCode& d = (*(std::vector<ParametersList::CustomGCode>*)data)[id];
@@ -115,13 +116,12 @@ void Settings::AddDynamicSettings()
                 size_t b = paramName.find(">");
                 if(b == std::string::npos) {
                     Log::Error("%s in Config file doesn't contain ']'", paramName.c_str());
-                    return;
+                    return; 
                 }
                 
                 std::string prefixStr       = paramName.substr(1, a-1);
                 int prefixId                = stoi(paramName.substr(a+1, b-a-1));
                 std::string paramNameStr    = paramName.substr(b+1);
-                std::cout << "Prefix = " << prefixStr << "  prefixid = " << prefixId << "  paramName = " << paramNameStr << std::endl;
                 
                 while(v[id].Data.Size() < (uint)prefixId+1) {
                     v[id].Data.Add(ParametersList::Tools::Tool::ToolData());
@@ -189,8 +189,7 @@ std::string DynamicSetting::Name() {
     return m_Name; 
 
 }  
-    
-    
+
 Settings::Settings(const std::string& filename) : m_Filename(filename) {
     
     Event<Event_SaveSettings>::RegisterHandler([&](Event_SaveSettings data) {
@@ -214,8 +213,6 @@ void Settings::SaveToFile()
     // go through each setting
     for(auto setting : m_SettingsList) {
         stream << "[" << setting.name << "][" << setting.id << "]" << std::endl;
-        
-        cout << "[" << setting.name << "][" << setting.id << "]" << std::endl;
         // go through each parameter
         for (size_t i = 0; i < setting.data.size(); i++)
         {

@@ -10,14 +10,12 @@ extern bool LoadIconFromFile(GLFWwindow* window, const char* filename) ;
 
 class ImageTexture 
 {
-    public:
-        int w = 0;
-        int h = 0;
-        GLuint textureID = 0;
-        
-        ImageTexture(const char* location);
-        ImageTexture() {}
-        void Init(const char* location);
+public:
+    int w = 0;
+    int h = 0;
+    GLuint textureID = 0;
+    
+    void Init(const char* location);
 };
 
 namespace ImGui

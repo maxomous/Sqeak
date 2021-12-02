@@ -44,6 +44,8 @@ public:
     static std::string CombineDirPath(const std::string& dir, const std::string& name);
     // Opens the file dialog
     static int OpenFileDialog();
+    // checks if file already exists
+    static bool Exists(const std::string& name);
     // Writes to a new file or overwrites existing file
     static void Write(const std::string& filename, const std::string& str);
     // Writes to a new file or appends to the end of an existing file
