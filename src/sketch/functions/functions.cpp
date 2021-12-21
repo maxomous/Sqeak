@@ -1,5 +1,4 @@
 #include "functions.h"
-#include "toolsettings.h"
 #include "func_facingcut.h"
 #include "func_slot.h"
 #include "func_square.h"
@@ -110,7 +109,7 @@ void FunctionGCodes::FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1,
 }
  
 
-std::vector<std::pair<size_t, glm::vec2>> FunctionsGeneral::GetTabPositions(Settings& settings, const CutPathParams& params)
+std::vector<std::pair<size_t, glm::vec2>> FunctionGCodes::GetTabPositions(Settings& settings, const CutPathParams& params)
 { 
     if(!settings.p.pathCutter.CutTabs) {
         return {}; 
@@ -166,7 +165,7 @@ std::vector<std::pair<size_t, glm::vec2>> FunctionsGeneral::GetTabPositions(Sett
     return move(tabPositions);
 }
 
-void FunctionsGeneral::CheckForTab(Settings& settings, FunctionGCodes& gcodes, const CutPathParams& params, std::vector<std::pair<size_t, glm::vec2>> tabPositions, glm::vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
+void FunctionGCodes::CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, glm::vec2>> tabPositions, glm::vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
 {
     if(!settings.p.pathCutter.CutTabs) {
         return; 
@@ -188,11 +187,11 @@ void FunctionsGeneral::CheckForTab(Settings& settings, FunctionGCodes& gcodes, c
         glm::vec2 tabEnd = tabPosition + tabOffset;
         
         // start of tab
-        gcodes.Add(va_str("G1 X%.3f Y%.3f Z%.3f F%.0f", tabStart.x, tabStart.y, zCurrent, params.feedCutting));
-        gcodes.Add(va_str("G1 Z%.3f F%.0f\t(Start Tab)", tabZPos, params.feedCutting));
+        Add(va_str("G1 X%.3f Y%.3f Z%.3f F%.0f", tabStart.x, tabStart.y, zCurrent, params.feedCutting));
+        Add(va_str("G1 Z%.3f F%.0f\t(Start Tab)", tabZPos, params.feedCutting));
         // end of tab
-        gcodes.Add(va_str("G1 X%.3f Y%.3f F%.0f", tabEnd.x, tabEnd.y, params.feedCutting));
-        gcodes.Add(va_str("G1 Z%.3f F%.0f\t(End Tab)", zCurrent, params.feedCutting));
+        Add(va_str("G1 X%.3f Y%.3f F%.0f", tabEnd.x, tabEnd.y, params.feedCutting));
+        Add(va_str("G1 Z%.3f F%.0f\t(End Tab)", zCurrent, params.feedCutting));
     };
     // continue if below top of tab
     if(zCurrent >= tabZPos)
@@ -219,7 +218,7 @@ void FunctionsGeneral::CheckForTab(Settings& settings, FunctionGCodes& gcodes, c
     }
 }
     
-int FunctionsGeneral::CutPath(Settings& settings, FunctionGCodes& gcodes, const CutPathParams& params) {
+int FunctionGCodes::CutPath(Settings& settings, const CutPathParams& params) {
     
     // error check
     if(params.points.size() < 2) {
@@ -247,11 +246,11 @@ int FunctionsGeneral::CutPath(Settings& settings, FunctionGCodes& gcodes, const 
     
     // move to initial x & y position
     const std::vector<glm::vec2>& points = params.points;
-    gcodes.Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", points[0].x, points[0].y));
+    Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", points[0].x, points[0].y));
     
     do {
         // plunge to next z
-        gcodes.Add(va_str("G1 Z%.3f F%.0f\t(Move To Z)", zCurrent, params.feedPlunge));
+        Add(va_str("G1 Z%.3f F%.0f\t(Move To Z)", zCurrent, params.feedPlunge));
         
         int tabIndex = (isMovingForward) ? 0 : tabPositions.size()-1;
         // Feed along path
@@ -260,14 +259,15 @@ int FunctionsGeneral::CutPath(Settings& settings, FunctionGCodes& gcodes, const 
             const glm::vec2& pLast = (isMovingForward) ? points[i-1] : points[points.size()-i];
             const glm::vec2& pNext = (isMovingForward) ? points[i]   : points[points.size()-i-1];
             // check for and draw tabs
-            CheckForTab(settings, gcodes, params, tabPositions, pNext-pLast, zCurrent, isMovingForward, tabIndex, i);
+            CheckForTab(settings, params, tabPositions, pNext-pLast, zCurrent, isMovingForward, tabIndex, i);
             // move to next point in linestring
-            gcodes.Add(va_str("G1 X%.3f Y%.3f F%.0f", pNext.x, pNext.y, params.feedCutting));
+            Add(va_str("G1 X%.3f Y%.3f F%.0f", pNext.x, pNext.y, params.feedCutting));
         }
         // reverse direction at end of linestring
         if(!params.isLoop) {
             isMovingForward = !isMovingForward;
         }
+        cout << "zCurrent : " << zCurrent << endl;
         // if we have reached the final z depth, break out of loop
         if(zCurrent == params.z1) {
             break;
@@ -307,7 +307,7 @@ void FunctionType::Update3DView(Settings& settings)
     });
     if(err) { // clear screen
         Event<Event_Update3DModelFromVector>::Dispatch({ std::vector<std::string>(/*empty*/) }); 
-        Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
+        //Event<Event_Viewer_AddLineLists>::Dispatch( { std::vector<DynamicBuffer::DynamicVertexList>*(/*empty*/) } );
     }
 }
 int FunctionType::SaveGCode(Settings& settings, std::string filepath) 
@@ -332,8 +332,10 @@ void FunctionType::RunGCode(GRBL& grbl, Settings& settings)
 }
 
 
-Functions::Functions() 
+Functions::Functions(Settings& settings) 
 {
+    (void)settings;   
+    
     auto function_FacingCut = std::make_unique<FunctionType_FacingCut>();
     m_FunctionTypes.push_back(move(function_FacingCut));
     
@@ -351,20 +353,9 @@ Functions::Functions()
 
 }
 
+/*
 void Functions::Draw(GRBL& grbl, Settings& settings) 
 { 
-    auto sameLineSeperator = [&]() {
-        ImGui::SameLine();
-        // draw vertical seperator line
-        float& spacerWidth = settings.guiSettings.toolbarSpacer;
-        ImVec2 p0 = ImGui::GetCursorScreenPos() + ImVec2(spacerWidth / 2.0f, GImGui->Style.ItemSpacing.y / 2.0f);
-        ImVec2 p1 = p0 + ImVec2(1.0f /*thickness*/, 2.0f*ImGui::GetFrameHeight() /*length*/);
-        ImGui::GetWindowDrawList()->AddRectFilled(p0, p1, ImGui::GetColorU32(ImGuiCol_Separator));
-        
-        ImGui::Dummy(ImVec2(spacerWidth, 0.0f));
-        ImGui::SameLine();
-    };
-    
     (void)grbl; (void)settings;
     static ToolSettings toolSettings;
     
@@ -382,21 +373,22 @@ void Functions::Draw(GRBL& grbl, Settings& settings)
     ImGui::EndGroup();
     
     ImGui::SameLine();
-    //sameLineSeperator();
     
     ImGui::BeginGroup();
         Draw_ActiveFunctions(settings); 
     ImGui::EndGroup();
         
-}
+}*/
 
 void Functions::Draw_Functions(Settings& settings) 
 {  
     ImGui::BeginGroup();
-        ImVec2& buttonSize = settings.guiSettings.buttonSize[1];
+        ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::New].Size;
+        ImVec2& buttonImgSize   = settings.guiSettings.button[ButtonType::New].ImageSize;
         ImGuiModules::CentreItemVertically(2, buttonSize.y);
-        if (ImGui::Button("New..", buttonSize))
+        if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_Add)) {
             ImGui::OpenPopup("addFunctionPopup");
+        }
     ImGui::EndGroup();
     
     
@@ -425,8 +417,8 @@ void Functions::Draw_Functions(Settings& settings)
  
 void Functions::Draw_ActiveFunctions(Settings& settings)   
 {
-    ImVec2& buttonSize = settings.guiSettings.buttonSize[0];
-
+    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Primary].Size;
+    
     ImGui::BeginGroup();
         ImGuiModules::CentreItemVertically(2, buttonSize.y);
         
@@ -442,11 +434,8 @@ void Functions::Draw_ActiveFunctions(Settings& settings)
             if(f->DrawActive(buttonSize, isCurrentItem) || ImGuiModules::RightClickedLastItem()) { 
                 m_ActiveFunctions.SetCurrentIndex(i);
                 Update3DViewOfActiveFunction(settings);
-            }  
-            if(ImGuiModules::RightClickedLastItem()) {
                 ImGui::OpenPopup(f->ImGuiName().c_str()); 
-            }
-            
+            }  
             if (ImGui::BeginPopup(f->ImGuiName().c_str())) {
                 //popupOpen = true;
                 f->DrawPopup(settings);
@@ -462,6 +451,15 @@ void Functions::Draw_ActiveFunctions(Settings& settings)
     ImGui::EndGroup();
 } 
 
+std::string Functions::ActiveFunctionName() 
+{
+    if(!m_ActiveFunctions.HasItemSelected()) {
+        return "";
+    }
+    auto& currentFunction = m_ActiveFunctions.CurrentItem();
+    return currentFunction->Name();
+}
+
 void Functions::RunActiveFunction(GRBL& grbl, Settings& settings) 
 {
     if(!m_ActiveFunctions.HasItemSelected()) {
@@ -476,7 +474,7 @@ void Functions::Update3DViewOfActiveFunction(Settings& settings)
 {
     if(m_ActiveFunctions.HasItemSelected()) {
         // Clear path and offset path in 3d viewer
-        Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
+        //Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
         m_ActiveFunctions.CurrentItem()->Update3DView(settings);
     }
 }
@@ -493,20 +491,25 @@ void Functions::SaveActiveFunction(Settings& settings, std::string filename)
 {
     if(!m_ActiveFunctions.HasItemSelected()) {
         Log::Error("No active function selected");
-        return;
+        return; 
     }
     if(m_ActiveFunctions.CurrentItem()->SaveGCode(settings, filename)) {
         Log::Error("Unable to save file: %s", filename.c_str());
     }
 }
 
-bool Functions::IsActiveFunctionSelected()
+bool Functions::IsActiveFunctionSelected(bool showWarning)
 {    
     if(!m_ActiveFunctions.HasItemSelected()) {
-        Log::Error("No active function selected");
+        if(showWarning) 
+            Log::Error("No active function selected");
         return false;
     }
     return true;
+}
+void Functions::DeselectActive()
+{
+    m_ActiveFunctions.SetCurrentIndex(-1);
 }
 
 std::string Functions::GetActiveFunctionFilepath(const std::string& folderPath)

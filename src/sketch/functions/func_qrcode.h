@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../common.h"
+#include "../../common.h"
 class FunctionType_QRCode : public FunctionType
 {
     typedef struct {
@@ -27,6 +27,9 @@ public:
         return move(newFunction);
     }
     
+    void Update(glm::vec2 mouseClickPos) override { 
+        (void) mouseClickPos; 
+    }
 private:
     QRCode_Parameters m_Params;
     

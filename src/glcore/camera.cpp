@@ -11,9 +11,13 @@ using namespace std;
 // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
 void Camera::ChangeDirection(glm::vec2 offset, bool constrainPitch)
 {
-	if(offset.x == 0.0f && offset.y == 0.0f)
+    // ignore input in 2D mode, only used for CentreObject
+    if(m_2DMode) { 
+        return;
+    }
+	if(offset.x == 0.0f && offset.y == 0.0f) {
 		return;
-		
+    }
 	offset.x *= m_MouseSensitivity; 
 	offset.y *= m_MouseSensitivity;
 	m_Yaw   += (m_InvertYaw ? -1 : 1) * offset.x;
@@ -28,6 +32,7 @@ void Camera::ChangeDirection(glm::vec2 offset, bool constrainPitch)
 	// make sure that when pitch is out of bounds, screen doesn't get flipped
 	if (constrainPitch)
 		m_Pitch = clamp(m_Pitch, -89.0f, 89.0f);
+    
 	// update Front, Right and Up Vectors using the updated Euler angles
 	updateCameraVectors();
 }
@@ -69,6 +74,9 @@ bool Camera::IsInsideViewport(glm::vec2 px)
 
 pair<bool, glm::vec2> Camera::GetScreenCoords(glm::vec3 coords)
 {
+	if(!m_2DMode) { 
+        return make_pair(false, glm::vec2());
+    }
 	// we are assuming no model tranform
 	glm::mat4 model = glm::mat4(1.0f);
 
@@ -84,7 +92,7 @@ glm::vec3 Camera::GetWorldPosition(glm::vec2 px)
 {
 	// we are assuming no model tranform
 	glm::mat4 model = glm::mat4(1.0f);
-	return glm::unProject(glm::vec3(px, 0.0f), model * m_View, m_Proj, m_Viewport);
+	return glm::unProjectNO(glm::vec3(px, 0.0f), model * m_View, m_Proj, m_Viewport);
 }
 glm::vec2 Camera::GetWorldVector(glm::vec2 mouseMove)
 {
@@ -101,6 +109,8 @@ glm::vec2 Camera::GetWorldVector(glm::vec2 mouseMove)
 Camera_CentreObject::Camera_CentreObject(int screenWidth, int screenHeight, glm::vec3 centre, float yaw, float pitch)
 {
 	SetViewport(0, 0, screenWidth, screenHeight);
+    m_YawDefault = yaw;
+    m_PitchDefault = pitch;
     m_Yaw = yaw;
     m_Pitch = pitch;
 	m_WorldUp = glm::vec3(0.0f, 0.0f, 1.0f);  
@@ -116,11 +126,28 @@ glm::mat4 Camera_CentreObject::GetViewMatrix()
 	return m_View;
 } 
 
+void Camera_CentreObject::Set2DMode(bool isTrue)
+{
+    if(isTrue) {
+        m_2DMode = true;
+        m_Perspective = false;
+        m_Yaw = 90.0f;
+        m_Pitch = 90.0f;
+    } else { // 3d mode
+        m_2DMode = false;
+        m_Perspective = true;
+        m_Yaw = m_YawDefault;
+        m_Pitch = m_PitchDefault;
+    }
+    updateCameraVectors();
+}
+
 // processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
 void Camera_CentreObject::Move(glm::vec2 direction, float deltaTime)
 {	
 	float velocity = m_MovementSpeed * deltaTime;
-	m_Centre += glm::vec3(direction, 0.0f) * velocity;
+    float invertFor2DMode = (m_2DMode) ? -1.0f : 1.0f;
+	m_Centre += glm::vec3(direction, 0.0f) * velocity * invertFor2DMode;
 	updateCameraVectors();
 }
 
@@ -148,6 +175,8 @@ void Camera_CentreObject::updateCameraVectors()
 Camera_FirstPerson::Camera_FirstPerson(int screenWidth, int screenHeight, glm::vec3 position)
 {
 	SetViewport(0, 0, screenWidth, screenHeight);
+    m_YawDefault = -90.0f;
+    m_PitchDefault = 0.0f;
     m_Yaw = -90.0f;
     m_Pitch = 0.0f;
 	m_WorldUp = glm::vec3(0.0f, 1.0f, 0.0f);

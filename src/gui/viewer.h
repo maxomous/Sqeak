@@ -50,16 +50,23 @@ struct Vertex {
 class DynamicBuffer
 {
 public:
+    struct DynamicVertexList {
+        std::vector<glm::vec2> position; 
+        glm::vec3 colour; 
+    };
+
     DynamicBuffer(GLenum primitiveType, int maxVertices, int maxIndices);
     
     void Resize(int maxVertices, int maxIndices);
     void ClearVertices();
     void AddVertex(const glm::vec3& position, const glm::vec3& colour);
+    void AddCursor(Settings& settings, bool isValid, glm::vec2 pos);
     void AddGrid(Settings& settings);
     void AddAxes(float size, glm::vec3 origin);
     void AddShape(const std::vector<glm::vec3>& shape, glm::vec3 colour, const glm::vec3& position, const glm::vec3& scale = glm::vec3(1.0f), float rotateX = 0.0f, float rotateZ = 0.0f);
-    void AddPath(const std::vector<glm::vec2>& vertices, glm::vec3 colour, const glm::vec3& position, bool isLoop = false);
-
+    void AddPath(const std::vector<glm::vec2>& vertices, glm::vec3 colour, const glm::vec3& zeroPosition);
+    void AddDynamicVertexList(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicLineLists, const glm::vec3& zeroPosition);
+    
     void Update();
     void Draw(glm::mat4& proj, glm::mat4& view);
     
@@ -77,6 +84,10 @@ private:
     std::unique_ptr<IndexBuffer> m_IndexBuffer;
 }; 
 
+// forward declare
+class Event_Viewer_AddLineLists;
+class Event_Viewer_AddPointLists;
+class Event_Set2DMode;
 
 class Viewer
 {
@@ -84,6 +95,10 @@ public:
     Viewer();
     ~Viewer();
 
+    glm::vec3 GetWorldPosition(glm::vec2 px);
+    float ScaleToPx(float size) { return size * (m_Camera.GetZoom() / Window::GetHeight()); } 
+    
+    void SetCursor(bool isValid, glm::vec2 worldCoords);
     void SetPath(Settings& settings, std::vector<glm::vec3>& vertices, std::vector<uint>& indices);
     void Clear();    
     
@@ -101,15 +116,22 @@ private:
     std::unique_ptr<EventHandler<Event_MouseScroll>> event_MouseScroll;
     std::unique_ptr<EventHandler<Event_MouseMove>> event_MouseDrag;
     std::unique_ptr<EventHandler<Event_KeyInput>> event_Keyboard;
-    std::unique_ptr<EventHandler<Event_DisplayShapeOffset>> event_DisplayShapeOffset;
+    std::unique_ptr<EventHandler<Event_Viewer_AddLineLists>> event_AddLineLists;
+    std::unique_ptr<EventHandler<Event_Viewer_AddPointLists>> event_AddPointLists;
+    std::unique_ptr<EventHandler<Event_Set2DMode>> event_Set2DMode;
     //std::unique_ptr<EventHandler<Event_UpdateCamera>> event_UpdateCamera;
     
+    DynamicBuffer m_DynamicPoints = { GL_POINTS, 600, 600 };
     DynamicBuffer m_DynamicLines = { GL_LINES, 600, 600 };
     DynamicBuffer m_DynamicFaces = { GL_TRIANGLES, 444, 444 };
     
-    std::vector<glm::vec2> m_Shape;
-    std::vector<glm::vec2> m_ShapeOffset;
-    bool m_ShapeIsLoop = false;
+    std::vector<DynamicBuffer::DynamicVertexList>* m_DynamicLineLists = nullptr;
+    std::vector<DynamicBuffer::DynamicVertexList>* m_DynamicPointLists = nullptr;
+    //std::vector<glm::vec2> m_Shape;
+    //std::vector<glm::vec2> m_ShapeOffset;
+    //bool m_ShapeIsLoop = false;
+    
+    std::pair<bool, glm::vec2> m_Cursor2DPos;
     
     // static buffer for path
     std::unique_ptr<Shader> m_Shader;

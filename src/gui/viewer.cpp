@@ -8,6 +8,7 @@ float dAngle = 10.0f; // degrees
  
 vector<glm::vec3> shape_Cylinder;
 vector<glm::vec3> shape_Cylinder_Outline;
+
 void initShape_Cylinder()
 {
     // bottom face - circle facing down 
@@ -139,6 +140,20 @@ void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour
 {
     m_Vertices.emplace_back( position, colour ); 
     m_VertexCount++;
+} 
+
+void DynamicBuffer::AddCursor(Settings& settings, bool isValid, glm::vec2 pos)
+{    
+    if(!isValid) { 
+        return; 
+    }
+    ParametersList::Viewer3DParameters::Cursor& cursor = settings.p.viewer.cursor;
+    float cursorSize = cursor.Size_Scaled/2.0f;
+    
+    AddVertex(Vec3(pos) + glm::vec3(0.0f,         -cursorSize,    0.0f), cursor.Colour);
+    AddVertex(Vec3(pos) + glm::vec3(0.0f,         cursorSize,     0.0f), cursor.Colour);
+    AddVertex(Vec3(pos) + glm::vec3(-cursorSize,  0.0f,           0.0f), cursor.Colour);
+    AddVertex(Vec3(pos) + glm::vec3(cursorSize,   0.0f,           0.0f), cursor.Colour);
 }
 
 void DynamicBuffer::AddGrid(Settings& settings)
@@ -182,18 +197,26 @@ void DynamicBuffer::AddShape(const vector<glm::vec3>& shape, glm::vec3 colour, c
     }
 }   
 
-void DynamicBuffer::AddPath(const vector<glm::vec2>& vertices, glm::vec3 colour, const glm::vec3& position, bool isLoop) 
+void DynamicBuffer::AddPath(const vector<glm::vec2>& vertices, glm::vec3 colour, const glm::vec3& position) 
 {    
     for (size_t i = 1; i < vertices.size(); i++) {
         AddVertex(position + glm::vec3(vertices[i-1], 0.0f), colour);
         AddVertex(position + glm::vec3(vertices[i], 0.0f), colour);
     }
-    // join end and beginning for loop
+   
+   /* // join end and beginning for loop
     if(isLoop && vertices.size() > 2) { 
         AddVertex(position + glm::vec3(vertices[vertices.size()-1], 0.0f), colour);
         AddVertex(position + glm::vec3(vertices[0], 0.0f), colour);
+    }*/
+}      
+
+void DynamicBuffer::AddDynamicVertexList(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
+{
+    for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
+        AddPath((*dynamicVertexLists)[i].position, (*dynamicVertexLists)[i].colour, zeroPosition);
     }
-}  
+}
 
 void DynamicBuffer::Update() {
     m_VertexBuffer->DynamicUpdate(0, m_Vertices.size() * sizeof(Vertex), m_Vertices.data());
@@ -218,7 +241,6 @@ void DynamicBuffer::Draw(glm::mat4& proj, glm::mat4& view) {
 Viewer::Viewer() 
   : m_Camera(Window::GetWidth(), Window::GetHeight(), glm::vec3(0.0f, 0.0f, 0.0f), 80.0f)
 {     
-    
     
     auto WindowResizeEvent = [&](Event_WindowResize data) {
         m_Camera.SetViewport(0, 0, data.Width, data.Height);
@@ -254,13 +276,20 @@ Viewer::Viewer()
                 case GLFW_KEY_W:
                     break;
             }*/
-        }
+        } 
     };
-    auto DisplayShapeOffsetEvent = [&](Event_DisplayShapeOffset data) {
-        m_Shape = data.shape;
-        m_ShapeOffset = data.shapeOffset;
-        m_ShapeIsLoop = data.isLoop;
+    auto AddDynamicVertexLists = [&](Event_Viewer_AddLineLists data) {
+        m_DynamicLineLists = data.dynamicLineLists;
     };
+    auto AddDynamicPointLists = [&](Event_Viewer_AddPointLists data) {
+        m_DynamicPointLists = data.dynamicPointLists;
+    };
+    
+    auto Set2DModeEvent = [&](Event_Set2DMode data) {
+        m_Camera.Set2DMode(data.isTrue);
+    };
+    
+    
     
    /* auto UpdateCameraEvent = [&](Event_SettingsUpdated data) {
         if(data.type != Event_SettingType::CoordSystems)
@@ -274,7 +303,9 @@ Viewer::Viewer()
     event_MouseScroll           = make_unique<EventHandler<Event_MouseScroll>>(MouseScrollEvent);
     event_MouseDrag             = make_unique<EventHandler<Event_MouseMove>>(MouseDragEvent);
     event_Keyboard              = make_unique<EventHandler<Event_KeyInput>>(KeyboardEvent);
-    event_DisplayShapeOffset    = make_unique<EventHandler<Event_DisplayShapeOffset>>(DisplayShapeOffsetEvent); 
+    event_AddLineLists          = make_unique<EventHandler<Event_Viewer_AddLineLists>>(AddDynamicVertexLists); 
+    event_AddPointLists         = make_unique<EventHandler<Event_Viewer_AddPointLists>>(AddDynamicPointLists); 
+    event_Set2DMode             = make_unique<EventHandler<Event_Set2DMode>>(Set2DModeEvent);
     //event_UpdateCamera = make_unique<EventHandler<Event_SettingsUpdated>>(UpdateCameraEvent);
     
     // dont draw vertices outside of our visible depth
@@ -296,8 +327,16 @@ Viewer::~Viewer()
 }
 
 
+glm::vec3 Viewer::GetWorldPosition(glm::vec2 px) 
+{
+    return m_Camera.GetWorldPosition(px);
+}
 
 
+void Viewer::SetCursor(bool isValid, glm::vec2 worldCoords)
+{        
+    m_Cursor2DPos = make_pair(isValid, worldCoords);
+}
 
 void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std::vector<uint>& indices)
 {
@@ -363,6 +402,8 @@ void Viewer::Draw2DAxesLabels(glm::vec3 position, float axisLength)
         
 void Viewer::Update(Settings& settings, float dt)
 {    
+    glPointSize(settings.p.viewer.point.size);
+    
     (void)dt;
     GRBLVals& grblVals = settings.grblVals;
     float axisSize = settings.p.viewer.axis.Size;
@@ -372,26 +413,36 @@ void Viewer::Update(Settings& settings, float dt)
     Draw2DAxesLabels(zeroPos, axisSize);
     Draw2DText("H", grblVals.coords.homeCoords[0]);
     // Reset buffer
+    m_DynamicPoints.ClearVertices();
     m_DynamicLines.ClearVertices();
     m_DynamicFaces.ClearVertices();
 // ---------------------------------
     // this could be in static buffer...
     m_DynamicLines.AddGrid(settings);
-    
+     
     // Draw Current Position
     glm::vec3 scaleTool = settings.p.tools.GetToolScale();
     m_DynamicFaces.AddShape(shape_Cylinder,           settings.p.viewer.spindle.toolColour,         grblVals.status.MPos, scaleTool);
     m_DynamicLines.AddShape(shape_Cylinder_Outline,   settings.p.viewer.spindle.toolColourOutline,  grblVals.status.MPos, scaleTool);
     
     // add shape and offset path
-    m_DynamicLines.AddPath(m_Shape,        settings.p.pathCutter.ShapeColour,         zeroPos, m_ShapeIsLoop);
-    m_DynamicLines.AddPath(m_ShapeOffset,  settings.p.pathCutter.ShapeOffsetColour,   zeroPos, false); // geos offsetPolygon() closes path for us
+    if(m_DynamicLineLists) {
+        m_DynamicLines.AddDynamicVertexList(m_DynamicLineLists, zeroPos);
+    }    
+    if(m_DynamicPointLists) {
+        m_DynamicPoints.AddDynamicVertexList(m_DynamicPointLists, zeroPos);
+    }
+    //m_DynamicLines.AddPath(m_Shape,        settings.p.pathCutter.ShapeColour,         zeroPos, m_ShapeIsLoop);
+    //m_DynamicLines.AddPath(m_ShapeOffset,  settings.p.pathCutter.ShapeOffsetColour,   zeroPos, false); // geos offsetPolygon() closes path for us
     
     // Draw coord system axis
     m_DynamicLines.AddAxes(axisSize, zeroPos);
+    // add user cursor
+    m_DynamicLines.AddCursor(settings, m_Cursor2DPos.first, m_Cursor2DPos.second);
     
     m_DynamicFaces.Update();
     m_DynamicLines.Update();
+    m_DynamicPoints.Update();
 }
 
 
@@ -404,6 +455,7 @@ void Viewer::Render()
     
     m_DynamicFaces.Draw(m_Proj, m_View);
     m_DynamicLines.Draw(m_Proj, m_View);
+    m_DynamicPoints.Draw(m_Proj, m_View);
     DrawPath();
 }
 
@@ -422,7 +474,7 @@ void Viewer::DrawPath()
 void Viewer::ImGuiRender(Settings& settings)  
 { 
 
-    if (!ImGui::Begin("GCode Viewer", NULL, general_window_flags)) {
+    if (!ImGui::Begin("Viewer", NULL, general_window_flags)) {
         ImGui::End();
         return;
     }  
@@ -430,9 +482,22 @@ void Viewer::ImGuiRender(Settings& settings)
     ImGuiModules::KeepWindowInsideViewport();
         
     ImGui::PushItemWidth(-130.0f);
-            
-        
         ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_NoInputs;
+            
+        ImGui::Text("Position: (%g, %g)", m_Cursor2DPos.second.x, m_Cursor2DPos.second.y);
+        
+        if(ImGui::SliderFloat("Cursor Size", &settings.p.viewer.cursor.Size, 0.0f, 100.0f))  {
+            settings.p.viewer.cursor.Size_Scaled = ScaleToPx(settings.p.viewer.cursor.Size);
+        }
+        ImGui::SameLine();
+        ImGui::Text("%g Scaled", settings.p.viewer.cursor.Size_Scaled);
+       
+        ImGui::SliderFloat("Cursor Snap Distance", &settings.p.viewer.cursor.SnapDistance, 0.1f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SameLine();
+        ImGui::Text("%g Scaled", settings.p.viewer.cursor.SnapDistance_Scaled);
+        
+        ImGui::ColorEdit3("Cursor Colour", &settings.p.viewer.cursor.Colour[0], flags);
+            ImGui::Separator();
             
         ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
         ImGui::ColorEdit3("Toolpath Colour", &settings.p.viewer.ToolpathColour[0], flags);

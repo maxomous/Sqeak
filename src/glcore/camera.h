@@ -28,7 +28,8 @@ public:
 	void SetInvert(bool invertPitch, bool invertYaw) 			{ m_InvertPitch = invertPitch; m_InvertYaw = invertYaw; };
 	void SetZoomMinMax(float min, float max)             		{ m_ZoomMin = min; m_ZoomMax = max; };		
 	void SetZoom(float zoom)              		                { m_Zoom = zoom; updateCameraVectors(); };		
-        
+    float GetZoom()              		                        { return m_Zoom; };		
+    
     // returns focal point
 	glm::vec3 GetPosition() { return m_Position; };
 	glm::vec3 GetCentre() { return m_Centre; };
@@ -85,10 +86,14 @@ protected:
     glm::vec3 m_Right;		// right vector
     
     // euler Angles
+    float m_YawDefault;
+    float m_PitchDefault;
     float m_Yaw;
     float m_Pitch;
     bool m_InvertYaw = true;
     bool m_InvertPitch = false;
+    
+    bool m_2DMode = false;
     
     // camera options
     float m_FOV 				=  45.0f;
@@ -111,7 +116,8 @@ public:
     Camera_CentreObject(int screenWidth, int screenHeight, glm::vec3 centre = glm::vec3(0.0f, 0.0f, 0.0f), float yaw = 45.0f, float pitch = 45.0f);
     // returns the view matrix calculated using Euler Angles and the LookAt Matrix
     glm::mat4 GetViewMatrix() override;
-
+    // set the camera to be top down
+    void Set2DMode(bool isTrue);
     // processes input received from any keyboard-like input system. Accepts input parameter in the form of camera defined ENUM (to abstract it from windowing systems)
     void Move(glm::vec2 direction, float deltaTime = 0.1f) override;
     

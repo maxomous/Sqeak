@@ -8,9 +8,7 @@
 #include <vector>
 
 
-
-//#include <iostream>
-#include "../libs/qrcodegen.h"
+#include "../../libs/qrcodegen.h"
 #include "func_qrcode.h"
 using namespace qrcodegen;
 using namespace std;

@@ -1,5 +1,5 @@
 #pragma once
-#include "../common.h" 
+#include "../../common.h" 
 
 /*
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
@@ -13,33 +13,11 @@
     float cutWidth          = 1.0f;
     */
 
-enum CompensateCutter {
-    None, Left, Right
-};
-
 
 class FunctionGCodes
 {
 public:
-    void Add(std::string gcode);
-    void Clear();
-    void MoveToZPlane();
-    void MoveToHomePosition();
-    void InitCommands(float spindleSpeed);
-    void EndCommands();
-    // executes length in one axis and then moves width of cutter in other axis
-    void FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, bool isYFirst = false);
-     
-    std::vector<std::string> Get() {
-        return m_gcodes;
-    };
-private:
-    std::vector<std::string> m_gcodes;
-};
-
-class FunctionsGeneral 
-{
-public:
+    // TODO this should inlclude a tool & tab settings, this would prevent needing to take Settings&
     typedef struct {
         std::vector<glm::vec2> points;
         float z0;
@@ -49,24 +27,38 @@ public:
         float feedCutting;
         bool isLoop = false;
     } CutPathParams;
+    
+    void Add(std::string gcode);
+    void Clear();
+    void MoveToZPlane();
+    void MoveToHomePosition();
+    void InitCommands(float spindleSpeed);
+    void EndCommands();
+        
+    std::vector<std::string> Get() {
+        return m_gcodes;
+    };
+    
+    // executes length in one axis and then moves width of cutter in other axis
+    void FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, bool isYFirst = false);
     // adds gcodes to cut a generic path or loop at depths between z0 and z1
     // assumes we are at a safe z position as first move is to move to params.points[0]
     // returns value on error
-    static int CutPath(Settings& settings, FunctionGCodes& gcodes, const CutPathParams& params);
+    int CutPath(Settings& settings, const CutPathParams& params);
+
 private:
-    // determines the positions of tabs along path
-    static std::vector<std::pair<size_t, glm::vec2>> GetTabPositions(Settings& settings, const CutPathParams& params);
-    static void CheckForTab(Settings& settings, FunctionGCodes& gcodes, const CutPathParams& params, std::vector<std::pair<size_t, glm::vec2>> tabPositions, glm::vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i);
+    std::vector<std::string> m_gcodes;
+        // determines the positions of tabs along path
+    std::vector<std::pair<size_t, glm::vec2>> GetTabPositions(Settings& settings, const CutPathParams& params);
+    void CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, glm::vec2>> tabPositions, glm::vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i);
 };
     
 class FunctionType
 {    
 public:
-    struct ImGuiElements 
-    {        
+    struct ImGuiElements {        
         FunctionType* m_Parent;
         ImGuiElements(FunctionType* parent) : m_Parent(parent) {};
-        
     } ImGuiElement{this};
 
     FunctionType() : FunctionType("Function") { } 
@@ -100,6 +92,8 @@ public:
 
     virtual std::unique_ptr<FunctionType> CreateNew() { return nullptr; }
     
+    virtual void Update(glm::vec2 mouseClickPos) { (void) mouseClickPos; }
+    
     int InterpretGCode(Settings& settings, std::function<int(std::vector<std::string> gcode)> callback);
     void Update3DView(Settings& settings);
     int SaveGCode(Settings& settings, std::string filepath);
@@ -118,19 +112,23 @@ class Functions
 {
     
 public:
-    Functions();
-    void Draw(GRBL& grbl, Settings& settings);
+    Functions(Settings& settings);
+       
+    
+    //void Draw(GRBL& grbl, Settings& settings);
+    void Draw_Functions(Settings& settings);
+    void Draw_ActiveFunctions(Settings& settings);
+    std::string ActiveFunctionName();
     void RunActiveFunction(GRBL& grbl, Settings& settings);
     void Update3DViewOfActiveFunction(Settings& settings);
     void DeleteActiveFunction(Settings& settings);
     void SaveActiveFunction(Settings& settings, std::string filename);
-    bool IsActiveFunctionSelected();
+    bool IsActiveFunctionSelected(bool showWarning = true);
+    void DeselectActive();
     std::string GetActiveFunctionFilepath(const std::string& folderPath);
 
 private:
     std::vector<std::unique_ptr<FunctionType>> m_FunctionTypes;
     VectorSelectable<std::unique_ptr<FunctionType>> m_ActiveFunctions;
     
-    void Draw_Functions(Settings& settings);
-    void Draw_ActiveFunctions(Settings& settings);
 };

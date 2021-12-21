@@ -1,12 +1,12 @@
 #pragma once    
-#include "../common.h"
+#include "../../common.h"
 
 class ToolSettings
 {
 public:
     // returns true if changed
     bool Draw(Settings& settings);
-    bool DrawEditTools(Settings& settings); 
+    bool DrawPopup_Tools(Settings& settings); 
     int Draw_SelectTool(Settings& settings);
     void Draw_ToolData(Settings& settings);
     int Draw_SelectMaterial(Settings& settings);

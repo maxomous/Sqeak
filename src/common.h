@@ -5,8 +5,6 @@
 
 #pragma once
 
-
-
 #include <algorithm>
 #include <assert.h>
 #include <bitset>
@@ -24,7 +22,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
-#include <pthread.h> // for priority
+#include <pthread.h>
 #include <thread>
 // wiring pi
 #include <wiringPi.h>
@@ -44,19 +42,17 @@
 // *********************** //
 
 
-
-/*
-struct Event_SettingsUpdated_Coords {
-    Event_SettingType type;
+struct InputEvent {
+    void Reset() {
+        keyboardHasChanged = false;
+        mouseHasChanged    = false;
+    }
+    bool keyboardHasChanged;
+    bool mouseHasChanged;
+    Event_KeyInput keyboard;
+    Event_MouseButton mouse;
+    glm::vec2 screenCoords;
 };
-*/
-struct Event_Update3DModelFromFile { std::string filename; };
-struct Event_Update3DModelFromVector { std::vector<std::string> gcodes; };
-struct Event_DisplayShapeOffset { std::vector<glm::vec2> shape; std::vector<glm::vec2> shapeOffset; bool isLoop; };
-struct Event_ResetFileTimer {};
-struct Event_ConsoleScrollToBottom {};
-struct Event_SaveSettings {};
-struct Event_UpdateSettingsFromFile {};
 
 #include "gclist.h"
 #include "serial.h"
@@ -68,11 +64,28 @@ struct Event_UpdateSettingsFromFile {};
 
 #include "gcreader.h"
 
+#include "gui/filebrowser.h"
 #include "gui/frames.h"
 #include "gui/gui.h"
 #include "gui/viewer.h"
 
-#include "functions/functions.h"
+#include "sketch/sketch.h"
+#include "sketch/functions/toolsettings.h"
+#include "sketch/functions/functions.h"
+
+
+struct Event_Update3DModelFromFile      { std::string filename; };
+struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
+struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::DynamicVertexList>* dynamicLineLists; };
+struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::DynamicVertexList>* dynamicPointLists; };
+
+struct Event_ResetFileTimer             {};
+struct Event_ConsoleScrollToBottom      {};
+struct Event_SaveSettings               {};
+struct Event_UpdateSettingsFromFile     {};
+struct Event_Set2DMode                  { bool isTrue; };
+struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords; };
+
 
 #define GUI_WINDOW_NAME     "Sqeak"
 #define GUI_WINDOW_W        1280
@@ -140,9 +153,6 @@ struct Event_UpdateSettingsFromFile {};
 // *********************** //
 #define MAX_STRING                                  255
                     
-#define CLOCKWISE                                   1
-#define ANTICLOCKWISE                              -1
-                    
 #define FORWARD                                     1
 #define BACKWARD                                   -1
                     
@@ -158,6 +168,7 @@ struct Event_UpdateSettingsFromFile {};
 #define DEBUG_SERIAL                                0x1 << 3
 #define DEBUG_THREAD_BLOCKING                       0x1 << 4
 #define DEBUG_GCREADER                              0x1 << 5
+#define DEBUG_SKETCH_REFERENCES                     0x1 << 6
 
 
 // converts variable arguments to a string

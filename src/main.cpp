@@ -147,21 +147,23 @@ TODO:
 
     cant disconnect and connect again when nothing moved - just hangs
 
-    Reuse Functions
-        (Home) $H; G91;
-        (Move to Tool Setter) G0 Y53; 
-        (To Probe) G38.2 Z-125 F500; 
-        (From Probe) G38.4 Z10 F50; 
-        
-        (Move to Work Surface) G0 Z55.25; 
-        (Return to Home) G91 G28 Z0; G91 G28 X0 Y0; 
-        G90;
+    Usable space:
+        1127 x 632
 
-        // FOR WHEN REFACING
-        (Set Z To 0) G10 L20 P1 Z0; G10 L20 P2 Z0; G10 L20 P3 Z0; G10 L20 P4 Z0; G10 L20 P5 Z0; G10 L20 P6 Z0; 
-        
-                (Home) $H; G91;        (Move to Tool Setter) G0 X2.3 Y53;         (To Probe) G38.2 Z-125 F500;         (From Probe) G38.4 Z10 F50;         (Move to Work Surface) G0 Z55.25;         (Set Z To 0) G10 L20 P1 Z0; G10 L20 P2 Z0; G10 L20 P3 Z0; G10 L20 P4 Z0; G10 L20 P5 Z0; G10 L20 P6 Z0;         (Return to Home) G91 G28 Z0; G91 G28 X0 Y0; G90
-                
+    Set Tool Height:
+        (Home) $H; G91;
+        (Move to Tool Setter) G0 X2.3 Y53;
+        (To Probe) G38.2 Z-125 F500;
+        (From Probe) G38.4 Z10 F50;
+        (Move to Work Surface) G0 Z2.0;
+        (Set Z To 0) G10 L20 P1 Z0; G10 L20 P2 Z0; G10 L20 P3 Z0; G10 L20 P4 Z0; G10 L20 P5 Z0; G10 L20 P6 Z0;
+        (Return to Home) G91 G28 Z0; G91 G28 X0 Y0; 
+        G90
+        * 
+    
+    Z First X0 Y0
+        G91 G28 Z0; G90; G0 X0 Y0;
+    
     Sending lots of $G's? (try set tool height)
     
     Dragging a sindow moves 3d viewer
@@ -172,12 +174,14 @@ TODO:
 
     Move frames inside viewport if outside
 
-* 
+*   
 * 
      No way to have condition variable for serial recieve
         * Workaround: Use a timer
       How best to read items for clipper (reading Log::GetConsoleLog & getGCItem)
          * Workaround: Use a mutex for size, and then another mutex for each element of data
+    do we need to delete(free) things in geos if it fails part way through?
+
     
     GCReader has a few things to do - e.g. coord systems
     check everything (e.g. g28) works with offset coord
@@ -209,7 +213,36 @@ TODO:
     * 
     allow rotation on file G10 R
      
+    gcodes pending in our gcodes but grbl is 'ready' - check if were sending any commands which cant be in buffer
+    
+    allow calculations in textboxes
+     
+    facing cut cant do change in z / and cant offset...
+     
+    - force home when reset from error before run
+     
     - 2 tabs can overlap internally - draw function with 30mm cutter
+    - duplicate tool
+    - flip left & right offset for loop vs open lines
+    * move entire sketches
+    
+    * face entire internals (keep offsetting till fail)
+    - width of cut, should be diam - 1
+    
+    sketch requirements:
+        - loop button instead ofmaking new last = start point
+        - multiple functions in 1 drawing (will do all of same tool)
+        * functions take a tool type (can take active but not dynamically)
+        - distance constraint between points / lines (incremental checkbox on each element?)
+    
+    maybe we should backup occasionally
+
+    - tabs settings should be seperated
+    - dont send settings through to FunctionGCodes functions
+
+    - flip line cutting start so that it always finishes pockets with from the inside out (to prevent middle flying out)
+
+    - dont update screen if not in focus
 
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01

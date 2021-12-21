@@ -59,7 +59,7 @@ public:
     static void UnregisterHandler(uint id)
     {
         get().m_EventHandlers.erase(get().m_EventHandlers.begin() + id);
-    }
+    } 
     
     static void Dispatch(T_Data newEvent) 
     {        

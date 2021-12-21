@@ -9,22 +9,16 @@ bool ToolSettings::Draw(Settings& settings)
     bool isModified = false;
     
     ImGui::BeginGroup();
-        isModified |= DrawEditTools(settings);
-    ImGui::EndGroup();
-    
-    ImGui::SameLine();
-    
-    ImGui::BeginGroup();
         ImGui::PushItemWidth(settings.guiSettings.toolbarComboBoxWidth);
             static std::function<std::string(ParametersList::Tools::Tool& item)> cb_GetToolName = [](ParametersList::Tools::Tool& item) { return item.Name; };
-            isModified |= ImGuiModules::ComboBox("Select Tool", tools.toolList, cb_GetToolName);
+            isModified |= ImGuiModules::ComboBox("Tool", tools.toolList, cb_GetToolName);
             
             if(tools.toolList.HasItemSelected()) {
                 static std::function<std::string(ParametersList::Tools::Tool::ToolData& item)> cb_GetMaterialName = [](ParametersList::Tools::Tool::ToolData& item) { return item.material; };
-                isModified |= ImGuiModules::ComboBox("Select Material", settings.p.tools.toolList.CurrentItem().Data, cb_GetMaterialName);
+                isModified |= ImGuiModules::ComboBox("Material", settings.p.tools.toolList.CurrentItem().Data, cb_GetMaterialName);
             } else {
                 static int dummyCombo = 0;
-                ImGui::Combo("Select Material", &dummyCombo, "\0");
+                ImGui::Combo("Material", &dummyCombo, "\0");
             }
         ImGui::PopItemWidth();
     ImGui::EndGroup();
@@ -32,23 +26,10 @@ bool ToolSettings::Draw(Settings& settings)
     return isModified;
 }   
 
-bool ToolSettings::DrawEditTools(Settings& settings) 
+bool ToolSettings::DrawPopup_Tools(Settings& settings) 
 {
     bool isModified = false;
-    
-    ImVec2 buttonSize = settings.guiSettings.buttonSize[0];
-        
-    ImGui::Dummy(ImVec2(1.0f, 0.0f));
-    ImGui::SameLine();
-        
-    ImGuiModules::CentreItemVertically(2, buttonSize.y);
-    
-    if (ImGui::Button("Edit Tools", buttonSize))
-        ImGui::OpenPopup("Edit Tools");
-    
-    ImGui::SameLine();
-    ImGui::Dummy(ImVec2(1.0f, 0.0f));
-    
+ 
     // Always center this window when appearing
     ImVec2 center = ImGui::GetMainViewport()->GetCenter();
     ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -163,7 +144,7 @@ void ToolSettings::Draw_ToolData(Settings& settings)
         ParametersList::Tools::Tool& currentTool = settings.p.tools.toolList.CurrentItem();
         ImGui::InputText("Name", &currentTool.Name);
         ImGui::InputFloat("Cutter Diameter", &currentTool.Diameter, 0.1f, 1.0f, "%.2f"); 
-        ImGui::InputFloat("Tool Length", &currentTool.Length, 0.1f, 1.0f, "%.2f"); 
+        ImGui::InputFloat("Tool Stickout", &currentTool.Length, 0.1f, 1.0f, "%.2f"); 
     }
 }
  

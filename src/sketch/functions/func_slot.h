@@ -1,5 +1,5 @@
 #pragma once
-#include "../common.h"
+#include "../../common.h"
 
 class FunctionType_Slot : public FunctionType
 {
@@ -24,6 +24,9 @@ public:
         return move(newFunction);
     }
     
+    void Update(glm::vec2 mouseClickPos) override { 
+        (void) mouseClickPos; 
+    }
 private:
     Slot_Parameters m_Params;
     

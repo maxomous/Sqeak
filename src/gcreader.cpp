@@ -512,7 +512,8 @@ void GCodeReader::MotionArc(int Direction)
     
     if(m_R) { // r
         // calculate centre from the radius, start & end points
-        xy_Centre = ArcCentreFromRadius(xy_Start, xy_End, m_R, direction);
+        point2D centre = Geom::ArcCentreFromRadius(point2D(xy_Start.x, xy_Start.y), point2D(xy_End.x, xy_End.y), m_R, direction);
+        xy_Centre = { centre.x, centre.y };
         // -r is the second (larger) version of the arc
         r = fabsf(m_R);
     } 
@@ -530,7 +531,7 @@ void GCodeReader::MotionArc(int Direction)
     double th_Start  = atan2(v_Start.x, v_Start.y);
     double th_End    = atan2(v_End.x, v_End.y);
     
-    cleanAngles(th_Start, th_End, direction);
+    Geom::CleanAngles(th_Start, th_End, direction);
     
     float th_Incr   = direction * deg2rad(5);
     
@@ -568,42 +569,3 @@ glm::vec3 GCodeReader::PointRelativeToPlane(glm::vec3 p, Plane plane, int conver
         }
     }
 }
-
-glm::vec2 GCodeReader::ArcCentreFromRadius(glm::vec2 p0, glm::vec2 p1, float r, int direction)
-{			
-    glm::vec2 dif = p1 - p0;
-	// midpoint of start to end	
-    glm::vec2 pMid = (p0 + p1) / 2.0f;
-    
-    // length between start and end points
-	float 	L = sqrt(dif.x * dif.x + dif.y * dif.y);
-    
-	//	angle between x axis & line from start to end
-	float theta_G = fabs(atan(dif.y / dif.x));
-	float h = sqrt(r*r - (L/2.0f)*(L/2.0f));
-	
-    h = direction * h;
-	// 2nd version of the curve (when the centrepoint is past the midway line between start and end) 
-	if(r < 0.0f)	
-		h = -h;
-    
-    glm::vec2 pCentre;
-    glm::vec2 invert = { ((p0.y > p1.y) ? -1.0f : 1.0f), ((p1.x > p0.x) ? -1.0f : 1.0f) };
-        
-	// if start to end is vertical
-	if(dif.x == 0.0f) {
-        pCentre.x = p0.x + invert.y * h;
-		pCentre.y = pMid.y;
-	}	
-	// if start to end is horizontal
-	else if(dif.y == 0.0f) { 
-		pCentre.x = pMid.x;
-        pCentre.y = p0.y + invert.x * h;
-	}
-	else  {        
-        glm::vec2 hyp = { h*sin(theta_G), h*cos(theta_G) };
-        pCentre = pMid + invert * hyp;
-    }
-    return pCentre;
-};
-

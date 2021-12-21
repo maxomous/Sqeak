@@ -6,13 +6,10 @@
 using namespace std;
 
 #include "../common.h"
+
 #define MAX_CUSTOM_GCODES 12 // should be divisible by 3
 #define MAX_HISTORY 100
  
-//******************************************************************************//
-//**********************************COLOURS*************************************//
- 
-ImVec4 colour_Heading = ImGuiModules::ConvertColourHexToVec4(0xA8BE9E);
 
 //******************************************************************************//
 //**********************************FRAMES**************************************//
@@ -157,15 +154,15 @@ struct Console {
                 else if (autoScroll || (ImGui::GetScrollY() >= ImGui::GetScrollMaxY()))
                     ImGui::SetScrollHereY(1.0f);
 
-                ImGui::EndTable();
+                ImGui::EndTable(); 
             }
             ImGui::EndChild();
             
                 
             ImGui::EndTabItem();
         }
-    }
-
+    }  
+      
 
     void Draw(GRBL &grbl, Settings& settings) {
         GRBLVals& grblVals = settings.grblVals;
@@ -188,9 +185,7 @@ struct Console {
         static float windowHeight = 270.0f;
         // initialise
         ImGui::SetNextWindowSize(ImVec2(570, windowHeight), ImGuiCond_Appearing);
-        
-        
-        ImGui::SetNextWindowPos(ImVec2(500.0f, viewport->WorkSize.y - windowHeight - padding), ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(500.0f, viewport->WorkSize.y - windowHeight - padding), ImGuiCond_Appearing);
         
         if (!ImGui::Begin("Console", NULL, ImGuiWindowFlags_None)) {
             ImGui::End();
@@ -312,359 +307,60 @@ struct Console {
     }
 };
 
-#define SORT_BY_NAME 1
-#define SORT_BY_DATE 2
-
-#define MAX_DISPLAY_STRING 30 // max no. characters to display in open file string
-#define MAX_DISPLAY_FOLDERS 5 // max no. folders to display
-
-static const char *fileTypesDisplay[] = {"*.nc", "*.txt", "All Files"};
-static const char *fileTypesRaw[] = {"nc", "txt", ""};
-
-struct FileBrowser {
-
-    string* curDir;
-    string curFile;
-    string curFilePath;
-    vector<string> curDirFolders; // list of all folders inside curDir
-    int selectedFileID = -1;
-    int sortByName = true; // else sort by date
-    int nodeSelected = -1;
-    int nodeClicked = -1;
-    bool resort = false; // used when manually requiring resort
-    vector<filedesc_t> files;
-    string showFileTypes = fileTypesRaw[0]; // filetypes to show in browser
-
-    FileBrowser(Settings& settings) : curDir(&settings.p.system.curDir) {
-        updateDirAndFiles(*curDir); 
-    }
-
-    void setCurrentDirectory(const string &dir) {
-        // empty array if already full
-        curDirFolders.clear();
-        // set curDir string for easy access
-        *curDir = dir;
-        // split dir into folders onto curDir
-        istringstream stream(dir);
-        string segment;
-
-        for (string segment; getline(stream, segment, '/');) {
-            if (segment != "")
-                curDirFolders.push_back(segment);
-        } 
-        nodeSelected = curDirFolders.size() - 1;
-    }
-
-    // update list of files and directories from within curDir
-    void updateFiles() {
-        if (File::GetFilesInDir(*curDir, showFileTypes, files)) {
-            Log::Error("Can't access directory: %s", curDir->c_str());
-            return;
-        }
-    }
-    // full update of directory & files
-    void updateDirAndFiles(const string &dir) {
-        setCurrentDirectory(dir);
-        updateFiles();
-        resort = true;
-        selectedFileID = -1;
-    }
-    // shortens file path to "...path/at/place.gc" if length >
-    // MAX_DISPLAY_STRING
-    string shortenFilePath(const string &str) {
-        string s = str;
-        if (s.length() > MAX_DISPLAY_STRING) {
-            s = s.substr(s.length() - MAX_DISPLAY_STRING);
-            return "..." + s;
-        }
-        return s;
-    }
-
-    // returns filename and type of file selected in browser
-    int getSelectedFile(string &filename, int &filetype) {
-        if (selectedFileID == -1)
-            return -1;
-
-        int i = 0;
-        for (filedesc_t f : files) {
-            if (f.id == selectedFileID) {
-                filetype = f.type;
-                filename = f.name;
-                // add on extension
-                if (filetype == FILE_TYPE && f.ext != "")
-                    filename += "." + f.ext;
-                return 0;
-            }
-            i++;
-        }
-        // didn't find it - shouldn't ever reach
-        Log::Error(
-            "File not found in list - We should never have reached this...");
-        filetype = -1;
-        return -1;
-    }
-
-    void openSelectedFile() {
-        int filetype;
-        string filename;
-
-        if (getSelectedFile(filename, filetype))
-            ImGui::CloseCurrentPopup(); // error, couldn't find it... shouldnt
-                                        // reach
-
-        if (filetype == FILE_TYPE) {
-            curFile = filename;
-            string filepath = File::CombineDirPath(*curDir, curFile);
-            Log::Info(string("Opening file: ") + filepath);
-            curFilePath = shortenFilePath(filepath);
-            
-            Event_Update3DModelFromFile data = { filepath };
-            Event<Event_Update3DModelFromFile>::Dispatch(data); 
-            
-            ImGui::CloseCurrentPopup();
-        } else { // folder
-            updateDirAndFiles(File::CombineDirPath(*curDir, filename));
-        }
-    }
-
-    void sortFiles(const ImGuiTableColumnSortSpecs *sort_spec) {
-        auto compare = [&](const filedesc_t &a, const filedesc_t &b) {
-            string strA, strB;
-
-            switch (sort_spec->ColumnIndex) { // 0 is file/folder icon
-            case 1:                           // name
-                strA = a.name;
-                strB = b.name;
-                lowerCase(strA);
-                lowerCase(strB);
-                if (sort_spec->SortDirection == ImGuiSortDirection_Ascending)
-                    return (strA < strB);
-                else
-                    return (strA > strB);
-                break;
-
-            case 2: // Type
-                strA = a.ext;
-                strB = b.ext;
-                lowerCase(strA);
-                lowerCase(strB);
-                if (sort_spec->SortDirection == ImGuiSortDirection_Ascending)
-                    return (strA < strB);
-                else
-                    return (strA > strB);
-                break;
-
-            case 3: // Date Modifed
-                char dateStr_a[32], dateStr_b[32];
-                strftime(dateStr_a, 32, "%y%j%H%M%S", &(a.lastModified));
-                strftime(dateStr_b, 32, "%y%j%H%M%S", &(b.lastModified));
-                int64_t dateVal_a, dateVal_b;
-                dateVal_a = strtoll(dateStr_a, NULL, 10);
-                dateVal_b = strtoll(dateStr_b, NULL, 10);
-
-                if (sort_spec->SortDirection == ImGuiSortDirection_Ascending)
-                    return (dateVal_a < dateVal_b);
-                else
-                    return (dateVal_a > dateVal_b);
-                break;
-
-            default:
-                Log::Error("Sorting column unknown");
-                return false;
-            }
-            return false;
-        };
-
-        auto compareType = [&](const filedesc_t &a, const filedesc_t &b) {
-            return a.type < b.type;
-        };
-
-        sort(files.begin(), files.end(), compare);
-        sort(files.begin(), files.end(), compareType);
-    }
-
-    void DrawFolder(int i) {
-
-        ImGuiTreeNodeFlags node_flags =
-            ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Leaf |
-            ImGuiTreeNodeFlags_FramePadding; // ImGuiTreeNodeFlags_OpenOnArrow |
-                                             // ImGuiTreeNodeFlags_OpenOnDoubleClick;
-        if (i == nodeSelected)
-            node_flags |= ImGuiTreeNodeFlags_Selected;
-
-        if (ImGui::TreeNodeEx(curDirFolders[i].c_str(), node_flags)) {
-            if (ImGui::IsItemClicked())
-                nodeClicked = i;
-            i++;
-            if (i < (int)curDirFolders.size())
-                DrawFolder(i);
-
-            ImGui::TreePop();
-        }
-    }
-    void DrawFolders() {
-        int s = curDirFolders.size();
-        // recursively draw all the folders in curDirFolders (which are the
-        // individual folders of curDir)
-        int startAt = (s > MAX_DISPLAY_FOLDERS) ? s - MAX_DISPLAY_FOLDERS : 0;
-        DrawFolder(startAt);
-        // draw blanks if less than number displayable
-        if (s < MAX_DISPLAY_FOLDERS) {
-            for (int i = 0; i < MAX_DISPLAY_FOLDERS - s; i++)
-                ImGui::Dummy(ImVec2(0, ImGui::GetFrameHeight()));
-        }
-        // if a folder is selected, mark it, and update curDir, curDirFolders &
-        // curFiles
-        if (nodeClicked != -1) {
-            nodeSelected = nodeClicked;
-            nodeClicked = -1;
-
-            string newDir = "/";
-            for (int j = 0; j < nodeSelected + 1; j++) {
-                if (j < (int)curDirFolders
-                            .size()) { // just in case to prevent overflow
-                    newDir += curDirFolders[j];
-                    newDir += '/';
-                }
-            }
-            updateDirAndFiles(newDir);
-        }
-    }
-    void DrawFiles(Settings& settings) {
-        static ImGuiTableFlags flags =
-            ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable |
-            ImGuiTableFlags_Hideable | ImGuiTableFlags_Sortable |
-            ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter |
-            ImGuiTableFlags_BordersV | ImGuiTableFlags_NoBordersInBody |
-            ImGuiTableFlags_ScrollY;
-
-        if (ImGui::BeginTable(
-                "table_sorting", 4, flags,
-                ImVec2(0.0f, ImGui::GetFrameHeightWithSpacing() * 15),
-                0.0f)) { // ImVec2(0.0f, TEXT_BASE_HEIGHT * 15)
-            // Setup columns
-            // (add index numbers as next parameter to this if we want a more
-            // specific selection i.e. ImGuiID filesColID_Name  and select using
-            // sort_spec->ColumnUserID)
-            ImGui::TableSetupColumn(" ",
-                                    ImGuiTableColumnFlags_NoSort |
-                                        ImGuiTableColumnFlags_NoResize,
-                                    0.0f);
-            ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_DefaultSort,
-                                    0.0f); // ImGuiTableColumnFlags_WidthFixed /
-                                           // ImGuiTableColumnFlags_WidthStretch
-            ImGui::TableSetupColumn("Extension", ImGuiTableColumnFlags_None,
-                                    0.0f);
-            ImGui::TableSetupColumn("Date Modified", ImGuiTableColumnFlags_None,
-                                    0.0f);
-            // Make top row always visible
-            ImGui::TableSetupScrollFreeze(0, 1);
-            ImGui::TableHeadersRow();
-
-            // Resort data if sort specs has been changed
-            ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs();
-            if (sorts_specs->SpecsDirty | resort) {
-                if (files.size() > 1) {
-                    sortFiles(&sorts_specs->Specs[0]);
-                }
-                sorts_specs->SpecsDirty = false;
-                resort = false;
-            }
-
-            ImGuiListClipper clipper;
-            clipper.Begin(files.size());
-            while (clipper.Step())
-                for (int row_n = clipper.DisplayStart;
-                     row_n < clipper.DisplayEnd; row_n++) {
-                    // Display a data item
-                    filedesc_t *item = &files[row_n];
-                    const bool item_is_selected = (item->id == selectedFileID);
-
-                    ImGui::PushID(item->id);
-                    ImGui::TableNextRow();
-                    ImGui::TableNextColumn();
-                    if (item->type == FOLDER_TYPE)
-                        ImGui::Image(settings.guiSettings.img_Folder, ImVec2(16, 16));
-                    else
-                        ImGui::Image(settings.guiSettings.img_File, ImVec2(16, 16));
-
-                    ImGui::TableNextColumn();
-                    if (ImGui::Selectable(
-                            item->name.c_str(), item_is_selected,
-                            ImGuiSelectableFlags_SpanAllColumns |
-                                ImGuiSelectableFlags_AllowItemOverlap |
-                                ImGuiSelectableFlags_AllowDoubleClick,
-                            ImVec2(0, 0))) 
-                    {
-                        selectedFileID = item->id;
-
-                        if (ImGui::IsMouseDoubleClicked(0))
-                            openSelectedFile();
-                        else { // single click
-                            int filetype;
-                            string filename;
-
-                            if (getSelectedFile(filename, filetype))
-                                ImGui::CloseCurrentPopup(); // error, couldn't
-                                                            // find it...
-                                                            // shouldnt reach
-
-                            if (filetype == FOLDER_TYPE)
-                                updateDirAndFiles(
-                                    File::CombineDirPath(*curDir, filename));
-                        }
-                    }
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted(item->ext.c_str());
-                    ImGui::TableNextColumn();
-
-                    ImGui::TextUnformatted(item->lastModifiedStr.c_str());
-                    ImGui::PopID();
-                }
-            ImGui::EndTable();
-        }
-    }
-
-    void Draw(Settings& settings) {
-        ImGui::TextUnformatted("Select the file you wish to open\n\n");
-        ImGui::Separator();
-
-        DrawFolders();
-        DrawFiles(settings);
-
-        static int selectedFileType = 0;
-        if (ImGui::Combo("Type", &selectedFileType, fileTypesDisplay,
-                         IM_ARRAYSIZE(fileTypesDisplay))) {
-            showFileTypes = fileTypesRaw[selectedFileType];
-            updateDirAndFiles(*curDir);
-        }
-
-        if (ImGui::Button("OK", ImVec2(120, 0)))
-            openSelectedFile();
-
-        ImGui::SetItemDefaultFocus();
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(120, 0)))
-            ImGui::CloseCurrentPopup();
-    }
-};
-
 struct Toolbar {
         
-    enum ToolbarCommand { None, OpenFile, Function };
+    //enum ToolbarCommand { None, OpenFile, Function };
     enum Export         { False, Pending, True };
           
     std::unique_ptr<FileBrowser> fileBrowser;
     Timer timer;
 
-    Toolbar(Settings& settings) {
-        fileBrowser = std::make_unique<FileBrowser>(settings);
+
+    Toolbar(Settings& settings) 
+    {
+        fileBrowser = std::make_unique<FileBrowser>(&settings.p.system.curDir);
         
         Event<Event_ResetFileTimer>::RegisterHandler([&](Event_ResetFileTimer data) {
             (void)data;
             timer.Reset();
         });
+        
     }
+     
+    bool EditButton(Settings& settings, const char* id) 
+    {
+        ImVec2& buttonImgSize = settings.guiSettings.button[ButtonType::Edit].ImageSize;
+        
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f,0.0f,0.0f,0.0f));
+            ImGui::PushID(id);
+                bool clicked = ImGui::ImageButton(settings.guiSettings.img_Edit, buttonImgSize);
+            ImGui::PopID();
+        ImGui::PopStyleColor();
+        return clicked;
+    }
+    void DrawTitle(Settings& settings, const std::string& name) 
+    {        
+        ImGui::PushFont(settings.guiSettings.font_small);
+            ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
+                ImGui::TextUnformatted(name.c_str());
+            ImGui::PopStyleColor();
+        ImGui::PopFont();
+    }
+    bool DrawTitleWithEdit(Settings& settings, const std::string& name) 
+    {
+        DrawTitle(settings, name);
+        ImGui::SameLine();
+        return EditButton(settings, name.c_str());
+    }
+
+    //void DrawTableSeperator(Settings& settings) 
+    //{
+    //    // draw vertical seperator line
+    //    float spacerWidth = settings.guiSettings.toolbarSpacer;
+    //    ImVec2 p0 = ImGui::GetCursorScreenPos() + ImVec2(spacerWidth / 2.0f, GImGui->Style.ItemSpacing.y / 2.0f);
+    //    ImVec2 p1 = p0 + ImVec2(1.0f /*thickness*/, 2.0f*ImGui::GetFrameHeight() /*length*/);
+    //    ImGui::GetWindowDrawList()->AddRectFilled(p0, p1, ImGui::GetColorU32(ImGuiCol_Separator));
+    //};
     
     void Draw(GRBL &grbl, Settings& settings) 
     {        
@@ -681,18 +377,115 @@ struct Toolbar {
             ImGui::End();
             return;
         }
-
-        bool openFileBrowser = false;
         
-        static Functions functions;
-        static ToolbarCommand toolbarCommand = ToolbarCommand::None;
+        static Functions functions(settings);
+        static ToolSettings toolSettings;
+                        
+        //static ToolbarCommand toolbarCommand = ToolbarCommand::None;
+        bool openPopup_ConnectSettings  = false;
+        bool openPopup_FileBrowser      = false;
+        bool openPopup_Tools            = false;
+        
+        
+        ImGuiModules::BeginDisableWidgets(settings.grblVals);
+        
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(settings.guiSettings.toolbarSpacer / 2.0f, 2.0f));
+        
+        if (ImGui::BeginTable("Toolbar", 5, ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV)) 
+        {           
+            // Draw titles
+            ImGui::TableNextRow(ImGuiTableRowFlags_None, settings.guiSettings.button[ButtonType::Edit].ImageSize.y + 5.0f);
+                
+            if(ImGui::TableNextColumn()) { openPopup_ConnectSettings =  DrawTitleWithEdit(settings, "Connect"); }
+            if(ImGui::TableNextColumn()) {                              DrawTitle(settings, "Open File"); }
+            if(ImGui::TableNextColumn()) {                              DrawTitle(settings, "Functions"); }
+            if(ImGui::TableNextColumn()) { openPopup_Tools           =  DrawTitleWithEdit(settings, "Tools"); }
+         
+            ImGui::TableNextRow();
+            
+                // Connect
+                if(ImGui::TableNextColumn()) {
+                    ImGuiModules::EndDisableWidgets(settings.grblVals);
+                    
+                    ImGui::BeginGroup();
+                        DrawConnect(grbl, settings);
+                    ImGui::EndGroup();
+                    
+                    ImGuiModules::BeginDisableWidgets(settings.grblVals);
+                }
+                
+                // Open File
+                if(ImGui::TableNextColumn()) {
+
+                    ImGui::BeginGroup();
+                        if(DrawOpenFile(settings, !functions.IsActiveFunctionSelected(false))) {
+                            functions.DeselectActive();
+                            // clear screen
+                            Event<Event_Update3DModelFromVector>::Dispatch({ std::vector<std::string>(/*empty*/) }); 
+                            //Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
+                            openPopup_FileBrowser = true;
+                        }
+                    ImGui::EndGroup();
+                }
+                
+                // Functions
+                if(ImGui::TableNextColumn()) {
+                                       
+                        ImGui::BeginGroup();
+                            functions.Draw_Functions(settings); 
+                            ImGui::SameLine();
+                            functions.Draw_ActiveFunctions(settings); 
+                        ImGui::EndGroup();
+                }
+                    
+                // Tools
+                if(ImGui::TableNextColumn()) {
+
+                    ImGui::BeginGroup();
+                        // updates viewer if tool or material is changed
+                        if(toolSettings.Draw(settings)) {
+                            functions.Update3DViewOfActiveFunction(settings);
+                        }
+                        
+                    ImGui::EndGroup();
+                }    
+                /*
+                // Sketch
+                if(ImGui::TableNextColumn()) {
+
+                    ImGui::BeginGroup();
+                        functions.DrawSketch();
+                    ImGui::EndGroup();
+                }    */
+                
+            ImGui::EndTable();
+        } 
+    
+        ImGui::PopStyleVar();
+        
+        
+        
+        
+        
+        
+        
+        /*
         
         if (ImGui::BeginTabBar("ToolbarTabs"))
         {
             if (ImGui::BeginTabItem("Connect")) {
                 toolbarCommand = ToolbarCommand::None;
                 // Connect / disconnect button
-                DrawConnect(grbl, settings);
+                ImGui::BeginGroup();
+                    DrawConnect(grbl, settings);
+                    DrawTitle(settings, "Connect");
+                    ImGui::SameLine();
+                    ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::Edit].Size;
+                    ImVec2& buttonImgSize   = settings.guiSettings.button[ButtonType::Edit].ImageSize;
+                    if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_Edit)) {
+                        
+                    }
+                ImGui::EndGroup();
                 ImGui::EndTabItem();
             }            
             // Disable all widgets when not connected to grbl
@@ -705,7 +498,9 @@ struct Toolbar {
                 }             
                 toolbarCommand = ToolbarCommand::OpenFile;
                 
-                openFileBrowser = DrawOpenFile(settings, fileBrowser->curFilePath.c_str());
+                if(DrawOpenFile(settings, fileBrowser->CurrentFilePath())) {
+                    openPopup_FileBrowser = true;
+                }
                 ImGui::EndTabItem();
             }
             
@@ -721,19 +516,23 @@ struct Toolbar {
             }
             
             ImGui::EndTabBar();
-        }
+        }*/
         
         ImGui::Separator();
         
         // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
         static pair<Export, string> exportFileName = make_pair(Export::False, "");
-                
-        if(toolbarCommand == ToolbarCommand::OpenFile) {
+        
+        //if(toolbarCommand == ToolbarCommand::OpenFile) {
+        if(!functions.IsActiveFunctionSelected(false)) {
+            DrawTitle(settings, va_str("Commands (%s)", fileBrowser->CurrentFile().c_str())); 
+            //DrawCurrentFile(settings, fileBrowser->CurrentFile());
             DrawPlayButtons(grbl, settings, [&]() {
                 RunFile(grbl, settings);
             });
-        }
-        else if(toolbarCommand == ToolbarCommand::Function) {
+        } else {
+        //else if(toolbarCommand == ToolbarCommand::Function) {
+            DrawTitle(settings, va_str("Commands (%s)", functions.ActiveFunctionName().c_str())); 
             DrawPlayButtons(grbl, settings, [&]() {
                 functions.RunActiveFunction(grbl, settings);
             });
@@ -741,7 +540,7 @@ struct Toolbar {
             ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
         
             ImGui::BeginGroup();
-                ImVec2& buttonSize = settings.guiSettings.buttonSize[1];
+                ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::Secondary].Size;
                 
                 ImGuiModules::CentreItemVertically(2, buttonSize.y);
 
@@ -750,7 +549,7 @@ struct Toolbar {
                     if(functions.IsActiveFunctionSelected()) {
                         std::string filepath = functions.GetActiveFunctionFilepath(settings.p.system.saveFileDirectory);
                         exportFileName = make_pair(Export::Pending, filepath);
-                    }
+                    } 
                 }
                 ImGui::SameLine();
                 
@@ -759,7 +558,7 @@ struct Toolbar {
                 }
             ImGui::EndGroup();
         }
-               
+        
         ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
         
         ImGui::BeginGroup();
@@ -768,20 +567,32 @@ struct Toolbar {
 
         // handle file export
         DoesFileNeedExport(settings, functions, exportFileName);
+        
         // show file browser if visible
-        DrawPopup_FileBrowser(settings, openFileBrowser);
+        if(openPopup_FileBrowser) { fileBrowser->Open(); }
+        fileBrowser->Draw();
+        
+        // edit tools popup (update viewer if setting is changed)
+        if(openPopup_Tools) { ImGui::OpenPopup("Edit Tools"); }
+        if(toolSettings.DrawPopup_Tools(settings)) {    
+            functions.Update3DViewOfActiveFunction(settings);
+        }
         
         // Disable all widgets when not connected to grbl
         ImGuiModules::EndDisableWidgets(settings.grblVals);
+        
+        // Connect Settings        
+        if(openPopup_ConnectSettings) { ImGui::OpenPopup("Edit Connect Popup"); }
+        DrawPopup_ConnectSettings(settings);
+        
         ImGui::End();
     }
     
-    void DrawConnect(GRBL &grbl, Settings& settings) {
+    void DrawConnect(GRBL &grbl, Settings& settings) 
+    {
         GRBLVals& grblVals = settings.grblVals;
-        ImVec2& buttonSize = settings.guiSettings.buttonSize[0];
+        ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::Primary].Size;
         
-        ImGui::Dummy(ImVec2(1.0f, 0.0f));
-        ImGui::SameLine();
         ImGui::BeginGroup();
             ImGuiModules::CentreItemVertically(2, buttonSize.y);
             if (!grblVals.isConnected) {
@@ -794,76 +605,81 @@ struct Toolbar {
                     grbl.disconnect();
                 }
             }
-        ImGui::EndGroup();
-        
-        ImGui::SameLine();
-        ImGui::Dummy(ImVec2(1.0f, 0.0f));
-        ImGui::SameLine();
-        
-        ImGui::BeginGroup();
+        ImGui::EndGroup();           
+    }
+    
+    void DrawPopup_ConnectSettings(Settings& settings) 
+    {
+        static bool popupOpen = false;
+        if (ImGui::BeginPopup("Edit Connect Popup")) {
+            popupOpen = true;
+            
             ImGui::SetNextItemWidth(80.0f);
             ImGui::InputText("Device", &settings.p.system.serialDevice);
             ImGui::SetNextItemWidth(80.0f);
             ImGui::InputText("Baudrate", &settings.p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
-        ImGui::EndGroup();
-        
+            
+            ImGui::EndPopup();
+        } else { // if popup has just been closed
+            if (popupOpen == true) {
+                Event<Event_SaveSettings>::Dispatch({ }); 
+                popupOpen = false;
+            }
+        }
     }
-    bool DrawOpenFile(Settings& settings, const char* currentFile)
+    
+    bool DrawOpenFile(Settings& settings, bool isSelected)
     {
-        ImVec2& buttonSize = settings.guiSettings.buttonSize[0];
-        
         bool openHasBeenPressed = false;
-         
-        ImGui::Dummy(ImVec2(1.0f, 0.0f));
-        ImGui::SameLine();
+        ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Primary].Size;
             
         ImGui::BeginGroup();
             ImGuiModules::CentreItemVertically(2, buttonSize.y);
-            if (ImGui::Button("Open..", buttonSize)) {
-                if(settings.grblVals.isFileRunning)
-                    Log::Error("A file is running. This must finish before opening another");
-                else
-                    openHasBeenPressed = true;
-            }
+             
+            if(isSelected) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+                if (ImGui::Button("Open", buttonSize)) {
+                    if(!settings.grblVals.isFileRunning) {
+                        openHasBeenPressed = true;
+                    } else {
+                        Log::Error("A file is running. This must finish before opening another");
+                    }
+                }
+            if(isSelected) ImGui::PopStyleColor();
         ImGui::EndGroup();
-        
-        ImGui::SameLine();
-        ImGui::Dummy(ImVec2(1.0f, 0.0f));
-        ImGui::SameLine();
-        
-        ImGui::BeginGroup();
-            ImGuiModules::CentreItemVertically(2);
-            ImGui::TextUnformatted("Current File:");
-            ImGui::SameLine();
-            ImGui::TextUnformatted(currentFile);
-            
-            // to ensure it covers 2 items height
-        ImGui::EndGroup();
-        
-        ImGui::SameLine();
-        ImGuiModules::DummyItemHeight(2);
-        
         return openHasBeenPressed;
+    }
+    
+    void DrawCurrentFile(Settings& settings, const std::string& currentFilePath)
+    {
+        ImGui::BeginGroup();
+            // shortens file path to "...path/at/place.gc" if length > max_FilePathDisplay
+            int cutOff = 0;
+            if(currentFilePath.size() > settings.guiSettings.max_FilePathDisplay) {
+                cutOff = currentFilePath.size() - settings.guiSettings.max_FilePathDisplay;     
+            }                 
+            const char* shortenedPath = currentFilePath.c_str() + cutOff;
+            ImGui::Text((cutOff ? "Current File: %s" : "Current File: ..%s"), shortenedPath);
+        ImGui::EndGroup();
     }
     
     void Update3DViewOfFile(Settings& settings) {
         // check we have selected a file
-        if (fileBrowser->curFile == "") {
+        if (fileBrowser->CurrentFile() == "") {
             return;
         }
         // get filepath of file
-        string filepath = File::CombineDirPath(settings.p.system.curDir, fileBrowser->curFile);
+        string filepath = File::CombineDirPath(settings.p.system.curDir, fileBrowser->CurrentFile());
         Event<Event_Update3DModelFromFile>::Dispatch({filepath}); 
     }
     
     void RunFile(GRBL& grbl, Settings& settings) {
         // check we have selected a file
-        if (fileBrowser->curFile == "") {
+        if (fileBrowser->CurrentFile() == "") {
             Log::Error("No file has been selected");
             return;
         }
         // get filepath of file
-        string filepath = File::CombineDirPath(settings.p.system.curDir, fileBrowser->curFile);
+        string filepath = File::CombineDirPath(settings.p.system.curDir, fileBrowser->CurrentFile());
         // add to log
         Log::Info(string("Sending File: ") + filepath);
         
@@ -879,8 +695,8 @@ struct Toolbar {
     
     void DrawPlayButtons(GRBL& grbl, Settings& settings, std::function<void()> callback)
     {
-        ImVec2& buttonSize = settings.guiSettings.buttonSize[1];
-        ImVec2& buttonImgSize = settings.guiSettings.buttonImageSize[1];
+        ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::Secondary].Size;
+        ImVec2& buttonImgSize   = settings.guiSettings.button[ButtonType::Secondary].ImageSize;
         
         ImGui::BeginGroup();
             ImGuiModules::CentreItemVertically(2, buttonSize.y);
@@ -900,21 +716,17 @@ struct Toolbar {
             ImGui::Dummy(ImVec2(50, 0));
             ImGui::SameLine();
 
-            // padding around image (i.e. button width = width of image + 2*padding)
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, (buttonSize - buttonImgSize) / 2.0f);
+            ImGui::SameLine();
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_Pause)) {
+                Log::Info("Pausing...");
+                grbl.sendRT(GRBL_RT_HOLD);
+            }
 
-                ImGui::SameLine();
-                if (ImGui::ImageButton(settings.guiSettings.img_Pause, buttonImgSize)) {
-                    Log::Info("Pausing...");
-                    grbl.sendRT(GRBL_RT_HOLD);
-                }
-
-                ImGui::SameLine();
-                if (ImGui::ImageButton(settings.guiSettings.img_Restart, buttonImgSize)) {
-                    Log::Info("Resuming...");
-                    grbl.sendRT(GRBL_RT_RESUME);
-                }
-            ImGui::PopStyleVar();
+            ImGui::SameLine();
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_Restart)) {
+                Log::Info("Resuming...");
+                grbl.sendRT(GRBL_RT_RESUME);
+            }
         ImGui::EndGroup(); 
     } 
     
@@ -958,19 +770,6 @@ struct Toolbar {
         }
     }
     
-    void DrawPopup_FileBrowser(Settings& settings, bool openFileBrowser)
-    {
-        if(openFileBrowser) {
-            ImGui::OpenPopup("Open File Popup");
-        } 
-        // Always center the fileviewer window
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-        if (ImGui::BeginPopupModal("Open File Popup", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-            fileBrowser->Draw(settings);
-            ImGui::EndPopup();
-        }
-    }
     
     void DoesFileNeedExport(Settings& settings, Functions& functions, std::pair<Export, std::string>& exportFileName)
     {   // if file doesn't exist, set flag to export. 
@@ -1167,14 +966,14 @@ struct Stats {
          
     } 
     
-    void DrawPosition(GRBLVals& grblVals) {
-
+    void DrawPosition(Settings& settings) {
+        GRBLVals& grblVals = settings.grblVals;
         static bool showMachineCoords = false;
         
-        if (ImGui::BeginTable("Position", 3, ImGuiTableFlags_NoSavedSettings)) {
+        if (ImGui::BeginTable("PosiMAX_CUSTOM_GCODEStion", 3, ImGuiTableFlags_NoSavedSettings)) {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0); 
-            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
+            ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
                 ImGuiModules::TextUnformattedCentredHorizontallyInTable("X");
                 ImGui::TableSetColumnIndex(1);
                 ImGuiModules::TextUnformattedCentredHorizontallyInTable("Y");
@@ -1228,13 +1027,14 @@ struct Stats {
     };
      */  
       
-    void DrawCurrentMode(GRBLVals& grblVals) {
+    void DrawCurrentMode(Settings& settings) {
                 
+        GRBLVals& grblVals = settings.grblVals;
         if (ImGui::BeginTable("Modals", 4, ImGuiTableFlags_NoSavedSettings)) {
 
             ImGui::TableNextRow();
             
-            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
+            ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
                 ImGui::TableNextColumn();
                 ImGuiModules::TextCentredHorizontallyInTable("Motion");
                 ImGui::TableNextColumn();
@@ -1261,9 +1061,10 @@ struct Stats {
         }
     }
     
-    void DrawMotion(GRBLVals& grblVals) {
+    void DrawMotion(Settings& settings) {
+        GRBLVals& grblVals = settings.grblVals;
         GRBLStatus_vals &status = grblVals.status;
-        GRBLSettings_vals &settings = grblVals.settings;
+        GRBLSettings_vals &grblSettings = grblVals.settings;
 
         //static float f[] = {0.0f};
         static float s[] = {0.0f};
@@ -1283,29 +1084,23 @@ struct Stats {
             
             //ImGui::PlotHistogram("", feedValues, IM_ARRAYSIZE(feedValues), 0, NULL, 0.0f, settings.max_FeedRate, ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
             
-            ImGui::PlotLines("", feedValues, IM_ARRAYSIZE(feedValues), f_offset, NULL, 0.0f, settings.max_FeedRate, ImVec2(0.0f, 80.0f));
+            ImGui::PlotLines("", feedValues, IM_ARRAYSIZE(feedValues), f_offset, NULL, 0.0f, grblSettings.max_FeedRate, ImVec2(0.0f, 80.0f));
             
             
             
             
-            
-
             ImGui::TableSetColumnIndex(1);
-            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
-                ImGui::TextUnformatted("Feed Rate");
-            ImGui::PopStyleColor();
+            ImGui::TextColored(settings.guiSettings.colour[Colour::HeaderText], "Feed Rate");
             ImGui::Text("%.0f", status.feedRate);
-            ImGui::TextUnformatted(settings.units_Feed.c_str());
+            ImGui::TextUnformatted(grblSettings.units_Feed.c_str());
 
             ImGui::TableSetColumnIndex(2);
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 30);
             s[0] = (float)status.spindleSpeed;
-            ImGui::PlotHistogram("", s, IM_ARRAYSIZE(s), 0, NULL, (float)settings.min_SpindleSpeed, (float)settings.max_SpindleSpeed, ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
+            ImGui::PlotHistogram("", s, IM_ARRAYSIZE(s), 0, NULL, (float)grblSettings.min_SpindleSpeed, (float)grblSettings.max_SpindleSpeed, ImVec2(20.0f, ImGui::GetFrameHeightWithSpacing() * 3));
 
             ImGui::TableSetColumnIndex(3);
-            ImGui::PushStyleColor(ImGuiCol_Text, colour_Heading);
-                ImGui::TextUnformatted("Spindle");
-            ImGui::PopStyleColor();
+            ImGui::TextColored(settings.guiSettings.colour[Colour::HeaderText], "Spindle");
             ImGui::Text("%.0d", status.spindleSpeed);
             ImGui::TextUnformatted("RPM");
 
@@ -1493,7 +1288,8 @@ struct Stats {
                     if (i == gcodeCount) {
                         // centre button in cell
                         ImGui::SetCursorPos(ImGui::GetCursorPos() + posCustNew);
-                        if (ImGui::Button("+", sizeCustNew)) {
+                        if (ImGui::ImageButton(sizeCustNew, ImVec2(16.0f,16.0f), settings.guiSettings.img_Add)) {
+                        //if (ImGui::Button("+", sizeCustNew)) {
                             if (gcodeCount < MAX_CUSTOM_GCODES)
                                 settings.p.customGCodes.push_back({ "", "" });
                         }  
@@ -1557,15 +1353,15 @@ struct Stats {
         DrawStatus(grbl, settings, dt);
         ImGui::Separator();
         // Current x y z location
-        DrawPosition(grblVals);
+        DrawPosition(settings);
         ImGui::Separator();
         //Current modal state
         if(grblVals.isConnected) {
-            DrawCurrentMode(grblVals);
+            DrawCurrentMode(settings);
             ImGui::Separator();
         }
         // Current feedrate & spindle speed
-        DrawMotion(grblVals);
+        DrawMotion(settings);
         ImGui::Separator();
         // Limit switches / probe
         DrawInputPins(grblVals);
@@ -2021,23 +1817,35 @@ struct Debug {
 
         if (ImGui::TreeNode("Settings")) {
             ImGui::InputText("Save File Location", &settings.p.system.saveFileDirectory);
-
+            
+            ImGui::SliderFloat("Point Size", &settings.p.viewer.point.size, 0.0f, 100.0f);
+            ImGui::ColorEdit3("Point Colour", &settings.p.viewer.point.colour[0]);
+            ImGui::ColorEdit3("Line Colour", &settings.p.viewer.line.colour[0]);
+            ImGui::ColorEdit3("Line Colour Disabled", &settings.p.viewer.line.colourDisabled[0]);
+            
             ImGui::TreePop();
         }
         
         if (ImGui::TreeNode("GUI Settings")) {
             
-            ImGui::SliderFloat2("Button Size 0", &settings.guiSettings.buttonSize[0].x, 0.0f, 100.0f);
-            ImGui::SliderFloat2("Button Image Size 0", &settings.guiSettings.buttonImageSize[0].x, 0.0f, 100.0f);
-            
-            ImGui::SliderFloat2("Button Size 1", &settings.guiSettings.buttonSize[1].x, 0.0f, 100.0f);
-            ImGui::SliderFloat2("Button Image Size 1", &settings.guiSettings.buttonImageSize[1].x, 0.0f, 100.0f);
+            for (int i = 0; i < IM_ARRAYSIZE(settings.guiSettings.button); i++) {
+                ImGui::SliderFloat2(va_str("Button Size %d", i).c_str(), &settings.guiSettings.button[i].Size.x, 0.0f, 100.0f);
+            }
+            for (int i = 0; i < IM_ARRAYSIZE(settings.guiSettings.button); i++) {
+                ImGui::SliderFloat2(va_str("Button Image Size %d", i).c_str(), &settings.guiSettings.button[i].ImageSize.x, 0.0f, 100.0f);
+            }
             
             ImGui::SliderFloat("Dock Padding", &settings.guiSettings.dockPadding, 0.0f, 100.0f);
             ImGui::SliderFloat("Toolbar Height", &settings.guiSettings.toolbarHeight, 0.0f, 500.0f);
             ImGui::SliderFloat("Toolbar Spacer", &settings.guiSettings.toolbarSpacer, 0.0f, 100.0f);
             ImGui::SliderFloat("Toolbar ComboBox Width", &settings.guiSettings.toolbarComboBoxWidth, 0.0f, 500.0f);
-
+            ImGui::SliderFloat("Input Box Width", &settings.guiSettings.inputBoxWidth, 0.0f, 500.0f);
+ 
+            if(ImGui::ColorEdit3("Text Colour", &settings.guiSettings.colour[Colour::Text].x)) {
+                ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
+            }
+            ImGui::ColorEdit3("Header Text Colour", &settings.guiSettings.colour[Colour::HeaderText].x);
+            
             ImGui::TreePop();
         }
 
@@ -2054,6 +1862,7 @@ struct Debug {
             static bool debugSerial = false;
             static bool debugThreadBlocking = false;
             static bool debugGCReader = false;
+            static bool debugSketchRefs = false;
             bool needUpdate = false;
 
             static bool showDebugMenu = false;
@@ -2067,6 +1876,7 @@ struct Debug {
                 needUpdate |= ImGui::Checkbox("Serial", &(debugSerial));
                 needUpdate |= ImGui::Checkbox("Thread Blocking", &(debugThreadBlocking));
                 needUpdate |= ImGui::Checkbox("GCode Reader (For 3D Viewer)", &(debugGCReader));
+                needUpdate |= ImGui::Checkbox("Sketch References", &(debugSketchRefs));
                 ImGui::Unindent();
             
                 if (needUpdate) {
@@ -2084,6 +1894,8 @@ struct Debug {
                         flags |= DEBUG_THREAD_BLOCKING;
                     if (debugGCReader)
                         flags |= DEBUG_GCREADER;
+                    if (debugSketchRefs)
+                        flags |= DEBUG_SKETCH_REFERENCES;
 
                     Log::SetDebugFlags(flags);
                 }
@@ -2314,9 +2126,7 @@ void drawDockSpace(Settings& settings)
 }    
         
 void drawFrames(GRBL& grbl, Settings& settings, float dt) 
-{
-    // ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
-    GRBLVals& grblVals = settings.grblVals;
+{    
     
     static Toolbar toolbar(settings);
     toolbar.Draw(grbl, settings);
@@ -2330,11 +2140,10 @@ void drawFrames(GRBL& grbl, Settings& settings, float dt)
     static Console console;
     console.Draw(grbl, settings);
 
-    static JogController jogController(grblVals);
-    jogController.Draw(grbl, grblVals);
+    static JogController jogController(settings.grblVals);
+    jogController.Draw(grbl, settings.grblVals);
 
     static Overrides overrides;
-    overrides.Draw(grbl, grblVals);
+    overrides.Draw(grbl, settings.grblVals);
 
-    // ImGui::PopStyleVar();
 }

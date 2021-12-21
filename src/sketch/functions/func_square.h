@@ -1,5 +1,5 @@
 #pragma once
-#include "../common.h"
+#include "../../common.h"
 
 class FunctionType_Square : public FunctionType
 {
@@ -23,7 +23,9 @@ public:
         std::unique_ptr<FunctionType_Square> newFunction = std::make_unique<FunctionType_Square>(++counter);
         return move(newFunction);
     }
-    
+    void Update(glm::vec2 mouseClickPos) override { 
+        (void) mouseClickPos; 
+    }
 private:
     Square_Parameters m_Params;
     

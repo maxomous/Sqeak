@@ -32,3 +32,14 @@
 static inline std::ostream& operator<<(std::ostream& os, const glm::vec2& p) { os << "(" << p.x << ", " << p.y << ")"; return os; }
 static inline std::ostream& operator<<(std::ostream& os, const glm::vec3& p) { os << "(" << p.x << ", " << p.y << ", " << p.z << ")"; return os; }
 static inline std::ostream& operator<<(std::ostream& os, const glm::vec4& p) { os << "(" << p.x << ", " << p.y << ", " << p.z << ", " << p.w << ")"; return os; }
+
+static inline glm::vec2 Vec2(glm::vec3 v) { return { v.x, v.y }; }
+static inline glm::vec3 Vec3(glm::vec2 v) { return { v.x, v.y, 0.0f }; }
+
+static inline glm::vec2 roundVec2(float roundto, const glm::vec2& input) {
+    double x = (double)input.x / (double)roundto;
+    double y = (double)input.y / (double)roundto;
+    x = round(x) * (double)roundto;
+    y = round(y) * (double)roundto;
+    return {x, y};
+}

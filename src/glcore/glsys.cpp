@@ -2,7 +2,7 @@
 using namespace std;
 
 #include "glsys.h" 
-
+ 
 Window::Window() {
     Event<Event_WindowResize>::RegisterHandler(&(Window::ResizeEvent));
 }

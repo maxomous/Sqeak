@@ -338,8 +338,8 @@ void GRBLSystem::decodeStatus(const std::string& msg)
         {
             size_t a = segs[i].find(",");
             if (a != std::string::npos) {
-            status.m_vals.bufferPlannerAvail = stof(segs[i].substr(3, a-3)); 
-            status.m_vals.bufferSerialAvail = stoi(segs[i].substr(a+1)); 
+                status.m_vals.bufferPlannerAvail = stof(segs[i].substr(3, a-3)); 
+                status.m_vals.bufferSerialAvail = stoi(segs[i].substr(a+1)); 
             } else
             Log::Error("Can't find ',' in Bf");
         }
@@ -353,8 +353,8 @@ void GRBLSystem::decodeStatus(const std::string& msg)
         {
             size_t a = segs[i].find(",");
             if (a != std::string::npos) {
-            status.m_vals.feedRate = stof(segs[i].substr(3, a-3)); 
-            status.m_vals.spindleSpeed = stoi(segs[i].substr(a+1)); 
+                status.m_vals.feedRate = stof(segs[i].substr(3, a-3)); 
+                status.m_vals.spindleSpeed = stoi(segs[i].substr(a+1)); 
             } else
             Log::Error("Can't find ',' in FS");
         }

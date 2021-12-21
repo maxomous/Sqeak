@@ -4,7 +4,8 @@
 TARGET = ../grbl
 
 DIRS = \
-functions \
+sketch \
+sketch/functions \
 dev \
 libs \
 gui \
@@ -12,6 +13,12 @@ glcore \
 glcore/deps/imgui \
 glcore/deps/stb_image \
 glcore/deps/tinyobjloader
+
+BASIC_CLEAN_DIRS = \
+sketch \
+sketch/functions \
+gui \
+
 
 LDLIBS = -lwiringPi -ldl -lGL -lglfw -lGLEW -lpthread -lgeos_c
 
@@ -39,6 +46,11 @@ OBJECTS = $(patsubst %.cpp, %.o, $(wildcard *.cpp $(addsuffix /*.cpp, $(DIRS))))
 $(TARGET): $(OBJECTS)
 	$(CXX) $(OBJECTS) -Wall $(LDLIBS) -o $@ 
 
-clean:
+clean_basic:
+	-rm -f *.o $(addsuffix /*.o, $(BASIC_CLEAN_DIRS))
+	-rm -f $(TARGET)
+ 
+clean_full:
 	-rm -f *.o $(addsuffix /*.o, $(DIRS))
 	-rm -f $(TARGET)
+ 

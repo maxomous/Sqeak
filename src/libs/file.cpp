@@ -43,11 +43,14 @@ string File::ThisDir(const std::string& location)
     
 string File::CombineDirPath(const string& dir, const string& name) {
     
-    string str = dir;
-    if(str.back() != '/')
-        str += '/';
-    str += name;
-    return str;
+    string filePath = dir;
+    // append '/' if needed
+    if(filePath.empty())        
+        filePath += '/';
+    if(filePath.back() != '/')  
+        filePath += '/';
+    filePath += name;
+    return filePath;
 }
 
 bool File::Exists(const std::string& name) 

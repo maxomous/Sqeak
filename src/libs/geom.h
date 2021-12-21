@@ -7,6 +7,9 @@
 #include <cmath>
 #include <iostream>
 
+#define CLOCKWISE                                   1
+#define ANTICLOCKWISE                              -1
+
 // returns the sign (1. 0 or -1) of a number
 template <typename T> int sign(T val) {
     return (T(0) < val) - (val < T(0));
@@ -18,18 +21,6 @@ template <typename T> int sign(T val) {
 #define Sin(deg) sin(deg2rad(deg))
 #define Cos(deg) cos(deg2rad(deg))
 #define Tan(deg) tan(deg2rad(deg))
-
-// Returns Angle between 0 - 2PI
-extern double cleanAngle(double Angle);
-
-/*******************************************************************************
-* Description   :  Modifies start and end angles to be in correct order based on direction 
-* 			       Makes both >= 0 	
-*		  	       Output will produce <= 4*PI difference between angles	(anticlockwise curve could be start:710degs to end:359degs
-* 			       If both angles are identical, they will be set to 2*PI out of phase
-* Direction:  1 CW   -1 CCW
-*******************************************************************************/
-extern void cleanAngles(double& StartAngle, double& EndAngle, int Direction);
 
 class point2D {
 public:
@@ -87,15 +78,34 @@ static inline std::ostream& operator<<(std::ostream& os, const point3D& p) { os 
 
 // 0 is at the top
 // positive is clockwise
-class polar{
+class polar {
 public:
 	// Variables
 	float r;	// Length
 	double th; 	// Angle
 	// Constructor
-	polar(float R = 0.0f, double Th = 0.0f) { r = R; th = Th; }
-	polar(point2D p) { r = hypotf(p.x, p.y); th = cleanAngle(atan2(p.x, p.y)); }
-    point2D Cartesian() { return point2D (r*cos(th - M_PI_2),  r*-sin(th - M_PI_2)); }
+	polar(float R = 0.0f, double Th = 0.0f);
+	polar(point2D p);
+    point2D Cartesian();
 };
 // Overload operators (can even be printed!)
 static inline std::ostream& operator<<(std::ostream& os, const polar& pol) { os << "(" << pol.r << ", " << rad2deg(pol.th) << "degs)"; return os; }
+
+class Geom {
+public:
+    // Returns Angle between 0 - 2PI
+    static double CleanAngle(double angle);
+    // Modifies start and end angles to be in correct order based on direction 
+    // Makes both >= 0 	
+    // Output will produce <= 4*PI difference between angles	(anticlockwise curve could be start:710degs to end:359degs
+    // If both angles are identical, they will be set to 2*PI out of phase
+    // Direction:  1 CW   -1 CCW
+    static void CleanAngles(double& startAngle, double& endAngle, int direction);
+    // calculates centre from radius, start & end points (-r will return the second possible arc)
+    static point2D ArcCentreFromRadius(point2D p0, point2D p1, float r, int direction);
+
+private:
+    Geom() {}
+    Geom(const Geom &) = delete;
+    Geom &operator=(const Geom &) = delete;
+};

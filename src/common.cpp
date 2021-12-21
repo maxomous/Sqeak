@@ -5,7 +5,7 @@
 
 #include "common.h"
 using namespace std; 
-
+ 
 string va_str(const char* format, ... )
 { 
     va_list arglist;
@@ -16,9 +16,9 @@ string va_str(const char* format, ... )
     
     return string(buf);
 }
-
+  
 Time::Time(uint seconds) 
-{
+{ 
     m_hr = seconds / 3600;
     seconds %= 3600;
     m_min = seconds / 60;

@@ -3,7 +3,10 @@ using namespace std;
 
 // *************************************************************************************************************
 // ********************************************* USER SETTINGS *************************************************
- 
+
+// used to replace '\n' with for multi line settings strings
+#define NEWLINE_STRING     std::string("{NEWLINE}")
+    
 void Settings::AddSettings()
 {     
     // Static Settings   
@@ -13,16 +16,23 @@ void Settings::AddSettings()
     s.AddParameter("CurrentDirectory", &p.system.curDir);
     s.AddParameter("SaveFileDirectory", &p.system.saveFileDirectory);
     m_SettingsList.push_back(s);
-    
-    s = Setting("Viewer", 0);
+               
+    s = Setting("Viewer", 0); 
     s.AddParameter("ToolpathColour", &p.viewer.ToolpathColour);
     s.AddParameter("BackgroundColour", &p.viewer.BackgroundColour);
     m_SettingsList.push_back(s);
     
+    s = Setting("Viewer-Elements", 0);
+    s.AddParameter("PointSize",          &p.viewer.point.size);
+    s.AddParameter("PointColour",        &p.viewer.point.colour);
+    s.AddParameter("LineColour",         &p.viewer.line.colour);
+    s.AddParameter("LineColourDisabled", &p.viewer.line.colourDisabled);
+    m_SettingsList.push_back(s);
+
     s = Setting("Viewer-Axis", 0);
     s.AddParameter("Size", &p.viewer.axis.Size);
     m_SettingsList.push_back(s);
-    
+     
     s = Setting("Viewer-Grid", 0);
     s.AddParameter("Position", &p.viewer.grid.Position);
     s.AddParameter("Size", &p.viewer.grid.Size);
@@ -33,18 +43,18 @@ void Settings::AddSettings()
     s = Setting("Viewer-Spindle", 0);
     s.AddParameter("ToolColour", &p.viewer.spindle.toolColour);
     s.AddParameter("ToolColourOutline", &p.viewer.spindle.toolColourOutline);
-    m_SettingsList.push_back(s); 
-     
-    s = Setting("PathCutter", 0);
+    m_SettingsList.push_back(s);  
+      
+    s = Setting("PathCutter", 0);   
     s.AddParameter("CutTabs", &p.pathCutter.CutTabs);
-    s.AddParameter("TabSpacing", &p.pathCutter.TabSpacing);
+    s.AddParameter("TabSpacing", &p.pathCutter.TabSpacing);  
     s.AddParameter("TabHeight", &p.pathCutter.TabHeight);
     s.AddParameter("TabWidth", &p.pathCutter.TabWidth);
     s.AddParameter("ShapeColour", &p.pathCutter.ShapeColour);
-    s.AddParameter("ShapeOffsetColour", &p.pathCutter.ShapeOffsetColour);
+    s.AddParameter("ShapeOffsetColour", &p.pathCutter.ShapeOffsetColour); 
     s.AddParameter("QuadrantSegments", &p.pathCutter.QuadrantSegments);
     m_SettingsList.push_back(s);
-}
+} 
 
 void Settings::AddDynamicSettings()
 {      
@@ -52,7 +62,7 @@ void Settings::AddDynamicSettings()
     char*           str = (*(const std::vector<Tool>*)data)[idx].Name.c_str(); 
     string           s = (*(const std::vector<Tool>*)data)[idx].Name;
     Tool             t = (*(const std::vector<Tool>*)data)[idx]
-    vector<Tool>     v = (*(const std::vector<Tool>*)data)
+    vector<Tool>     v = (*(const std::vector<Tool>*)data) 
     *vector<Tool>     vptr = (const std::vector<Tool>*)data
  */  
     DynamicSetting d = DynamicSetting("CustomGCode", (void*)&p.customGCodes, 
@@ -88,47 +98,38 @@ void Settings::AddDynamicSettings()
             setting.AddParameter("Name",        &d.Name);
             setting.AddParameter("Diameter",    &d.Diameter);
             setting.AddParameter("Length",      &d.Length);
-            
-            #define TOOLPREFIX "Tool"          
+                    
             for (uint i = 0; i < d.Data.Size(); i++) {
                 ParametersList::Tools::Tool::ToolData* toolData = d.Data.ItemPtr(i);
-                setting.AddParameterWithPrefix("Material",          TOOLPREFIX, i, &(toolData->material)); // [Tool#1]Material
-                setting.AddParameterWithPrefix("SpindleSpeed",      TOOLPREFIX, i, &(toolData->speed));
-                setting.AddParameterWithPrefix("CuttingFeedRate",   TOOLPREFIX, i, &(toolData->feedCutting));
-                setting.AddParameterWithPrefix("PlungeFeedRate",    TOOLPREFIX, i, &(toolData->feedPlunge));
-                setting.AddParameterWithPrefix("CutDepth",          TOOLPREFIX, i, &(toolData->cutDepth));
-                setting.AddParameterWithPrefix("CutWidth",          TOOLPREFIX, i, &(toolData->cutWidth));
+                setting.AddParameterWithPrefix("Material",        i, &(toolData->material)); // <1>Material
+                setting.AddParameterWithPrefix("SpindleSpeed",    i, &(toolData->speed));
+                setting.AddParameterWithPrefix("CuttingFeedRate", i, &(toolData->feedCutting));
+                setting.AddParameterWithPrefix("PlungeFeedRate",  i, &(toolData->feedPlunge));
+                setting.AddParameterWithPrefix("CutDepth",        i, &(toolData->cutDepth));
+                setting.AddParameterWithPrefix("CutWidth",        i, &(toolData->cutWidth));
             }
-        },
+        },  
         // check if vector is large enough 
         [&](void* data, std::string& name, uint id, std::string& paramName) { 
             (void)name; (void)id;
             std::vector<ParametersList::Tools::Tool>& v = (*(std::vector<ParametersList::Tools::Tool>*)data); 
             
-            // vector parameter: <Tool#0>SpindleSpeed=10000.000000
+            // vector parameter: <0>SpindleSpeed=10000.000000
             if(paramName.substr(0,1) == std::string("<"))
-            { 
-                size_t a = paramName.find("#");
-                if(a == std::string::npos) {
-                    Log::Error("%s in Config file doesn't contain '#'", paramName.c_str());
-                    return;
-                }
+            {
                 size_t b = paramName.find(">");
-                if(b == std::string::npos) {
-                    Log::Error("%s in Config file doesn't contain ']'", paramName.c_str());
+                // error if b doesn't exist or there is no number between < & >
+                if(b == std::string::npos || b < 2) {
+                    Log::Error("%s in Config file looks incorrect", paramName.c_str());
                     return; 
                 }
-                
-                std::string prefixStr       = paramName.substr(1, a-1);
-                int prefixId                = stoi(paramName.substr(a+1, b-a-1));
-                std::string paramNameStr    = paramName.substr(b+1);
-                
+                int prefixId                = stoi(paramName.substr(1, b-1));                
                 while(v[id].Data.Size() < (uint)prefixId+1) {
                     v[id].Data.Add(ParametersList::Tools::Tool::ToolData());
                 }
             } else { // main parameter Length=20.000000
                 while(v.size() < id+1) {
-                    v.push_back(ParametersList::Tools::Tool("Cutter", 10.0f, 20.0f));
+                    v.push_back(ParametersList::Tools::Tool());
                 }
             } 
         });
@@ -146,10 +147,10 @@ bool ParametersList::Tools::IsToolAndMaterialSelected()
     }
     if(!toolList.CurrentItem().Data.HasItemSelected()) {
         Log::Error("No Material Selected");
-        return true;
+        return true; 
     }
     return false;
-}
+}  
 glm::vec3 ParametersList::Tools::GetToolScale()
 {
     if(toolList.HasItemSelected()) {
@@ -176,7 +177,7 @@ DynamicSetting::DynamicSetting(const std::string& name, void* data,
 { }
 
 
-size_t DynamicSetting::GetSize() { 
+size_t DynamicSetting::GetSize() {  
     return m_cb_GetSize(m_Data); 
 }
 void DynamicSetting::AddParameters(Setting& setting, size_t index) { 
@@ -242,7 +243,7 @@ int Settings::UpdateFromFile()
             size_t a = str.find("]", 1);
             // checks to prevent errors
             if((a == std::string::npos) || (a <= 0) || str.length() <= a) {
-                Log::Error("Problem finding ']' in config file");
+                Log::Error("Problem finding ']' in %s config file", str.c_str());
                 return -1;
             }
             std::string name_str = str.substr(1, a-1);
@@ -265,13 +266,13 @@ int Settings::UpdateFromFile()
             size_t a = str.find("=", 1);
             // checks to prevent errors
             if((a == std::string::npos) || (a <= 0) || str.length() <= a-1) {
-                Log::Error("Problem finding ']' in config file");
+                Log::Error("Problem finding ']' in %s config file", str.c_str());
                 return -1;
             } 
             std::string paramName = str.substr(0, a);
             std::string dataString = str.substr(a+1);
               
-             SetParameter(name, (uint)id, paramName, dataString);
+            SetParameter(name, (uint)id, paramName, dataString);
         }
         return 0;
     };
@@ -347,7 +348,7 @@ void Settings::UpdateDynamicSetting(DynamicSetting& dSetting)
     }), m_SettingsList.end());
     // add existing settings to list
     for (size_t i = 0; i < dSetting.GetSize(); i++) {
-        Setting item = Setting(dSetting.Name(), i);
+        Setting item(dSetting.Name(), i);
         dSetting.AddParameters(item, i);
         m_SettingsList.push_back(item);
     }
@@ -378,8 +379,15 @@ std::string Settings::GetSettingString(Setting& setting, size_t paramIndex)
         return std::to_string(*v); 
     } 
     else if(auto dataLocation = std::get_if<std::string*>(&refToData)) {
-        std::string* v = *dataLocation;
-        return *v;
+        std::string str = *(*dataLocation);
+        // special case for strings so we can accept multiple lines
+        while (1) {
+            size_t a = str.find("\n");
+            if(a == std::string::npos) break;
+            str.erase(a, 1);
+            str.insert(a, NEWLINE_STRING);
+        }
+        return str;
     } 
     else if(auto dataLocation = std::get_if<glm::vec2*>(&refToData)) {
         glm::vec2* p = *dataLocation;
@@ -405,7 +413,7 @@ void Settings::SetSettingFromString(Setting& setting, size_t paramIndex, std::st
     
     if(auto dataLocation = std::get_if<bool*>(&refToData)) {
         *(*dataLocation) = (dataString == "1");
-    } 
+    }  
     else if(auto dataLocation = std::get_if<char*>(&refToData)) {
         *(*dataLocation) = dataString[0];
     } 
@@ -419,7 +427,15 @@ void Settings::SetSettingFromString(Setting& setting, size_t paramIndex, std::st
         *(*dataLocation) = std::stod(dataString);
     } 
     else if(auto dataLocation = std::get_if<std::string*>(&refToData)) {
-        *(*dataLocation) = std::string(dataString);
+        // special case for strings so we can accept multiple lines
+        std::string str = std::string(dataString);
+        while (1) {
+            size_t a = str.find(NEWLINE_STRING);
+            if(a == std::string::npos) break;
+            str.erase(a, NEWLINE_STRING.length());
+            str.insert(a, 1, '\n');
+        }
+        *(*dataLocation) = str;
     } 
     else if(auto dataLocation = std::get_if<glm::vec2*>(&refToData)) {
         glm::vec2 p = stoVec2(dataString);

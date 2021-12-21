@@ -1,5 +1,5 @@
 #pragma once
-#include "../common.h"
+#include "../../common.h"
 
 class FunctionType_FacingCut : public FunctionType
 {
@@ -22,6 +22,10 @@ public:
         static uint counter = 0;
         std::unique_ptr<FunctionType_FacingCut> newFunction = std::make_unique<FunctionType_FacingCut>(++counter);
         return move(newFunction);
+    }
+    
+    void Update(glm::vec2 mouseClickPos) override { 
+        (void) mouseClickPos; 
     }
     
 private:

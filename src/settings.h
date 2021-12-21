@@ -1,10 +1,14 @@
 #pragma once
- 
+
+#include <initializer_list>
+
 // a vector wrapper which allows a specific item to be currently selected
 template<typename T>
 class  VectorSelectable
 {
 public:
+    VectorSelectable() {};
+    VectorSelectable(std::initializer_list<T> items) : m_Items(items) {};
     void Add(const T& v)                { m_Items.push_back(std::move(v)); m_CurrentIndex = m_Items.size()-1; } // lvalue & refs
     void Add(T&& v)                     { m_Items.push_back(std::move(v)); m_CurrentIndex = m_Items.size()-1; } // rvalue
     void Remove(size_t index) { 
@@ -16,6 +20,7 @@ public:
     void RemoveCurrent()                { assert(m_CurrentIndex > -1 && m_CurrentIndex < (int)m_Items.size()); Remove(m_CurrentIndex); }
     T& CurrentItem()                    { assert(m_CurrentIndex > -1 && m_CurrentIndex < (int)m_Items.size()); return m_Items[m_CurrentIndex]; }
     T& Item(size_t index)               { assert(index < m_Items.size()); return m_Items[index]; }
+    T& operator [](size_t i)            { return Item(i); }
     // moves value of n_next onto n, and n_new onto n
     void ItemSwap(size_t n, size_t n_Next) {   
         assert(n < m_Items.size()); 
@@ -60,7 +65,7 @@ struct ParametersList
                 float cutWidth          = 1.0f;
             };
             
-            Tool(std::string name, float diameter = 6.0f, float length = 20.0f) : Name(name), Diameter(diameter), Length(length) {}
+            Tool(std::string name = "Tool", float diameter = 6.0f, float length = 20.0f) : Name(name), Diameter(diameter), Length(length) {}
             
             VectorSelectable<ToolData> Data;
             std::string Name;
@@ -76,8 +81,31 @@ struct ParametersList
 
     struct Viewer3DParameters {
         
-        glm::vec3 BackgroundColour = { 0.45f, 0.55f, 0.60f };
-        glm::vec3 ToolpathColour = { 0.851f, 0.697f, 0.086f };
+        glm::vec3 BackgroundColour  = { 0.45f, 0.55f, 0.60f };
+        glm::vec3 ToolpathColour    = { 0.851f, 0.697f, 0.086f };
+        
+        struct ViewerPoint {
+            float size              = 3.0f;
+            glm::vec3 colour        = { 0.839f, 0.298f, 0.677f };
+        } point;
+        
+        struct ViewerLine {
+            glm::vec3 colour            = { 0.000f, 0.944f, 0.304f };
+            glm::vec3 colourDisabled    = { 0.8f, 0.8f, 0.8f };
+        } line;
+        
+        struct Cursor {
+            glm::vec3 Colour        = { 0.9f, 0.9f, 0.9f };
+            
+            float Size                  = 14.0f; // mm
+            float Size_Scaled;          // gets updated with change in zoom
+            float SnapDistance          = 5.0f; // mm
+            float SnapDistance_Scaled;  // gets updated with change in zoom
+            glm::vec2 SnapCursor(const glm::vec2& cursorPos) {
+                return roundVec2(SnapDistance_Scaled, cursorPos);
+            }
+        } cursor;
+        
         
         struct Axis {
             float Size = 50.0f;
@@ -116,28 +144,47 @@ struct ParametersList
     std::vector<CustomGCode> customGCodes;
 };
 
+enum ButtonType { Primary, Secondary, New, Edit };
+enum Colour     { Text, HeaderText };
+
+struct ButtonDimension { 
+    ImVec2 Size; 
+    ImVec2 ImageSize;
+};
+
 // internal settings (not added to user settings ini file)
 struct GUISettings 
-{
-    ImVec2 buttonSize[2]        =  {{ 90.0f, 36.0f },
-                                    { 70.0f,  30.0f }};
-            
-    ImVec2 buttonImageSize[2]   =  {{ 18.0f,  18.0f },
-                                    { 18.0f,  18.0f }};
-    
+{                               //      Button Size,      Image Size
+    ButtonDimension button[4]   = { {{ 90.0f, 36.0f }, { 16.0f, 16.0f }},   // Primary
+                                    {{ 60.0f, 27.0f }, { 16.0f, 16.0f }},   // Secondary
+                                    {{ 28.0f, 28.0f }, { 16.0f, 16.0f }},   // New
+                                    {{ 10.0f, 10.0f }, { 10.0f, 10.0f }} }; // Edit
+
     float dockPadding           =   20.0f;
-    float toolbarHeight         =   143.0f;
+    float toolbarHeight         =   152.0f;
     float toolbarSpacer         =   10.0f;
     float toolbarComboBoxWidth  =   150.0f;
     
+    float inputBoxWidth         =   140.0f;
+    
+    uint max_FilePathDisplay    =   50; // max no. characters to display in open file string
+    
+    // colours
+    ImVec4 colour[2]            = { { 1.0f,     1.0f,   1.0f,   1.0f },   // Text
+                                    { 0.659f,   0.745f, 0.620f, 1.0f } }; // HeaderText
+
     // Fonts
+    ImFont* font_small;
     ImFont* font_medium;
     ImFont* font_large;
 
+    // these need to be intialised in imgui_Settings()
     ImageTexture img_Restart;
     ImageTexture img_Pause;
-    ImageTexture img_File;
-    ImageTexture img_Folder;
+    ImageTexture img_Settings;
+    ImageTexture img_Edit;
+    ImageTexture img_Add;
+
 };
 
 // for setting static variables
@@ -150,12 +197,12 @@ public:
         data.push_back(std::make_pair(paramName, dataLocation)); 
     }
     template <typename T>
-    void AddParameterWithPrefix(const std::string name, const std::string& prefix, uint index, T dataLocation) {    
-        AddParameter(PrefixName(prefix, index, name), dataLocation);
+    void AddParameterWithPrefix(const std::string name, uint index, T dataLocation) {    
+        AddParameter(PrefixName(index, name), dataLocation);
     }
-    std::string PrefixName(const std::string& prefix, uint index, const std::string& name) {
+    std::string PrefixName(uint index, const std::string& name) {
         std::stringstream stream;
-        stream << "<" << prefix << "#" << index << ">"  << name;
+        stream << "<" << index << ">"  << name;
         return stream.str();
     }
     

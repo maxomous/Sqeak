@@ -93,6 +93,31 @@ struct ImGuiModules
         return (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right));
     }
     
+    // draws buttons for a selectable vector
+    // returns true if an item was clicked
+    template<typename T>
+    static bool Buttons(VectorSelectable<T>& items, ImVec2 buttonSize, std::function<std::string(T& item)> cb_GetItemString) 
+    {
+        bool buttonClicked = false;
+        // draw all of the active functions
+        for (size_t i = 0; i < items.Size(); i++)  
+        {
+            bool isCurrentItem = ((int)i == items.CurrentIndex());
+            // highlight button if active
+            if(isCurrentItem) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+            // get label on button (adding pointer as id for imgui)
+            std::string imGuiName = cb_GetItemString(items.Item(i)) + std::string("##");
+            imGuiName += std::to_string((int)&items.Item(i));
+            // draw active function button
+            if(ImGui::Button(imGuiName.c_str(), buttonSize)) {
+                items.SetCurrentIndex(i);
+                buttonClicked = true;
+            }
+            if(isCurrentItem) ImGui::PopStyleColor();
+        }
+        return buttonClicked;
+    }
+    
     template<typename T>
     static bool ComboBox(const char* name, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString, ImGuiComboFlags flags = 0)
     {         
@@ -197,6 +222,45 @@ struct ImGuiModules
             }
         }
         return isClicked;
+    }
+ 
+    // returns value of cb_DrawTabImGui |= current item has changed
+    template<typename T>
+    static bool Tabs(VectorSelectable<T>& items, std::function<std::string(T& item)>& cb_GetItemString, std::function<T(void)>& cb_AddNewItem, std::function<bool()> cb_DrawTabImGui)
+    {
+        bool returnVal = false;
+        if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))  // or ImGuiTabBarFlags_FittingPolicyScroll
+        {
+            // Delete button
+            if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+                items.Add(std::move(cb_AddNewItem())); // Add new tab
+
+            // draw tabs
+            for (size_t n = 0; n < items.Size(); )
+            {   
+                bool isOpen = true;
+                // bool hasBeenClosed = just switched to !isOpen;
+                std::string name = cb_GetItemString(items[n]);
+                if (ImGui::BeginTabItem(name.c_str(), &isOpen, ImGuiTabItemFlags_None)) {
+                    // set the active index to match the open tab
+                    if(items.CurrentIndex() != (int)n) {
+                        items.SetCurrentIndex(n);
+                        returnVal = true;
+                    }
+                    // draw the imgui callback for the specific tab
+                    returnVal |= cb_DrawTabImGui();
+                    ImGui::EndTabItem();
+                }
+                // x has been pressed on tab, delete it
+                if(!isOpen) { 
+                    items.Remove(n); 
+                    returnVal = true;
+                }
+                else { n++; }
+            }
+            ImGui::EndTabBar();
+        }
+        return returnVal;
     }
 
     template <typename T>
