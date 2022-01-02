@@ -20,7 +20,7 @@ const GRBLModal_vals GRBLModal::getVals() {
 }
 
 bool GRBLStatus::isCheckMode() {
-    return (getVals().state == Status_Check);
+    return (getVals().state == GRBLState::Status_Check);
 }
 
 // returns a copy of vals
@@ -41,33 +41,33 @@ const std::string GRBLStatus::stateStr(GRBLState state)
 {
     switch (state)
     {
-    case Status_Idle:
+    case GRBLState::Status_Idle:
         return "Idle";
-    case Status_Hold0:
+    case GRBLState::Status_Hold0:
         return "Hold (Ready)";
-    case Status_Hold1:
+    case GRBLState::Status_Hold1:
         return "Hold (Busy)";
-    case Status_Sleep:
+    case GRBLState::Status_Sleep:
         return "Sleep";
-    case Status_Run:
+    case GRBLState::Status_Run:
         return "Running";
-    case Status_Jog:
+    case GRBLState::Status_Jog:
         return "Jogging";
-    case Status_Check:
+    case GRBLState::Status_Check:
         return "Check Mode";
-    case Status_Home:
+    case GRBLState::Status_Home:
         return "Homimg";
-    case Status_Alarm:
+    case GRBLState::Status_Alarm:
         return "Alarm";
-    case Status_Door0:
+    case GRBLState::Status_Door0:
         return "Door (Ready)";
-    case Status_Door1:
+    case GRBLState::Status_Door1:
         return "Door 1";
-    case Status_Door2:
+    case GRBLState::Status_Door2:
         return "Door 2";
-    case Status_Door3:
+    case GRBLState::Status_Door3:
         return "Door 3";
-    case Status_Unknown:
+    case GRBLState::Status_Unknown:
         return "Unknown";
     default:
         Log::Error("Unknown Grbl state");
@@ -579,7 +579,7 @@ void GRBL::disconnect()
     Log::Info("Disconnecting...");
     softReset();
     serial.disconnect();
-    sys.status.setState(Status_Unknown);
+    sys.status.setState(GRBLState::Status_Unknown);
     Log::Info("Disconnected");
 }
 

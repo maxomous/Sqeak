@@ -325,7 +325,7 @@ Viewer::Viewer()
 Viewer::~Viewer()
 {
 }
-
+ 
 
 glm::vec3 Viewer::GetWorldPosition(glm::vec2 px) 
 {
@@ -338,14 +338,26 @@ void Viewer::SetCursor(bool isValid, glm::vec2 worldCoords)
     m_Cursor2DPos = make_pair(isValid, worldCoords);
 }
 
-void Viewer::SetPath(Settings& settings, std::vector<glm::vec3>& positions, std::vector<uint>& indices)
-{
+void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& colours)
+{ 
+    // 2 points per line
+    size_t nVertices = positions.size()*2;
+    // make vertices
     vector<Vertex> vertices;
-    vertices.reserve(positions.size());
-    
-    for (size_t i = 0; i < positions.size(); i++) {
-        vertices.emplace_back(positions[i], settings.p.viewer.ToolpathColour);
+    vertices.reserve(nVertices);
+    // add as lines
+    for (size_t i = 0; i < positions.size() - 1; i++) {
+        vertices.emplace_back( positions[i], colours[i] );
+        vertices.emplace_back( positions[i+1], colours[i] );
     }
+    // make indices
+    std::vector<uint> indices;
+    indices.reserve(nVertices); // 2 points per line
+    for (size_t i = 0; i < nVertices; i++) {
+        indices.emplace_back(i);
+    }
+    
+    
     
     m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
    
@@ -463,7 +475,7 @@ void Viewer::DrawPath()
 { 
     if(!m_Initialised || !m_Show)
         return;
-    Renderer renderer(GL_LINE_STRIP);
+    Renderer renderer(GL_LINES);
     
     m_Shader->Bind();
     m_Shader->SetUniformMat4f("u_MVP", m_Proj * m_View * glm::mat4(1.0f));
@@ -491,6 +503,10 @@ void Viewer::ImGuiRender(Settings& settings)
         }
         ImGui::SameLine();
         ImGui::Text("%g Scaled", settings.p.viewer.cursor.Size_Scaled);
+        
+        if(ImGui::InputFloat("Selection Tolerance", &settings.p.viewer.cursor.SelectionTolerance)) {
+             settings.p.viewer.cursor.SelectionTolerance_Scaled = ScaleToPx(settings.p.viewer.cursor.SelectionTolerance);
+        }
        
         ImGui::SliderFloat("Cursor Snap Distance", &settings.p.viewer.cursor.SnapDistance, 0.1f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
         ImGui::SameLine();
@@ -500,8 +516,9 @@ void Viewer::ImGuiRender(Settings& settings)
             ImGui::Separator();
             
         ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
-        ImGui::ColorEdit3("Toolpath Colour", &settings.p.viewer.ToolpathColour[0], flags);
-         
+        ImGui::ColorEdit3("Toolpath Feed Colour", &settings.p.viewer.ToolpathColour_Feed[0], flags);
+        ImGui::ColorEdit3("Toolpath Rapid Colour", &settings.p.viewer.ToolpathColour_Rapid[0], flags);
+        ImGui::ColorEdit3("Toolpath Home Colour", &settings.p.viewer.ToolpathColour_Home[0], flags);
             ImGui::Separator();
             
         if(ImGui::Button("Clear")) {

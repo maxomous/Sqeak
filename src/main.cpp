@@ -243,6 +243,8 @@ TODO:
     - flip line cutting start so that it always finishes pockets with from the inside out (to prevent middle flying out)
 
     - dont update screen if not in focus
+    
+    - pocket crashes program when very big
 
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01
@@ -295,19 +297,20 @@ void joystickTest()
     if(pol.r < ignoreRadius){
         p = point2D(0, 0);
         pol = polar(0, 0);
-    }
+    } 
     
     cout << "\r                                                                             " << flush;
     cout << "\r Joystick = " << p << "  " << pol.r << "V  " << rad2deg(pol.th) << "degs   pressed = " << clicked << flush;
     }
-}
-*/
+}  
+*/    
 
-
-
-
+   
+   
+ 
 int main()
 {
+     
     // initialise WiringPi
     if(wiringPiSetup() == -1)
         Log::Critical("Could not start wiringPi: %s", strerror(errno));

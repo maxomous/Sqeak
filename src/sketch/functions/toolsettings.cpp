@@ -80,10 +80,6 @@ bool ToolSettings::DrawPopup_Tools(Settings& settings)
         }
         
         ImGui::Separator();
-        
-        Draw_TabParameters(settings) ;
-        
-        ImGui::Separator();
             
         ImGui::SetItemDefaultFocus();
         float buttonWidth = 120.0f;
@@ -205,19 +201,4 @@ void ToolSettings::Draw_MaterialData(Settings& settings)
         ImGui::InputFloat("Depth of Cut", &data.cutDepth, 0.1f, 1.0f, "%.3f");
         ImGui::InputFloat("Width of Cut", &data.cutWidth, 0.1f, 1.0f, "%.3f");
     }
-}
-
-void ToolSettings::Draw_TabParameters(Settings& settings) 
-{
-    ParametersList::PathCutter& pathCutter = settings.p.pathCutter;
-    
-    ImGui::Checkbox("Cut Tabs", &pathCutter.CutTabs);
-        
-    ImGui::Indent();
-        if(pathCutter.CutTabs) {
-            ImGui::InputFloat("Tab Spacing", &pathCutter.TabSpacing);
-            ImGui::InputFloat("Tab Height",  &pathCutter.TabHeight);
-            ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
-        }
-    ImGui::Unindent();
 }

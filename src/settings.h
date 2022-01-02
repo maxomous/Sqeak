@@ -41,6 +41,7 @@ private:
     int m_CurrentIndex = -1;
 };
 
+
 struct ParametersList
 {
     // define settings here
@@ -81,17 +82,19 @@ struct ParametersList
 
     struct Viewer3DParameters {
         
-        glm::vec3 BackgroundColour  = { 0.45f, 0.55f, 0.60f };
-        glm::vec3 ToolpathColour    = { 0.851f, 0.697f, 0.086f };
+        glm::vec3 BackgroundColour      = { 0.45f, 0.55f, 0.60f };
+        glm::vec3 ToolpathColour_Feed   = { 0.133f, 0.133f, 0.133f };
+        glm::vec3 ToolpathColour_Rapid  = { 0.810f, 0.706f, 0.000f };
+        glm::vec3 ToolpathColour_Home   = { 0.154f, 0.734f, 0.000f };
         
         struct ViewerPoint {
             float size              = 3.0f;
-            glm::vec3 colour        = { 0.839f, 0.298f, 0.677f };
+            glm::vec3 colour        = { 0.615f, 0.810f, 0.219f };
         } point;
         
         struct ViewerLine {
-            glm::vec3 colour            = { 0.000f, 0.944f, 0.304f };
-            glm::vec3 colourDisabled    = { 0.8f, 0.8f, 0.8f };
+            glm::vec3 colour            = { 0.099f, 0.778f, 0.794f };
+            glm::vec3 colourDisabled    = { 0.403f, 0.403f, 0.403f };
         } line;
         
         struct Cursor {
@@ -104,6 +107,9 @@ struct ParametersList
             glm::vec2 SnapCursor(const glm::vec2& cursorPos) {
                 return roundVec2(SnapDistance_Scaled, cursorPos);
             }
+            float SelectionTolerance    = 3.0f;
+            float SelectionTolerance_Scaled; 
+            
         } cursor;
         
         
@@ -128,13 +134,14 @@ struct ParametersList
     struct PathCutter {
         // Tab Parameters
         bool CutTabs = true;
-        float TabSpacing = 50.0f;
-        float TabHeight = 4.0f;
-        float TabWidth = 8.0f;
-        // shape offset
-        glm::vec3 ShapeColour       = { 0.0f, 1.0f, 0.0f };
-        glm::vec3 ShapeOffsetColour = { 1.0f, 0.0f, 0.0f };
-        int QuadrantSegments        = 30;
+        float TabSpacing        = 50.0f;
+        float TabHeight         = 4.0f;
+        float TabWidth          = 8.0f;
+        
+        float CutOverlap        = 1.0f;     // mm
+        
+        GeosBufferParams geosParameters;
+                   
     } pathCutter;
     
     struct CustomGCode {
@@ -144,7 +151,8 @@ struct ParametersList
     std::vector<CustomGCode> customGCodes;
 };
 
-enum ButtonType { Primary, Secondary, New, Edit };
+
+enum ButtonType { Primary, Secondary, New, Edit, FunctionButton };
 enum Colour     { Text, HeaderText };
 
 struct ButtonDimension { 
@@ -154,11 +162,25 @@ struct ButtonDimension {
 
 // internal settings (not added to user settings ini file)
 struct GUISettings 
-{                               //      Button Size,      Image Size
-    ButtonDimension button[4]   = { {{ 90.0f, 36.0f }, { 16.0f, 16.0f }},   // Primary
+{   
+    /*             
+    struct _
+    {
+        ButtonDimension dimension;
+        Font* font;
+        ImageTexture&
+    };
+    */
+    
+                   //      Button Size,      Image Size
+    ButtonDimension button[5]   = { {{ 90.0f, 36.0f }, { 16.0f, 16.0f }},   // Primary
                                     {{ 60.0f, 27.0f }, { 16.0f, 16.0f }},   // Secondary
                                     {{ 28.0f, 28.0f }, { 16.0f, 16.0f }},   // New
-                                    {{ 10.0f, 10.0f }, { 10.0f, 10.0f }} }; // Edit
+                                    {{ 10.0f, 10.0f }, { 10.0f, 10.0f }},   // Edit
+                                    {{ 50.0f, 63.0f }, { 24.0f, 26.0f }} }; // Functions
+
+    float functionButtonTextOffset  = 52.0f;
+    float functionButtonImageOffset = 7.0f;
 
     float dockPadding           =   20.0f;
     float toolbarHeight         =   152.0f;
@@ -166,6 +188,8 @@ struct GUISettings
     float toolbarComboBoxWidth  =   150.0f;
     
     float inputBoxWidth         =   140.0f;
+    
+    float widgetTextWidth       =   80.0f;
     
     uint max_FilePathDisplay    =   50; // max no. characters to display in open file string
     
@@ -184,7 +208,12 @@ struct GUISettings
     ImageTexture img_Settings;
     ImageTexture img_Edit;
     ImageTexture img_Add;
-
+    // sketch images
+    ImageTexture img_Sketch_Draw;
+    ImageTexture img_Sketch_Measure;
+    ImageTexture img_Sketch_Select;
+    ImageTexture img_Sketch_Line;
+    ImageTexture img_Sketch_Arc;
 };
 
 // for setting static variables
@@ -240,7 +269,15 @@ private:
     
     friend class Settings;
 };
-    
+
+enum class ViewerUpdate {
+    None            = 1 << 0,
+    ActiveDrawing   = 1 << 1,
+    ActiveFunction  = 1 << 2,
+    Full            = ActiveDrawing | ActiveFunction
+};
+inline ViewerUpdate operator|(ViewerUpdate a, ViewerUpdate b) { return static_cast<ViewerUpdate>(static_cast<int>(a) | static_cast<int>(b)); }
+
 // main class - Contains all settings / dynamic settings
 class Settings 
 {    
@@ -249,10 +286,15 @@ public:
     
     void SaveToFile();
     int UpdateFromFile();
+    
+    // viewer update
+    ViewerUpdate GetUpdateFlag() { return m_UpdateFlag; }
+    void SetUpdateFlag(ViewerUpdate flag) { m_UpdateFlag = m_UpdateFlag | flag; }
+    void ResetUpdateFlag() { m_UpdateFlag = ViewerUpdate::None; }
 
     GRBLVals grblVals;
     ParametersList p;
-    
+    GUISettings guiSettings;
 private:
 // *************************************************************************************************************
 // ********************************************* USER SETTINGS *************************************************
@@ -263,6 +305,7 @@ private:
 // *************************************************************************************************************
         
 private:
+    ViewerUpdate m_UpdateFlag = ViewerUpdate::None;
     std::string m_Filename;
     std::vector<Setting> m_SettingsList;
     std::vector<DynamicSetting> m_VectorList;
@@ -276,7 +319,5 @@ private:
     void UpdateDynamicSettings();
     void UpdateDynamicSetting(DynamicSetting& dSetting);
 
-public:
-    GUISettings guiSettings;
 };
 

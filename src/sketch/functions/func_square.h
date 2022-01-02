@@ -6,7 +6,7 @@ class FunctionType_Square : public FunctionType
     typedef struct {
         glm::vec3 p0; 
         glm::vec3 p1;
-        int cutSide = CompensateCutter::None;
+        int cutSide = 0;//CompensateCutter::None;
     } Square_Parameters;
 
 public:

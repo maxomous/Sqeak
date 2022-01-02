@@ -80,7 +80,7 @@ private:
 //- `Door:1` Machine stopped. Door still ajar. Can't resume until closed.
 //- `Door:2` Door opened. Hold (or parking retract) in-progress. Reset will throw an alarm.
 //- `Door:3` Door closed and resuming. Restoring from park, if applicable. Reset will throw an alarm.
-enum GRBLState {
+enum class GRBLState {
     Status_Idle, 
     Status_Hold0,
     Status_Hold1, 

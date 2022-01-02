@@ -11,22 +11,23 @@
 class GCodeReader
 {
 public:
-    enum CoordSystem { Machine, Local };
-    enum MotionType { Absolute /*G90*/, Incremental /*G91*/ };
-    enum Plane { XY /*G17*/, XZ /*G18*/, YZ /*G19*/ };
+    enum class CoordSystem { Machine, Local };
+    enum class MotionType { Absolute /*G90*/, Incremental /*G91*/ };
+    enum class Plane { XY /*G17*/, XZ /*G18*/, YZ /*G19*/ };
     
-    GCodeReader(GRBLVals& grblVals);
+    GCodeReader(Settings& settings);
     
     int OpenVector(std::vector<std::string>& gcodes);
     int OpenFile(const std::string& filePath);
-    std::vector<glm::vec3>& GetVertices() { return m_Vertices; }
-    std::vector<uint>& GetIndices() { return m_Indices; }
+    std::vector<glm::vec3>& GetVertices()   { return m_Vertices; }
+    std::vector<glm::vec3>& GetColours()    { return m_Colours; }
 private:
-    GRBLVals& m_GrblVals;
+    Settings& m_Settings;
 
     std::vector<glm::vec3> m_Vertices;
-    std::vector<uint> m_Indices;
+    std::vector<glm::vec3> m_Colours;
     
+    glm::vec3 m_Colour; 
     // modal values
     glm::vec3 m_MPos;
     glm::vec3 m_WPos;
@@ -47,7 +48,6 @@ private:
     float m_R;
     
     bool m_Execute;     // true when XYZ, F or IJK changed - used when g code is ommited, canned cycles 
-    
     
     // Add a vertex to the vertex array
     void AddVertex(glm::vec3 p, CoordSystem coordSys = CoordSystem::Local);
@@ -83,4 +83,6 @@ private:
     glm::vec3 PointRelativeToPlane(glm::vec3 p, Plane plane, int convertDirection = 1);
     // reverse of above
     glm::vec3 ReversePointRelativeToPlane(glm::vec3 p, Plane plane);
+    // set current colour for path
+    void SetPathColour(float gValue);
 };

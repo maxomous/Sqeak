@@ -9,6 +9,7 @@ public:
     // P0 is actually a reference to previous p1    
     DrawingElement(glm::vec2& p0, const glm::vec2& p1) 
         : m_P0(p0), m_P1(p1) {}
+    virtual ~DrawingElement() {}
         
     const glm::vec2& P0()  { return m_P0; }
     const glm::vec2& P1()  { return m_P1; }
@@ -275,7 +276,7 @@ class FunctionType_Draw : public FunctionType
     struct Draw_Parameters {
         glm::vec2 z;
         Drawing drawing;
-        int cutSide = CompensateCutter::None;
+        int cutSide = 0;//CompensateCutter::None;
         float finishingPass = 1.0f;
     };
 

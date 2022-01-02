@@ -6,7 +6,7 @@ class Camera
 {
 
 public:   
-	
+	// ensure inherited destructor is called
 	virtual ~Camera() {}
     // returns the view matrix
     virtual glm::mat4 GetViewMatrix() = 0;

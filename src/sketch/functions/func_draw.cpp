@@ -86,11 +86,11 @@ std::string FunctionType_Draw::HeaderText(Settings& settings)
     
     m_Params.drawing.AddElementsHeaderText(stream);
     
-    if(p.cutSide == CompensateCutter::None) stream << "; \tCompensate: None\n";
+  /*  if(p.cutSide == CompensateCutter::None) stream << "; \tCompensate: None\n";
     if(p.cutSide == CompensateCutter::Left) stream << "; \tCompensate: Left\n";
     if(p.cutSide == CompensateCutter::Right) stream << "; \tCompensate: Right\n";
     if(p.cutSide == CompensateCutter::Pocket) stream << "; \tCompensate: Pocket\n";
-    
+    */
     if(p.finishingPass) stream << "; Finishing Pass: " << p.finishingPass << '\n';
     
     stream << "; Tool: " << tool.Name << '\n';
@@ -104,23 +104,24 @@ std::string FunctionType_Draw::HeaderText(Settings& settings)
 std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Settings& settings) 
 {
     auto err = make_pair(false, std::vector<std::string>());;
+    return err;
     // error check
     if(!IsValidInputs(settings)) {
         return err;
     }
-    
+  /*  
     //Draw_Parameters& p = m_Params;
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
-    
+    */
     // initalise
-    FunctionGCodes gcodes;
-    gcodes.Add(HeaderText(settings));
-    gcodes.InitCommands(toolData.speed);
+    //FunctionGCodes gcodes;
+    //gcodes.Add(HeaderText(settings));
+    //gcodes.InitCommands(toolData.speed);
      
     // define offset path parameters
     // 0 = no compensation, 1 = compensate left / pocket, -1 = compensate right
-    int cutSide;
+   /* int cutSide;
     if(m_Params.cutSide == CompensateCutter::None)
         cutSide = 0;
     if(m_Params.cutSide == CompensateCutter::Right)
@@ -133,7 +134,7 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
     // define cut path parameters & offset path
     Geos geos;
     // number of line segments per 90 degrees of arc
-    int arcSegments = settings.p.pathCutter.QuadrantSegments;
+    int arcSegments = settings.p.pathCutter.geosParameters.QuadrantSegments;
     // make a path of line segments (arcs are converted to many line segments)
     std::vector<glm::vec2> path = m_Params.drawing.Path(arcSegments);
     // calculate offset
@@ -146,8 +147,8 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
     pathParams.feedPlunge = toolData.feedPlunge;
     pathParams.feedCutting = toolData.feedCutting;
     pathParams.isLoop = m_Params.drawing.IsLoop();
-    
-    // populate offset path
+    */
+  /*  // populate offset path
     if(m_Params.drawing.IsLoop()) 
     {  
         
@@ -162,7 +163,7 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
         while(1) {
             cout << "running" << endl;
             // add offset to points list
-            if(!geos.offsetPolygon_AddToVector(pathParams.points, path, cutSide * offset, arcSegments)) {
+            if(!geos.OffsetPolygon_AddToVector(pathParams.points, path, cutSide * offset, arcSegments)) {
                 cout << "end of offsets" << endl;
                 // err if failed on first attempt, break otherwise as we have finished boring
                 if(nIterations) { break; }
@@ -178,7 +179,7 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
             offset += 2.0f * fabsf(toolRadius) - CUT_OVERLAP;
         };
         // add gcodes for path at depths
-        if(gcodes.CutPath(settings, pathParams)) {
+        if(gcodes.CutPathDepths(settings, pathParams)) {
             return err;
         }
         
@@ -190,11 +191,11 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
             return err; 
         }
         
-        if(!geos.offsetLine_AddToVector(pathParams.points, path, cutSide * offset, arcSegments)) {
+        if(!geos.OffsetLine_AddToVector(pathParams.points, path, cutSide * offset, arcSegments)) {
             return err;
         }
         // add gcodes for path at depths
-        if(gcodes.CutPath(settings, pathParams)) {
+        if(gcodes.CutPathDepths(settings, pathParams)) {
             return err;
         }
     }
@@ -206,11 +207,11 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
         // clear the points vector
         finishPassParams.points.clear();
         finishPassParams.z0 = finishPassParams.z1;
-        if(!geos.offsetPolygon_AddToVector(finishPassParams.points, path, cutSide * toolRadius, arcSegments)) {
+        if(!geos.OffsetPolygon_AddToVector(finishPassParams.points, path, cutSide * toolRadius, arcSegments)) {
             return err; // not sure why it would fail
         }
         // add gcodes for path at depths
-        if(gcodes.CutPath(settings, finishPassParams)) {
+        if(gcodes.CutPathDepths(settings, finishPassParams)) {
             return err;
         }
     }
@@ -219,8 +220,8 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
     
     // draw path and offset path in viewer
     //Event<Event_DisplayShapeOffset>::Dispatch( { path, pathParams.points, pathParams.isLoop } );
-    
-    return make_pair(true, gcodes.Get());
+    */
+    return err;
 }
 
     

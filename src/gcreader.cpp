@@ -3,17 +3,18 @@
 using namespace std;
 
 
-GCodeReader::GCodeReader(GRBLVals& grblVals)
-    : m_GrblVals(grblVals)
-{
+GCodeReader::GCodeReader(Settings& settings)
+    : m_Settings(settings) {
+    // set initial colour to rapid (G0)
+    SetPathColour(0.0f);
 }
 
 // adds vertices in machine coords
 void GCodeReader::AddVertex(glm::vec3 p, CoordSystem coordSys)
 {
-    m_Indices.push_back(m_Vertices.size());
     glm::vec3 vertex = (coordSys == CoordSystem::Machine) ? p : p + m_WCO;
     m_Vertices.emplace_back(vertex);
+    m_Colours.emplace_back(m_Colour);
     m_MPos = vertex;
     m_WPos = m_MPos - m_WCO;
     
@@ -25,8 +26,8 @@ void GCodeReader::Reset()
 {   // reset
     UpdateModalValues();
     // clear vertices array
-    m_Indices.clear();
     m_Vertices.clear();
+    m_Colours.clear();
 }
 
 
@@ -58,11 +59,11 @@ int GCodeReader::OpenFile(const string& filePath)
 
 void GCodeReader::UpdateModalValues()
 {
-    GRBLStatus_vals& s = m_GrblVals.status;
+    GRBLStatus_vals& s = m_Settings.grblVals.status;
     
     m_MPos = s.MPos;
     
-    GRBLModal_vals& m = m_GrblVals.modal;
+    GRBLModal_vals& m = m_Settings.grblVals.modal;
     // motion mode
     if(m.MotionMode == 0.0f || m.MotionMode == 1.0f || m.MotionMode == 2.0f || m.MotionMode == 3.0f)
         m_G_Val = m.MotionMode;
@@ -87,7 +88,7 @@ void GCodeReader::UpdateModalValues()
     else
         Log::Error("Unknown coordinate system");
         
-    GRBLCoords_vals& coords = m_GrblVals.coords;
+    GRBLCoords_vals& coords = m_Settings.grblVals.coords;
     
     m_G92Offset = coords.offsetCoords;
     m_ToolLengthOffset = { 0.0f, 0.0f, coords.toolLengthOffset };
@@ -273,6 +274,8 @@ int GCodeReader::ExecuteGCode(float gValue)
 {
     Log::Debug(DEBUG_GCREADER, "XYZ Input = (%g, %g, %g)", m_XYZ.x, m_XYZ.y, m_XYZ.z);
     
+    SetPathColour(gValue);
+    
     if(gValue == 0.0f || gValue == 1.0f)
         MotionLinear();
     else if(gValue == 2.0f)
@@ -383,6 +386,7 @@ glm::vec3 GCodeReader::GetAbsoluteWPos(glm::vec3 p)
     return p - m_WCO;
 }
 
+
 void GCodeReader::SetToolLength(bool update)
 {
     if(!update) {
@@ -426,7 +430,7 @@ int GCodeReader::SetCoordSystem(uint coordSys)
         return -1;
     }
     
-    GRBLCoords_vals& coords = m_GrblVals.coords;
+    GRBLCoords_vals& coords = m_Settings.grblVals.coords;
     m_CoordSystem = coords.workCoords[coordSys];
     
     UpdateWCO();
@@ -439,7 +443,7 @@ void GCodeReader::ReturnToHome(int homePos) {
         Log::Critical("Not a valid home position: %d", homePos);
     } 
     
-    GRBLCoords_vals& coords = m_GrblVals.coords;
+    GRBLCoords_vals& coords = m_Settings.grblVals.coords;
     size_t index = (homePos == 28) ? 0 : 1;
     
     if(m_XYZ_Set == XYZ_SET_FLAG_NONE) {
@@ -567,5 +571,18 @@ glm::vec3 GCodeReader::PointRelativeToPlane(glm::vec3 p, Plane plane, int conver
         } else {
             return { p.y, p.z, p.x };
         }
+    }
+}
+void GCodeReader::SetPathColour(float gValue) 
+{   
+    // rapid
+    if(gValue == 0.0f) {
+        m_Colour = m_Settings.p.viewer.ToolpathColour_Rapid;
+    } // motion 
+    else if (gValue == 1.0f || gValue == 2.0f || gValue == 3.0f) {
+        m_Colour = m_Settings.p.viewer.ToolpathColour_Feed;
+    } // home 
+    else if (gValue == 28.0f || gValue == 30.0f) {
+        m_Colour = m_Settings.p.viewer.ToolpathColour_Home;
     }
 }

@@ -12,13 +12,15 @@ void Settings::AddSettings()
     // Static Settings   
     Setting s = Setting("System", 0);
     s.AddParameter("SerialDevice", &p.system.serialDevice);
-    s.AddParameter("SerialBaudrate", &p.system.serialBaudrate);
+    s.AddParameter("SerialBaudrate", &p.system.serialBaudrate); 
     s.AddParameter("CurrentDirectory", &p.system.curDir);
     s.AddParameter("SaveFileDirectory", &p.system.saveFileDirectory);
-    m_SettingsList.push_back(s);
-               
+    m_SettingsList.push_back(s); 
+                
     s = Setting("Viewer", 0); 
-    s.AddParameter("ToolpathColour", &p.viewer.ToolpathColour);
+    s.AddParameter("ToolpathFeedColour", &p.viewer.ToolpathColour_Feed);
+    s.AddParameter("ToolpathRapidColour", &p.viewer.ToolpathColour_Rapid);
+    s.AddParameter("ToolpathHomeColour", &p.viewer.ToolpathColour_Home);
     s.AddParameter("BackgroundColour", &p.viewer.BackgroundColour);
     m_SettingsList.push_back(s);
     
@@ -50,9 +52,8 @@ void Settings::AddSettings()
     s.AddParameter("TabSpacing", &p.pathCutter.TabSpacing);  
     s.AddParameter("TabHeight", &p.pathCutter.TabHeight);
     s.AddParameter("TabWidth", &p.pathCutter.TabWidth);
-    s.AddParameter("ShapeColour", &p.pathCutter.ShapeColour);
-    s.AddParameter("ShapeOffsetColour", &p.pathCutter.ShapeOffsetColour); 
-    s.AddParameter("QuadrantSegments", &p.pathCutter.QuadrantSegments);
+    s.AddParameter("CutOverlap", &p.pathCutter.CutOverlap);
+    s.AddParameter("QuadrantSegments", &p.pathCutter.geosParameters.QuadrantSegments);
     m_SettingsList.push_back(s);
 } 
 
@@ -135,7 +136,7 @@ void Settings::AddDynamicSettings()
         });
     m_VectorList.push_back(d); 
 }    
-    
+       
 // ****************************************** END OF USER SETTINGS *********************************************
 // *************************************************************************************************************
 
@@ -159,7 +160,7 @@ glm::vec3 ParametersList::Tools::GetToolScale()
     } // else get default tool dimensions
     ParametersList::Tools::Tool defaultTool("default tool");
     return glm::vec3(defaultTool.Diameter, defaultTool.Diameter, defaultTool.Length);
-}
+}   
 
 std::string Setting::GetParamName(size_t i) { 
     return std::string(data[i].first); 

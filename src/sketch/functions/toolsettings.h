@@ -11,7 +11,7 @@ public:
     void Draw_ToolData(Settings& settings);
     int Draw_SelectMaterial(Settings& settings);
     void Draw_MaterialData(Settings& settings);
-    void Draw_TabParameters(Settings& settings);
+    void Draw_PathCutterParameters(Settings& settings);
 
 private:
     float listWidth     = 300.0f;

@@ -117,19 +117,19 @@ std::vector<std::pair<size_t, glm::vec2>> FunctionGCodes::GetTabPositions(Settin
     float& tabSpacing = settings.p.pathCutter.TabSpacing;
     float& tabWidth   = settings.p.pathCutter.TabWidth;
     
-    const std::vector<glm::vec2>& points = params.points;
+    const std::vector<glm::vec2>* points = params.points;
     
     // Tab variables
-    glm::vec2 p0 = points[0];
+    glm::vec2 p0 = (*points)[0];
     float distanceAtLastPoint = 0.0f;
     float nextTabPos = tabSpacing;
     int tabCount = 0;
     // vector to return
     std::vector<std::pair<size_t, glm::vec2>> tabPositions;
     
-    for (size_t i = 1; i < points.size(); i++) 
+    for (size_t i = 1; i < points->size(); i++) 
     {
-        glm::vec2 p1 = points[i];
+        glm::vec2 p1 = (*points)[i];
         // calculate distance
         glm::vec dif = p1-p0;
         float distance = hypotf(dif.x, dif.y);
@@ -209,7 +209,7 @@ void FunctionGCodes::CheckForTab(Settings& settings, const CutPathParams& params
     } // if moving backward along path
     else if(!isMovingForward && (tabIndex >= 0)) {   
         // add a tab if index matches with position
-        while(tabPositions[tabIndex].first == params.points.size()-i) {
+        while(tabPositions[tabIndex].first == params.points->size()-i) {
             addTab();
             if(--tabIndex < 0) {
                 break;
@@ -218,15 +218,11 @@ void FunctionGCodes::CheckForTab(Settings& settings, const CutPathParams& params
     }
 }
     
-int FunctionGCodes::CutPath(Settings& settings, const CutPathParams& params) {
+int FunctionGCodes::CutPathDepths(Settings& settings, const CutPathParams& params) {
     
     // error check
-    if(params.points.size() < 2) {
+    if(params.points->size() < 2) {
         Log::Error("There should be 2 or more points");
-        return -1;
-    }
-    if(params.isLoop && (params.points[0] != params.points[params.points.size()-1])) {
-        Log::Error("First and last points should be the same in a loop");
         return -1;
     }
     if(params.feedPlunge == 0.0f) {
@@ -244,20 +240,24 @@ int FunctionGCodes::CutPath(Settings& settings, const CutPathParams& params) {
     int zDirection = ((params.z1 - params.z0) > 0) ? FORWARD : BACKWARD; // 1 or -1
     bool isMovingForward = true;
     
-    // move to initial x & y position
-    const std::vector<glm::vec2>& points = params.points;
-    Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", points[0].x, points[0].y));
-    
+    const std::vector<glm::vec2>* points = params.points;
+        
     do {
+        // if first run or start and end points are different in loop (for pocketing)
+        if((zCurrent == params.z0) || ((params.isLoop && (points->front() != points->back())))) {
+            // move to safe z and then to the initial x & y position
+            MoveToZPlane();
+            Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", (*points)[0].x, (*points)[0].y));
+        }
         // plunge to next z
         Add(va_str("G1 Z%.3f F%.0f\t(Move To Z)", zCurrent, params.feedPlunge));
         
         int tabIndex = (isMovingForward) ? 0 : tabPositions.size()-1;
         // Feed along path
-        for (size_t i = 1; i < points.size(); i++) {
+        for (size_t i = 1; i < (*points).size(); i++) {
             // get start and end points of current line
-            const glm::vec2& pLast = (isMovingForward) ? points[i-1] : points[points.size()-i];
-            const glm::vec2& pNext = (isMovingForward) ? points[i]   : points[points.size()-i-1];
+            const glm::vec2& pLast = (isMovingForward) ? (*points)[i-1] : (*points)[points->size()-i];
+            const glm::vec2& pNext = (isMovingForward) ? (*points)[i]   : (*points)[points->size()-i-1];
             // check for and draw tabs
             CheckForTab(settings, params, tabPositions, pNext-pLast, zCurrent, isMovingForward, tabIndex, i);
             // move to next point in linestring
@@ -267,13 +267,13 @@ int FunctionGCodes::CutPath(Settings& settings, const CutPathParams& params) {
         if(!params.isLoop) {
             isMovingForward = !isMovingForward;
         }
-        cout << "zCurrent : " << zCurrent << endl;
         // if we have reached the final z depth, break out of loop
         if(zCurrent == params.z1) {
             break;
         }
         // update z
         zCurrent += zDirection * fabsf(params.cutDepth);
+        
         // if z zepth is further than final depth, adjust to final depth
         if((zDirection == FORWARD && zCurrent > params.z1) || (zDirection == BACKWARD && zCurrent < params.z1)) {
             zCurrent = params.z1;

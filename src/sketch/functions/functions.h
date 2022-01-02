@@ -17,9 +17,10 @@
 class FunctionGCodes
 {
 public:
+
     // TODO this should inlclude a tool & tab settings, this would prevent needing to take Settings&
     typedef struct {
-        std::vector<glm::vec2> points;
+        std::vector<glm::vec2>* points;
         float z0;
         float z1;
         float cutDepth;
@@ -42,9 +43,9 @@ public:
     // executes length in one axis and then moves width of cutter in other axis
     void FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, bool isYFirst = false);
     // adds gcodes to cut a generic path or loop at depths between z0 and z1
-    // assumes we are at a safe z position as first move is to move to params.points[0]
+    // moves to safe z position, then moves to p0
     // returns value on error
-    int CutPath(Settings& settings, const CutPathParams& params);
+    int CutPathDepths(Settings& settings, const CutPathParams& params);
 
 private:
     std::vector<std::string> m_gcodes;

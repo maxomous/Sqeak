@@ -76,6 +76,12 @@ void imgui_Settings(Settings& settings)
     s.img_Settings.Init(File::ThisDir("img/img_settings.png").c_str());
     s.img_Edit.Init(File::ThisDir("img/img_edit.png").c_str());
     s.img_Add.Init(File::ThisDir("img/img_add.png").c_str());
+    // sketch images
+    s.img_Sketch_Draw.Init(File::ThisDir("img/img_sketch_draw.png").c_str());
+    s.img_Sketch_Measure.Init(File::ThisDir("img/img_sketch_measure.png").c_str());
+    s.img_Sketch_Select.Init(File::ThisDir("img/img_sketch_select.png").c_str());
+    s.img_Sketch_Line.Init(File::ThisDir("img/img_sketch_line.png").c_str());
+    s.img_Sketch_Arc.Init(File::ThisDir("img/img_sketch_arc.png").c_str());
     
     ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
 }
@@ -92,9 +98,9 @@ int gui(GRBL& grbl, Settings& settings)
     imgui_Settings(settings);
     
     Timer timer;
-    GCodeReader gcReader(settings.grblVals);
+    GCodeReader gcReader(settings);
     Viewer viewer;
-    Sketch sketch;
+    sketch::Sketch sketcher;
         
     auto updateGRBL = [&grbl]() {
          // update status (this is probably already done from status thread)
@@ -104,65 +110,68 @@ int gui(GRBL& grbl, Settings& settings)
         delay(100);
     };
     
-    Event<Event_Update3DModelFromFile>::RegisterHandler([&updateGRBL, &gcReader, &viewer, &settings](Event_Update3DModelFromFile data) {
+    Event<Event_Update3DModelFromFile>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromFile data) {
         updateGRBL();
         gcReader.OpenFile(data.filename);
-        viewer.SetPath(settings, gcReader.GetVertices(), gcReader.GetIndices());
+        viewer.SetPath(gcReader.GetVertices(), gcReader.GetColours());
         // clear the offset shape buffer
         //Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
     });
     
-    Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer, &settings](Event_Update3DModelFromVector data) {
+    Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromVector data) {
         if(data.gcodes.size() > 0) {
             updateGRBL();
             gcReader.OpenVector(data.gcodes);
-            viewer.SetPath(settings, gcReader.GetVertices(), gcReader.GetIndices());
+            viewer.SetPath(gcReader.GetVertices(), gcReader.GetColours());
         } else {
             viewer.Clear();
         }
     });
     
-    Event<Event_MouseButton>::RegisterHandler([&settings, &viewer, &sketch](Event_MouseButton data) {
+    Event<Event_MouseButton>::RegisterHandler([&settings, &viewer, &sketcher](Event_MouseButton data) {
         if((data.Button != GLFW_MOUSE_BUTTON_LEFT) && (data.Button != GLFW_MOUSE_BUTTON_RIGHT) && (data.Button != GLFW_MOUSE_BUTTON_MIDDLE))
             return; 
-            
-        if(data.Action == GLFW_PRESS && data.Button == GLFW_MOUSE_BUTTON_LEFT)
-        {
-            // ignore if a ImGui window is hovered over
-            if(ImGui::GetIO().WantCaptureMouse)
-                return;
-            glm::vec2 screenCoords = Window::InvertYCoord(Mouse::GetPositionClicked()) + glm::vec2(0.0f, 1.0f);
-            glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - settings.grblVals.status.WCO;
-            
-            InputEvent inputEvent; 
-            inputEvent.screenCoords = Vec2(returnCoords);
-            inputEvent.mouse = data;
-            inputEvent.mouseHasChanged = true;
-            sketch.HandleEvents(settings, inputEvent);
-        }
+        // ignore if a ImGui window is hovered over
+        if(ImGui::GetIO().WantCaptureMouse)
+            return;
+        glm::vec2 screenCoords = Window::InvertYCoord(Mouse::GetPositionClicked()) + glm::vec2(0.0f, 1.0f);
+        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - settings.grblVals.status.WCO;
+        InputEvent inputEvent; 
+        // set click position
+        inputEvent.screenCoords_Click = Vec2(returnCoords);
+        Event_MouseButton mouseClick = data;
+        inputEvent.mouseClick = &mouseClick;
+        sketcher.HandleEvents(settings, inputEvent);
     });
 
-    Event<Event_MouseMove>::RegisterHandler([&settings, &viewer](Event_MouseMove data) {
+    Event<Event_MouseMove>::RegisterHandler([&settings, &viewer, &sketcher](Event_MouseMove data) {
          // ignore if a ImGui window is hovered over
         if(ImGui::GetIO().WantCaptureMouse) {
             viewer.SetCursor(false, {});
             return;
         }
         glm::vec2 screenCoords = Window::InvertYCoord({ data.PosX, data.PosY }) + glm::vec2(0.0f, 1.0f);
-        std::cout << "Setting cursor before:" << viewer.GetWorldPosition(screenCoords) << std::endl;
-        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords);// - settings.grblVals.ActiveCoordSys();
+        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - settings.grblVals.status.WCO;
+        InputEvent inputEvent; 
+        // set current move position
+        inputEvent.screenCoords_Move = Vec2(returnCoords);
+        Event_MouseMove mouseMove = data;
+        inputEvent.mouseMove = &mouseMove;
+        sketcher.HandleEvents(settings, inputEvent);
+        // set cursor in viewer
+        //glm::vec3 worldCoords = viewer.GetWorldPosition(screenCoords) - ;
+        glm::vec2 snappedCursor = settings.p.viewer.cursor.SnapCursor(Vec2(returnCoords));
+        viewer.SetCursor(true, snappedCursor + Vec2(settings.grblVals.ActiveCoordSys()));
         
-        glm::vec2 pointRounded = settings.p.viewer.cursor.SnapCursor(Vec2(returnCoords));
-        std::cout << "Setting cursor after:" << pointRounded << std::endl;
-        
-        viewer.SetCursor(true, pointRounded);
     });
     
     auto ScaleMouseData = [](Settings& settings, Viewer& viewer) {
         // scale the cursor size
-        settings.p.viewer.cursor.Size_Scaled = viewer.ScaleToPx(settings.p.viewer.cursor.Size);
+        settings.p.viewer.cursor.Size_Scaled                = viewer.ScaleToPx(settings.p.viewer.cursor.Size);
+        
+        settings.p.viewer.cursor.SelectionTolerance_Scaled  = viewer.ScaleToPx(settings.p.viewer.cursor.SelectionTolerance);
         // scale the cursor snap distance
-        float snapDistance = viewer.ScaleToPx(settings.p.viewer.cursor.SnapDistance);
+        float snapDistance                                  = viewer.ScaleToPx(settings.p.viewer.cursor.SnapDistance);
         // make 0.01, 0.1, 1, 10 or 100
         if(snapDistance <= 0.01)      { snapDistance = 0.01f; }
         if(snapDistance <= 0.05)      { snapDistance = 0.05f; }
@@ -174,10 +183,7 @@ int gui(GRBL& grbl, Settings& settings)
         else if(snapDistance <= 50.0) { snapDistance = 50.0f; }
         else                         { snapDistance = 100.0f; }
         
-        settings.p.viewer.cursor.SnapDistance_Scaled = snapDistance;
-            
-        //settings.p.viewer.cursor.SnapDistance_Scaled = viewer.ScaleToPx(settings.p.viewer.cursor.SnapDistance);
-        
+        settings.p.viewer.cursor.SnapDistance_Scaled = snapDistance;        
     };
     
     // scale cursor based on mouse scroll
@@ -211,9 +217,15 @@ int gui(GRBL& grbl, Settings& settings)
             // draw ImGui windows
             drawDockSpace(settings);
             ImGui::ShowDemoWindow(NULL);
-            viewer.ImGuiRender(settings);
-            sketch.DrawImGui(grbl, settings);
-            drawFrames(grbl, settings, timer.dt());
+            
+            ImGui::PushItemWidth(-settings.guiSettings.widgetTextWidth);
+                viewer.ImGuiRender(settings);
+                sketcher.DrawImGui(grbl, settings);
+                drawFrames(grbl, settings, timer.dt());
+            ImGui::PopItemWidth();
+            // make updates for viewer
+            sketcher.UpdateViewer(settings);
+            
             // end dockspace
             ImGui::End();
 		}

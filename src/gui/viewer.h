@@ -99,7 +99,7 @@ public:
     float ScaleToPx(float size) { return size * (m_Camera.GetZoom() / Window::GetHeight()); } 
     
     void SetCursor(bool isValid, glm::vec2 worldCoords);
-    void SetPath(Settings& settings, std::vector<glm::vec3>& vertices, std::vector<uint>& indices);
+    void SetPath(std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& colours);
     void Clear();    
     
     void Update(Settings& settings, float dt);

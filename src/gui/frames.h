@@ -224,9 +224,9 @@ struct ImGuiModules
         return isClicked;
     }
  
-    // returns value of cb_DrawTabImGui |= current item has changed
+    // returns true if current item has changed
     template<typename T>
-    static bool Tabs(VectorSelectable<T>& items, std::function<std::string(T& item)>& cb_GetItemString, std::function<T(void)>& cb_AddNewItem, std::function<bool()> cb_DrawTabImGui)
+    static bool Tabs(VectorSelectable<T>& items, std::function<std::string(T& item)>& cb_GetItemString, std::function<T(void)>& cb_AddNewItem, std::function<void()> cb_DrawTabImGui)
     {
         bool returnVal = false;
         if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))  // or ImGuiTabBarFlags_FittingPolicyScroll
@@ -248,7 +248,7 @@ struct ImGuiModules
                         returnVal = true;
                     }
                     // draw the imgui callback for the specific tab
-                    returnVal |= cb_DrawTabImGui();
+                    cb_DrawTabImGui();
                     ImGui::EndTabItem();
                 }
                 // x has been pressed on tab, delete it

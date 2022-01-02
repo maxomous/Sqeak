@@ -310,7 +310,7 @@ struct Console {
 struct Toolbar {
         
     //enum ToolbarCommand { None, OpenFile, Function };
-    enum Export         { False, Pending, True };
+    enum class Export         { False, Pending, True };
           
     std::unique_ptr<FileBrowser> fileBrowser;
     Timer timer;
@@ -1834,12 +1834,17 @@ struct Debug {
             for (int i = 0; i < IM_ARRAYSIZE(settings.guiSettings.button); i++) {
                 ImGui::SliderFloat2(va_str("Button Image Size %d", i).c_str(), &settings.guiSettings.button[i].ImageSize.x, 0.0f, 100.0f);
             }
+    
+            ImGui::SliderFloat("Function Button Text Y Offset", &settings.guiSettings.functionButtonTextOffset, 0.0f, 100.0f);
+            ImGui::SliderFloat("Function Button Image Y Offset", &settings.guiSettings.functionButtonImageOffset, 0.0f, 100.0f);
             
             ImGui::SliderFloat("Dock Padding", &settings.guiSettings.dockPadding, 0.0f, 100.0f);
             ImGui::SliderFloat("Toolbar Height", &settings.guiSettings.toolbarHeight, 0.0f, 500.0f);
             ImGui::SliderFloat("Toolbar Spacer", &settings.guiSettings.toolbarSpacer, 0.0f, 100.0f);
             ImGui::SliderFloat("Toolbar ComboBox Width", &settings.guiSettings.toolbarComboBoxWidth, 0.0f, 500.0f);
             ImGui::SliderFloat("Input Box Width", &settings.guiSettings.inputBoxWidth, 0.0f, 500.0f);
+            
+            ImGui::SliderFloat("Widget Text Width", &settings.guiSettings.widgetTextWidth, 0.0f, 500.0f);
  
             if(ImGui::ColorEdit3("Text Colour", &settings.guiSettings.colour[Colour::Text].x)) {
                 ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
@@ -1879,7 +1884,7 @@ struct Debug {
                 needUpdate |= ImGui::Checkbox("Sketch References", &(debugSketchRefs));
                 ImGui::Unindent();
             
-                if (needUpdate) {
+                if (needUpdate) { 
                     int flags = DEBUG_NONE;
 
                     if (debugGCListBuild)

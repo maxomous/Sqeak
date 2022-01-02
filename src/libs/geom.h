@@ -24,6 +24,8 @@ template <typename T> int sign(T val) {
 
 class point2D {
 public:
+    // ensures the inhertited destructor is called
+    virtual ~point2D() {}
 	// Variables
 	float x;
 	float y;

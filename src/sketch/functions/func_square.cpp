@@ -59,10 +59,10 @@ std::string FunctionType_Square::HeaderText(Settings& settings)
     stream << "; Function: " << m_Name << '\n';
     stream << "; \tBetween: " << p.p0 << " and " << p.p1 << '\n';
     
-    if(p.cutSide == CompensateCutter::None) stream << "; \tCompensate: None\n";
+ /*   if(p.cutSide == CompensateCutter::None) stream << "; \tCompensate: None\n";
     if(p.cutSide == CompensateCutter::Left) stream << "; \tCompensate: Left\n";
     if(p.cutSide == CompensateCutter::Right) stream << "; \tCompensate: Right\n";
-    
+    */
     stream << "; Tool: " << tool.Name << '\n';
     stream << "; \tDiameter: " << tool.Diameter << '\n';
     stream << "; \tCut Depth: " << toolData.cutDepth << '\n';
@@ -73,12 +73,16 @@ std::string FunctionType_Square::HeaderText(Settings& settings)
     
 std::pair<bool, std::vector<std::string>> FunctionType_Square::ExportGCode(Settings& settings) 
 {
+    
     auto err = make_pair(false, std::vector<std::string>());;
     // error check
     if(!IsValidInputs(settings)) {
         return err;
     }
     
+    return err;
+    /*
+
     //Square_Parameters& p = m_Params;
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
@@ -95,15 +99,15 @@ std::pair<bool, std::vector<std::string>> FunctionType_Square::ExportGCode(Setti
     path.push_back({ m_Params.p1.x, m_Params.p1.y });
     path.push_back({ m_Params.p0.x, m_Params.p1.y });
     path.push_back({ m_Params.p0.x, m_Params.p0.y });
-    
+    */
     // define offset path parameters
-    int compensateCutter = (m_Params.cutSide == CompensateCutter::None || m_Params.cutSide == CompensateCutter::Left) ? m_Params.cutSide : -1; /* if Right */ // 0 = no compensation, 1 = compensate left, -1 = compensate right
-    float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
+   // int compensateCutter = (m_Params.cutSide == CompensateCutter::None || m_Params.cutSide == CompensateCutter::Left) ? m_Params.cutSide : -1; /* if Right */ // 0 = no compensation, 1 = compensate left, -1 = compensate right
+    /*float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
     // define cut path parameters & offset path
     Geos geos;
     FunctionGCodes::CutPathParams pathParams;
-    
-    auto offset = geos.offsetPolygon(path, compensateCutter * toolRadius, settings.p.pathCutter.QuadrantSegments);
+    */
+    /*auto offset = geos.OffsetPolygon(path, compensateCutter * toolRadius, settings.p.pathCutter.geosParameters.QuadrantSegments);
     pathParams.points = offset.second;
     pathParams.z0 =             m_Params.p0.z;
     pathParams.z1 =             m_Params.p1.z;
@@ -112,7 +116,7 @@ std::pair<bool, std::vector<std::string>> FunctionType_Square::ExportGCode(Setti
     pathParams.feedCutting =    toolData.feedCutting;
     pathParams.isLoop =         true;
     // add gcodes for path at depths
-    if(gcodes.CutPath(settings, pathParams)) {
+    if(gcodes.CutPathDepths(settings, pathParams)) {
         return err;
     }
     // move to zPlane, end program
@@ -120,8 +124,8 @@ std::pair<bool, std::vector<std::string>> FunctionType_Square::ExportGCode(Setti
     
     // draw path and offset path in viewer
     //Event<Event_DisplayShapeOffset>::Dispatch( { path, pathParams.points, pathParams.isLoop } );
-    
-    return make_pair(true, gcodes.Get());
+    */
+    //return make_pair(true, gcodes.Get());
 }
 
     

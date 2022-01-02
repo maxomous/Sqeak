@@ -36,6 +36,15 @@
 #include "dev/ads1115.h"
 #include "dev/joystick.h"
 
+// allows bitwise operations on enums
+template<class T> inline T operator~ (T a) { return (T)~(int)a; }
+template<class T> inline T operator| (T a, T b) { return (T)((int)a | (int)b); }
+template<class T> inline T operator& (T a, T b) { return (T)((int)a & (int)b); }
+template<class T> inline T operator^ (T a, T b) { return (T)((int)a ^ (int)b); }
+template<class T> inline T& operator|= (T& a, T b) { return (T&)((int&)a |= (int)b); }
+template<class T> inline T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); }
+template<class T> inline T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
+
 
 // *********************** //
 //       Events            //
@@ -43,15 +52,11 @@
 
 
 struct InputEvent {
-    void Reset() {
-        keyboardHasChanged = false;
-        mouseHasChanged    = false;
-    }
-    bool keyboardHasChanged;
-    bool mouseHasChanged;
-    Event_KeyInput keyboard;
-    Event_MouseButton mouse;
-    glm::vec2 screenCoords;
+    Event_KeyInput* keyboard = nullptr;
+    Event_MouseButton* mouseClick = nullptr;
+    Event_MouseMove* mouseMove = nullptr;
+    glm::vec2 screenCoords_Click;
+    glm::vec2 screenCoords_Move;
 };
 
 #include "gclist.h"
@@ -170,7 +175,6 @@ struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords
 #define DEBUG_GCREADER                              0x1 << 5
 #define DEBUG_SKETCH_REFERENCES                     0x1 << 6
 
-
 // converts variable arguments to a string
 std::string va_str(const char *format, ...);
 
@@ -191,9 +195,7 @@ private:
 void lowerCase(std::string &str);
 // modifies string to upper case
 void upperCase(std::string &str);
-// This takes a std::string of 2/3 values seperated by commas (.000,0.000,2.222) and will return a vec2 / vec3
-glm::vec2 stoVec2(const std::string& msg);
-glm::vec3 stoVec3(const std::string& msg);
+
 
 class Log {
 public:
@@ -336,7 +338,7 @@ private:
         return log;
     }
 
-    Log() {}
-    Log(const Log &) = delete;
-    Log &operator=(const Log &) = delete;
+    Log() {}                                // delete the constructor
+    Log(const Log &) = delete;              // delete the copy constructor
+    Log &operator=(const Log &) = delete;   // delete the copy assignment operatory
 };
