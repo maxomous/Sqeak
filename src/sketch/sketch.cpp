@@ -1,7 +1,7 @@
 #include "sketch.h"
 using namespace std; 
 using namespace sketch;
-        
+         
 static bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font)
 { 
     ImGui::BeginGroup();
@@ -67,7 +67,7 @@ static bool ImageButtonWithText_Function(Settings& settings, std::string name, I
             - Facing Cut
             - QRCode
             - Raw GCode
-                - LineString
+                - LineString 
                     - line elements
                     - arc element
                         - points
@@ -88,16 +88,18 @@ std::string NameAndID(const std::string& name, Ref_PointToElement* r) {
 }
 
 
-void DrawRawPointPosition(Settings& settings, RawPoint* p) {
+bool DrawRawPointPosition(Settings& settings, RawPoint* p) {
     if(ImGui::InputFloat2(va_str("##(ID:%d)", p->ID()).c_str(), &(p->Vec2().x))) {
         settings.SetUpdateFlag(ViewerUpdate::Full);
+        return true;
     }
+    return false;
 }
 
-void DrawRawPoint(Settings& settings, const std::string& name, RawPoint* p) {
+bool DrawRawPoint(Settings& settings, const std::string& name, RawPoint* p) {
     ImGui::Text(NameAndID(name, p).c_str());
     ImGui::SameLine();
-    DrawRawPointPosition(settings, p);
+    return DrawRawPointPosition(settings, p);
 }
 
  
@@ -124,31 +126,37 @@ void Element_Point::DrawImGui(Settings& settings)
         if (ImGui::TreeNode(NameAndID("Point Element", this).c_str())) {
             DrawRawPoint(settings, "Raw Point", m_Ref_P0->rawPoint);
             ImGui::TreePop();
-        }
-    ImGui::PopID();
-}
-  
-
+        }   
+    ImGui::PopID();   
+}   
+    
+       
 void Element_Line::DrawImGui(Settings& settings) {
     ImGui::PushID(this);
         if (ImGui::TreeNode(NameAndID("Line Element", this).c_str())) {
             DrawRawPoint(settings, "Raw Point 0", m_Ref_P0->rawPoint);
             DrawRawPoint(settings, "Raw Point 1", m_Ref_P1->rawPoint);
             ImGui::TreePop();
-        }
-    ImGui::PopID();
+        } 
+    ImGui::PopID(); 
 }
 void Element_Arc::DrawImGui(Settings& settings) {
     ImGui::PushID(this); 
         if (ImGui::TreeNode(NameAndID("Arc Element", this).c_str())) {
             DrawRawPoint(settings, "Raw Point 0", m_Ref_P0->rawPoint); 
             DrawRawPoint(settings, "Raw Point 1", m_Ref_P1->rawPoint); 
-            DrawRawPoint(settings, "Raw Centre ", m_Ref_Centre->rawPoint);
-            static int m_DirectionImGui = 0;
-            if(ImGui::Combo("Direction", &m_DirectionImGui, "Clockwise\0Anticlockwise\0\0")) {
-                m_Direction = (m_DirectionImGui == 0) ? 1 : -1;
+            if(DrawRawPoint(settings, "Raw Centre", m_Ref_Centre->rawPoint)) {
+                SetCentre(m_Ref_Centre->rawPoint->Vec2());
+            }
+            if(ImGui::InputFloat("Radius", &m_Radius)) {
+                SetRadius(m_Radius);
                 settings.SetUpdateFlag(ViewerUpdate::Full);
             }
+            if(ImGui::Combo("Direction", &m_DirectionImGui, "Clockwise\0Anticlockwise\0\0")) {
+                m_Direction = (m_DirectionImGui == 0) ? CLOCKWISE : ANTICLOCKWISE;
+                settings.SetUpdateFlag(ViewerUpdate::Full);
+            }
+            ImGui::Text("tangent radius: %g", m_TangentRadius);
             ImGui::TreePop(); 
         } 
     ImGui::PopID();   
@@ -401,6 +409,55 @@ void Sketch::DrawImGui(GRBL& grbl, Settings& settings)
 }   
 
 
+
+void RawPoint::GetReferences(std::function<void(Ref_PointToElement*)> callback) 
+{ 
+    for(Ref_PointToElement* ref : m_ElementRefs) { 
+        callback(ref);
+    }
+} 
+
+void RawPoint::SetThisRawPointFromRefs(const glm::vec2& p) 
+{  
+    // update element(s) attached to point
+    for(Ref_PointToElement* ref : m_ElementRefs) { // GetReferences([&](Ref_PointToElement* ref) { 
+        int update = 0; 
+        Element* element = ref->element;
+                
+        // if this point is the same as the active selection point, set position to p
+        Ref_PointToElement* p0 = element->P0();
+        Ref_PointToElement* p1 = element->P1();
+        Ref_PointToElement* pC = element->Centre();
+        if(p0) {  
+            if(p0->rawPoint->ID() == ID()) {
+                // set position to p
+                element->SetP0(p);
+                update++;
+            }
+        }
+        if(p1) { 
+            if(p1->rawPoint->ID() == ID()) {
+                // set position to p
+                element->SetP1(p);
+                update++;
+            }
+        }
+        if(pC) { 
+            if(pC->rawPoint->ID() == ID()) {
+                // set position to p
+                element->SetCentre(p);
+                update++;
+            }
+        }
+        // sanity check
+        assert((update == 1) && "Update count is not 1");
+        // update elements
+        element->Update();
+    }
+}
+
+
+
 // Adds a drawing element reference
 void RawPoint::AddReference(Ref_PointToElement* ref) { 
     // prevent duplication of references
@@ -614,7 +671,7 @@ void ElementFactory::Reference_DeleteFromFactory(Ref_PointToElement* ref) {
         }
     }
     assert(0 && "Couldn't find reference to delete");
-}
+} 
  
 // Creates a basic Line Loop 
 ElementFactory::Sketch_LineLoop ElementFactory::LineLoop_Create() 
@@ -642,20 +699,11 @@ void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, Sketch_Element p
 void ElementFactory::LineLoop_AddLine(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
-    LineLoop& lineLoop = LineLoop_GetByID(lineLoopID);
-    if(lineLoop.IsEmpty()) {
-        LineLoop_SetStartPoint(lineLoop, p1); 
-        return; 
-    } 
+    LineLoop& lineLoop = LineLoop_GetByID(lineLoopID); 
+    if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
+    
     Sketch_Element lineElement = Element_CreateLine(LineLoop_LastPoint(lineLoopID), p1);
     lineLoop.m_Elements.push_back(move(lineElement));
-}
-
-void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction) 
-{
-    glm::vec2& p0 = LineLoop_LastPoint(sketchLineLoop->id)->Vec2();
-    glm::vec2 centre = (p0 + p1) / 2.0f;
-    LineLoop_AddArc(sketchLineLoop, p1, direction, centre);
 }
 
 // Adds an arc to the Line Loop from centre point
@@ -663,23 +711,35 @@ void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLine
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID);
-    assert(!lineLoop.IsEmpty() && "Line loop is empty");
+    if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
+    
     Sketch_Element arcElement = Element_CreateArc(LineLoop_LastPoint(lineLoopID), p1, direction, centre);
     lineLoop.m_Elements.push_back(move(arcElement));
     
 }
-// Adds an arc to the Line Loop from radius
-void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, float radius) 
+void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID); 
-    assert(!lineLoop.IsEmpty() && "Line loop is empty"); 
+    if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
+    
+    glm::vec2& p0 = LineLoop_LastPoint(sketchLineLoop->id)->Vec2();
+    glm::vec2 centre = (p0 + p1) / 2.0f;
+    LineLoop_AddArc(sketchLineLoop, p1, direction, centre);
+}
+
+// Adds an arc to the Line Loop from radius
+void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, float radius) 
+{    
+    LineLoopID lineLoopID = sketchLineLoop->id;
+    LineLoop& lineLoop = LineLoop_GetByID(lineLoopID);
+    if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
     // calculate centre from radius, then pass on
     RawPoint* p0 = LineLoop_LastPoint(lineLoopID); 
     point2D centre = Geom::ArcCentreFromRadius(point2D(p0->X(), p0->Y()), point2D(p1.x, p1.y), radius, direction);
     LineLoop_AddArc(sketchLineLoop, p1, direction, glm::vec2(centre.x, centre.y));
-}
-// returns 0 on success
+} 
+// returns 0 on success 
 int Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory, std::function<int(std::vector<std::string> gcode)> callback)
 {
     // get gcodes and and if successful, call function provided
@@ -783,7 +843,7 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
      
     // initialise 
-    FunctionGCodes gcodes;
+    GCodeBuilder gcodes;
     gcodes.Add(HeaderText(settings, elementFactory));
     gcodes.InitCommands(toolData.speed);
      
@@ -794,7 +854,7 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     // define geos parameters
  	GeosBufferParams& geosParameters = settings.p.pathCutter.geosParameters;
     // calculate offset
-    FunctionGCodes::CutPathParams pathParams;
+    GCodeBuilder::CutPathParams pathParams;
     // populate parameters
     pathParams.z0 = m_Params.z[0];
     pathParams.z1 = m_Params.z[1];
@@ -841,10 +901,10 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     return gcodes.Get();
 }
 
-
-
-
-
+ 
+ 
+ 
+ 
 void A_Drawing::ActiveFunction_Run(GRBL& grbl, Settings& settings) 
 {
     if(!m_ActiveFunctions.HasItemSelected()) {
@@ -854,15 +914,15 @@ void A_Drawing::ActiveFunction_Run(GRBL& grbl, Settings& settings)
     // build gcode of active function and run it
     m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){
         // start file timer
-        Event<Event_ResetFileTimer>::Dispatch({});
+        Event<Event_ResetFileTimer>::Dispatch({});  
         // send gocdes to grbl
-        if(grbl.sendArray(gcodes)) {
+        if(grbl.sendArray(gcodes)) { 
             Log::Error("Couldn't send file to grbl");
             return -1;
-        };
+        }; 
         return 0;
     });
-}
+}  
 // export the active function as gcode
 int A_Drawing::ActiveFunction_ExportGCode(Settings& settings, std::string saveFileDirectory) 
 {
@@ -872,6 +932,7 @@ int A_Drawing::ActiveFunction_ExportGCode(Settings& settings, std::string saveFi
     }
     // make filepath for new GCode file
     std::string filepath = File::CombineDirPath(saveFileDirectory, m_ActiveFunctions.CurrentItem()->Name() + ".nc"); 
+    Log::Info("Exporting GCode to %s", filepath.c_str());
     // build gcode of active function and export it to file
     return m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){
         File::WriteArray(filepath, gcodes);
@@ -879,7 +940,6 @@ int A_Drawing::ActiveFunction_ExportGCode(Settings& settings, std::string saveFi
     });
 }
 
-    
 
 // delete active function
 void A_Drawing::ActiveFunction_Delete()
@@ -905,7 +965,7 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
 { 
     auto SnapCursor = [&](const glm::vec2 p) { 
         return settings.p.viewer.cursor.SnapCursor(p); 
-    };
+    }; 
     
     // handle mouse events
     if(inputEvent.mouseClick)  
@@ -916,10 +976,10 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
             auto snappedCursor = SnapCursor(inputEvent.screenCoords_Click);
             
             switch (m_ActiveCommand) {
-                case Command::Select :
+                case Command::Select : 
                     elementFactory.ActivePoint_SetByPosition(snappedCursor, settings.p.viewer.cursor.SelectionTolerance_Scaled);
                     settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
-                    break;
+                    break;  
                 case Command::Line :
                     elementFactory.LineLoop_AddLine(m_LineLoop, snappedCursor);
                     settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
@@ -1057,9 +1117,9 @@ void Sketch::UpdateViewer(Settings& settings)
     // return if no update required
     if(settings.GetUpdateFlag() == ViewerUpdate::None)                    { return; }
     // update active drawing
-    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { std::cout << "ACTIVE DRAWING" << std::endl;   ActiveDrawing_UpdateViewer(settings); }
+    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { std::cout << "UPDATING ACTIVE DRAWING" << std::endl;   ActiveDrawing_UpdateViewer(settings); }
     // update active function
-    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { std::cout << "ACTIVE FUNCTION" << std::endl;  ActiveFunction_UpdateViewer(settings); }
+    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { std::cout << "UPDATING ACTIVE FUNCTION" << std::endl;  ActiveFunction_UpdateViewer(settings); }
     // reset the update flag
     settings.ResetUpdateFlag();
 }

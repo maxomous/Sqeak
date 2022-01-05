@@ -75,8 +75,9 @@ struct InputEvent {
 #include "gui/viewer.h"
 
 #include "sketch/sketch.h"
-#include "sketch/functions/toolsettings.h"
-#include "sketch/functions/functions.h"
+#include "sketch/gcodebuilder.h"
+#include "sketch/toolsettings.h"
+//#include "sketch/functions/functions.h"
 
 
 struct Event_Update3DModelFromFile      { std::string filename; };

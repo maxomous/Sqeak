@@ -238,7 +238,7 @@ TODO:
     maybe we should backup occasionally
 
     - tabs settings should be seperated
-    - dont send settings through to FunctionGCodes functions
+    - dont send settings through to GCodeBuilder functions
 
     - flip line cutting start so that it always finishes pockets with from the inside out (to prevent middle flying out)
 
@@ -310,7 +310,6 @@ void joystickTest()
  
 int main()
 {
-     
     // initialise WiringPi
     if(wiringPiSetup() == -1)
         Log::Critical("Could not start wiringPi: %s", strerror(errno));

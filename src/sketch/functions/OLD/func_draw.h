@@ -88,7 +88,7 @@ public:
     // recalculates centre point from radius
     void RecalculateCentreFromRadius() 
     {
-        point2D centre = Geom::ArcCentreFromRadius(point2D(m_P0.x, m_P0.y), point2D(m_P1.x, m_P1.y), m_Radius, m_Direction);
+        point2D centre = {};//Geom::ArcCentreFromRadius(point2D(m_P0.x, m_P0.y), point2D(m_P1.x, m_P1.y), m_Radius, m_Direction);
         m_Centre = { centre.x, centre.y };
     }
     

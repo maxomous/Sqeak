@@ -516,7 +516,7 @@ void GCodeReader::MotionArc(int Direction)
     
     if(m_R) { // r
         // calculate centre from the radius, start & end points
-        point2D centre = Geom::ArcCentreFromRadius(point2D(xy_Start.x, xy_Start.y), point2D(xy_End.x, xy_End.y), m_R, direction);
+        point2D centre = Geom::ArcCentreFromRadius(point2D(xy_Start), point2D(xy_End), m_R, direction);
         xy_Centre = { centre.x, centre.y };
         // -r is the second (larger) version of the arc
         r = fabsf(m_R);

@@ -58,11 +58,9 @@ public:
     
     bool HasReferences() { return !m_ElementRefs.empty(); }
     
-    void GetReferences(std::function<void(Ref_PointToElement*)> callback) { 
-        for(size_t i = 0; i < m_ElementRefs.size(); i++) {
-            callback(m_ElementRefs[i]);
-        }
-    }
+    void GetReferences(std::function<void(Ref_PointToElement*)> callback);
+    
+    void SetThisRawPointFromRefs(const glm::vec2& p);
 
     // for debugging
     void DrawImGui(Settings& settings);
@@ -105,10 +103,10 @@ public:
     
     virtual void DrawImGui(Settings& settings) = 0;
     
-    void SetP0(glm::vec2 p0)                 { m_Ref_P0->rawPoint->Vec2() = p0;  Update(); }
-    virtual void SetP1(glm::vec2 p1)         { (void)p1; }
-    virtual void SetCentre(glm::vec2 centre) { (void)centre; }
-    virtual void SetRadius(float r)          { (void)r; }
+    virtual void SetP0(const glm::vec2& p0)         { m_Ref_P0->rawPoint->Vec2() = p0;  Update(); }
+    virtual void SetP1(const glm::vec2& p1)         { (void)p1; }
+    virtual void SetCentre(const glm::vec2& centre) { (void)centre; }
+    virtual void SetRadius(float r)                 { (void)r; }
 protected:
     Element(ElementID id) 
         : m_ID(id) {}
@@ -161,17 +159,17 @@ public:
     
     void DrawImGui(Settings& settings) override;
     
-    void SetP1(glm::vec2 p1) override { m_Ref_P1->rawPoint->Vec2() = p1;  Update(); }
+    void SetP1(const glm::vec2& p1) override { m_Ref_P1->rawPoint->Vec2() = p1;  Update(); }
 private:
     Ref_PointToElement* m_Ref_P1 = nullptr;
 };
 
-enum class DefineArcBy { Centre, Radius };
     
 class Element_Arc : public Element
 {
 public: 
 
+    enum class DefineArcBy { Centre, Radius };
   // define by centre point
     Element_Arc(ElementID id, Ref_PointToElement* ref_p0, Ref_PointToElement* ref_p1, int direction, Ref_PointToElement* ref_centre) 
         : Element(id) {
@@ -186,21 +184,105 @@ public:
     Ref_PointToElement* Centre() override { return m_Ref_Centre; }
     int Direction()             { return m_Direction; }
     float Radius()              { return m_Radius; }
-    
-    void SetP1(glm::vec2 p1)            override { 
-        m_Ref_P1->rawPoint->Vec2() = p1; 
-        Update();
+ 
+    //  
+    // 0 is vertically upward, clockwise is positive 
+    int SetTangentRadiusAndDirection() {
+        
+        // if the rawpoint has another element attached, use this as it's tangent basis
+        RawPoint* RawPointPrev = nullptr;
+        m_Ref_P0->rawPoint->GetReferences([&](Ref_PointToElement* ref) { 
+            // get the other element attached to this point
+            if(ref->element->ID() != ID()) { RawPointPrev = ref->element->P0()->rawPoint; }
+        });
+        if(!RawPointPrev) { return -1; }
+        
+        const glm::vec2& pLast = RawPointPrev->Vec2();
+        
+        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
+        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
+        // start to end line
+        glm::vec2 dif = p1 - p0;
+        polar pol = polar(glm::vec2(fabsf(dif.x), fabsf(dif.y)));
+        
+        // angle between pLast to p0 to p1  
+        auto totalAngle = Geom::AngleBetween(pLast, p0, p1);
+        if(!totalAngle) { return -1; } 
+                
+        // change direction if left of line
+        SetDirection((*totalAngle < M_PI) ? ANTICLOCKWISE : CLOCKWISE);
+        
+        // if lines are colinear
+        if(*totalAngle == 0.0 || *totalAngle == M_PI) {
+            m_Radius = pol.r / 2.0;
+        } else {
+            m_Radius = (pol.r / 2.0) / fabs(cos(Geom::CleanAngle(*totalAngle - M_PI_2)));
+        }
+        return 0; 
     }
-    void SetCentre(glm::vec2 centre)    override { 
-        m_Ref_Centre->rawPoint->Vec2() = centre; 
-        m_Priority = DefineArcBy::Centre;
+    
+    void SetP0(const glm::vec2& p0)                         override {
+        m_Ref_P0->rawPoint->Vec2() = p0;
+        if(SetTangentRadiusAndDirection()) {
+            m_Priority = DefineArcBy::Radius;
+        }
         Update(); 
     }
-    void SetRadius(float r)             override { 
+   
+    void SetP1(const glm::vec2& p1)                         override {
+        m_Ref_P1->rawPoint->Vec2() = p1;
+        if(SetTangentRadiusAndDirection()) {
+            m_Priority = DefineArcBy::Radius;
+        }
+        Update(); 
+    }
+   
+    
+    void SetCentre(const glm::vec2& centre)                 override {
+        m_Ref_Centre->rawPoint->Vec2() = centre; 
+          
+        // Geos::PerdendicularDistance(p0, p1, p)
+        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
+        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
+        glm::vec2& pC       = m_Ref_Centre->rawPoint->Vec2();
+        
+        auto th = Geom::AngleBetween(p0, p1, pC);
+        if(!th) return;
+        std::cout << "angle (p0, p1, pC): " << rad2deg(*th) << std::endl;
+        float H = hypot(p1-pC);
+        std::cout << "H (p1 to pC): " << H << std::endl;
+        
+        float a = H * -sin(*th);
+        std::cout << "a: " << a << std::endl;
+        float b = hypot(p1 - p0) / 2.0f;  
+        std::cout << "b: " << b << std::endl;
+        
+        std::cout << "sign(a): " << sign(a, 1) << std::endl;
+        m_Radius = sqrtf(a*a + b*b);
+        // direction fixes
+        m_Radius *= m_Direction * sign(a, 1); // zero has value of 1
+        if(p0.y == p1.y && p1.x > p0.x) { m_Radius = -m_Radius; }
+        if(p0.x == p1.x && p1.y < p0.y) { m_Radius = -m_Radius; }
+         
+        m_Priority = DefineArcBy::Radius;
+        //m_Priority = DefineArcBy::Centre;
+        Update(); 
+    }
+    void SetRadius(float r)                                 override {
         m_Radius = r;
         m_Priority = DefineArcBy::Radius;
         Update();
     }
+    void SetDirection(int direction) {
+        if(direction == ANTICLOCKWISE) {
+            m_Direction = ANTICLOCKWISE;
+            m_DirectionImGui = 1;
+        } else {
+            m_Direction = CLOCKWISE;
+            m_DirectionImGui = 0;
+        }
+    }
+    
     
     void Path(std::vector<glm::vec2>& returnPath, int arcSegments) override {
         glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
@@ -215,14 +297,14 @@ public:
         
         Geom::CleanAngles(th_Start, th_End, m_Direction);
         
-        float th_Incr   = m_Direction * deg2rad(90.0f / arcSegments);
+        float th_Incr   = m_Direction * deg2rad(90.0 / arcSegments);
         
         int nIncrements = floorf(fabsf((th_End - th_Start) / th_Incr));
         
         glm::vec2 p;
         for (int n = 0; n < nIncrements; n++) {
             float th = th_Start + n * th_Incr;
-            p = { m_Radius * sin(th), m_Radius * cos(th) };            
+            p = { fabsf(m_Radius) * sin(th), fabsf(m_Radius) * cos(th) };            
             returnPath.push_back(pCentre + p);
         }
         // ensure last point is added
@@ -240,13 +322,18 @@ public:
     }
     bool HasDanglingReference() override  { return (m_Ref_P0 == nullptr) || (m_Ref_P1 == nullptr) || (m_Ref_Centre == nullptr); }
     
+
+
+
+    
+    
     void Update() override
     {
         if(m_Priority == DefineArcBy::Centre) {
             RecalculateRadiusFromCentre();
-            RecalculateCentreFromRadius();
         }
         if(m_Priority == DefineArcBy::Radius) {
+            //RecalculateRadiusFromCentre();
             RecalculateCentreFromRadius();
         }
     }
@@ -258,17 +345,20 @@ public:
         glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
         glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
         glm::vec2 dif = p1 - p0;
-        return hypotf(dif.x, dif.y) / 2.0f;
+        return hypot(dif.x, dif.y) / 2.0;
     }
     // recalculates radius from centre point
     void RecalculateRadiusFromCentre() 
     {
+        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
         glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
         glm::vec2& pCentre  = m_Ref_Centre->rawPoint->Vec2();
         std::cout << "p1: " << p1.x << ", " << p1.y << std::endl;
         std::cout << "pCentre: " << pCentre.x << ", " << pCentre.y << std::endl;
         glm::vec2 dif = p1 - pCentre;
-        m_Radius = hypotf(dif.x, dif.y);
+        m_Radius = hypot((double)dif.x, (double)dif.y);
+        std::cout << "Left of line (-r when false): " << Geom::LeftOfLine(p0, p1, pCentre) << std::endl;
+        if(Geom::LeftOfLine(p0, p1, pCentre)) { m_Radius = -m_Radius; }
     }   
     // recalculates centre point from radius
     void RecalculateCentreFromRadius() 
@@ -276,22 +366,23 @@ public:
         glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
         glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
         glm::vec2& pCentre  = m_Ref_Centre->rawPoint->Vec2();
-        point2D centre = Geom::ArcCentreFromRadius(point2D(p0.x, p0.y), point2D(p1.x, p1.y), m_Radius, m_Direction);
-        pCentre = { centre.x, centre.y };
+        pCentre = Geom::ArcCentreFromRadius(point2D(p0.x, p0.y), point2D(p1.x, p1.y), m_Radius, m_Direction).glm();
     }
     
 private:
     Ref_PointToElement* m_Ref_P1 = nullptr;
     Ref_PointToElement* m_Ref_Centre = nullptr;
     int m_Direction;
+    int m_DirectionImGui = 0;
     float m_Radius;
     DefineArcBy m_Priority = DefineArcBy::Centre;
+    float m_TangentRadius;
 };
 
 class ElementFactory {
 public:
 
-    void ActivePoint_SetByPosition(glm::vec2 p, float tolerance)
+    void ActivePoint_SetByPosition(const glm::vec2& p, float tolerance)
     {
         m_ActiveSelection = RawPoint_GetByPosition(p, tolerance);
         if(m_ActiveSelection) { 
@@ -300,19 +391,16 @@ public:
     }
     
     // returns true when update required
-    bool ActivePoint_Move(glm::vec2 p)
+    bool ActivePoint_Move(const glm::vec2& p)
     {
         if(!m_ActiveSelection)              
             return false;
         if(m_ActiveSelection->Vec2() == p)  
             return false;
         std::cout << "Move active point: " << m_ActiveSelection->ID() << "   to   " << p.x << ", " << p.y << std::endl;
-        // set position to p
-        m_ActiveSelection->Vec2() = p;
-        // update element(s) attached to point
-        m_ActiveSelection->GetReferences([&](Ref_PointToElement* ref) { 
-            ref->element->Update();
-        });
+
+        
+        m_ActiveSelection->SetThisRawPointFromRefs(p);
         
         return true;
     }
@@ -341,7 +429,7 @@ public:
     typedef std::unique_ptr<Sketch_Element_Identifier>  Sketch_Element;
     typedef std::unique_ptr<Sketch_LineLoop_Identifier> Sketch_LineLoop;
 
-    // Container of elements, controlled by the element factory
+    // Container of elements
     class LineLoop // TODO rename to Container_LineLoop
     {
     public: 
@@ -354,8 +442,6 @@ public:
         LineLoopID ID()     { return m_ID; }
 
     private:
-        
-
         LineLoopID m_ID = -1;
         std::vector<Sketch_Element> m_Elements;
         
@@ -436,11 +522,13 @@ public:
         element->SetRadius(r);
     }
     */
-    
-    void Element_SetP0(Sketch_Element& element, glm::vec2 p0)         { Element_GetByID(element->id)->SetP0(p0); }
-    void Element_SetP1(Sketch_Element& element, glm::vec2 p1)         { Element_GetByID(element->id)->SetP1(p1); }    
-    void Element_SetCentre(Sketch_Element& element, glm::vec2 centre) { Element_GetByID(element->id)->SetCentre(centre); }    
-    void Element_SetRadius(Sketch_Element& element, float r)          { Element_GetByID(element->id)->SetRadius(r); }    
+/* 
+    // set lineloop element position
+    void Element_SetP0(ElementID id, glm::vec2 p0)         { Element_GetByID(id)->SetP0(p0); }
+    void Element_SetP1(ElementID id, glm::vec2 p1)         { Element_GetByID(id)->SetP1(p1); }    
+    void Element_SetCentre(ElementID id, glm::vec2 centre) { Element_GetByID(id)->SetCentre(centre); }    
+    void Element_SetRadius(ElementID id, float r)          { Element_GetByID(id)->SetRadius(r); }    
+*/
     
     // Element creation
     Sketch_Element Element_CreatePoint(const glm::vec2& p) {

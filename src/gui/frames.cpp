@@ -378,7 +378,6 @@ struct Toolbar {
             return;
         }
         
-        static Functions functions(settings);
         static ToolSettings toolSettings;
                         
         //static ToolbarCommand toolbarCommand = ToolbarCommand::None;
@@ -398,7 +397,7 @@ struct Toolbar {
                 
             if(ImGui::TableNextColumn()) { openPopup_ConnectSettings =  DrawTitleWithEdit(settings, "Connect"); }
             if(ImGui::TableNextColumn()) {                              DrawTitle(settings, "Open File"); }
-            if(ImGui::TableNextColumn()) {                              DrawTitle(settings, "Functions"); }
+           // if(ImGui::TableNextColumn()) {                              DrawTitle(settings, "Functions"); }
             if(ImGui::TableNextColumn()) { openPopup_Tools           =  DrawTitleWithEdit(settings, "Tools"); }
          
             ImGui::TableNextRow();
@@ -418,16 +417,12 @@ struct Toolbar {
                 if(ImGui::TableNextColumn()) {
 
                     ImGui::BeginGroup();
-                        if(DrawOpenFile(settings, !functions.IsActiveFunctionSelected(false))) {
-                            functions.DeselectActive();
-                            // clear screen
-                            Event<Event_Update3DModelFromVector>::Dispatch({ std::vector<std::string>(/*empty*/) }); 
-                            //Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
+                        if(DrawOpenFile(settings, /*isSelected*/ false)) {
                             openPopup_FileBrowser = true;
                         }
                     ImGui::EndGroup();
                 }
-                
+                /*
                 // Functions
                 if(ImGui::TableNextColumn()) {
                                        
@@ -437,14 +432,15 @@ struct Toolbar {
                             functions.Draw_ActiveFunctions(settings); 
                         ImGui::EndGroup();
                 }
-                    
+                */
+                
                 // Tools
                 if(ImGui::TableNextColumn()) {
 
                     ImGui::BeginGroup();
                         // updates viewer if tool or material is changed
                         if(toolSettings.Draw(settings)) {
-                            functions.Update3DViewOfActiveFunction(settings);
+                            settings.SetUpdateFlag(ViewerUpdate::Full);
                         }
                         
                     ImGui::EndGroup();
@@ -523,13 +519,13 @@ struct Toolbar {
         // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
         static pair<Export, string> exportFileName = make_pair(Export::False, "");
         
-        //if(toolbarCommand == ToolbarCommand::OpenFile) {
-        if(!functions.IsActiveFunctionSelected(false)) {
-            DrawTitle(settings, va_str("Commands (%s)", fileBrowser->CurrentFile().c_str())); 
-            //DrawCurrentFile(settings, fileBrowser->CurrentFile());
-            DrawPlayButtons(grbl, settings, [&]() {
-                RunFile(grbl, settings);
-            });
+        DrawTitle(settings, va_str("Commands (%s)", fileBrowser->CurrentFile().c_str())); 
+        //DrawCurrentFile(settings, fileBrowser->CurrentFile());
+        DrawPlayButtons(grbl, settings, [&]() {
+            RunFile(grbl, settings);
+        });
+            
+    /*    if(!functions.IsActiveFunctionSelected(false)) {
         } else {
         //else if(toolbarCommand == ToolbarCommand::Function) {
             DrawTitle(settings, va_str("Commands (%s)", functions.ActiveFunctionName().c_str())); 
@@ -557,7 +553,7 @@ struct Toolbar {
                     functions.DeleteActiveFunction(settings);
                 }
             ImGui::EndGroup();
-        }
+        }*/
         
         ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
         
@@ -566,7 +562,7 @@ struct Toolbar {
         ImGui::EndGroup(); 
 
         // handle file export
-        DoesFileNeedExport(settings, functions, exportFileName);
+ //       DoesFileNeedExport(settings, functions, functionsexportFileName);
         
         // show file browser if visible
         if(openPopup_FileBrowser) { fileBrowser->Open(); }
@@ -575,7 +571,7 @@ struct Toolbar {
         // edit tools popup (update viewer if setting is changed)
         if(openPopup_Tools) { ImGui::OpenPopup("Edit Tools"); }
         if(toolSettings.DrawPopup_Tools(settings)) {    
-            functions.Update3DViewOfActiveFunction(settings);
+            settings.SetUpdateFlag(ViewerUpdate::Full);
         }
         
         // Disable all widgets when not connected to grbl
@@ -739,7 +735,7 @@ struct Toolbar {
             timer.UpdateCurrentTime();
             // normalise timer seconds to hours/mins/secs
             Time timeElapsedNorm(timer.dt());
-            // how far through file we are
+            // how far through file we arefunctions
             float percComplete = (float)grblVals.curLine / (float)grblVals.totalLines;
             // estimate time remaining
             uint timeExpected = timer.dt() / percComplete;
@@ -770,7 +766,7 @@ struct Toolbar {
         }
     }
     
-    
+    /*
     void DoesFileNeedExport(Settings& settings, Functions& functions, std::pair<Export, std::string>& exportFileName)
     {   // if file doesn't exist, set flag to export. 
         // If file does exist, show popup to confirm overwrite
@@ -790,7 +786,7 @@ struct Toolbar {
             exportFileName = make_pair(Export::False, "");
         }
     }
-            
+          */  
     void DrawPopup_OverwriteFile(std::pair<Export, std::string>& exportFileName)
     {       
         // Always center this window when appearing

@@ -184,7 +184,7 @@ std::pair<bool, std::vector<std::string>> FunctionType_Draw::ExportGCode(Setting
         }
         
     } 
-    else 
+    else  
     {
         if(m_Params.cutSide == CompensateCutter::Pocket) { 
             Log::Error("Pocket must be a loop");
