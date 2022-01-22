@@ -14,6 +14,8 @@ public:
     void Open();
     // draws the filebroswer
     void Draw();
+    // clear tje current file
+    void ClearCurrentFile()         { m_CurrentFile = ""; m_Filepath = ""; }
     // returns current file e.g. file.nc
     std::string CurrentFile()       { return m_CurrentFile; }
     // returns current filepath e.g. directory/file.nc

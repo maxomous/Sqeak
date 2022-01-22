@@ -3,7 +3,6 @@
 #include <string>
 using namespace std;
 
-#include "../common.h"
 #include "gui.h"
 
 void GLSystem::glfw_ConfigVersion()
@@ -76,7 +75,14 @@ void imgui_Settings(Settings& settings)
     s.img_Settings.Init(File::ThisDir("img/img_settings.png").c_str());
     s.img_Edit.Init(File::ThisDir("img/img_edit.png").c_str());
     s.img_Add.Init(File::ThisDir("img/img_add.png").c_str());
+    s.img_Open.Init(File::ThisDir("img/img_open.png").c_str());
+    s.img_Connect.Init(File::ThisDir("img/img_connect.png").c_str());
+    s.img_ArrowUp.Init(File::ThisDir("img/img_arrowup.png").c_str());
+    s.img_ArrowDown.Init(File::ThisDir("img/img_arrowdown.png").c_str());
+    s.img_ArrowLeft.Init(File::ThisDir("img/img_arrowleft.png").c_str());
+    s.img_ArrowRight.Init(File::ThisDir("img/img_arrowright.png").c_str());
     // sketch images
+    s.img_Sketch.Init(File::ThisDir("img/img_sketch.png").c_str());
     s.img_Sketch_Draw.Init(File::ThisDir("img/img_sketch_draw.png").c_str());
     s.img_Sketch_Measure.Init(File::ThisDir("img/img_sketch_measure.png").c_str());
     s.img_Sketch_Select.Init(File::ThisDir("img/img_sketch_select.png").c_str());
@@ -101,21 +107,20 @@ int gui(GRBL& grbl, Settings& settings)
     GCodeReader gcReader(settings);
     Viewer viewer;
     sketch::Sketch sketcher;
-        
+    Frames frames(settings);
+    
     auto updateGRBL = [&grbl]() {
          // update status (this is probably already done from status thread)
         grbl.sendRT(GRBL_RT_STATUS_QUERY);
         // update modal values
         grbl.sendUpdateSettings();
         delay(100);
-    };
-    
+    }; 
+        
     Event<Event_Update3DModelFromFile>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromFile data) {
         updateGRBL();
         gcReader.OpenFile(data.filename);
         viewer.SetPath(gcReader.GetVertices(), gcReader.GetColours());
-        // clear the offset shape buffer
-        //Event<Event_DisplayShapeOffset>::Dispatch( { std::vector<glm::vec2>(/*empty*/), std::vector<glm::vec2>(/*empty*/), false } );
     });
     
     Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromVector data) {
@@ -145,8 +150,8 @@ int gui(GRBL& grbl, Settings& settings)
     });
 
     Event<Event_MouseMove>::RegisterHandler([&settings, &viewer, &sketcher](Event_MouseMove data) {
-         // ignore if a ImGui window is hovered over
-        if(ImGui::GetIO().WantCaptureMouse) {
+         // ignore if a ImGui window is hovered over or sketch is not active
+        if(ImGui::GetIO().WantCaptureMouse || !sketcher.IsActive()) {
             viewer.SetCursor(false, {});
             return;
         }
@@ -209,20 +214,15 @@ int gui(GRBL& grbl, Settings& settings)
         
         timer.UpdateInterval();
         
-        // ImGui
+        // Draw ImGui
         glsys.imgui_NewFrame();
 		{
+            // update and render 3D Viewer
             viewer.Update(settings, timer.dt()); 
             viewer.Render();
-            // draw ImGui windows
-            drawDockSpace(settings);
-            ImGui::ShowDemoWindow(NULL);
             
-            ImGui::PushItemWidth(-settings.guiSettings.widgetTextWidth);
-                viewer.ImGuiRender(settings);
-                sketcher.DrawImGui(grbl, settings);
-                drawFrames(grbl, settings, timer.dt());
-            ImGui::PopItemWidth();
+            // draw imgui frames
+            frames.Draw(grbl, settings, viewer, sketcher, timer.dt());
             // make updates for viewer
             sketcher.UpdateViewer(settings);
             

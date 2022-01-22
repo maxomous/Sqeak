@@ -13,6 +13,11 @@ GCodeReader::GCodeReader(Settings& settings)
 void GCodeReader::AddVertex(glm::vec3 p, CoordSystem coordSys)
 {
     glm::vec3 vertex = (coordSys == CoordSystem::Machine) ? p : p + m_WCO;
+    // prevent duplicate vertices
+    if(!m_Vertices.empty()) {
+        if(vertex == m_Vertices.back()) 
+            return;
+    }
     m_Vertices.emplace_back(vertex);
     m_Colours.emplace_back(m_Colour);
     m_MPos = vertex;

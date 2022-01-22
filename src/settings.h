@@ -152,7 +152,7 @@ struct ParametersList
 };
 
 
-enum ButtonType { Primary, Secondary, New, Edit, FunctionButton };
+enum ButtonType { Primary, Secondary, Connect, New, Edit, FunctionButton, Jog };
 enum Colour     { Text, HeaderText };
 
 struct ButtonDimension { 
@@ -171,31 +171,43 @@ struct GUISettings
         ImageTexture&
     };
     */
+    GUISettings()
+    {
+        button[ButtonType::Primary]         = {{ 90.0f, 36.0f }, { 16.0f, 16.0f }};   // Primary
+        button[ButtonType::Secondary]       = {{ 60.0f, 27.0f }, { 16.0f, 16.0f }};   // Secondary
+        button[ButtonType::Connect]         = {{ 73.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
+        button[ButtonType::New]             = {{ 28.0f, 28.0f }, { 16.0f, 16.0f }};   // New
+        button[ButtonType::Edit]            = {{ 10.0f, 10.0f }, { 10.0f, 10.0f }};   // Edit
+        button[ButtonType::FunctionButton]  = {{ 56.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
+        button[ButtonType::Jog]             = {{ 19.0f, 19.0f }, { 16.0f, 16.0f }};   // Jog
+    }
     
-                   //      Button Size,      Image Size
-    ButtonDimension button[5]   = { {{ 90.0f, 36.0f }, { 16.0f, 16.0f }},   // Primary
-                                    {{ 60.0f, 27.0f }, { 16.0f, 16.0f }},   // Secondary
-                                    {{ 28.0f, 28.0f }, { 16.0f, 16.0f }},   // New
-                                    {{ 10.0f, 10.0f }, { 10.0f, 10.0f }},   // Edit
-                                    {{ 50.0f, 63.0f }, { 24.0f, 26.0f }} }; // Functions
-
+    ImGuiWindowFlags general_window_flags = ImGuiWindowFlags_AlwaysAutoResize;
+    
+    ButtonDimension button[7];       //      Button Size,      Image Size
     float functionButtonTextOffset  = 52.0f;
-    float functionButtonImageOffset = 7.0f;
+    float functionButtonImageOffset = 8.0f;
 
-    float dockPadding           =   20.0f;
-    float toolbarHeight         =   152.0f;
-    float toolbarSpacer         =   10.0f;
-    float toolbarComboBoxWidth  =   150.0f;
-    
-    float inputBoxWidth         =   140.0f;
-    
-    float widgetTextWidth       =   80.0f;
-    
-    uint max_FilePathDisplay    =   50; // max no. characters to display in open file string
-    
-    // colours
-    ImVec4 colour[2]            = { { 1.0f,     1.0f,   1.0f,   1.0f },   // Text
-                                    { 0.659f,   0.745f, 0.620f, 1.0f } }; // HeaderText
+    float dockPadding               =   20.0f;
+    float toolbarHeight             =   164.0f;
+    float toolbarTableHeight        =   102.0f; // toolbarHeight - 62.0f
+    float toolbarTableScrollbarSize =   12.0f;
+    float toolbarSpacer             =   22.0f;
+    float toolbarItemHeight         =   65.0f;
+    float toolbarComboBoxWidth      =   150.0f;
+        
+    float inputBoxWidth             =   140.0f;
+        
+    float widgetTextWidth           =   80.0f;
+        
+    float popupMessage_YSpacing     =   40.0f;  // distance between popup messages
+    float popupMessage_Time         =   2.0f;   // time to display popup messages
+    uint popupMessage_MaxCount      =   5;      // max no. popup messages to display
+    uint max_FilePathDisplay        =   50;     // max no. characters to display in open file string
+        
+    // colours  
+    ImVec4 colour[2]                = { { 1.0f,     1.0f,   1.0f,   1.0f },   // Text
+                                        { 0.659f,   0.745f, 0.620f, 1.0f } }; // HeaderText
 
     // Fonts
     ImFont* font_small;
@@ -208,7 +220,14 @@ struct GUISettings
     ImageTexture img_Settings;
     ImageTexture img_Edit;
     ImageTexture img_Add;
+    ImageTexture img_Open;
+    ImageTexture img_Connect;
+    ImageTexture img_ArrowUp;
+    ImageTexture img_ArrowDown;
+    ImageTexture img_ArrowLeft;
+    ImageTexture img_ArrowRight;
     // sketch images
+    ImageTexture img_Sketch;
     ImageTexture img_Sketch_Draw;
     ImageTexture img_Sketch_Measure;
     ImageTexture img_Sketch_Select;
@@ -271,7 +290,8 @@ private:
 };
 
 enum class ViewerUpdate {
-    None            = 1 << 0,
+    None            = 0,
+    Clear           = 1 << 0,
     ActiveDrawing   = 1 << 1,
     ActiveFunction  = 1 << 2,
     Full            = ActiveDrawing | ActiveFunction

@@ -177,6 +177,7 @@ public:
         m_Ref_P1 = ref_p1;
         m_Ref_Centre = ref_centre;
         m_Direction = direction;
+        
     }
     
     Ref_PointToElement* P1()     override { return m_Ref_P1; }
@@ -225,7 +226,7 @@ public:
         m_Ref_P0->rawPoint->Vec2() = p0;
         if(SetTangentRadiusAndDirection()) {
             m_Priority = DefineArcBy::Radius;
-        }
+        } 
         Update(); 
     }
    
@@ -248,21 +249,23 @@ public:
         
         auto th = Geom::AngleBetween(p0, p1, pC);
         if(!th) return;
-        std::cout << "angle (p0, p1, pC): " << rad2deg(*th) << std::endl;
         float H = hypot(p1-pC);
-        std::cout << "H (p1 to pC): " << H << std::endl;
-        
         float a = H * -sin(*th);
-        std::cout << "a: " << a << std::endl;
         float b = hypot(p1 - p0) / 2.0f;  
-        std::cout << "b: " << b << std::endl;
         
+        /*
+        std::cout << "angle (p0, p1, pC): " << rad2deg(*th) << std::endl;
+        std::cout << "H (p1 to pC): " << H << std::endl;
+        std::cout << "a: " << a << std::endl;
+        std::cout << "b: " << b << std::endl;
         std::cout << "sign(a): " << sign(a, 1) << std::endl;
+        */
+        
         m_Radius = sqrtf(a*a + b*b);
+        
+        m_Radius += 0.00001;
         // direction fixes
         m_Radius *= m_Direction * sign(a, 1); // zero has value of 1
-        if(p0.y == p1.y && p1.x > p0.x) { m_Radius = -m_Radius; }
-        if(p0.x == p1.x && p1.y < p0.y) { m_Radius = -m_Radius; }
          
         m_Priority = DefineArcBy::Radius;
         //m_Priority = DefineArcBy::Centre;
@@ -309,7 +312,7 @@ public:
         }
         // ensure last point is added
         if(p != p1) {         
-            returnPath.push_back(p1);
+            returnPath.push_back(p1); 
         }
     }
     // Removes a rawpoint reference (returns true if no references left)
@@ -329,13 +332,11 @@ public:
     
     void Update() override
     {
-        if(m_Priority == DefineArcBy::Centre) {
-            RecalculateRadiusFromCentre();
+        if(m_Priority == DefineArcBy::Centre) { 
+            RecalculateRadiusFromCentre(); 
+           // m_Priority = DefineArcBy::Radius; // force radius priority 
         }
-        if(m_Priority == DefineArcBy::Radius) {
-            //RecalculateRadiusFromCentre();
-            RecalculateCentreFromRadius();
-        }
+        if(m_Priority == DefineArcBy::Radius) { RecalculateCentreFromRadius(); }
     }
     
     void DrawImGui(Settings& settings) override;
@@ -375,12 +376,14 @@ private:
     int m_Direction;
     int m_DirectionImGui = 0;
     float m_Radius;
-    DefineArcBy m_Priority = DefineArcBy::Centre;
+    DefineArcBy m_Priority = DefineArcBy::Centre; // this should start at centre for initialisation
     float m_TangentRadius;
 };
 
 class ElementFactory {
 public:
+
+    void ActivePoint_Unset() { m_ActiveSelection = nullptr; }
 
     void ActivePoint_SetByPosition(const glm::vec2& p, float tolerance)
     {
@@ -750,10 +753,12 @@ public:
     const std::string& Name() { return m_Name; }
     
     virtual void HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) = 0;
-    // returns true if update is required
+    // draws ImGui widgets
+    virtual void DrawImGui_Tools(Settings& settings) = 0;
+    // draws ImGui widgets
     virtual void DrawImGui(ElementFactory& elementFactory, Settings& settings) = 0;
-                                          // returns value if error
-                                          int InterpretGCode(Settings& settings, ElementFactory& elementFactory, std::function<int(std::vector<std::string> gcode)> callback);
+    // returns value if error
+    int InterpretGCode(Settings& settings, ElementFactory& elementFactory, std::function<int(std::vector<std::string> gcode)> callback);
     // bool is success
     std::optional<std::vector<std::string>> InterpretGCode(Settings& settings, ElementFactory& elementFactory);
     // adds linelists to viewerLineList
@@ -778,7 +783,9 @@ public:
     Function_Draw(ElementFactory& elementFactory, std::string name = "Draw");
     // handles mouse move / keypresses
     void HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) override;
-    // draws ImGuiWidgets. returns true if update is required
+    // draws ImGui widgets
+    void DrawImGui_Tools(Settings& settings);
+    // draws ImGui widgets
     void DrawImGui(ElementFactory& elementFactory, Settings& settings) override;
     
     
@@ -812,9 +819,14 @@ public:
     const std::string& Name() { return m_Name; }
     
     void HandleEvents(Settings& settings, InputEvent& inputEvent);
-    
+    // get name of active function
+    void ActiveFunction_DrawImGui_Tools(Settings& settings);
+    void DrawImGui_Functions(Settings& settings);
     void DrawImGui(Settings& settings);
-    
+    // get active function name
+    std::string ActiveFunction_Name();
+    // returns true if active function selected
+    bool ActiveFunction_HasItemSelected() { return m_ActiveFunctions.HasItemSelected(); }      
     // export gcode and run
     void ActiveFunction_Run(GRBL& grbl, Settings& settings);
     // export gcode and save
@@ -843,14 +855,35 @@ class Sketch
 {
 public:
     Sketch();
+    
+    std::string  ActiveFunction_Name();
+    void ActiveFunction_Run(GRBL& grbl, Settings& settings);
+    void ActiveFunction_Export(Settings& settings);
+    void ActiveFunction_Delete(Settings& settings);
+        
     // pushes updates to any active drawings and their functions
     void HandleEvents(Settings& settings, InputEvent& inputEvent);
-    // draws the ImGui Widgets
+    
+    
+    // draws the ImGui Widgets for the active function's tools
+    void ActiveFunction_DrawImGui_Tools(Settings& settings);
+    // draws the ImGui Widgets for the active drawing's functions
+    void ActiveDrawing_DrawImGui_Functions(Settings& settings);
+    // draws the ImGui Widgets for connecting (returns true if activated)
+    bool DrawImGui_StartSketch(Settings& settings);
+    // draws the ImGui Widgets for the sketch
     void DrawImGui(GRBL& grbl, Settings& settings);
     // update viewer
     void UpdateViewer(Settings& settings);
+    
+    void ClearViewer();
+    
     // returns true if in sketch mode
     bool IsActive() { return m_IsActive; }
+    
+    // starts / stops sketch mode
+    void Activate();
+    void Deactivate();
     
 private:
     VectorSelectable<A_Drawing> m_Drawings;
@@ -864,9 +897,6 @@ private:
     // updates viewer for active drawing
     void ActiveFunction_UpdateViewer(Settings& settings);
     void ActiveDrawing_UpdateViewer(Settings& settings);
-    // starts / stops sketch mode
-    void Activate();
-    void Deactivate();
 };
 
 

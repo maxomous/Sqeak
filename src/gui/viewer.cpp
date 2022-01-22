@@ -203,12 +203,6 @@ void DynamicBuffer::AddPath(const vector<glm::vec2>& vertices, glm::vec3 colour,
         AddVertex(position + glm::vec3(vertices[i-1], 0.0f), colour);
         AddVertex(position + glm::vec3(vertices[i], 0.0f), colour);
     }
-   
-   /* // join end and beginning for loop
-    if(isLoop && vertices.size() > 2) { 
-        AddVertex(position + glm::vec3(vertices[vertices.size()-1], 0.0f), colour);
-        AddVertex(position + glm::vec3(vertices[0], 0.0f), colour);
-    }*/
 }      
 
 void DynamicBuffer::AddDynamicVertexList(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
@@ -322,9 +316,6 @@ Viewer::Viewer()
     initShape_Cylinder();
     
 }
-Viewer::~Viewer()
-{
-}
  
 
 glm::vec3 Viewer::GetWorldPosition(glm::vec2 px) 
@@ -332,7 +323,7 @@ glm::vec3 Viewer::GetWorldPosition(glm::vec2 px)
     return m_Camera.GetWorldPosition(px);
 }
 
-
+  
 void Viewer::SetCursor(bool isValid, glm::vec2 worldCoords)
 {        
     m_Cursor2DPos = make_pair(isValid, worldCoords);
@@ -340,8 +331,11 @@ void Viewer::SetCursor(bool isValid, glm::vec2 worldCoords)
 
 void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& colours)
 { 
-    // 2 points per line
-    size_t nVertices = positions.size()*2;
+    // determine number of vertices to draw (e.g. 3 points is 2 lines, so 4 vertices)
+    size_t nVertices = 0;
+    if(positions.size() > 1) 
+        nVertices = (positions.size()-1) * 2;
+        
     // make vertices
     vector<Vertex> vertices;
     vertices.reserve(nVertices);
@@ -350,14 +344,12 @@ void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& 
         vertices.emplace_back( positions[i], colours[i] );
         vertices.emplace_back( positions[i+1], colours[i] );
     }
-    // make indices
+    // make indices 
     std::vector<uint> indices;
     indices.reserve(nVertices); // 2 points per line
     for (size_t i = 0; i < nVertices; i++) {
         indices.emplace_back(i);
     }
-    
-    
     
     m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
    
@@ -486,7 +478,7 @@ void Viewer::DrawPath()
 void Viewer::ImGuiRender(Settings& settings)  
 { 
 
-    if (!ImGui::Begin("Viewer", NULL, general_window_flags)) {
+    if (!ImGui::Begin("Viewer", NULL, settings.guiSettings.general_window_flags)) {
         ImGui::End();
         return;
     }  
@@ -516,6 +508,8 @@ void Viewer::ImGuiRender(Settings& settings)
             ImGui::Separator();
             
         ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
+        
+        
         ImGui::ColorEdit3("Toolpath Feed Colour", &settings.p.viewer.ToolpathColour_Feed[0], flags);
         ImGui::ColorEdit3("Toolpath Rapid Colour", &settings.p.viewer.ToolpathColour_Rapid[0], flags);
         ImGui::ColorEdit3("Toolpath Home Colour", &settings.p.viewer.ToolpathColour_Home[0], flags);
@@ -550,7 +544,7 @@ void Viewer::ImGuiRender(Settings& settings)
         
         ImGui::SliderFloat3("Position", &settings.p.viewer.grid.Position[0], -3000.0f, 3000.0f);
         ImGui::SameLine();
-        ImGuiModules::HereButton(settings.grblVals, settings.p.viewer.grid.Position);
+        ImGuiCustomModules::HereButton(settings.grblVals, settings.p.viewer.grid.Position);
         ImGui::SliderFloat2("Size", &settings.p.viewer.grid.Size[0], -3000.0f, 3000.0f);
         ImGui::SliderFloat("Spacing", &settings.p.viewer.grid.Spacing, 0.0f, 1000.0f);
         ImGui::ColorEdit3("Colour", &settings.p.viewer.grid.Colour[0], flags);

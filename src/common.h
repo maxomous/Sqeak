@@ -69,14 +69,18 @@ struct InputEvent {
 
 #include "gcreader.h"
 
-#include "gui/filebrowser.h"
-#include "gui/frames.h"
-#include "gui/gui.h"
-#include "gui/viewer.h"
 
-#include "sketch/sketch.h"
+#include "gui/imgui_modules.h"
+#include "gui/imgui_custommodules.h"
+
+#include "gui/filebrowser.h"
+#include "gui/viewer.h"
 #include "sketch/gcodebuilder.h"
 #include "sketch/toolsettings.h"
+#include "sketch/sketch.h"
+#include "gui/frames.h"
+#include "gui/gui.h"
+
 //#include "sketch/functions/functions.h"
 
 
@@ -85,6 +89,7 @@ struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
 struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::DynamicVertexList>* dynamicLineLists; };
 struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::DynamicVertexList>* dynamicPointLists; };
 
+struct Event_PopupMessage               { std::string msg; };
 struct Event_ResetFileTimer             {};
 struct Event_ConsoleScrollToBottom      {};
 struct Event_SaveSettings               {};
@@ -289,7 +294,7 @@ private:
         std::lock_guard<std::mutex> guard(m_mutex);
 
         PrintToTerminal(level, msg, args...);
-        PrintToConsole(level, msg, args...);
+        PrintToGUI(level, msg, args...);
         // stop program execution
         if (level == LevelCritical)
             exit(1);
@@ -325,15 +330,18 @@ private:
     }
 
     template <typename... Args>
-    void PrintToConsole(LogLevel level, const char *msg, Args... args) {
+    void PrintToGUI(LogLevel level, const char *msg, Args... args) {
         if (m_logLevelConsole <= level) {
             std::string str = levelPrefix(level);
             str += va_str(msg, args...);
-            m_consoleLog.emplace_back(move(str));
+            // print to console
+            m_consoleLog.emplace_back(str);
             Event<Event_ConsoleScrollToBottom>::Dispatch({});
+            // print to message popup
+            Event<Event_PopupMessage>::Dispatch({ str });
         }
     }
-
+    
     static Log &get() {
         static Log log;
         return log;

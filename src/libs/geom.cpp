@@ -110,8 +110,10 @@ point2D Geom::ArcCentreFromRadius(const point2D& p0, const point2D& p1, double r
 	
     h = direction * h;
 	// 2nd version of the curve (when the centrepoint is past the midway line between start and end) 
-	if(r < 0.0)	
-		h = -h;
+	if(r < 0.0)	                    { h = -h; }
+    // prevent flipping of centrepoint when p0 & p1 are horizontal & vertical
+    if(p0.y == p1.y && p1.x > p0.x) { h = -h; }
+    if(p0.x == p1.x && p1.y < p0.y) { h = -h; }
     
     point2D pCentre;
     point2D invert = { ((p0.y > p1.y) ? -1.0 : 1.0), ((p1.x > p0.x) ? -1.0 : 1.0) };
@@ -130,6 +132,8 @@ point2D Geom::ArcCentreFromRadius(const point2D& p0, const point2D& p1, double r
         point2D hyp = { h*sin(theta_G), h*cos(theta_G) };
         pCentre = pMid + invert * hyp;
     }
+
+
     return pCentre;
 };
 

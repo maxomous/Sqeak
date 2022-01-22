@@ -245,6 +245,8 @@ TODO:
     - dont update screen if not in focus
     
     - pocket crashes program when very big
+    
+    - Geos points need to be freed and char*s need destroy?
 
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01

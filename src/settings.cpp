@@ -127,16 +127,16 @@ void Settings::AddDynamicSettings()
                 int prefixId                = stoi(paramName.substr(1, b-1));                
                 while(v[id].Data.Size() < (uint)prefixId+1) {
                     v[id].Data.Add(ParametersList::Tools::Tool::ToolData());
-                }
-            } else { // main parameter Length=20.000000
+                } 
+            } else { // main parameter Length=20.000000 
                 while(v.size() < id+1) {
-                    v.push_back(ParametersList::Tools::Tool());
+                    v.push_back(ParametersList::Tools::Tool()); 
                 }
             } 
         });
     m_VectorList.push_back(d); 
 }    
-       
+        
 // ****************************************** END OF USER SETTINGS *********************************************
 // *************************************************************************************************************
 
@@ -177,7 +177,7 @@ DynamicSetting::DynamicSetting(const std::string& name, void* data,
     : m_Name(name), m_Data(data), m_cb_GetSize(cb_GetSize), m_cb_AddParameters(cb_AddParameters), m_cb_UpdateVectorSize(cb_UpdateVectorSize) 
 { }
 
-
+ 
 size_t DynamicSetting::GetSize() {  
     return m_cb_GetSize(m_Data); 
 }
@@ -187,10 +187,10 @@ void DynamicSetting::AddParameters(Setting& setting, size_t index) {
 void DynamicSetting::UpdateVectorSize(std::string name, size_t index, std::string& paramName) { 
     m_cb_UpdateVectorSize(m_Data, name, index, paramName); 
 }
-std::string DynamicSetting::Name() { 
+std::string DynamicSetting::Name() {  
     return m_Name; 
 
-}  
+}   
 
 Settings::Settings(const std::string& filename) : m_Filename(filename) {
     

@@ -93,7 +93,6 @@ class Viewer
 {
 public:
     Viewer();
-    ~Viewer();
 
     glm::vec3 GetWorldPosition(glm::vec2 px);
     float ScaleToPx(float size) { return size * (m_Camera.GetZoom() / Window::GetHeight()); } 

@@ -1,47 +1,7 @@
 #include "sketch.h"
 using namespace std; 
 using namespace sketch;
-         
-static bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font)
-{ 
-    ImGui::BeginGroup();
-        // get initial cursor position
-        ImVec2 p0 = ImGui::GetCursorPos();
-        // set small font for text on button
-        ImGui::PushFont(font);
-            // make text at bottom of button (values need to be betweem 0-1)
-            float y0To1 = textYOffset / (buttonSize.y - 2.0f*ImGui::GetStyle().FramePadding.y);
-            ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, y0To1 });
-                // draw button
-                bool isClicked = ImGui::Button(name.c_str(), buttonSize);
-            ImGui::PopStyleVar();
-        ImGui::PopFont();
-        // get cursor end position 
-        ImVec2 p1 = ImGui::GetCursorPos();
-        
-        // position of image
-        ImVec2 imagePosition = { (buttonSize.x / 2.0f) - (buttonImgSize.x / 2.0f),    imageYOffset + ImGui::GetStyle().FramePadding.y}; // *** * 2  ??
-        // set cursor for image
-        ImGui::SetCursorPos(p0 + imagePosition);
-        // draw image
-        ImGui::Image(buttonImage, buttonImgSize);
-        
-        // reset cursor position to after button
-        ImGui::SetCursorPos(p1);
     
-    ImGui::EndGroup();
-    return isClicked;
-}
-
-static bool ImageButtonWithText_Function(Settings& settings, std::string name, ImageTexture& image, bool isActive = false) {
-    
-    ImVec2& buttonSize = settings.guiSettings.button[(size_t)ButtonType::FunctionButton].Size;
-    ImVec2& buttonImgSize = settings.guiSettings.button[(size_t)ButtonType::FunctionButton].ImageSize;
-    if(isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
-    bool clicked = ImageButtonWithText(name, buttonSize, image, buttonImgSize, settings.guiSettings.functionButtonImageOffset, settings.guiSettings.functionButtonTextOffset, settings.guiSettings.font_small);
-    if(isActive) ImGui::PopStyleColor();
-    return clicked;
-}
       
  /*    
     sketch requirements:
@@ -216,6 +176,16 @@ void ElementFactory::RefPointToElement_DrawImGui()
     ImGui::PopID();
 } 
 
+void Function_Draw::DrawImGui_Tools(Settings& settings) 
+{
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
+    ImGui::SameLine();
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Line", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
+    ImGui::SameLine();
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Arc", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
+     
+}
+
 void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings) 
 {
     (void)settings;
@@ -225,14 +195,7 @@ void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings
     updateViewer |= ImGui::InputText("Name", &m_Name);
      
     ImGui::Dummy(ImVec2());
-     
-    if(ImageButtonWithText_Function(settings, "Select", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
-    ImGui::SameLine();
-    if(ImageButtonWithText_Function(settings, "Line", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
-    ImGui::SameLine();
-    if(ImageButtonWithText_Function(settings, "Arc", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
-     
-     
+          
     updateViewer |= ImGui::Combo("Cut Side", &m_Params.cutSide, "None\0Left\0Right\0Pocket\0\0");
     updateViewer |= ImGui::InputFloat("Finishing Pass", &m_Params.finishingPass);
     updateViewer |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
@@ -279,34 +242,48 @@ void DrawImGui_PathCutterParameters(Settings& settings)
         }
     ImGui::Unindent();
 }
+std::string A_Drawing::ActiveFunction_Name()
+{   
+    if(!m_ActiveFunctions.HasItemSelected()) { return ""; }
+    return m_ActiveFunctions.CurrentItem()->Name();
+}
+std::string Sketch::ActiveFunction_Name()
+{    
+    if(!m_Drawings.HasItemSelected()) { return ""; }
+    return m_Drawings.CurrentItem().ActiveFunction_Name();
+}
+void A_Drawing::ActiveFunction_DrawImGui_Tools(Settings& settings)
+{    
+    // handle the selected active function
+    if(m_ActiveFunctions.HasItemSelected()) {
+        m_ActiveFunctions.CurrentItem()->DrawImGui_Tools(settings);
+    } 
+}
 
-
-void A_Drawing::DrawImGui(Settings& settings)
-{
-     
-    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::FunctionButton].Size;
-    ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
-    
-    
-    ImGui::Text("Parameters");
-    DrawImGui_PathCutterParameters(settings);
-    
-    
+void A_Drawing::DrawImGui_Functions(Settings& settings)
+{    
     // new function buttons
-    ImGui::Text("Add New Function");
-     
-    
-    if(ImageButtonWithText_Function(settings, "Draw", settings.guiSettings.img_Sketch_Draw)) {    
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Draw", settings.guiSettings.img_Sketch_Draw)) {    
         std::unique_ptr<Function> newFunction = std::make_unique<Function_Draw>(m_ElementFactory, "Draw " + to_string(m_FunctionIDCounter++));
         m_ActiveFunctions.Add(move(newFunction));
         settings.SetUpdateFlag(ViewerUpdate::Full);
     }
     ImGui::SameLine();
     
-    if(ImageButtonWithText_Function(settings, "Measure", settings.guiSettings.img_Sketch_Measure)) {    
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Measure", settings.guiSettings.img_Sketch_Measure)) {    
         std::cout << "Measure" << std::endl;
     }
-  
+}   
+
+void A_Drawing::DrawImGui(Settings& settings)
+{
+    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::FunctionButton].Size;
+    ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
+    
+      
+    ImGui::Text("Parameters");
+    DrawImGui_PathCutterParameters(settings);
+    
     
      // active function buttons
     ImGui::Separator();
@@ -333,7 +310,7 @@ void A_Drawing::DrawImGui(Settings& settings)
     // handle the selected active function
     if(m_ActiveFunctions.HasItemSelected()) {
         m_ActiveFunctions.CurrentItem()->DrawImGui(m_ElementFactory, settings);
-    }
+    } 
     
     // draw the points list
     ImGui::Separator();
@@ -342,69 +319,105 @@ void A_Drawing::DrawImGui(Settings& settings)
     // draw the references
     m_ElementFactory.RefPointToElement_DrawImGui();
 }
+    
+    
+void Sketch::ActiveFunction_DrawImGui_Tools(Settings& settings) 
+{
+    if(m_Drawings.HasItemSelected()) { 
+        m_Drawings.CurrentItem().ActiveFunction_DrawImGui_Tools(settings);
+    }
+}
+void Sketch::ActiveDrawing_DrawImGui_Functions(Settings& settings) 
+{
+    if(m_Drawings.HasItemSelected()) { 
+        m_Drawings.CurrentItem().DrawImGui_Functions(settings);
+    }
+}
+
+bool Sketch::DrawImGui_StartSketch(Settings& settings) 
+{
+    //ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Primary].Size;
+    //ImGuiModules::CentreItemVerticallyAboutItem(settings.guiSettings.toolbarItemHeight, buttonSize.y);
+    
+    if(!IsActive()) {
+        
+        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Sketch", settings.guiSettings.img_Sketch)) {  
+        //if(ImGui::Button("Sketch", buttonSize)) {
+            Activate();
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+            return true;
+        }
+    } else {    
+        // sketch is active
+        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Sketch", settings.guiSettings.img_Sketch, true)) {  
+        //if(ImGui::Button("Exit Sketch", buttonSize)) {
+            Deactivate();
+        }
+    }
+    return false;
+}
+    
+
+
 
 void Sketch::DrawImGui(GRBL& grbl, Settings& settings) 
 {
+    (void)grbl;
     ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
-    if (!ImGui::Begin("Sketch", NULL, general_window_flags)) {
-        ImGui::End();
+    if (!ImGui::Begin("Sketch", NULL, settings.guiSettings.general_window_flags)) {
+        ImGui::End(); 
         return;  
     }
-
-    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Primary].Size;
-    //ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
-    
-    if(!IsActive()) {
-        if(ImGui::Button("Sketch", buttonSize)) {
-            Activate();
-            settings.SetUpdateFlag(ViewerUpdate::Full);
-        }
-        ImGui::End();
-        return;
-    } 
-    
-    // sketch is active
-    if(ImGui::Button("Exit Sketch", buttonSize)) {
-        Deactivate();
-        ImGui::End();
-        return;
-    }
      
-    ImGui::Separator();
-         
-           
+    if (ImGui::SmallButton("New Drawing")) {
+        m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)));
+        settings.SetUpdateFlag(ViewerUpdate::Full);
+    }
+    
+    for(size_t i = 0; i < m_Drawings.Size(); )
+    {
+        bool isOpen = true;
+        if (ImGui::CollapsingHeader(m_Drawings[i].Name().c_str(), &isOpen)) {
+            // set the active index to match the open tab
+            if(m_Drawings.CurrentIndex() != (int)i) {
+                std::cout << "Setting current drawing index" << std::endl;
+                m_Drawings.SetCurrentIndex(i);
+                settings.SetUpdateFlag(ViewerUpdate::Full);
+            }
+            // draw the imgui widgets for drawing
+            m_Drawings.CurrentItem().DrawImGui(settings);
+        }
+        if(!isOpen) { // has been closed
+            m_Drawings.Remove(i); 
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+        } else { 
+            i++; 
+        }                        
+
+    }
+    
+    // ******* TODO *******: opening 2 drawings causes updating constantly
+    
+    
+    
+/*           
     // draw ImGui Tabs
-    static std::function<std::string(A_Drawing& item)> cb_GetItemString = [](A_Drawing& item) { return item.Name(); };
+    static std::function<std::string(A_Drawing& item)> cb_GetItemString = [](A_Drawing& item) { 
+        return item.Name(); 
+    };
     static std::function<A_Drawing(void)> cb_AddNewItem = [&]() { 
         settings.SetUpdateFlag(ViewerUpdate::Full);
         return A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)); 
     };
-    static std::function<void()> cb_DrawTabImGui = [&]() 
-    {  
-        assert(m_Drawings.HasItemSelected() && "No item selected in cb_DrawTabImGui");
-        // this matches the open tab item
-        A_Drawing& drawing = m_Drawings.CurrentItem(); 
-        
-        // Run, Save & Delete Buttons
-        if(ImGui::Button("Run")) { drawing.ActiveFunction_Run(grbl, settings); }
-        ImGui::SameLine();
-        if(ImGui::Button("Export GCode")) { 
-            if(drawing.ActiveFunction_ExportGCode(settings, settings.p.system.saveFileDirectory)) {
-                Log::Error("Unable to save file");
-            }
-        } // TODO overwrite popup (see frames.h :774)
-        ImGui::SameLine();
-        if(ImGui::Button("Delete")) { 
-            drawing.ActiveFunction_Delete();
-            settings.SetUpdateFlag(ViewerUpdate::Full);
-        }
-        drawing.DrawImGui(settings);        
+    static std::function<void()> cb_DrawTabImGui = [&]() {  
+         assert(m_Drawings.HasItemSelected() && "No item selected in cb_DrawTabImGui");
+         m_Drawings.CurrentItem().DrawImGui(settings);        
     };
      
     if(ImGuiModules::Tabs(m_Drawings, cb_GetItemString, cb_AddNewItem, cb_DrawTabImGui)) {
         settings.SetUpdateFlag(ViewerUpdate::Full);
     }
-    
+*/
     ImGui::End();
 }   
 
@@ -704,7 +717,7 @@ void ElementFactory::LineLoop_AddLine(ElementFactory::Sketch_LineLoop& sketchLin
     
     Sketch_Element lineElement = Element_CreateLine(LineLoop_LastPoint(lineLoopID), p1);
     lineLoop.m_Elements.push_back(move(lineElement));
-}
+} 
 
 // Adds an arc to the Line Loop from centre point
 void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, const glm::vec2& centre) 
@@ -833,7 +846,7 @@ std::string Function_Draw::HeaderText(Settings& settings, ElementFactory& elemen
     
 // TODO: can we get rid of pathParams.isLoop?
     
-std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& settings, ElementFactory& elementFactory) 
+std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& settings, ElementFactory& elementFactory)  
 {
     // error check  
     if(!IsValidInputs(settings, elementFactory)) {
@@ -856,11 +869,11 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     // calculate offset
     GCodeBuilder::CutPathParams pathParams;
     // populate parameters
-    pathParams.z0 = m_Params.z[0];
+    pathParams.z0 = m_Params.z[0]; 
     pathParams.z1 = m_Params.z[1];
-    pathParams.cutDepth = toolData.cutDepth;
-    pathParams.feedPlunge = toolData.feedPlunge;
-    pathParams.feedCutting = toolData.feedCutting;
+    pathParams.cutDepth = toolData.cutDepth; 
+    pathParams.feedPlunge = toolData.feedPlunge; 
+    pathParams.feedCutting = toolData.feedCutting; 
     pathParams.isLoop = elementFactory.LineLoop_IsLoop(m_LineLoop);
     // make a path of line segments (arcs are converted to many line segments)    
     Geos::LineString inputPath = elementFactory.LineLoop_PointsList(m_LineLoop, geosParameters.QuadrantSegments);
@@ -872,7 +885,7 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
         path.push_back(inputPath);
     } // Compensate path 
     else {
-        Geos geos; 
+        Geos geos;  
         // make the inital offset
         path = geos.Offset(inputPath, cutSide * offsetDistance, geosParameters);
         // add pocket path
@@ -930,14 +943,14 @@ int A_Drawing::ActiveFunction_ExportGCode(Settings& settings, std::string saveFi
         Log::Error("No active function selected");
         return -1; 
     }
-    // make filepath for new GCode file
+    // make filepath for new GCode file 
     std::string filepath = File::CombineDirPath(saveFileDirectory, m_ActiveFunctions.CurrentItem()->Name() + ".nc"); 
     Log::Info("Exporting GCode to %s", filepath.c_str());
-    // build gcode of active function and export it to file
-    return m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){
+    // build gcode of active function and export it to file 
+    return m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){ 
         File::WriteArray(filepath, gcodes);
         return 0;
-    });
+    }); 
 }
 
 
@@ -951,6 +964,34 @@ void A_Drawing::ActiveFunction_Delete()
     m_ActiveFunctions.RemoveCurrent();
 }
 
+void Sketch::ActiveFunction_Run(GRBL& grbl, Settings& settings) 
+{
+    if(!m_Drawings.HasItemSelected()) { return; }
+    if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
+    
+    m_Drawings.CurrentItem().ActiveFunction_Run(grbl, settings);
+}
+void Sketch::ActiveFunction_Export(Settings& settings) 
+{
+    if(!m_Drawings.HasItemSelected()) { return; }
+    if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
+    
+    if(ImGui::Button("Export GCode")) { 
+        if(m_Drawings.CurrentItem().ActiveFunction_ExportGCode(settings, settings.p.system.saveFileDirectory)) {
+            Log::Error("Unable to save file");
+        }
+    }
+}
+void Sketch::ActiveFunction_Delete(Settings& settings) 
+{    
+    if(!m_Drawings.HasItemSelected()) { return; }
+    if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
+    
+    if(ImGui::Button("Delete")) { 
+        m_Drawings.CurrentItem().ActiveFunction_Delete();
+        settings.SetUpdateFlag(ViewerUpdate::Full);
+    }
+}
 
 Sketch::Sketch() 
 {   
@@ -963,6 +1004,8 @@ Sketch::Sketch()
 
 void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) 
 { 
+    static bool updateRequiredOnKeyRelease = false;
+    
     auto SnapCursor = [&](const glm::vec2 p) { 
         return settings.p.viewer.cursor.SnapCursor(p); 
     }; 
@@ -975,24 +1018,27 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
         {  
             auto snappedCursor = SnapCursor(inputEvent.screenCoords_Click);
             
-            switch (m_ActiveCommand) {
-                case Command::Select : 
-                    elementFactory.ActivePoint_SetByPosition(snappedCursor, settings.p.viewer.cursor.SelectionTolerance_Scaled);
-                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
-                    break;  
-                case Command::Line :
-                    elementFactory.LineLoop_AddLine(m_LineLoop, snappedCursor);
-                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
-                    break;
-                case Command::Arc :
-                    elementFactory.LineLoop_AddArc(m_LineLoop, snappedCursor, CLOCKWISE);
-                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
-                    break;
+            if(m_ActiveCommand == Command::Select) {
+                elementFactory.ActivePoint_SetByPosition(snappedCursor, settings.p.viewer.cursor.SelectionTolerance_Scaled);
+                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+            } else {
+                elementFactory.ActivePoint_Unset();
+            }
+            if(m_ActiveCommand == Command::Line) {
+                elementFactory.LineLoop_AddLine(m_LineLoop, snappedCursor);
+                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+            }
+            if(m_ActiveCommand == Command::Arc) {
+                elementFactory.LineLoop_AddArc(m_LineLoop, snappedCursor, CLOCKWISE);
+                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
             }
         }
         // update on key release
         if(mouse->Action == GLFW_RELEASE  &&  mouse->Button == GLFW_MOUSE_BUTTON_LEFT) {  
-            settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+            if(updateRequiredOnKeyRelease) {
+                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+                updateRequiredOnKeyRelease = false;
+            } 
         }
        
     } 
@@ -1005,6 +1051,7 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
             if(elementFactory.ActivePoint_Move(SnapCursor(inputEvent.screenCoords_Move))) {    
                 std::cout << "setting update flag to active drawing" << std::endl;            
                 settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+                updateRequiredOnKeyRelease = true;
             }
         }
     }
@@ -1103,29 +1150,46 @@ void Sketch::ActiveFunction_UpdateViewer(Settings& settings)
     // get current active function's gcodes and update viewer
     if(!m_Drawings.HasItemSelected()) { return; }
     std::cout << "Updating: Draw Function" << std::endl;
-    // update the active function
+    // update the active function 
     if(auto gcodes = m_Drawings.CurrentItem().ActiveFunction_UpdateViewer(settings)) {
-        Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(move(*gcodes)) });
+        Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(move(*gcodes)) }); 
     } else {
         Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(/*empty*/) });
     }
 }
 
-
 void Sketch::UpdateViewer(Settings& settings)
 {
     // return if no update required
-    if(settings.GetUpdateFlag() == ViewerUpdate::None)                    { return; }
-    // update active drawing
-    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { std::cout << "UPDATING ACTIVE DRAWING" << std::endl;   ActiveDrawing_UpdateViewer(settings); }
-    // update active function
-    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { std::cout << "UPDATING ACTIVE FUNCTION" << std::endl;  ActiveFunction_UpdateViewer(settings); }
+    if(settings.GetUpdateFlag() == ViewerUpdate::None) { return; }
+    
+    std::cout << "*** UPDATE FLAG *** : " << (int)settings.GetUpdateFlag() << std::endl;
+    
+    // clear overrides other bits in flag
+    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::Clear) { 
+        std::cout << "Clearing viewer" << std::endl;  
+        ClearViewer(); 
+    } 
+    else {     
+        // update active drawing
+        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { std::cout << "UPDATING ACTIVE DRAWING" << std::endl;   ActiveDrawing_UpdateViewer(settings); }
+        // update active function
+        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { std::cout << "UPDATING ACTIVE FUNCTION" << std::endl;  ActiveFunction_UpdateViewer(settings); }
+    }
+    
     // reset the update flag
     settings.ResetUpdateFlag();
 }
 
-
-
+void Sketch::ClearViewer()
+{
+    // line lists
+    Event<Event_Viewer_AddLineLists>::Dispatch( { nullptr } );
+    // points lists
+    Event<Event_Viewer_AddPointLists>::Dispatch( { nullptr } );
+    //
+    Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(/*empty*/) });
+}
 
 
 
@@ -1141,12 +1205,16 @@ void Sketch::UpdateViewer(Settings& settings)
 
 void Sketch::Activate()
 {
-    m_IsActive = true;
-    Event<Event_Set2DMode>::Dispatch( { true } );
+    if(m_IsActive == false) {
+        m_IsActive = true;
+        Event<Event_Set2DMode>::Dispatch( { true } );
+    }
 }
 
 void Sketch::Deactivate()
 {
-    m_IsActive = false;
-    Event<Event_Set2DMode>::Dispatch( { false } );
+    if(m_IsActive == true) {
+        m_IsActive = false;
+        Event<Event_Set2DMode>::Dispatch( { false } );
+    }
 }

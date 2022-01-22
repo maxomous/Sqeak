@@ -113,7 +113,7 @@ int FileBrowser::getSelectedFile(string &filename, int &filetype)
 
 void FileBrowser::openSelectedFile() 
 {
-    int filetype;
+    int filetype; 
     string filename;
 
     if (getSelectedFile(filename, filetype))

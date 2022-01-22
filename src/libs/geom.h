@@ -29,6 +29,11 @@ int sign(T val, int zeroValue = 0) {
 #define Tan(deg) tan(deg2rad(deg))
 
 
+static inline float roundto(float input, float roundto) {
+    double x = (double)input / (double)roundto;
+    return round(x) * (double)roundto;
+}
+
 class point2D {
 public:
     // ensures the inhertited destructor is called
