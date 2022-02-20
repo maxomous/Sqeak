@@ -23,7 +23,7 @@ void GCodeReader::AddVertex(glm::vec3 p, CoordSystem coordSys)
     m_MPos = vertex;
     m_WPos = m_MPos - m_WCO;
     
-    Log::Debug(DEBUG_GCREADER, "Adding Vertex: (%g, %g, %g)", vertex.x, vertex.y, vertex.z); 
+    Log::Debug(DEBUG_GCREADER, "Adding Vertex: (%g, %g, %g)\tColour: (%g, %g, %g)", vertex.x, vertex.y, vertex.z, m_Colour.x, m_Colour.y, m_Colour.z); 
 }
 
 
@@ -558,9 +558,9 @@ void GCodeReader::MotionArc(int Direction)
     }
     
     AddVertex(GetAbsoluteWPos(m_XYZ));
-}
+} 
 
-
+ 
 //convert point relative to plane selected
 glm::vec3 GCodeReader::PointRelativeToPlane(glm::vec3 p, Plane plane, int convertDirection)
 {    
@@ -580,14 +580,20 @@ glm::vec3 GCodeReader::PointRelativeToPlane(glm::vec3 p, Plane plane, int conver
 }
 void GCodeReader::SetPathColour(float gValue) 
 {   
+    glm::vec3 p0 = m_WPos;
+    glm::vec3 p1 = GetAbsoluteWPos(m_XYZ);
+    
     // rapid
     if(gValue == 0.0f) {
-        m_Colour = m_Settings.p.viewer.ToolpathColour_Rapid;
-    } // motion 
+        m_Colour = m_Settings.p.viewer.toolpath.Colour_Rapid;
+    } // z feed 
+    else if (gValue == 1.0f && (p0.x == p1.x && p0.y == p1.y)) {
+        m_Colour = m_Settings.p.viewer.toolpath.Colour_FeedZ;
+    } // feed 
     else if (gValue == 1.0f || gValue == 2.0f || gValue == 3.0f) {
-        m_Colour = m_Settings.p.viewer.ToolpathColour_Feed;
+        m_Colour = m_Settings.p.viewer.toolpath.Colour_Feed;
     } // home 
     else if (gValue == 28.0f || gValue == 30.0f) {
-        m_Colour = m_Settings.p.viewer.ToolpathColour_Home;
+        m_Colour = m_Settings.p.viewer.toolpath.Colour_Home;
     }
 }

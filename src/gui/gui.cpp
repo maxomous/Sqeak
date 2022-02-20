@@ -43,7 +43,7 @@ void GLSystem::imgui_Config()
     style.WindowMenuButtonPosition  = ImGuiDir_Right;   // icon in menu of window
     //style.ColorButtonPosition       = ImGuiDir_Left;    // colour icon side for changing colours 
     style.ScrollbarRounding         = 3.0f;             // scroll bars
-    style.FrameRounding             = 1.0f;             // frames i.e. buttons, textboxes etc.
+    style.FrameRounding             = 2.0f;             // frames i.e. buttons, textboxes etc.
     
     // Load icon
     static string iconLocation = File::ThisDir(GUI_IMG_ICON);
@@ -52,7 +52,7 @@ void GLSystem::imgui_Config()
 }
       
 void imgui_Settings(Settings& settings)
-{
+{ 
     GUISettings& s = settings.guiSettings;
     ImGuiIO& io = ImGui::GetIO();
        
@@ -77,10 +77,10 @@ void imgui_Settings(Settings& settings)
     s.img_Add.Init(File::ThisDir("img/img_add.png").c_str());
     s.img_Open.Init(File::ThisDir("img/img_open.png").c_str());
     s.img_Connect.Init(File::ThisDir("img/img_connect.png").c_str());
-    s.img_ArrowUp.Init(File::ThisDir("img/img_arrowup.png").c_str());
-    s.img_ArrowDown.Init(File::ThisDir("img/img_arrowdown.png").c_str());
-    s.img_ArrowLeft.Init(File::ThisDir("img/img_arrowleft.png").c_str());
-    s.img_ArrowRight.Init(File::ThisDir("img/img_arrowright.png").c_str());
+    s.img_ArrowUp.Init(File::ThisDir("img/img_arrowup0.png").c_str());
+    s.img_ArrowDown.Init(File::ThisDir("img/img_arrowdown0.png").c_str());
+    s.img_ArrowLeft.Init(File::ThisDir("img/img_arrowleft0.png").c_str());
+    s.img_ArrowRight.Init(File::ThisDir("img/img_arrowright0.png").c_str());
     // sketch images
     s.img_Sketch.Init(File::ThisDir("img/img_sketch.png").c_str());
     s.img_Sketch_Draw.Init(File::ThisDir("img/img_sketch_draw.png").c_str());
@@ -157,7 +157,7 @@ int gui(GRBL& grbl, Settings& settings)
         }
         glm::vec2 screenCoords = Window::InvertYCoord({ data.PosX, data.PosY }) + glm::vec2(0.0f, 1.0f);
         glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - settings.grblVals.status.WCO;
-        InputEvent inputEvent; 
+        InputEvent inputEvent;  
         // set current move position
         inputEvent.screenCoords_Move = Vec2(returnCoords);
         Event_MouseMove mouseMove = data;
@@ -165,30 +165,35 @@ int gui(GRBL& grbl, Settings& settings)
         sketcher.HandleEvents(settings, inputEvent);
         // set cursor in viewer
         //glm::vec3 worldCoords = viewer.GetWorldPosition(screenCoords) - ;
-        glm::vec2 snappedCursor = settings.p.viewer.cursor.SnapCursor(Vec2(returnCoords));
+        glm::vec2 snappedCursor = settings.p.sketch.cursor.SnapCursor(Vec2(returnCoords));
+        settings.p.sketch.cursor.Position = snappedCursor;
         viewer.SetCursor(true, snappedCursor + Vec2(settings.grblVals.ActiveCoordSys()));
         
     });
     
     auto ScaleMouseData = [](Settings& settings, Viewer& viewer) {
         // scale the cursor size
-        settings.p.viewer.cursor.Size_Scaled                = viewer.ScaleToPx(settings.p.viewer.cursor.Size);
+        settings.p.sketch.cursor.Size_Scaled                = viewer.ScaleToPx(settings.p.sketch.cursor.Size);
         
-        settings.p.viewer.cursor.SelectionTolerance_Scaled  = viewer.ScaleToPx(settings.p.viewer.cursor.SelectionTolerance);
+        settings.p.sketch.cursor.SelectionTolerance_Scaled  = viewer.ScaleToPx(settings.p.sketch.cursor.SelectionTolerance);
         // scale the cursor snap distance
-        float snapDistance                                  = viewer.ScaleToPx(settings.p.viewer.cursor.SnapDistance);
+        float snapDistance                                  = viewer.ScaleToPx(settings.p.sketch.cursor.SnapDistance);
         // make 0.01, 0.1, 1, 10 or 100
         if(snapDistance <= 0.01)      { snapDistance = 0.01f; }
+        if(snapDistance <= 0.02)      { snapDistance = 0.02f; }
         if(snapDistance <= 0.05)      { snapDistance = 0.05f; }
         else if(snapDistance <= 0.1)  { snapDistance = 0.1f; } 
+        else if(snapDistance <= 0.2)  { snapDistance = 0.2f; } 
         else if(snapDistance <= 0.5)  { snapDistance = 0.5f; } 
         else if(snapDistance <= 1.0)  { snapDistance = 1.0f; }
+        else if(snapDistance <= 2.0)  { snapDistance = 2.0f; }
         else if(snapDistance <= 5.0)  { snapDistance = 5.0f; }
         else if(snapDistance <= 10.0) { snapDistance = 10.0f; }
+        else if(snapDistance <= 20.0) { snapDistance = 20.0f; }
         else if(snapDistance <= 50.0) { snapDistance = 50.0f; }
-        else                         { snapDistance = 100.0f; }
+        else                          { snapDistance = 100.0f; }
         
-        settings.p.viewer.cursor.SnapDistance_Scaled = snapDistance;        
+        settings.p.sketch.cursor.SnapDistance_Scaled = snapDistance;        
     };
     
     // scale cursor based on mouse scroll
@@ -203,23 +208,22 @@ int gui(GRBL& grbl, Settings& settings)
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(glsys.GetWindow()))
     {    
+        // update timer
+        timer.UpdateInterval();
         // Poll for and process events 
         GLCall(glfwPollEvents());
         // set background colour
-		GLCall(glClearColor(settings.p.viewer.BackgroundColour.r, settings.p.viewer.BackgroundColour.g, settings.p.viewer.BackgroundColour.b, 1.0f));
-        
-        grbl.systemChecks();
-        // build a structure of all values so we dont have to constantly be locking mutexes throughout program
-        grbl.UpdateGRBLVals(settings.grblVals);
-        
-        timer.UpdateInterval();
+		GLCall(glClearColor(settings.p.viewer.general.BackgroundColour.r, settings.p.viewer.general.BackgroundColour.g, settings.p.viewer.general.BackgroundColour.b, 1.0f));
+       
+        // grbl updates
+        grbl.Update(settings.grblVals);
         
         // Draw ImGui
         glsys.imgui_NewFrame();
 		{
             // update and render 3D Viewer
             viewer.Update(settings, timer.dt()); 
-            viewer.Render();
+            viewer.Render(settings);
             
             // draw imgui frames
             frames.Draw(grbl, settings, viewer, sketcher, timer.dt());

@@ -549,7 +549,7 @@ GRBL::GRBL() {
     // create threads
     t_Read = thread(&GRBL::thread_read, this);
     t_Write = thread(&GRBL::thread_write, this);
-    t_StatusReport = thread(&GRBL::thread_statusReport, this);
+    //t_StatusReport = thread(&GRBL::thread_statusReport, this);
 }
 
 GRBL::~GRBL() {
@@ -561,8 +561,8 @@ GRBL::~GRBL() {
     Log::Info("Read Thread Joined");
     t_Write.join();
     Log::Info("Write Thread Joined");
-    t_StatusReport.join();
-    Log::Info("Status Report Thread Joined");
+    //t_StatusReport.join();
+    //Log::Info("Status Report Thread Joined");
 }
 
 void GRBL::connect(std::string device, int baudrate)
@@ -880,7 +880,7 @@ bool GRBL::getViewStatusReport() {
 }
 // set the interval timer for the status report
 // no faster than 5Hz (200ns)
-void GRBL::setStatusInterval(uint ms) {
+/*void GRBL::setStatusInterval(uint ms) {
     std::lock_guard<std::mutex> guard(m_mutex);
     statusTimerInterval = ms;
 }
@@ -888,8 +888,8 @@ uint GRBL::getStatusInterval() {
     std::lock_guard<std::mutex> guard(m_mutex);
     return statusTimerInterval;
 }
-
-void GRBL::systemChecks()
+*/
+void GRBL::SystemCommands()
 {
     int cmd;
     {    // get run flag
@@ -1243,14 +1243,20 @@ void GRBL::thread_write()
     }
 }
 
-void GRBL::thread_statusReport() 
+void GRBL::RequestStatusReport() 
+{
+    serial.sendRT(GRBL_RT_STATUS_QUERY);
+}
+/*
+void GRBL::thread_RequestStatusReport() 
 {
     while(m_runCommand != GRBL_CMD_SHUTDOWN) {
-        serial.sendRT(GRBL_RT_STATUS_QUERY);
+        RequestStatusReport();
         delay(getStatusInterval());
     }
 }
- 
+*/
+
 // get all grbl values (this is much quicker than getting
 // as required as it does require lots of mutexes)
 void GRBL::UpdateGRBLVals(GRBLVals& grblVals)
@@ -1264,4 +1270,16 @@ void GRBL::UpdateGRBLVals(GRBLVals& grblVals)
     grblVals.isCheckMode = (grblVals.status.state == GRBLState::Status_Check);
     grblVals.isFileRunning = isFileRunning();
     getFilePos(grblVals.curLineIndex, grblVals.curLine, grblVals.totalLines);
+    
+    //grblVals.statusTimerInterval = getStatusInterval();
+}
+
+void GRBL::Update(GRBLVals& grblVals)
+{
+    // read commands flag and call required command
+    SystemCommands();
+    // send a status report request
+    RequestStatusReport();
+    // build a structure of all values so we dont have to constantly be locking mutexes throughout program
+    UpdateGRBLVals(grblVals);
 }

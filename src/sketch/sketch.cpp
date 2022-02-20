@@ -192,31 +192,20 @@ void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings
 
     bool updateViewer = false;
     
-    updateViewer |= ImGui::InputText("Name", &m_Name);
-     
-    ImGui::Dummy(ImVec2());
-          
-    updateViewer |= ImGui::Combo("Cut Side", &m_Params.cutSide, "None\0Left\0Right\0Pocket\0\0");
-    updateViewer |= ImGui::InputFloat("Finishing Pass", &m_Params.finishingPass);
-    updateViewer |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
-    
-    updateViewer |= ImGui::InputInt("Quadrant Segments", &settings.p.pathCutter.geosParameters.QuadrantSegments);
-
-    static int imgui_CapStyle = settings.p.pathCutter.geosParameters.CapStyle - 1;
-    if(ImGui::Combo("Cap Style", &imgui_CapStyle, "Round\0Flat\0Square\0\0")) {
-        settings.p.pathCutter.geosParameters.CapStyle = imgui_CapStyle + 1;
-        updateViewer = true;
-    }
-    static int imgui_JoinStyle = settings.p.pathCutter.geosParameters.JoinStyle - 1;
-    if(ImGui::Combo("Join Style", &imgui_JoinStyle, "Round\0Mitre\0Bevel\0\0")) {
-        settings.p.pathCutter.geosParameters.JoinStyle = imgui_JoinStyle + 1;
-        updateViewer = true;
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if (ImGui::TreeNode("Parameters")) 
+    { 
+        updateViewer |= ImGui::InputText("Name", &m_Name);
+        ImGui::Dummy(ImVec2());
+        updateViewer |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
+        updateViewer |= ImGui::Combo("Cut Side", &m_Params.cutSide, "None\0Left\0Right\0Pocket\0\0");
+        updateViewer |= ImGui::InputFloat("Finishing Pass", &m_Params.finishingPass);
+        
+        ImGui::TreePop();
     }
     
     // set viewer update flag
     if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
-    
-    ImGui::Separator(); 
     
     elementFactory.LineLoop_DrawImGui(settings, m_LineLoop);
     
@@ -228,36 +217,51 @@ void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings
 void DrawImGui_PathCutterParameters(Settings& settings) 
 {
     ParametersList::PathCutter& pathCutter = settings.p.pathCutter;
+    bool updateViewer = false;
     
     ImGui::InputFloat("Cut Overlap", &pathCutter.CutOverlap);
-    ImGui::InputInt("Quadrant Segments", &pathCutter.geosParameters.QuadrantSegments);
-
-    ImGui::Checkbox("Cut Tabs", &pathCutter.CutTabs);
+    ImGui::InputFloat("Partial Retract Distance", &pathCutter.PartialRetractDistance);
+    
+    updateViewer |= ImGui::InputInt("Quadrant Segments", &settings.p.pathCutter.geosParameters.QuadrantSegments);
+/*    // cap style / join style
+    static int imgui_CapStyle = settings.p.pathCutter.geosParameters.CapStyle - 1;
+    if(ImGui::Combo("Cap Style", &imgui_CapStyle, "Round\0Flat\0Square\0\0")) {
+        settings.p.pathCutter.geosParameters.CapStyle = imgui_CapStyle + 1;
+        updateViewer = true;
+    }
+    static int imgui_JoinStyle = settings.p.pathCutter.geosParameters.JoinStyle - 1;
+    if(ImGui::Combo("Join Style", &imgui_JoinStyle, "Round\0Mitre\0Bevel\0\0")) {
+        settings.p.pathCutter.geosParameters.JoinStyle = imgui_JoinStyle + 1;
+        updateViewer = true;
+    }
+*/    
+    updateViewer = ImGui::Checkbox("Cut Tabs", &pathCutter.CutTabs);
         
     ImGui::Indent();
         if(pathCutter.CutTabs) {
-            ImGui::InputFloat("Tab Spacing", &pathCutter.TabSpacing);
-            ImGui::InputFloat("Tab Height",  &pathCutter.TabHeight);
-            ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
+            updateViewer = ImGui::InputFloat("Tab Spacing", &pathCutter.TabSpacing);
+            updateViewer = ImGui::InputFloat("Tab Height",  &pathCutter.TabHeight);
+            updateViewer = ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
         }
     ImGui::Unindent();
+    if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
 }
 std::string A_Drawing::ActiveFunction_Name()
 {   
     if(!m_ActiveFunctions.HasItemSelected()) { return ""; }
     return m_ActiveFunctions.CurrentItem()->Name();
-}
+} 
 std::string Sketch::ActiveFunction_Name()
 {    
     if(!m_Drawings.HasItemSelected()) { return ""; }
     return m_Drawings.CurrentItem().ActiveFunction_Name();
 }
 void A_Drawing::ActiveFunction_DrawImGui_Tools(Settings& settings)
-{    
+{     
     // handle the selected active function
     if(m_ActiveFunctions.HasItemSelected()) {
         m_ActiveFunctions.CurrentItem()->DrawImGui_Tools(settings);
-    } 
+    }  
 }
 
 void A_Drawing::DrawImGui_Functions(Settings& settings)
@@ -267,6 +271,8 @@ void A_Drawing::DrawImGui_Functions(Settings& settings)
         std::unique_ptr<Function> newFunction = std::make_unique<Function_Draw>(m_ElementFactory, "Draw " + to_string(m_FunctionIDCounter++));
         m_ActiveFunctions.Add(move(newFunction));
         settings.SetUpdateFlag(ViewerUpdate::Full);
+        // to open tree node
+        m_IsActiveFunctionChanged = true;
     }
     ImGui::SameLine();
     
@@ -277,47 +283,61 @@ void A_Drawing::DrawImGui_Functions(Settings& settings)
 
 void A_Drawing::DrawImGui(Settings& settings)
 {
-    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::FunctionButton].Size;
-    ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
-    
-      
-    ImGui::Text("Parameters");
-    DrawImGui_PathCutterParameters(settings);
-    
-    
-     // active function buttons
-    ImGui::Separator();
-    ImGui::Text("Active Functions");
-    static std::function<std::string(std::unique_ptr<Function>& item)> callback = [](std::unique_ptr<Function>& item) { return item->Name(); };
-    if(ImGuiModules::Buttons(m_ActiveFunctions, buttonSize, callback)) {
-        settings.SetUpdateFlag(ViewerUpdate::Full);
+
+    if (ImGui::TreeNode("General Parameters")) {
+        DrawImGui_PathCutterParameters(settings);
+        ImGui::TreePop();
     }
     
-    ImGui::SameLine();
-        
-    // remove active Function button
-    if(m_ActiveFunctions.HasItemSelected()) 
-    {   // remove Function
-        if(ImGui::Button("-##Remove Function", buttonSizeSmall)) {
-            m_ActiveFunctions.RemoveCurrent();
+    ImGui::Separator();
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+     // active function imgui widgets
+    if (ImGui::TreeNode("Active Functions")) 
+    { 
+        // draw active function Tree Nodes
+        static std::function<std::string*(std::unique_ptr<Function>& item)> cb_GetItemStringPtr = [](std::unique_ptr<Function>& item) { 
+            return &(item->Name()); 
+        };
+        static std::function<void()> cb_DrawTabImGui = [&]() { 
+            m_ActiveFunctions.CurrentItem()->DrawImGui(m_ElementFactory, settings);
+        };
+         
+        if(ImGuiModules::TreeNodes(m_ActiveFunctions, m_IsActiveFunctionChanged, cb_GetItemStringPtr, cb_DrawTabImGui)) {
             settings.SetUpdateFlag(ViewerUpdate::Full);
         }
+        ImGui::TreePop();
     }
-    
-    // Current function
-    ImGui::Separator();
-    ImGui::Text("Current Function");
-    // handle the selected active function
-    if(m_ActiveFunctions.HasItemSelected()) {
-        m_ActiveFunctions.CurrentItem()->DrawImGui(m_ElementFactory, settings);
-    } 
+        
+        /*
+        ImVec2& buttonSize = settings.guiSettings.button[ButtonType::FunctionButton].Size;
+        ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
+   
+      
+        static std::function<std::string(std::unique_ptr<Function>& item)> callback = [](std::unique_ptr<Function>& item) { return item->Name(); };
+        if(ImGuiModules::Buttons(m_ActiveFunctions, buttonSize, callback)) {
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+        }
+        
+        ImGui::SameLine();
+            
+        // remove active Function button
+        if(m_ActiveFunctions.HasItemSelected()) 
+        {   // remove Function
+            if(ImGui::Button("-##Remove Function", buttonSizeSmall)) {
+                m_ActiveFunctions.RemoveCurrent();
+                settings.SetUpdateFlag(ViewerUpdate::Full);
+            }
+        }
+        */
     
     // draw the points list
     ImGui::Separator();
-    ImGui::Text("Points List");
-    m_ElementFactory.RawPoint_DrawImGui(settings);
-    // draw the references
-    m_ElementFactory.RefPointToElement_DrawImGui();
+    if (ImGui::TreeNode("Points List")) {
+        m_ElementFactory.RawPoint_DrawImGui(settings);
+        // draw the references
+        m_ElementFactory.RefPointToElement_DrawImGui();
+        ImGui::TreePop();
+    }
 }
     
     
@@ -358,43 +378,54 @@ bool Sketch::DrawImGui_StartSketch(Settings& settings)
 }
     
 
-
-
-void Sketch::DrawImGui(GRBL& grbl, Settings& settings) 
+void Sketch::DrawImGui(Settings& settings) 
 {
-    (void)grbl;
-    ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
-    if (!ImGui::Begin("Sketch", NULL, settings.guiSettings.general_window_flags)) {
-        ImGui::End(); 
-        return;  
-    }
-     
-    if (ImGui::SmallButton("New Drawing")) {
-        m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)));
-        settings.SetUpdateFlag(ViewerUpdate::Full);
+    static bool isNewDrawing = true;
+    // begin new imgui window
+    static ImGuiCustomModules::ImGuiWindow window(settings, "Sketch"); // default size
+    if(window.Begin(settings)) 
+    {    
+        if (ImGui::SmallButton("New Drawing")) {
+            m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)));
+            isNewDrawing = true;
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+        } 
+        
+        for(size_t i = 0; i < m_Drawings.Size(); )
+        {
+            // set active drawing to be open initially & inactive drawings to be closed
+            if(m_Drawings.CurrentIndex() == (int)i) { 
+                if(isNewDrawing) {
+                    ImGui::SetNextItemOpen(true); 
+                    isNewDrawing = false;
+                }
+            } else { ImGui::SetNextItemOpen(false); }
+            // close button flag - set by imgui
+            bool closeIsntClicked = true; 
+            if (ImGui::CollapsingHeader(m_Drawings[i].Name().c_str(), &closeIsntClicked)) {
+                // set the active index to match the open tab
+                if(m_Drawings.CurrentIndex() != (int)i) {
+                    std::cout << "Setting current drawing index" << std::endl;
+                    m_Drawings.SetCurrentIndex(i);
+                    settings.SetUpdateFlag(ViewerUpdate::Full);
+                }
+                // draw the imgui widgets for drawing 
+                m_Drawings.CurrentItem().DrawImGui(settings); 
+            }
+            if(!closeIsntClicked) { // has been closed
+                m_Drawings.Remove(i); 
+                settings.SetUpdateFlag(ViewerUpdate::Full);
+            } else { 
+                i++; 
+            }                        
+
+        }
+        window.End();
     }
     
-    for(size_t i = 0; i < m_Drawings.Size(); )
-    {
-        bool isOpen = true;
-        if (ImGui::CollapsingHeader(m_Drawings[i].Name().c_str(), &isOpen)) {
-            // set the active index to match the open tab
-            if(m_Drawings.CurrentIndex() != (int)i) {
-                std::cout << "Setting current drawing index" << std::endl;
-                m_Drawings.SetCurrentIndex(i);
-                settings.SetUpdateFlag(ViewerUpdate::Full);
-            }
-            // draw the imgui widgets for drawing
-            m_Drawings.CurrentItem().DrawImGui(settings);
-        }
-        if(!isOpen) { // has been closed
-            m_Drawings.Remove(i); 
-            settings.SetUpdateFlag(ViewerUpdate::Full);
-        } else { 
-            i++; 
-        }                        
 
-    }
+     
+    
     
     // ******* TODO *******: opening 2 drawings causes updating constantly
     
@@ -410,15 +441,13 @@ void Sketch::DrawImGui(GRBL& grbl, Settings& settings)
         return A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)); 
     };
     static std::function<void()> cb_DrawTabImGui = [&]() {  
-         assert(m_Drawings.HasItemSelected() && "No item selected in cb_DrawTabImGui");
-         m_Drawings.CurrentItem().DrawImGui(settings);        
+        m_Drawings.CurrentItem().DrawImGui(settings);        
     };
      
     if(ImGuiModules::Tabs(m_Drawings, cb_GetItemString, cb_AddNewItem, cb_DrawTabImGui)) {
         settings.SetUpdateFlag(ViewerUpdate::Full);
     }
 */
-    ImGui::End();
 }   
 
 
@@ -429,6 +458,86 @@ void RawPoint::GetReferences(std::function<void(Ref_PointToElement*)> callback)
         callback(ref);
     }
 } 
+
+/*
+
+enum ConstraintType { Arc, Equal, Distance, DistanceX, DistanceY, Horizontal, Vertical }; 
+    
+    
+class Constraint
+{
+protected:
+    Constraint(ConstraintType type) : m_Type(type) {}
+    
+private:
+    ConstraintType m_Type;
+};
+
+
+class Constraint_Arc : public Constraint
+{
+public:
+    Constraint_Arc() : Constraint(ConstraintType::Arc) {}
+    
+private:
+    ... Ref_P0;
+    ... Ref_P1;
+    ... Ref_PC;
+};
+
+class Constraint_Equal : public Constraint
+{
+public:
+    Constraint_Equal() : Constraint(ConstraintType::Equal) {}
+    
+private:
+    ... Ref_P0;
+    ... Ref_P1;
+};
+
+
+
+class RawPoint 
+{
+    void UpdateConstraints(std::vector<UpdatedPoint>& updatedPoints) 
+    {
+        for(Constraint& constraint : m_Constraints) {
+            if(!prevRawPoint) {
+                constraint.update();
+            }
+        }
+    }
+
+    std::vector<std::unique_ptr<Constraint>> m_Constraints; 
+    m_IsAlreadyUpdated = false;
+}
+
+
+struct UpdatedPoint
+{
+    UpdatedPoint(RawPoint* point, glm::vec2 position) : rawPoint(point), pos(position) {}
+    
+    RawPoint* rawPoint = nullptr;
+    glm::vec2 pos;
+    bool isFixed = false;
+};
+
+void ElementFactory::RawPoint_Move(RawPoint* rawPoint, glm::vec2 pos) 
+{
+    
+    std::vector<UpdatedPoint> updatedPoints;
+    updatedPoints.push_back(UpdatedPoint(rawPoint, pos));
+    
+    rawPoint->UpdateConstraints(updatedPoints);
+    
+    RawPoint->SetPosition(pos);
+}
+
+
+
+
+*/
+
 
 void RawPoint::SetThisRawPointFromRefs(const glm::vec2& p) 
 {  
@@ -794,7 +903,7 @@ bool Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFac
     }
     
     if(m_Params.cutSide == CompensateCutter::Pocket && !elementFactory.LineLoop_IsLoop(m_LineLoop)) {
-        Log::Error("Pocket requires start and end points to be identica");
+        Log::Error("Pocket requires start and end points to be identical");
         return false;
     }
     // z top and bottom
@@ -854,12 +963,12 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     }  
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
-     
+         
     // initialise 
     GCodeBuilder gcodes;
     gcodes.Add(HeaderText(settings, elementFactory));
     gcodes.InitCommands(toolData.speed);
-     
+      
     // define offset path parameters:  0 = no compensation, 1 = compensate left / pocket, -1 = compensate right
     int cutSide = GetCutSide((CompensateCutter)m_Params.cutSide);
     float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
@@ -875,40 +984,69 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     pathParams.feedPlunge = toolData.feedPlunge; 
     pathParams.feedCutting = toolData.feedCutting; 
     pathParams.isLoop = elementFactory.LineLoop_IsLoop(m_LineLoop);
+    
+    Geos geos;  
     // make a path of line segments (arcs are converted to many line segments)    
     Geos::LineString inputPath = elementFactory.LineLoop_PointsList(m_LineLoop, geosParameters.QuadrantSegments);
     // vector for storing the final paths
     std::vector<Geos::LineString> path; // = BuildPath();
+    bool isPocket = false;
+    std::vector<Geos::LineString> enclosingPath;
  
     // Simple path
     if(m_Params.cutSide == CompensateCutter::None) {
         path.push_back(inputPath);
     } // Compensate path 
     else {
-        Geos geos;  
         // make the inital offset
         path = geos.Offset(inputPath, cutSide * offsetDistance, geosParameters);
         // add pocket path
         if(m_Params.cutSide == CompensateCutter::Pocket) {
+            isPocket = true;
             // distance to offset per pass
             float boringOffset = 2.0f * fabsf(toolRadius) - settings.p.pathCutter.CutOverlap;
+            // make a copy of the orignal path
             // start a recursive loop of offset for boring, if cutting simple offset, this breaks loop after the first iteration
-            path = geos.OffsetPolygon_Recursive(path, boringOffset, true /*reverse*/, geosParameters);
+            Geos::RecursiveOffset recursiveOffset = geos.OffsetPolygon_Recursive(path, boringOffset, true /*reverse*/, geosParameters);
+            path = recursiveOffset.path;
+            enclosingPath = recursiveOffset.enclosingPath;
         }
-        // add finishing path
-        if(m_Params.finishingPass) {  
-            std::vector<Geos::LineString> finishPath = geos.Offset(inputPath, cutSide * fabsf(toolRadius), geosParameters);     
-            for(size_t i = 0; i < finishPath.size(); i++) {
-                path.push_back(finishPath[i]);
-            }
-        }
+
     }
+
+    
     // for each one of the pocketing out line loop, cut depths
     for (size_t i = 0; i < path.size(); i++) {
+        
+        if(isPocket) {
+            // sanity check
+            if(path.size() != enclosingPath.size()) {
+                Log::Error("Path sizes do not match, forcing full retract");
+                pathParams.retract = GCodeBuilder::RetractType::Full;
+            } else {
+                // do we need to retract z for each depth of pocket
+                if(geos.LineIsInsidePolygon(path[i].front(), path[i].back(), enclosingPath[i])) {
+                    pathParams.retract = GCodeBuilder::RetractType::Partial;
+                } else {
+                    pathParams.retract = GCodeBuilder::RetractType::Full;
+                }
+            }
+        }
+        
         pathParams.points = &(path[i]);
         // add gcodes for path at depths
         if(gcodes.CutPathDepths(settings, pathParams)) { return {}; }
-    } 
+    }         
+    // add finishing path
+    if(m_Params.finishingPass) {
+        pathParams.z0 = pathParams.z1;
+        std::vector<Geos::LineString> finishPath = geos.Offset(inputPath, cutSide * fabsf(toolRadius), geosParameters);     
+        for(size_t i = 0; i < finishPath.size(); i++) {
+            pathParams.points = &(finishPath[i]);
+            // add gcodes for path at depths
+            if(gcodes.CutPathDepths(settings, pathParams)) { return {}; }
+        }
+    }
     // move to zPlane, end program
     gcodes.EndCommands();
     return gcodes.Get();
@@ -938,7 +1076,7 @@ void A_Drawing::ActiveFunction_Run(GRBL& grbl, Settings& settings)
 }  
 // export the active function as gcode
 int A_Drawing::ActiveFunction_ExportGCode(Settings& settings, std::string saveFileDirectory) 
-{
+{ 
     if(!m_ActiveFunctions.HasItemSelected()) {
         Log::Error("No active function selected");
         return -1; 
@@ -976,7 +1114,9 @@ void Sketch::ActiveFunction_Export(Settings& settings)
     if(!m_Drawings.HasItemSelected()) { return; }
     if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
     
-    if(ImGui::Button("Export GCode")) { 
+    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Secondary].Size;
+        
+    if(ImGui::Button("Save", buttonSize)) { 
         if(m_Drawings.CurrentItem().ActiveFunction_ExportGCode(settings, settings.p.system.saveFileDirectory)) {
             Log::Error("Unable to save file");
         }
@@ -987,7 +1127,9 @@ void Sketch::ActiveFunction_Delete(Settings& settings)
     if(!m_Drawings.HasItemSelected()) { return; }
     if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
     
-    if(ImGui::Button("Delete")) { 
+    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Secondary].Size;
+    
+    if(ImGui::Button("Delete", buttonSize)) { 
         m_Drawings.CurrentItem().ActiveFunction_Delete();
         settings.SetUpdateFlag(ViewerUpdate::Full);
     }
@@ -1007,7 +1149,7 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
     static bool updateRequiredOnKeyRelease = false;
     
     auto SnapCursor = [&](const glm::vec2 p) { 
-        return settings.p.viewer.cursor.SnapCursor(p); 
+        return settings.p.sketch.cursor.SnapCursor(p); 
     }; 
     
     // handle mouse events
@@ -1019,10 +1161,10 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
             auto snappedCursor = SnapCursor(inputEvent.screenCoords_Click);
             
             if(m_ActiveCommand == Command::Select) {
-                elementFactory.ActivePoint_SetByPosition(snappedCursor, settings.p.viewer.cursor.SelectionTolerance_Scaled);
+                elementFactory.ActivePoint_SetByPosition(snappedCursor, settings.p.sketch.cursor.SelectionTolerance_Scaled);
                 settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
-            } else {
-                elementFactory.ActivePoint_Unset();
+            } else { 
+                elementFactory.ActivePoint_Unset(); 
             }
             if(m_ActiveCommand == Command::Line) {
                 elementFactory.LineLoop_AddLine(m_LineLoop, snappedCursor);
@@ -1046,6 +1188,9 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
     // handle mouse move events
     if(inputEvent.mouseMove) 
     {
+        // update current mouse position
+        settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+        
         // if clicked and held, move a point
         if(Mouse::IsLeftClicked()) {//inputEvent.mouseClick.Action == GLFW_REPEAT  &&  inputEvent.mouseClick.Button == GLFW_MOUSE_BUTTON_LEFT) {
             if(elementFactory.ActivePoint_Move(SnapCursor(inputEvent.screenCoords_Move))) {    
@@ -1081,16 +1226,54 @@ void Sketch::HandleEvents(Settings& settings, InputEvent& inputEvent)
 }
 
 
-
-
-
-
 void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, bool isDisabled)
 {
     DynamicBuffer::DynamicVertexList lineloop_Lines;
-    lineloop_Lines.position = elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments);
-    lineloop_Lines.colour = (isDisabled) ? settings.p.viewer.line.colourDisabled : settings.p.viewer.line.colour;
-    viewerLineLists->push_back(std::move(lineloop_Lines));
+    lineloop_Lines.colour = (isDisabled) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour;
+    
+    std::vector<glm::vec2> positions = elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments);
+    // return iif no point positions
+    if(positions.empty()) { return; }
+    
+    // line loop at z0
+    for(size_t i = 0; i < positions.size(); i++) {
+        lineloop_Lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[0] });
+    }
+    viewerLineLists->push_back(lineloop_Lines);
+    
+    // line loop at z1
+    lineloop_Lines.position.clear();
+    for(size_t i = 0; i < positions.size(); i++) {
+        lineloop_Lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[1] }); 
+    }
+    viewerLineLists->push_back(lineloop_Lines);
+     
+    
+    // draw line / arc to current mouse position
+    lineloop_Lines.position.clear();
+    
+        glm::vec2 p0 = positions.back();
+        glm::vec2 p1 = settings.p.sketch.cursor.Position;
+        
+        if(m_ActiveCommand == Command::Line) {
+            lineloop_Lines.position.push_back({ p0.x, p0.y, 0.0f });
+            lineloop_Lines.position.push_back({ p1.x, p1.y, 0.0f });
+        }
+        if(m_ActiveCommand == Command::Arc) {  
+            // start/end point
+            glm::vec2 centre = (p0 + p1) / 2.0f; // midpoint
+            int direction = CLOCKWISE;
+            
+            int quadrantSegments = settings.p.pathCutter.geosParameters.QuadrantSegments;
+            std::vector<glm::vec2> points = elementFactory.Element_GetArcPath(p0, p1, direction, centre, quadrantSegments);
+            
+            for(const glm::vec2& p : points) {
+                lineloop_Lines.position.push_back({ p.x, p.y, 0.0f });
+            }
+        }
+    viewerLineLists->push_back(lineloop_Lines);
+
+    
 } 
 // update viewer
 void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists)
@@ -1106,8 +1289,13 @@ void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBu
 {
     // add raw points to m_ViewerPointLists 
     DynamicBuffer::DynamicVertexList rawPoints;
-    rawPoints.position = m_ElementFactory.RawPoint_PointsList();
-    rawPoints.colour = settings.p.viewer.point.colour;
+    rawPoints.colour = settings.p.sketch.point.colour;
+    
+    std::vector<glm::vec2> positions = m_ElementFactory.RawPoint_PointsList();
+    // add positions at z = 0
+    for(size_t i = 0; i < positions.size(); i++) {
+        rawPoints.position.push_back({ positions[i].x, positions[i].y, 0.0f });
+    }
     viewerPointLists->push_back(std::move(rawPoints));
 }
 

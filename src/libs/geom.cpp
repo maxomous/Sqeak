@@ -106,11 +106,11 @@ point2D Geom::ArcCentreFromRadius(const point2D& p0, const point2D& p1, double r
     
 	//	angle between x axis & line from start to end
 	double theta_G = fabs(atan(dif.y / dif.x));
-	double h = sqrt(r*r - (L/2.0)*(L/2.0));
+	double h = sqrt(max(0.0, r*r - (L/2.0)*(L/2.0))); 
 	
     h = direction * h;
 	// 2nd version of the curve (when the centrepoint is past the midway line between start and end) 
-	if(r < 0.0)	                    { h = -h; }
+	if(r < 0.0) { h = -h; }
     // prevent flipping of centrepoint when p0 & p1 are horizontal & vertical
     if(p0.y == p1.y && p1.x > p0.x) { h = -h; }
     if(p0.x == p1.x && p1.y < p0.y) { h = -h; }

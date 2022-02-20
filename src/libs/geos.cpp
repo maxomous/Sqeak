@@ -103,12 +103,12 @@ std::optional<glm::vec2> Geos::Centroid(const LineString& points)
     if(!GEOSGeomGetY(centroid, &y)) return {};
     // Frees memory of all as memory ownership is passed along
     GEOSGeom_destroy(centroid);
-    return {{ x, y }};
+    return {{ x, y }}; 
 }
-
+ 
 // Returns true if Line is inside polygon
 // Will also return true if line is touching boundary but is inside polygon
-std::optional<bool> Geos::LineIsInsidePolygon(glm::vec2 p0, glm::vec2 p1, const LineString& polygon) 
+std::optional<bool> Geos::LineIsInsidePolygon(const glm::vec2& p0, const glm::vec2& p1, const LineString& polygon) 
 {   
     // turn into geometry
     LineString lineString;
@@ -125,7 +125,7 @@ std::optional<bool> Geos::LineIsInsidePolygon(glm::vec2 p0, glm::vec2 p1, const 
     // successful result
     return result;
 }
-
+  
 
 GEOSGeometry* Geos::GeosLinearRing(const LineString& points)   
 {  // error checks
@@ -133,6 +133,7 @@ GEOSGeometry* Geos::GeosLinearRing(const LineString& points)
     if(points.size() < 3) return nullptr; 
     // make sure first point == last point  
     if(points.front() != points.back()) return nullptr;
+    
     // make coord sequence from points
     auto seq = GeosCoordSequence(points);
     if(!seq) return nullptr; 

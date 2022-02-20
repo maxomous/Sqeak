@@ -79,10 +79,12 @@ namespace ImGui
     bool  ImageButton(ImageTexture imgT, const ImVec2& size, const ImVec2& uv0,  const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col) {
         return ImageButton((void*)(intptr_t)imgT.textureID, size, uv0, uv1, frame_padding, bg_col, tint_col);
     }
-    bool  ImageButton(const ImVec2& buttonSize, const ImVec2& imgSize, ImageTexture imgT, const ImVec2& uv0,  const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col) {
+    bool  ImageButton(const ImVec2& buttonSize, const ImVec2& imgSize, ImageTexture imgT, const char* id, const ImVec2& uv0,  const ImVec2& uv1, const ImVec4& bg_col, const ImVec4& tint_col) {
+        if(id) { PushID(id); }
         PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2((buttonSize.x-imgSize.x)/2.0f, (buttonSize.y-imgSize.y)/2.0f));
             bool clicked = ImageButton((void*)(intptr_t)imgT.textureID, imgSize, uv0, uv1, -1, bg_col, tint_col);
         PopStyleVar();
+        if(id) { PopID(); }
         return clicked;
     }
     bool  ImageButton(ImageTexture imgT, const float scale, const ImVec2& uv0,  const ImVec2& uv1, int frame_padding, const ImVec4& bg_col, const ImVec4& tint_col) {

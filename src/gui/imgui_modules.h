@@ -117,6 +117,8 @@ struct ImGuiModules
         return buttonClicked;
     }
     
+    // draws combo box's for a selectable vector
+    // returns true if an item was clicked
     template<typename T>
     static bool ComboBox(const char* name, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString, ImGuiComboFlags flags = 0)
     {         
@@ -148,7 +150,7 @@ struct ImGuiModules
     
     // returns true if item is clicked
     template<typename T>
-    static bool DraggableListBox(const char* listboxName, const ImVec2& dimensions, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString)
+    static bool ListBox_Reorderable(const char* listboxName, const ImVec2& dimensions, VectorSelectable<T>& data, std::function<std::string(T& item)> cb_GetItemString)
     {
         static int n_clicked = -1;
         static int n_current = -1;
@@ -225,14 +227,69 @@ struct ImGuiModules
  
     // returns true if current item has changed
     template<typename T>
-    static bool Tabs(VectorSelectable<T>& items, std::function<std::string(T& item)>& cb_GetItemString, std::function<T(void)>& cb_AddNewItem, std::function<void()> cb_DrawTabImGui)
+    static bool TreeNodes(VectorSelectable<T>& items, bool& isActiveItemInitiallyOpen, std::function<std::string*(T& item)>& cb_GetItemStringPtr, std::function<void()> cb_DrawItemImGui)
     {
-        bool returnVal = false;
+        bool isActiveItemChanged = false;
+        
+        // draw tabs
+        for (size_t n = 0; n < items.Size(); n++)
+        {   
+            /*
+            // delete button
+            std::string deleteName = "-##";
+            deleteName += (int) &items[n]; // id
+            if(ImGui::SmallButton(deleteName.c_str())) {
+                items.Remove(n); 
+                isActiveItemChanged = true;
+            }
+            
+            ImGui::SameLine();
+            */
+            //ImGui::IsItemClicked(ImGuiMouseButton_Right) {
+            
+            //}
+            
+            // set active item to be open initially & inactive items to be closed
+            if(items.CurrentIndex() == (int)n) { 
+                if(isActiveItemInitiallyOpen) {
+                    ImGui::SetNextItemOpen(true); 
+                    isActiveItemInitiallyOpen = false;
+                }
+            } else { ImGui::SetNextItemOpen(false); }
+            
+            // tree node 
+            std::string* name = cb_GetItemStringPtr(items[n]);
+            if (ImGui::TreeNode(name->c_str())) {
+                assert(items.HasItemSelected() && "No item selected in cb_DrawTabImGui");
+                // draw the imgui callback for the specific tab
+                cb_DrawItemImGui();
+                
+                // set the active index to match the open tree node
+                if(items.CurrentIndex() != (int)n) {
+                    items.SetCurrentIndex(n);
+                    isActiveItemChanged = true; 
+                }
+                ImGui::TreePop();
+            }
+
+        }
+        
+        return isActiveItemChanged;
+    }
+    
+ 
+    // returns true if current item has changed
+    template<typename T>
+    static bool Tabs(VectorSelectable<T>& items, std::function<std::string(T& item)>& cb_GetItemString, std::function<T(void)>& cb_AddNewItem, std::function<void()> cb_DrawItemImGui)
+    {
+        bool isModified = false;
         if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))  // or ImGuiTabBarFlags_FittingPolicyScroll
         {
-            // Delete button
-            if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip))
+            // New tab button
+            if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
                 items.Add(std::move(cb_AddNewItem())); // Add new tab
+                isModified = true;
+            }
 
             // draw tabs
             for (size_t n = 0; n < items.Size(); )
@@ -244,22 +301,22 @@ struct ImGuiModules
                     // set the active index to match the open tab
                     if(items.CurrentIndex() != (int)n) {
                         items.SetCurrentIndex(n);
-                        returnVal = true;
+                        isModified = true;
                     }
                     // draw the imgui callback for the specific tab
-                    cb_DrawTabImGui();
+                    cb_DrawItemImGui();
                     ImGui::EndTabItem();
                 }
                 // x has been pressed on tab, delete it
                 if(!isOpen) { 
                     items.Remove(n); 
-                    returnVal = true;
+                    isModified = true;
                 }
                 else { n++; }
             }
             ImGui::EndTabBar();
         }
-        return returnVal;
+        return isModified;
     }
     
     static bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font)
@@ -269,9 +326,9 @@ struct ImGuiModules
             ImVec2 p0 = ImGui::GetCursorPos();
             // set small font for text on button
             ImGui::PushFont(font);
-                // make text at bottom of button (values need to be betweem 0-1)
-                float y0To1 = textYOffset / (buttonSize.y - 2.0f*ImGui::GetStyle().FramePadding.y);
-                ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, y0To1 });
+                // make text at bottom of button (values need to be normalised between 0-1)
+                float yNormalised = textYOffset / (buttonSize.y - 2.0f*ImGui::GetStyle().FramePadding.y);
+                ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, yNormalised });
                     // draw button
                     bool isClicked = ImGui::Button(name.c_str(), buttonSize);
                 ImGui::PopStyleVar();
@@ -311,7 +368,7 @@ struct ImGuiModules
         }
         ImGui::PopID();
         return buttonPress;
-    };
+    }
 
     // Helper to display a little (?) mark which shows a tooltip when hovered.
     static void ToolTip_IfItemHovered(const std::string& text) {
@@ -341,7 +398,7 @@ struct ImGuiModules
        ImGui::SetNextWindowPos(ImVec2(10, viewport->Size.y - 50));
 
        ImGui::SetNextWindowSize(ImVec2(0,0), ImGuiCond_None);
-       if (!ImGui::Begin("RecentMessage", NULL, general_window_flags | ImGuiWindowFlags_NoDecoration)) {
+       if (!ImGui::Begin("RecentMessage", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | ImGuiWindowFlags_NoDecoration)) {
        ImGui::End();
        return;
        }

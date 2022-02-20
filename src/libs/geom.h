@@ -21,8 +21,8 @@ int sign(T val, int zeroValue = 0) {
     return a-b;
 }
 
-#define deg2rad(deg) (deg * M_PI / 180.0) 
-#define rad2deg(rad) (rad * 180.0 / M_PI)
+#define deg2rad(deg) ((deg) * M_PI / 180.0) 
+#define rad2deg(rad) ((rad) * 180.0 / M_PI)
 
 #define Sin(deg) sin(deg2rad(deg))
 #define Cos(deg) cos(deg2rad(deg))

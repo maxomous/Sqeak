@@ -11,38 +11,60 @@ ImGuiCustomModules::ImGuiWindow::ImGuiWindow(Settings& settings, std::string nam
     //m_Pos = ImVec2(padding, ImGui::GetMainViewport()->WorkSize.y - windowSize.y - padding);
 }
 
-bool ImGuiCustomModules::ImGuiWindow::Begin()
+bool ImGuiCustomModules::ImGuiWindow::Begin(Settings& settings, ImGuiWindowFlags flags)
 {
     // set default size / position
     ImGui::SetNextWindowSize(m_Size, ImGuiCond_Appearing);
     ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Appearing);
     
-    if (!ImGui::Begin(m_Name.c_str(), NULL, ImGuiWindowFlags_None)) {
+    if (!ImGui::Begin(m_Name.c_str(), NULL, flags)) {
         // window closed
+        ImGui::End(); 
         return false;
     }
     // update size / position if user changed
     m_Size = ImGui::GetWindowSize();
     m_Pos = ImGui::GetWindowPos();
+    
+    ImGuiModules::KeepWindowInsideViewport();
+    
+    // generic styling for widgets
+    PushWidgetStyle(settings);
+    
     return true;
 }
 
 void ImGuiCustomModules::ImGuiWindow::End() 
 { 
+    PopWidgetStyle();
     ImGui::End(); 
 }
 
+void ImGuiCustomModules::ImGuiWindow::PushWidgetStyle(Settings& settings) 
+{
+    ImGui::PushItemWidth(settings.guiSettings.widgetWidth);
+}
 
-void ImGuiCustomModules::BeginDisableWidgets(GRBLVals& grblVals) {
+void ImGuiCustomModules::ImGuiWindow::PopWidgetStyle()
+{
+    ImGui::PopItemWidth();
+}
+
+
+void ImGuiCustomModules::BeginDisableWidgets(GRBLVals& grblVals) 
+{
     if (!grblVals.isConnected) {
         ImGui::BeginDisabled();
     }
 }
-void ImGuiCustomModules::EndDisableWidgets(GRBLVals& grblVals) {
+void ImGuiCustomModules::EndDisableWidgets(GRBLVals& grblVals) 
+{
     if (!grblVals.isConnected) {
         ImGui::EndDisabled();
     }
 }
+
+
 bool ImGuiCustomModules::HereButton(GRBLVals& grblVals, glm::vec3& p) 
 {
     bool isClicked = false;
@@ -66,3 +88,43 @@ bool ImGuiCustomModules::ImageButtonWithText_Function(Settings& settings, std::s
     return clicked;
 }
 
+void ImGuiCustomModules::Heading(Settings& settings, const std::string& text, float centreAboutWidth) 
+{        
+    ImGui::PushFont(settings.guiSettings.font_small);
+        ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
+            if(centreAboutWidth) {
+                ImGuiModules::TextUnformattedCentredHorizontally(text.c_str(), centreAboutWidth);
+            } else {
+                ImGui::TextUnformatted(text.c_str());
+            }
+        ImGui::PopStyleColor();
+    ImGui::PopFont();
+}
+
+void ImGuiCustomModules::HeadingInTable(Settings& settings, const std::string& text) 
+{        
+    ImGui::PushFont(settings.guiSettings.font_small);
+        ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
+                ImGuiModules::TextUnformattedCentredHorizontallyInTable(text.c_str());
+        ImGui::PopStyleColor();
+    ImGui::PopFont();
+}
+
+bool ImGuiCustomModules::HeadingWithEdit(Settings& settings, const std::string& name) 
+{
+    ImGuiCustomModules::Heading(settings, name);
+    ImGui::SameLine();
+    return EditButton(settings, name.c_str());
+}
+
+bool ImGuiCustomModules::EditButton(Settings& settings, const char* id) 
+{
+    ImVec2& buttonImgSize = settings.guiSettings.button[ButtonType::Edit].ImageSize;
+    
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f,0.0f,0.0f,0.0f));
+        ImGui::PushID(id);
+            bool clicked = ImGui::ImageButton(settings.guiSettings.img_Edit, buttonImgSize);    
+        ImGui::PopID();
+    ImGui::PopStyleColor();
+    return clicked;
+}

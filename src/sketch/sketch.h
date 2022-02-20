@@ -2,12 +2,10 @@
 #include "../common.h" 
 
 
+
 namespace sketch
 {
 
-// forward declaration
-class RawPoint;
-class Element;
 
 
 enum CompensateCutter {
@@ -26,6 +24,9 @@ typedef size_t ReferenceID;
 typedef size_t ElementID;
 typedef size_t LineLoopID;
 
+// forward declaration
+class RawPoint;
+class Element;
 
 // link between 
 struct Ref_PointToElement {
@@ -84,7 +85,7 @@ public:
     virtual Ref_PointToElement* P1()     { return nullptr; }
     virtual Ref_PointToElement* Centre() { return nullptr; }
     virtual Ref_PointToElement* Last() = 0;
-    
+    // Adds points to return path
     virtual void Path(std::vector<glm::vec2>& returnPath, int arcSegments) {
         (void) arcSegments;
         returnPath.push_back(Last()->rawPoint->Vec2());
@@ -169,7 +170,7 @@ class Element_Arc : public Element
 {
 public: 
 
-    enum class DefineArcBy { Centre, Radius };
+    enum class DefineArcBy { Centre, Radius, P0, P1 };
   // define by centre point
     Element_Arc(ElementID id, Ref_PointToElement* ref_p0, Ref_PointToElement* ref_p1, int direction, Ref_PointToElement* ref_centre) 
         : Element(id) {
@@ -187,8 +188,9 @@ public:
     float Radius()              { return m_Radius; }
  
     //  
-    // 0 is vertically upward, clockwise is positive 
-    int SetTangentRadiusAndDirection() {
+    // for angles: 0 is vertically upward, clockwise is positive 
+    // returns success
+    bool SetTangentRadiusAndDirection() {
         
         // if the rawpoint has another element attached, use this as it's tangent basis
         RawPoint* RawPointPrev = nullptr;
@@ -196,7 +198,7 @@ public:
             // get the other element attached to this point
             if(ref->element->ID() != ID()) { RawPointPrev = ref->element->P0()->rawPoint; }
         });
-        if(!RawPointPrev) { return -1; }
+        if(!RawPointPrev) { return false; }
         
         const glm::vec2& pLast = RawPointPrev->Vec2();
         
@@ -208,7 +210,7 @@ public:
         
         // angle between pLast to p0 to p1  
         auto totalAngle = Geom::AngleBetween(pLast, p0, p1);
-        if(!totalAngle) { return -1; } 
+        if(!totalAngle) { return false; } 
                 
         // change direction if left of line
         SetDirection((*totalAngle < M_PI) ? ANTICLOCKWISE : CLOCKWISE);
@@ -219,11 +221,12 @@ public:
         } else {
             m_Radius = (pol.r / 2.0) / fabs(cos(Geom::CleanAngle(*totalAngle - M_PI_2)));
         }
-        return 0; 
+        return true; 
     }
     
     void SetP0(const glm::vec2& p0)                         override {
         m_Ref_P0->rawPoint->Vec2() = p0;
+        m_Priority = DefineArcBy::P0;
         if(SetTangentRadiusAndDirection()) {
             m_Priority = DefineArcBy::Radius;
         } 
@@ -232,6 +235,7 @@ public:
    
     void SetP1(const glm::vec2& p1)                         override {
         m_Ref_P1->rawPoint->Vec2() = p1;
+        m_Priority = DefineArcBy::P1;
         if(SetTangentRadiusAndDirection()) {
             m_Priority = DefineArcBy::Radius;
         }
@@ -291,23 +295,37 @@ public:
         glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
         glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
         glm::vec2& pCentre  = m_Ref_Centre->rawPoint->Vec2();
+        
+        std::cout << "p0: " << p0.x << ", " << p0.y << std::endl;
+        std::cout << "p1: " << p1.x << ", " << p1.y << std::endl;
+        std::cout << "p2: " << pCentre.x << ", " << pCentre.y << std::endl;
+        
         // get start and end points relative to the centre point
         glm::vec2 v_Start = p0 - pCentre;
         glm::vec2 v_End = p1 - pCentre;
+        
+        std::cout << "v_Start: " << v_Start.x << ", " << v_Start.y << std::endl;
+        std::cout << "v_End: " << v_End.x << ", " << v_End.y << std::endl;
         
         double th_Start  = atan2(v_Start.x, v_Start.y);
         double th_End    = atan2(v_End.x, v_End.y);
         
         Geom::CleanAngles(th_Start, th_End, m_Direction);
         
+        std::cout << "th_Start: " << th_Start << std::endl;
+        std::cout << "th_End: " << th_End << std::endl;
+        
         float th_Incr   = m_Direction * deg2rad(90.0 / arcSegments);
+        std::cout << "th_Incr: " << th_Incr << std::endl;
         
         int nIncrements = floorf(fabsf((th_End - th_Start) / th_Incr));
+        std::cout << "nIncrements: " << nIncrements << std::endl;
         
         glm::vec2 p;
         for (int n = 0; n < nIncrements; n++) {
             float th = th_Start + n * th_Incr;
-            p = { fabsf(m_Radius) * sin(th), fabsf(m_Radius) * cos(th) };            
+            p = { fabsf(m_Radius) * sin(th), fabsf(m_Radius) * cos(th) };       
+                 
             returnPath.push_back(pCentre + p);
         }
         // ensure last point is added
@@ -332,11 +350,22 @@ public:
     
     void Update() override
     {
-        if(m_Priority == DefineArcBy::Centre) { 
-            RecalculateRadiusFromCentre(); 
-           // m_Priority = DefineArcBy::Radius; // force radius priority 
+        switch (m_Priority)
+        {
+            case DefineArcBy::Centre:
+                RecalculateRadiusFromCentre(); 
+                // m_Priority = DefineArcBy::Radius; // force radius priority 
+                break;
+            case DefineArcBy::Radius:
+                RecalculateCentreFromRadius(); 
+                break;
+            case DefineArcBy::P0:
+                RecalculateCentreFromRadius(); 
+                break;
+            case DefineArcBy::P1:
+                RecalculateCentreFromRadius(); 
+                break;
         }
-        if(m_Priority == DefineArcBy::Radius) { RecalculateCentreFromRadius(); }
     }
     
     void DrawImGui(Settings& settings) override;
@@ -349,16 +378,16 @@ public:
         return hypot(dif.x, dif.y) / 2.0;
     }
     // recalculates radius from centre point
-    void RecalculateRadiusFromCentre() 
+    // base can be either 0 or 1 (p0 or p1)
+    void RecalculateRadiusFromCentre(int basePoint = 1) 
     {
         glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
         glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
         glm::vec2& pCentre  = m_Ref_Centre->rawPoint->Vec2();
         std::cout << "p1: " << p1.x << ", " << p1.y << std::endl;
         std::cout << "pCentre: " << pCentre.x << ", " << pCentre.y << std::endl;
-        glm::vec2 dif = p1 - pCentre;
+        glm::vec2 dif = (basePoint) ? (p1 - pCentre) : (p0 - pCentre);
         m_Radius = hypot((double)dif.x, (double)dif.y);
-        std::cout << "Left of line (-r when false): " << Geom::LeftOfLine(p0, p1, pCentre) << std::endl;
         if(Geom::LeftOfLine(p0, p1, pCentre)) { m_Radius = -m_Radius; }
     }   
     // recalculates centre point from radius
@@ -545,6 +574,30 @@ public:
     Sketch_Element Element_CreateArc(const glm::vec2& p0, const glm::vec2& p1, int direction, const glm::vec2& centre) { 
         RawPoint* point0 = RawPoint_Create(p0);
         return move(Element_CreateArc(point0, p1, direction, centre));
+    }
+    
+    std::vector<glm::vec2> Element_GetArcPath(const glm::vec2& p0, const glm::vec2& p1, int direction, const glm::vec2& centre, int arcSegments) {
+        
+        // make a point/element reference and add to list
+        Ref_PointToElement ref0, ref1, refCentre;
+        // make raw points (unused ids, added for debugging)
+        RawPoint point0(99999991, p0);
+        RawPoint point1(99999992, p1);
+        RawPoint pointCentre(99999993, centre);
+        //rawPoint.AddReference(ref);
+        
+        // make line element
+        Element_Arc arcElement(99999990, &ref0, &ref1, direction, &refCentre);
+        // link references
+        ref0.SetReference(&point0, &arcElement); // (Element*)&arcElement
+        ref1.SetReference(&point1, &arcElement);
+        refCentre.SetReference(&pointCentre, &arcElement);
+        // to ensure update (radius etc)
+        arcElement.Update();
+        
+        std::vector<glm::vec2> points;
+        arcElement.Path(points, arcSegments);
+        return points;
     }
 private:
     // Element creation
@@ -750,7 +803,7 @@ public:
     Function(std::string name) : m_Name(name) {}
     // to ensure inherited destructor is called
     virtual ~Function() = default;
-    const std::string& Name() { return m_Name; }
+    std::string& Name() { return m_Name; }
     
     virtual void HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) = 0;
     // draws ImGui widgets
@@ -801,7 +854,7 @@ private:
      //Event<Event_DisplayShapeOffset>::Dispatch( { elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments), elementFactory.RawPoint_PointsList(), false } );
    
     struct Function_Draw_Parameters {
-        glm::vec2 z;
+        glm::vec2 z = { 20.0f, 0.0f };
         int cutSide = (int)CompensateCutter::None;
         float finishingPass = 1.0f;
     } m_Params;
@@ -848,6 +901,8 @@ private:
     // contains a list of all the active functions in a drawing
     VectorSelectable<std::unique_ptr<Function>> m_ActiveFunctions;
     int m_FunctionIDCounter = 0;
+    // used to open tree node of new function
+    bool m_IsActiveFunctionChanged = true;
 };
 
 
@@ -872,7 +927,7 @@ public:
     // draws the ImGui Widgets for connecting (returns true if activated)
     bool DrawImGui_StartSketch(Settings& settings);
     // draws the ImGui Widgets for the sketch
-    void DrawImGui(GRBL& grbl, Settings& settings);
+    void DrawImGui(Settings& settings);
     // update viewer
     void UpdateViewer(Settings& settings);
     

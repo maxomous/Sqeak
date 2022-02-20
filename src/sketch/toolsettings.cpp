@@ -105,7 +105,7 @@ int ToolSettings::Draw_SelectTool(Settings& settings)
     bool isToolSelected = tools.toolList.HasItemSelected();
      
     static std::function<std::string(ParametersList::Tools::Tool& item)> cb_GetToolName = [](ParametersList::Tools::Tool& item) { return item.Name; };
-    ImGuiModules::DraggableListBox("##Tools", ImVec2(listWidth, listHeight * ImGui::GetTextLineHeightWithSpacing()), tools.toolList, cb_GetToolName);
+    ImGuiModules::ListBox_Reorderable("##Tools", ImVec2(listWidth, listHeight * ImGui::GetTextLineHeightWithSpacing()), tools.toolList, cb_GetToolName);
     
     if(ImGui::Button("+##AddTool")) {
         tools.toolList.Add(ParametersList::Tools::Tool("Tool 1"));
@@ -156,7 +156,7 @@ int ToolSettings::Draw_SelectMaterial(Settings& settings)
         ParametersList::Tools::Tool& currentTool = settings.p.tools.toolList.CurrentItem();
             
         static std::function<std::string(ParametersList::Tools::Tool::ToolData& item)> cb_GetMaterialName = [](ParametersList::Tools::Tool::ToolData& item) { return item.material; };
-        ImGuiModules::DraggableListBox("##ToolData", ImVec2(listWidth, listHeight * ImGui::GetTextLineHeightWithSpacing()), currentTool.Data, cb_GetMaterialName);
+        ImGuiModules::ListBox_Reorderable("##ToolData", ImVec2(listWidth, listHeight * ImGui::GetTextLineHeightWithSpacing()), currentTool.Data, cb_GetMaterialName);
         
         if(ImGui::Button("+##AddToolData")) { 
             currentTool.Data.Add(ParametersList::Tools::Tool::ToolData());
@@ -199,6 +199,5 @@ void ToolSettings::Draw_MaterialData(Settings& settings)
         ImGui::InputFloat("Plunge Feed Rate", &data.feedPlunge, 100.0f, 1000.0f, "%.0f");
         ImGui::Separator();
         ImGui::InputFloat("Depth of Cut", &data.cutDepth, 0.1f, 1.0f, "%.3f");
-        ImGui::InputFloat("Width of Cut", &data.cutWidth, 0.1f, 1.0f, "%.3f");
     }
 }

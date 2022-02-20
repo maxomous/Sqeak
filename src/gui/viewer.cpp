@@ -4,109 +4,246 @@ using namespace std;
 
 #include "../common.h" 
 
-float dAngle = 10.0f; // degrees
- 
-vector<glm::vec3> shape_Cylinder;
-vector<glm::vec3> shape_Cylinder_Outline;
+  
+void Shape::AddVertex(const glm::vec3& vertex) 
+{ 
+    m_Vertices.push_back(vertex); 
+}
 
-void initShape_Cylinder()
+void Shape::Append(const Shape& shape) 
+{                      
+    for(size_t i = 0; i < shape.Size(); i++) {
+        AddVertex(shape[i]);
+    }
+}
+// returns a new transformed Shape of Shape 
+// rotate about x axis and then z axis
+Shape Shape::Transform(const glm::vec3& translate, const glm::vec3& scale, const glm::vec2& rotate) const
 {
-    // bottom face - circle facing down 
-    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
-        float th2 = th + dAngle;
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 0.0f));
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
-        shape_Cylinder.push_back(glm::vec3(0.0f, 0.0f, 0.0f));
+    Shape newShape;
+    for(const glm::vec3& vertex : m_Vertices) {
+        glm::vec3 v = glm::Transform(vertex, translate, scale, rotate);
+        newShape.AddVertex(move(v));
     }
-    // walls
-    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
-        float th2 = th + dAngle;
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 0.0f));
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 1.0f));
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
+    return newShape;
+}   
+
+
+Shapes::Shapes(float arcAngle) 
+    :   m_ArcAngle(arcAngle) {
+    // wireframes
+    Init_Wireframe_Circle();
+    Init_Wireframe_Square();
+    Init_Wireframe_Cylinder();
+    Init_Wireframe_Cube();
+    // faces
+    Init_Face_Circle();
+    Init_Face_Square();
+    // bodies
+    Init_Body_Cylinder();
+    Init_Body_Cube();
+    Init_Body_Sphere();
+} 
+
+
+// wireframes GL_LINES
+void Shapes::Init_Wireframe_Circle()
+{        
+    for (float th = 0.0f; th <= 360.0f; th += m_ArcAngle) {
+        float th2 = th + m_ArcAngle;
+        m_Wireframe_Circle.AddVertex({ 0.5f * Cos(th),   -0.5f * Sin(th),    0.0f });
+        m_Wireframe_Circle.AddVertex({ 0.5f * Cos(th2),  -0.5f * Sin(th2),   0.0f });
     }
-    // top face - circle facing up
-    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
-        float th2 = th + dAngle;
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
-        shape_Cylinder.push_back(glm::vec3(0.0f, 0.0f, 1.0f));
-        shape_Cylinder.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 1.0f));
-    }
+}
+
+void Shapes::Init_Wireframe_Square()
+{
+    m_Wireframe_Square.AddVertex({ -0.5f, -0.5f, 0.0f });
+    m_Wireframe_Square.AddVertex({  0.5f, -0.5f, 0.0f });
     
+    m_Wireframe_Square.AddVertex({  0.5f, -0.5f, 0.0f });
+    m_Wireframe_Square.AddVertex({  0.5f,  0.5f, 0.0f });
+    
+    m_Wireframe_Square.AddVertex({  0.5f,  0.5f, 0.0f });
+    m_Wireframe_Square.AddVertex({ -0.5f,  0.5f, 0.0f });
+    
+    m_Wireframe_Square.AddVertex({ -0.5f,  0.5f, 0.0f });
+    m_Wireframe_Square.AddVertex({ -0.5f, -0.5f, 0.0f });
+}
+
+void Shapes::Init_Wireframe_Cylinder()
+{
     // outline bottom
-    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
-        float th2 = th + dAngle;
-        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 0.0f));
-        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 0.0f));
-    }
+    m_Wireframe_Cylinder.Append(m_Wireframe_Circle.Transform({ 0.0f, 0.0f, -0.5f }));
     // outline top
-    for (float th = 0.0f; th <= 360.0f; th += dAngle) {
-        float th2 = th + dAngle;
-        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th), -0.5f * Sin(th), 1.0f));
-        shape_Cylinder_Outline.push_back(glm::vec3(0.5f * Cos(th2), -0.5f * Sin(th2), 1.0f));
+    m_Wireframe_Cylinder.Append(m_Wireframe_Circle.Transform({ 0.0f, 0.0f, 0.5f }));
+}
+    
+void Shapes::Init_Wireframe_Cube()
+{
+    // bottom
+    m_Wireframe_Cube.Append(m_Wireframe_Square.Transform({ 0.0f, 0.0f, -0.5f }));
+    // top
+    m_Wireframe_Cube.Append(m_Wireframe_Square.Transform({ 0.0f, 0.0f, 0.5f }));
+    // join between bottom and top
+    m_Wireframe_Cube.AddVertex({ -0.5f, -0.5f, -0.5f });
+    m_Wireframe_Cube.AddVertex({ -0.5f, -0.5f,  0.5f });
+    
+    m_Wireframe_Cube.AddVertex({  0.5f, -0.5f, -0.5f });
+    m_Wireframe_Cube.AddVertex({  0.5f, -0.5f,  0.5f });
+    
+    m_Wireframe_Cube.AddVertex({  0.5f,  0.5f, -0.5f });
+    m_Wireframe_Cube.AddVertex({  0.5f,  0.5f,  0.5f });
+    
+    m_Wireframe_Cube.AddVertex({ -0.5f,  0.5f, -0.5f });
+    m_Wireframe_Cube.AddVertex({ -0.5f,  0.5f,  0.5f });
+}
+
+// faces GL_TRIANGLES
+void Shapes::Init_Face_Circle()
+{
+    // circle facing up
+    for (float th = 0.0f; th <= 360.0f; th += m_ArcAngle) {
+        float th2 = th + m_ArcAngle;
+        m_Face_Circle.AddVertex({ 0.5f * Cos(th),   -0.5f * Sin(th),    0.0f });
+        m_Face_Circle.AddVertex({ 0.0f,              0.0f,              0.0f });
+        m_Face_Circle.AddVertex({ 0.5f * Cos(th2),  -0.5f * Sin(th2),   0.0f });
     }
     
 }
+void Shapes::Init_Face_Square()
+{
+    m_Face_Square.AddVertex({ -0.5f, -0.5f, 0.0f });
+    m_Face_Square.AddVertex({  0.5f,  0.5f, 0.0f });
+    m_Face_Square.AddVertex({ -0.5f,  0.5f, 0.0f });
+                                           
+    m_Face_Square.AddVertex({ -0.5f, -0.5f, 0.0f });
+    m_Face_Square.AddVertex({  0.5f, -0.5f, 0.0f });
+    m_Face_Square.AddVertex({  0.5f,  0.5f, 0.0f });
+}
+/*
+uint cubeIndices[] = 
+{
+    // face 1 (xy)
+    0, 1, 2,
+    2, 3, 0,
+*/
 
-    /* Square
-    // bottom square
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
-    // top square           
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
-    // sides                
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w, -w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w, -w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3( w,  w,  w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w, -w), currentPosColour);
-    m_DynamicFaces.AddVertex(currentMPos + glm::vec3(-w,  w,  w), currentPosColour);
+// bodies GL_TRIANGLES 
+void Shapes::Init_Body_Cylinder() 
+{
+    // top face - circle facing up
+    m_Body_Cylinder.Append(m_Face_Circle.Transform({ 0.0f, 0.0f, 0.5f }));
+    // bottom face - circle facing down 
+    m_Body_Cylinder.Append(m_Face_Circle.Transform({ 0.0f, 0.0f, -0.5f }, glm::vec3(1.0f), { 180.0f, 0.0f }));
+    
+    // walls
+    for (float th = 0.0f; th <= 360.0f; th += m_ArcAngle) {
+        float th2 = th + m_ArcAngle;
+        m_Body_Cylinder.AddVertex({ 0.5f * Cos(th),  -0.5f * Sin(th),  -0.5f });
+        m_Body_Cylinder.AddVertex({ 0.5f * Cos(th),  -0.5f * Sin(th),   0.5f });
+        m_Body_Cylinder.AddVertex({ 0.5f * Cos(th2), -0.5f * Sin(th2), -0.5f });
+        m_Body_Cylinder.AddVertex({ 0.5f * Cos(th),  -0.5f * Sin(th),   0.5f });
+        m_Body_Cylinder.AddVertex({ 0.5f * Cos(th2), -0.5f * Sin(th2),  0.5f });
+        m_Body_Cylinder.AddVertex({ 0.5f * Cos(th2), -0.5f * Sin(th2), -0.5f });
+    }
+}
+
+void Shapes::Init_Body_Cube()
+{
+    // top and bottom faces
+    m_Body_Cube.Append(m_Face_Square.Transform({  0.0f,  0.0f,  0.5f }));
+    m_Body_Cube.Append(m_Face_Square.Transform({  0.0f,  0.0f, -0.5f }, glm::vec3(1.0f), { 180.0f, 0.0f }));
+    // front and back faces                       
+    m_Body_Cube.Append(m_Face_Square.Transform({  0.0f, -0.5f,  0.0f }, glm::vec3(1.0f), { 90.0f, 0.0f })); 
+    m_Body_Cube.Append(m_Face_Square.Transform({  0.0f,  0.5f,  0.0f }, glm::vec3(1.0f), { 270.0f, 0.0f }));
+    // sides                                      
+    m_Body_Cube.Append(m_Face_Square.Transform({  0.5f,  0.0f,  0.0f }, glm::vec3(1.0f), { 90.0f, 90.0f })); 
+    m_Body_Cube.Append(m_Face_Square.Transform({ -0.5f,  0.0f,  0.0f }, glm::vec3(1.0f), { 90.0f, 270.0f })); 
+}
+
+
+// build vertices of sphere with smooth shading using parametric equation
+// x = r * cos(u) * cos(v)
+// y = r * cos(u) * sin(v)
+// z = r * sin(u)
+// where u: stack(latitude) angle (-90 <= u <= 90)
+//       v: sector(longitude) angle (0 <= v <= 360)
+void Shapes::Init_Body_Sphere()
+{
+    /*
+    float x, y, z, xy;                              // vertex position
+    float nx, ny, nz, lengthInv = 1.0f / radius;    // normal
+    float s, t;                                     // texCoord
+
+    float sectorStep = 2 * M_PI / sectorCount;
+    float stackStep = M_PI / stackCount;
+    float sectorAngle, stackAngle;
+
+    for(int i = 0; i <= stackCount; ++i)
+    {
+        stackAngle = M_PI / 2 - i * stackStep;        // starting from pi/2 to -pi/2
+        xy = radius * cosf(stackAngle);             // r * cos(u)
+        z = radius * sinf(stackAngle);              // r * sin(u)
+
+        // add (sectorCount+1) vertices per stack
+        // the first and last vertices have same position and normal, but different tex coords
+        for(int j = 0; j <= sectorCount; ++j)
+        {
+            sectorAngle = j * sectorStep;           // starting from 0 to 2pi
+
+            // vertex position
+            x = xy * cosf(sectorAngle);             // r * cos(u) * cos(v)
+            y = xy * sinf(sectorAngle);             // r * cos(u) * sin(v)
+            m_Body_Sphere.AddVertex({ x, y, z });
+    
+            // normalized vertex normal
+            nx = x * lengthInv;
+            ny = y * lengthInv;
+            nz = z * lengthInv;
+            m_Body_Sphere.AddNormal({ nx, ny, nz });
+
+            // vertex tex coord between [0, 1]
+            s = (float)j / sectorCount;
+            t = (float)i / stackCount;
+            m_Body_Sphere.AddTextureCoords({ s, t });
+        }
+    }
+
+    // indices
+    //  k1--k1+1
+    //  |  / |
+    //  | /  |
+    //  k2--k2+1
+    uint k1, k2;
+    for(int i = 0; i < stackCount; ++i)
+    {
+        k1 = i * (sectorCount + 1);     // beginning of current stack
+        k2 = k1 + sectorCount + 1;      // beginning of next stack
+
+        for(int j = 0; j < sectorCount; ++j, ++k1, ++k2)
+        {
+            // 2 triangles per sector excluding 1st and last stacks
+            if(i != 0) {
+                m_Body_Sphere.addIndices(k1, k2, k1+1);   // k1---k2---k1+1
+            } 
+            if(i != (stackCount-1)) {
+                m_Body_Sphere.addIndices(k1+1, k2, k2+1); // k1+1---k2---k2+1
+            } 
+        }
+    }
     */
+}
+    
    
 DynamicBuffer::DynamicBuffer(GLenum primitiveType, int maxVertices, int maxIndices)
-    : m_PrimitiveType(primitiveType), m_MaxVertexCount(maxVertices), m_MaxIndexCount(maxIndices) 
+    : m_PrimitiveType(primitiveType)
 { 
-    std::vector<uint> indices;
-    indices.reserve(m_MaxIndexCount);
-    for (uint i = 0; i < m_MaxIndexCount; i++)
-        indices.push_back(i);
-    m_Vertices.reserve(m_MaxVertexCount);
-    
-    m_Shader = make_unique<Shader>(Viewer_VertexShader, Viewer_FragmentShader);
-    // make dynamic vertex buffer
-    m_VertexBuffer = make_unique<VertexBuffer>(m_MaxVertexCount * sizeof(Vertex));
-    VertexBufferLayout layout;
-    
-    layout.Push<float>(m_Shader->GetAttribLocation("in_Position"), 3);
-    layout.Push<float>(m_Shader->GetAttribLocation("in_Colour"), 3);
-    
-    m_VAO = make_unique<VertexArray>();
-    m_VAO->AddBuffer(*m_VertexBuffer, layout);
-    
-    m_IndexBuffer = make_unique<IndexBuffer>(m_MaxIndexCount, indices.data());
-    
+    Resize(maxVertices, maxIndices);
 }
   
 void DynamicBuffer::Resize(int maxVertices, int maxIndices)
-{ 
+{     
     m_MaxVertexCount = maxVertices;
     m_MaxIndexCount = maxIndices;
     
@@ -116,7 +253,7 @@ void DynamicBuffer::Resize(int maxVertices, int maxIndices)
         indices.push_back(i);
     m_Vertices.reserve(m_MaxVertexCount);
     
-    m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
+    m_Shader.reset(new Shader(Viewer_BasicVertexShader, Viewer_BasicFragmentShader));
     // make dynamic vertex buffer
     m_VertexBuffer.reset(new VertexBuffer(m_MaxVertexCount * sizeof(Vertex)));
     VertexBufferLayout layout;
@@ -134,12 +271,17 @@ void DynamicBuffer::ClearVertices()
 {
     m_Vertices.clear();
     m_VertexCount = 0;
+    m_OutlineVertexCount = 0;
 }
 
-void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour)
+void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour, bool isOutline)
 {
-    m_Vertices.emplace_back( position, colour ); 
+    m_Vertices.emplace_back(Vertex(position, colour)); 
     m_VertexCount++;
+    if(isOutline) {
+        m_OutlineVertexCount++;
+        assert(m_OutlineVertexCount == m_VertexCount && "Outline vertices should be added first");
+    }
 } 
 
 void DynamicBuffer::AddCursor(Settings& settings, bool isValid, glm::vec2 pos)
@@ -147,8 +289,8 @@ void DynamicBuffer::AddCursor(Settings& settings, bool isValid, glm::vec2 pos)
     if(!isValid) { 
         return; 
     }
-    ParametersList::Viewer3DParameters::Cursor& cursor = settings.p.viewer.cursor;
-    float cursorSize = cursor.Size_Scaled/2.0f;
+    ParametersList::Sketch::Cursor& cursor = settings.p.sketch.cursor;
+    float cursorSize = cursor.Size_Scaled / 2.0f;
     
     AddVertex(Vec3(pos) + glm::vec3(0.0f,         -cursorSize,    0.0f), cursor.Colour);
     AddVertex(Vec3(pos) + glm::vec3(0.0f,         cursorSize,     0.0f), cursor.Colour);
@@ -185,40 +327,42 @@ void DynamicBuffer::AddAxes(float size, glm::vec3 origin)
     AddVertex(origin + glm::vec3(0.0f,      0.0f,       size),  { 0.0f, 0.0f, 1.0f });
 } 
 
-void DynamicBuffer::AddShape(const vector<glm::vec3>& shape, glm::vec3 colour, const glm::vec3& position, const glm::vec3& scale, float rotateX, float rotateZ) 
+void DynamicBuffer::AddShapeOutline(const Shape& shape, glm::vec3 colour, const glm::vec3& translate, const glm::vec3& scale, const glm::vec2& rotate) 
 {
-    for (const glm::vec3& vertex : shape) 
-    {
-        glm::vec3 v = vertex * scale;
-        v = glm::rotate(v, glm::radians(rotateX), glm::vec3(1.0f, 0.0f, 0.0f));
-        v = glm::rotate(v, glm::radians(rotateZ), glm::vec3(0.0f, 0.0f, 1.0f));
-        v += position;
-        AddVertex(move(v), colour);
-    }
-}   
+    AddShape(shape, colour, translate, scale, rotate, true);
+}        
 
-void DynamicBuffer::AddPath(const vector<glm::vec2>& vertices, glm::vec3 colour, const glm::vec3& position) 
+void DynamicBuffer::AddShape(const Shape& shape, glm::vec3 colour, const glm::vec3& translate, const glm::vec3& scale, const glm::vec2& rotate, bool isOutline) 
+{
+    for(size_t i = 0; i < shape.Size(); i++) {
+        glm::vec3 v = glm::Transform(shape[i], translate, scale, rotate);
+        AddVertex(move(v), colour, isOutline);
+    }
+} 
+
+void DynamicBuffer::AddPathAsLines(const vector<glm::vec3>& vertices, glm::vec3 colour, const glm::vec3& position) 
 {    
     for (size_t i = 1; i < vertices.size(); i++) {
-        AddVertex(position + glm::vec3(vertices[i-1], 0.0f), colour);
-        AddVertex(position + glm::vec3(vertices[i], 0.0f), colour);
+        AddVertex(position + vertices[i-1], colour);
+        AddVertex(position + vertices[i], colour);
     }
-}      
+}
 
 void DynamicBuffer::AddDynamicVertexList(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
 {
     for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
-        AddPath((*dynamicVertexLists)[i].position, (*dynamicVertexLists)[i].colour, zeroPosition);
+        AddPathAsLines((*dynamicVertexLists)[i].position, (*dynamicVertexLists)[i].colour, zeroPosition);
     }
 }
 
-void DynamicBuffer::Update() {
+
+void DynamicBuffer::Update() 
+{
     m_VertexBuffer->DynamicUpdate(0, m_Vertices.size() * sizeof(Vertex), m_Vertices.data());
 }
 
-void DynamicBuffer::Draw(glm::mat4& proj, glm::mat4& view) {
-    Renderer renderer(m_PrimitiveType); 
-    
+void DynamicBuffer::Draw(glm::mat4& proj, glm::mat4& view, bool isDrawOutline) 
+{    
     m_Shader->Bind();
     m_Shader->SetUniformMat4f("u_MVP", proj * view * glm::mat4(1.0f));
     
@@ -227,7 +371,12 @@ void DynamicBuffer::Draw(glm::mat4& proj, glm::mat4& view) {
         // double size of buffer
         Resize(m_MaxVertexCount*2, m_MaxIndexCount*2);
     }
-    renderer.Draw(*m_VAO, *m_IndexBuffer, *m_Shader, m_VertexCount);
+    // draw
+    Renderer::Draw(m_PrimitiveType, *m_VAO, *m_IndexBuffer, *m_Shader, m_OutlineVertexCount, m_VertexCount - m_OutlineVertexCount);
+    // outline
+    if(isDrawOutline) {
+        Renderer::Draw(GL_LINES, *m_VAO, *m_IndexBuffer, *m_Shader, 0, m_OutlineVertexCount);
+    }
 }
 
  
@@ -301,19 +450,45 @@ Viewer::Viewer()
     event_AddPointLists         = make_unique<EventHandler<Event_Viewer_AddPointLists>>(AddDynamicPointLists); 
     event_Set2DMode             = make_unique<EventHandler<Event_Set2DMode>>(Set2DModeEvent);
     //event_UpdateCamera = make_unique<EventHandler<Event_SettingsUpdated>>(UpdateCameraEvent);
-    
-    // dont draw vertices outside of our visible depth
-    glEnable(GL_DEPTH_TEST);
-    // this will always draw the latest thing on top, prevent lines overlapping and looking jittery
-    glDepthFunc(GL_ALWAYS);
+      
     // dont draw triangles facing the wrong way 
     glEnable(GL_CULL_FACE);  
+    // dont draw vertices outside of our visible depth
+    glEnable(GL_DEPTH_TEST);
     
     m_Camera.SetNearFar(0.1f, 5000.0f);
     m_Camera.SetZoomMinMax(1.0f, 3000.0f);
     m_Camera.SetZoom(2000.0f);
     
-    initShape_Cylinder();
+    // 3D shapes
+    // Tool (move upward so that bottom of cylinder is on z0)
+    m_Shape_Tool = m_Shapes.Body_Cylinder().Transform({ 0.0f, 0.0f, 0.5f }); 
+    // Tool WireFrame
+    m_Shape_Tool_Wireframe = m_Shapes.Wireframe_Cylinder().Transform({ 0.0f, 0.0f, 0.5f }); 
+      
+    // Tool Holder
+    float height = 0.0f;
+    // spindle dimensions
+    glm::vec3 dim_Nut       = { 34.0f, 34.0f, 23.0f };
+    glm::vec3 dim_Shank     = { 23.0f, 23.0f, 20.0f };
+    glm::vec3 dim_Shoulder  = { 65.0f, 65.0f, 12.0f };
+    glm::vec3 dim_Body      = { 80.0f, 80.0f, 228.0f };
+    // cylinder moved up, so that z = 0
+    Shape cylinder = m_Shapes.Body_Cylinder().Transform({ 0.0f, 0.0f, 0.5f });
+    // make spindle shape 
+    m_Shape_ToolHolder.Append(cylinder.Transform({ 0.0f, 0.0f, height },                   dim_Nut)); 
+    m_Shape_ToolHolder.Append(cylinder.Transform({ 0.0f, 0.0f, height += dim_Nut.z },      dim_Shank)); 
+    m_Shape_ToolHolder.Append(cylinder.Transform({ 0.0f, 0.0f, height += dim_Shank.z },    dim_Shoulder)); 
+    m_Shape_ToolHolder.Append(cylinder.Transform({ 0.0f, 0.0f, height += dim_Shoulder.z }, dim_Body)); 
+    // spindle wireframe
+    height = 0.0f;
+    // cylinder moved up, so that z = 0
+    Shape cylinder_Wireframe = m_Shapes.Wireframe_Cylinder().Transform({ 0.0f, 0.0f, 0.5f });
+    m_Shape_ToolHolder_Wireframe.Append(cylinder_Wireframe.Transform({ 0.0f, 0.0f, height },                   dim_Nut)); 
+    m_Shape_ToolHolder_Wireframe.Append(cylinder_Wireframe.Transform({ 0.0f, 0.0f, height += dim_Nut.z },      dim_Shank)); 
+    m_Shape_ToolHolder_Wireframe.Append(cylinder_Wireframe.Transform({ 0.0f, 0.0f, height += dim_Shank.z },    dim_Shoulder)); 
+    m_Shape_ToolHolder_Wireframe.Append(cylinder_Wireframe.Transform({ 0.0f, 0.0f, height += dim_Shoulder.z }, dim_Body)); 
+    
     
 }
  
@@ -341,8 +516,8 @@ void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& 
     vertices.reserve(nVertices);
     // add as lines
     for (size_t i = 0; i < positions.size() - 1; i++) {
-        vertices.emplace_back( positions[i], colours[i] );
-        vertices.emplace_back( positions[i+1], colours[i] );
+        vertices.emplace_back( positions[i], colours[i+1] );
+        vertices.emplace_back( positions[i+1], colours[i+1] );
     }
     // make indices 
     std::vector<uint> indices;
@@ -351,7 +526,7 @@ void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& 
         indices.emplace_back(i);
     }
     
-    m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
+    m_Shader.reset(new Shader(Viewer_BasicVertexShader, Viewer_BasicFragmentShader));
    
     m_VertexBuffer.reset(new VertexBuffer(vertices.size() * sizeof(Vertex), vertices.data()));
     VertexBufferLayout layout;
@@ -371,7 +546,7 @@ void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& 
 
 void Viewer::Clear()
 {
-    m_Shader.reset(new Shader(Viewer_VertexShader, Viewer_FragmentShader));
+    m_Shader.reset(new Shader(Viewer_BasicVertexShader, Viewer_BasicFragmentShader));
     m_VertexBuffer.reset(new VertexBuffer(0, nullptr));
     m_VAO.reset(new VertexArray());
     m_IndexBuffer.reset(new IndexBuffer(0, nullptr));
@@ -382,13 +557,13 @@ void Viewer::Clear()
 
 void Viewer::Draw2DText(const char* label, glm::vec3 position)
 {
-    pair<bool, glm::vec2> LabelPos = m_Camera.GetScreenCoords(position);
+    pair<bool, glm::vec2> labelPos = m_Camera.GetScreenCoords(position);
     // centre letters
     ImVec2 charSize = ImGui::CalcTextSize(label);
     glm::vec2 charOffset = { charSize.x/2, charSize.y/2 };
     
-    if(LabelPos.first) {
-        glm::vec2 pos2D = Window::InvertYCoord(LabelPos.second) - charOffset;
+    if(labelPos.first) {
+        glm::vec2 pos2D = Window::InvertYCoord(labelPos.second) - charOffset;
         ImDrawList* drawList = ImGui::GetBackgroundDrawList();
         drawList->AddText(ImVec2(pos2D.x, pos2D.y), IM_COL32(255, 255, 255, 255), label);
     }
@@ -401,13 +576,9 @@ void Viewer::Draw2DAxesLabels(glm::vec3 position, float axisLength)
     Draw2DText("Z", glm::vec3(0.0f, 0.0f, axisLength) + position);
 }
 
-
-         
         
 void Viewer::Update(Settings& settings, float dt)
-{    
-    glPointSize(settings.p.viewer.point.size);
-    
+{
     (void)dt;
     GRBLVals& grblVals = settings.grblVals;
     float axisSize = settings.p.viewer.axis.Size;
@@ -419,15 +590,11 @@ void Viewer::Update(Settings& settings, float dt)
     // Reset buffer
     m_DynamicPoints.ClearVertices();
     m_DynamicLines.ClearVertices();
-    m_DynamicFaces.ClearVertices();
-// ---------------------------------
+    m_DynamicBodies.ClearVertices();
+    
+// -------------LINES----------------
     // this could be in static buffer...
     m_DynamicLines.AddGrid(settings);
-     
-    // Draw Current Position
-    glm::vec3 scaleTool = settings.p.tools.GetToolScale();
-    m_DynamicFaces.AddShape(shape_Cylinder,           settings.p.viewer.spindle.toolColour,         grblVals.status.MPos, scaleTool);
-    m_DynamicLines.AddShape(shape_Cylinder_Outline,   settings.p.viewer.spindle.toolColourOutline,  grblVals.status.MPos, scaleTool);
     
     // add shape and offset path
     if(m_DynamicLineLists) {
@@ -436,30 +603,60 @@ void Viewer::Update(Settings& settings, float dt)
     if(m_DynamicPointLists) {
         m_DynamicPoints.AddDynamicVertexList(m_DynamicPointLists, zeroPos);
     }
-    //m_DynamicLines.AddPath(m_Shape,        settings.p.pathCutter.ShapeColour,         zeroPos, m_ShapeIsLoop);
-    //m_DynamicLines.AddPath(m_ShapeOffset,  settings.p.pathCutter.ShapeOffsetColour,   zeroPos, false); // geos offsetPolygon() closes path for us
-    
     // Draw coord system axis
     m_DynamicLines.AddAxes(axisSize, zeroPos);
     // add user cursor
     m_DynamicLines.AddCursor(settings, m_Cursor2DPos.first, m_Cursor2DPos.second);
+     
+     
+// -------------Bodies----------------
+    glm::vec3 scaleTool = settings.p.tools.GetToolScale();
     
-    m_DynamicFaces.Update();
+// Draw Current Position
+// Draw Outlines
+    // tool 
+    m_DynamicBodies.AddShapeOutline(m_Shape_Tool_Wireframe,         settings.p.viewer.spindle.colours.toolOutline,  grblVals.status.MPos, scaleTool);
+    // tool holder (above tool)
+    if(settings.p.viewer.spindle.visibility) {
+        m_DynamicBodies.AddShapeOutline(m_Shape_ToolHolder_Wireframe, settings.p.viewer.spindle.colours.toolHolderOutline, grblVals.status.MPos + glm::vec3(0.0f, 0.0f, scaleTool.z));
+    }
+// Draw Faces
+    // tool
+    m_DynamicBodies.AddShape(m_Shape_Tool,       settings.p.viewer.spindle.colours.tool,         grblVals.status.MPos, scaleTool);
+    // tool holder (above tool)
+    if(settings.p.viewer.spindle.visibility) {
+        m_DynamicBodies.AddShape(m_Shape_ToolHolder, settings.p.viewer.spindle.colours.toolHolder, grblVals.status.MPos + glm::vec3(0.0f, 0.0f, scaleTool.z));
+    }
+    
     m_DynamicLines.Update();
+    m_DynamicBodies.Update();
     m_DynamicPoints.Update();
 }
 
-
-void Viewer::Render()
+void Viewer::Render(Settings& settings)
 {    
     m_Proj = m_Camera.GetProjectionMatrix();
     m_View = m_Camera.GetViewMatrix();
  
     Renderer::Clear();
     
-    m_DynamicFaces.Draw(m_Proj, m_View);
+    // always draw the latest thing on top, prevents overlapping lines looking jittery
+    glDepthFunc(GL_ALWAYS);
+    glLineWidth(m_LineWidth_Lines);
     m_DynamicLines.Draw(m_Proj, m_View);
+    
+    // set depth function for bodies
+    if(!m_DepthFunction) { // is wireframe on?
+        glDepthFunc(GL_LEQUAL);
+    } else {
+        glDepthFunc((GLenum)(m_DepthFunction | 0x0200)); // GL_NEVER = 0x0200, GL_LESS = 0x02001...
+    }
+    glLineWidth(m_LineWidth_Bodies);
+    m_DynamicBodies.Draw(m_Proj, m_View, (bool)m_DepthFunction);
+    
+    glPointSize(settings.p.sketch.point.size);
     m_DynamicPoints.Draw(m_Proj, m_View);
+    
     DrawPath();
 }
 
@@ -467,89 +664,133 @@ void Viewer::DrawPath()
 { 
     if(!m_Initialised || !m_Show)
         return;
-    Renderer renderer(GL_LINES);
     
     m_Shader->Bind();
     m_Shader->SetUniformMat4f("u_MVP", m_Proj * m_View * glm::mat4(1.0f));
     
-    renderer.Draw(*m_VAO, *m_IndexBuffer, *m_Shader, (uint)m_DrawCount);
+    Renderer::Draw(GL_LINES, *m_VAO, *m_IndexBuffer, *m_Shader, 0, (uint)m_DrawCount);
 }
   
 void Viewer::ImGuiRender(Settings& settings)  
 { 
+    // begin new imgui window
+    static ImGuiCustomModules::ImGuiWindow window(settings, "Viewer"); // default size
+    if(!window.Begin(settings)) return;
 
-    if (!ImGui::Begin("Viewer", NULL, settings.guiSettings.general_window_flags)) {
-        ImGui::End();
-        return;
-    }  
-     
-    ImGuiModules::KeepWindowInsideViewport();
+    ImGui::TextUnformatted("GCode Viewer"); 
+    ImGui::Separator();
         
-    ImGui::PushItemWidth(-130.0f);
-        ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_NoInputs;
-            
-        ImGui::Text("Position: (%g, %g)", m_Cursor2DPos.second.x, m_Cursor2DPos.second.y);
+    ImGui::TextUnformatted("General"); ImGui::Indent(); 
+        ImGui::SliderFloat("Point Size", &settings.p.sketch.point.size, 0.0f, 100.0f);
+
+        ImGui::SliderFloat("Line Width of Lines", &m_LineWidth_Lines, 0.0f, 20.0f);
+        ImGui::SliderFloat("Line Width of Bodies", &m_LineWidth_Bodies, 0.0f, 20.0f);
+        //ImGui::Combo("Depth Function", &m_DepthFunction, "Never\0<\0=\0<=\0>\0!=\0>=\0Always\0\0");
+        static int imgui_wireframe = 0;
+        if(ImGui::Combo("Edges", &imgui_wireframe, "Show Edges\0Show Hidden Edges\0Hide Edges\0\0")) { // <=  Always
+            if(imgui_wireframe == 0) { m_DepthFunction = 3; } // <=
+            if(imgui_wireframe == 1) { m_DepthFunction = 7; } // Always
+            if(imgui_wireframe == 2) { m_DepthFunction = 0; } // Never
+        }
+        ImGui::Separator();
         
-        if(ImGui::SliderFloat("Cursor Size", &settings.p.viewer.cursor.Size, 0.0f, 100.0f))  {
-            settings.p.viewer.cursor.Size_Scaled = ScaleToPx(settings.p.viewer.cursor.Size);
+        static int toolShape = 2;
+        if(ImGui::Combo("Tool Shape", &toolShape, "Circle\0Square\0Cylinder\0Cube\0Sphere\0\0")) {
+            if (toolShape == 0) { 
+                m_Shape_Tool = m_Shapes.Face_Circle(); 
+                m_Shape_Tool_Wireframe = m_Shapes.Wireframe_Circle();
+            }
+            else if (toolShape == 1) { 
+                m_Shape_Tool = m_Shapes.Face_Square(); 
+                m_Shape_Tool_Wireframe = m_Shapes.Wireframe_Square();
+            }
+            else if (toolShape == 2) { 
+                m_Shape_Tool = m_Shapes.Body_Cylinder().Transform({ 0.0f, 0.0f, 0.5f }); 
+                m_Shape_Tool_Wireframe = m_Shapes.Wireframe_Cylinder().Transform({ 0.0f, 0.0f, 0.5f }); 
+            }
+            else if (toolShape == 3) { 
+                m_Shape_Tool = m_Shapes.Body_Cube().Transform({ 0.0f, 0.0f, 0.5f }); 
+                m_Shape_Tool_Wireframe = m_Shapes.Wireframe_Cube().Transform({ 0.0f, 0.0f, 0.5f });
+            }
+            else if (toolShape == 4) { 
+                m_Shape_Tool = m_Shapes.Body_Sphere().Transform({ 0.0f, 0.0f, 0.5f }); 
+            }
+        } 
+    ImGui::Unindent();  ImGui::Separator();
+        
+    ImGui::TextUnformatted("Cursor"); ImGui::Indent(); 
+        ImGui::Text("Cursor 2D Position: (%g, %g)", m_Cursor2DPos.second.x, m_Cursor2DPos.second.y);
+        
+        if(ImGui::SliderFloat("Cursor Size", &settings.p.sketch.cursor.Size, 0.0f, 100.0f))  {
+            settings.p.sketch.cursor.Size_Scaled = ScaleToPx(settings.p.sketch.cursor.Size);
         }
         ImGui::SameLine();
-        ImGui::Text("%g Scaled", settings.p.viewer.cursor.Size_Scaled);
+        ImGui::Text("%g Scaled", settings.p.sketch.cursor.Size_Scaled);
         
-        if(ImGui::InputFloat("Selection Tolerance", &settings.p.viewer.cursor.SelectionTolerance)) {
-             settings.p.viewer.cursor.SelectionTolerance_Scaled = ScaleToPx(settings.p.viewer.cursor.SelectionTolerance);
+        if(ImGui::InputFloat("Selection Tolerance", &settings.p.sketch.cursor.SelectionTolerance)) {
+             settings.p.sketch.cursor.SelectionTolerance_Scaled = ScaleToPx(settings.p.sketch.cursor.SelectionTolerance);
         }
        
-        ImGui::SliderFloat("Cursor Snap Distance", &settings.p.viewer.cursor.SnapDistance, 0.1f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
+        ImGui::SliderFloat("Cursor Snap Distance", &settings.p.sketch.cursor.SnapDistance, 0.1f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
         ImGui::SameLine();
-        ImGui::Text("%g Scaled", settings.p.viewer.cursor.SnapDistance_Scaled);
-        
-        ImGui::ColorEdit3("Cursor Colour", &settings.p.viewer.cursor.Colour[0], flags);
-            ImGui::Separator();
-            
+        ImGui::Text("%g Scaled", settings.p.sketch.cursor.SnapDistance_Scaled);
+    ImGui::Unindent();  ImGui::Separator();
+         
+    ImGui::TextUnformatted("Tool Path"); ImGui::Indent(); 
         ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
-        
-        
-        ImGui::ColorEdit3("Toolpath Feed Colour", &settings.p.viewer.ToolpathColour_Feed[0], flags);
-        ImGui::ColorEdit3("Toolpath Rapid Colour", &settings.p.viewer.ToolpathColour_Rapid[0], flags);
-        ImGui::ColorEdit3("Toolpath Home Colour", &settings.p.viewer.ToolpathColour_Home[0], flags);
-            ImGui::Separator();
-            
-        if(ImGui::Button("Clear")) {
-            Clear();
-        }
-        ImGui::SameLine();
         ImGui::Checkbox("Show", &m_Show);
+        ImGui::SameLine();
+        if(ImGui::Button("Clear")) { Clear(); }
+    ImGui::Unindent();  ImGui::Separator();
         
-            ImGui::Separator();
-            
-        ImGui::TextUnformatted("GCode Viewer"); 
-            
-            ImGui::Separator();
-            
-        ImGui::ColorEdit3("Background Colour", &settings.p.viewer.BackgroundColour[0], flags);
-        
-            ImGui::Separator();
-            
+    ImGui::TextUnformatted("Axis"); ImGui::Indent();  
         ImGui::SliderFloat("Axis Size", &settings.p.viewer.axis.Size, 0.0f, 500.0f);
-        
-            ImGui::Separator();
-            
-        ImGui::ColorEdit3("Tool Colour", &settings.p.viewer.spindle.toolColour[0], flags);
-        ImGui::ColorEdit3("Tool Colour Outline", &settings.p.viewer.spindle.toolColourOutline[0], flags);
-        
-            ImGui::Separator();
-        
-        ImGui::TextUnformatted("Grid");
-        
+    ImGui::Unindent();  ImGui::Separator();
+    
+    ImGui::TextUnformatted("Grid"); ImGui::Indent();    
         ImGui::SliderFloat3("Position", &settings.p.viewer.grid.Position[0], -3000.0f, 3000.0f);
         ImGui::SameLine();
         ImGuiCustomModules::HereButton(settings.grblVals, settings.p.viewer.grid.Position);
         ImGui::SliderFloat2("Size", &settings.p.viewer.grid.Size[0], -3000.0f, 3000.0f);
         ImGui::SliderFloat("Spacing", &settings.p.viewer.grid.Spacing, 0.0f, 1000.0f);
-        ImGui::ColorEdit3("Colour", &settings.p.viewer.grid.Colour[0], flags);
-            
-    ImGui::PopItemWidth();
+    ImGui::Unindent();  ImGui::Separator();
+    
+    ImGui::TextUnformatted("Tool Holder"); ImGui::Indent();  
+        ImGui::Checkbox("Show", &settings.p.viewer.spindle.visibility);
+    ImGui::Unindent();  ImGui::Separator();
+    
+    ImGui::TextUnformatted("Colours"); ImGui::Indent();
+        ImGuiColorEditFlags colourFlags = ImGuiColorEditFlags_NoDragDrop | ImGuiColorEditFlags_NoInputs;
         
-    ImGui::End();
+        ImGui::TextUnformatted("General"); ImGui::Indent();
+            ImGui::ColorEdit3("Background", &settings.p.viewer.general.BackgroundColour[0], colourFlags);
+            ImGui::ColorEdit3("Grid", &settings.p.viewer.grid.Colour[0], colourFlags);
+            ImGui::ColorEdit3("Cursor", &settings.p.sketch.cursor.Colour[0], colourFlags);
+            ImGui::Unindent();            
+        
+        ImGui::TextUnformatted("Tool / Holder"); ImGui::Indent();
+            ImGui::ColorEdit3("Tool", &settings.p.viewer.spindle.colours.tool[0], colourFlags);
+            ImGui::ColorEdit3("Tool Outline", &settings.p.viewer.spindle.colours.toolOutline[0], colourFlags);
+            ImGui::ColorEdit3("Tool Holder", &settings.p.viewer.spindle.colours.toolHolder[0], colourFlags);
+            ImGui::ColorEdit3("Tool Holder Outline", &settings.p.viewer.spindle.colours.toolHolderOutline[0], colourFlags);
+            ImGui::Unindent();            
+            
+        ImGui::TextUnformatted("Toolpath"); ImGui::Indent();
+            ImGui::ColorEdit3("Feed", &settings.p.viewer.toolpath.Colour_Feed[0], colourFlags);
+            ImGui::ColorEdit3("Feed Z", &settings.p.viewer.toolpath.Colour_FeedZ[0], colourFlags);
+            ImGui::ColorEdit3("Rapid", &settings.p.viewer.toolpath.Colour_Rapid[0], colourFlags);
+            ImGui::ColorEdit3("Home", &settings.p.viewer.toolpath.Colour_Home[0], colourFlags);
+            ImGui::Unindent();            
+        
+        ImGui::TextUnformatted("Sketch"); ImGui::Indent();
+            ImGui::ColorEdit3("Points", &settings.p.sketch.point.colour[0], colourFlags);
+            ImGui::ColorEdit3("Lines", &settings.p.sketch.line.colour[0], colourFlags);
+            ImGui::ColorEdit3("Lines (Disabled)", &settings.p.sketch.line.colourDisabled[0], colourFlags);
+            ImGui::Unindent();            
+        
+    ImGui::Unindent();  ImGui::Separator();
+
+    
+    
+    window.End();
 }

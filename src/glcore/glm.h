@@ -58,6 +58,16 @@ static inline std::ostream& operator<<(std::ostream& os, const glm::vec4& p) { o
 namespace glm {
     static inline bool operator <(const glm::vec2& l, const glm::vec2& r) { return l.x < r.x && l.y < r.y; }
     static inline bool operator >(const glm::vec2& l, const glm::vec2& r) { return l.x > r.x && l.y > r.y; }
+    
+    // translate, scale & rotate (in degrees) about x axis and then z axis
+    static inline glm::vec3 Transform(const glm::vec3& vertex, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }) 
+    {
+        glm::vec3 v = vertex * scale;
+        v = glm::rotate(v, glm::radians(rotate[0]), { 1.0f, 0.0f, 0.0f });
+        v = glm::rotate(v, glm::radians(rotate[1]), { 0.0f, 0.0f, 1.0f });
+        v += translate;
+        return std::move(v);
+    }
 }
 
 static inline glm::vec2 Vec2(glm::vec3 v) { return { v.x, v.y }; }

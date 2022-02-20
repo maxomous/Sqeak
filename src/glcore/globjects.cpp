@@ -56,6 +56,7 @@ void VertexBuffer::DynamicUpdate(GLintptr offset, GLsizeiptr size, const void* d
 }
 
 
+
 IndexBuffer::IndexBuffer(uint count, const uint* data)
 	: m_Count(count)
 {
@@ -85,6 +86,8 @@ void IndexBuffer::Unbind() const
     // bind data to buffer
     GLCall(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
 }
+
+
 
 uint VertexBufferElement::GetSizeOfType(uint type) 
 {

@@ -248,6 +248,57 @@ TODO:
     
     - Geos points need to be freed and char*s need destroy?
 
+
+    - allow moving elements in sketch
+    - allow set colour of custom gcodes
+
+    - ALL FUNCTIONS SHOULD BE ABLE TO BE RAN FROM DRAWING
+    * determine if z should lift, check if line falls inside shape
+    * save drawings
+    * - calculations in input floats
+    * - arc updating from cursorr / input box
+    *   radius should update from text p1 / p0 input
+    * - sketch needs to lock onto existing points
+    * 
+    * if parallel lines, offset misses centre
+
+Thread 1 "grbl" received signal SIGABRT, Aborted.
+__GI_raise (sig=sig@entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50
+50	../sysdeps/unix/sysv/linux/raise.c: No such file or directory.
+(gdb) backtrace
+#0  __GI_raise (sig=sig@entry=6) at ../sysdeps/unix/sysv/linux/raise.c:50
+#1  0xb6a71230 in __GI_abort () at abort.c:79
+#2  0xb6ac150c in __libc_message (action=action@entry=do_abort, 
+    fmt=<optimized out>) at ../sysdeps/posix/libc_fatal.c:181
+#3  0xb6ac8034 in malloc_printerr (str=<optimized out>) at malloc.c:5341
+#4  0xb6ac9e50 in _int_free (av=<optimized out>, p=0xafa08c70, have_lock=0)
+    at malloc.c:4258
+#5  0x0001f048 in __gnu_cxx::new_allocator<char>::deallocate (this=0xb4b030bc, 
+    __p=0xafa08c78 "[Info] Sent: G1X15.227Y15.101F6000\n")
+    at /usr/include/c++/8/ext/new_allocator.h:125
+#6  0x0001d690 in std::allocator_traits<std::allocator<char> >::deallocate (
+    __a=..., __p=0xafa08c78 "[Info] Sent: G1X15.227Y15.101F6000\n", __n=36)
+    at /usr/include/c++/8/bits/alloc_traits.h:462
+#7  0x0001c6f8 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_destroy (this=0xb4b030bc, __size=35)
+    at /usr/include/c++/8/bits/basic_string.h:226
+#8  0x0001b824 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::_M_dispose (this=0xb4b030bc)
+    at /usr/include/c++/8/bits/basic_string.h:221
+#9  0x0001ad78 in std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >::~basic_string (this=0xb4b030bc, __in_chrg=<optimized out>)
+    at /usr/include/c++/8/bits/basic_string.h:657
+#10 0x000b457c in std::pair<float, std::__cxx11::basic_string<char, std::char_tr--Type <RET> for more, q to quit, c to--Type <RET> for more, q to quit, c to continue without paging--continue
+aits<char>, std::allocator<char> > >::~pair (this=0xb4b030b8, __in_chrg=<optimized out>) at /usr/include/c++/8/bits/stl_pair.h:208
+#11 0x000c0260 in __gnu_cxx::new_allocator<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > >::destroy<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > (this=0x3e5e10 <Frames::Draw(GRBL&, Settings&, Viewer&, sketch::Sketch&, float)::popupMessages>, __p=0xb4b030b8) at /usr/include/c++/8/ext/new_allocator.h:140
+#12 0x000beed4 in std::allocator_traits<std::allocator<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >::destroy<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > (__a=..., __p=0xb4b030b8) at /usr/include/c++/8/bits/alloc_traits.h:487
+#13 0x000bd774 in std::vector<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >::_M_erase (this=0x3e5e10 <Frames::Draw(GRBL&, Settings&, Viewer&, sketch::Sketch&, float)::popupMessages>, __position={first = 0, second = "[Info] Sent: G1X15.193Y15.156F6000\n"}) at /usr/include/c++/8/bits/vector.tcc:165
+#14 0x000bc180 in std::vector<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > >, std::allocator<std::pair<float, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > > > >::erase (this=0x3e5e10 <Frames::Draw(GRBL&, Settings&, Viewer&, sketch::Sketch&, float)::popupMessages>, __position={first = 0, second = "[Info] Sent: G1X15.193Y15.156F6000\n"}) at /usr/include/c++/8/bits/stl_vector.h:1318
+#15 0x000b468c in PopupMessages::Draw (this=0x3e5e10 <Frames::Draw(GRBL&, Settings&, Viewer&, sketch::Sketch&, float)::popupMessages>, settings=..., dt=0.0174560547) at gui/frames.cpp:320
+#16 0x000b20a8 in Frames::Draw (this=0xbeffe4ec, grbl=..., settings=..., viewer=..., sketcher=..., dt=0.0174560547) at gui/frames.cpp:2297
+#17 0x000e09a0 in gui (grbl=..., settings=...) at gui/gui.cpp:225
+#18 0x0005dcc4 in main () at main.cpp:332
+
+
+
+
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01
 

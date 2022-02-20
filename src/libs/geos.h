@@ -34,48 +34,57 @@ public:
     // returns centroid of a polygon
     std::optional<glm::vec2> Centroid(const LineString& points);
     // Returns true if Line is inside polygon or line is touching boundary but is inside polygon
-    std::optional<bool> LineIsInsidePolygon(glm::vec2 p0, glm::vec2 p1, const LineString& polygon);
+    std::optional<bool> LineIsInsidePolygon(const glm::vec2& p0, const glm::vec2& p1, const LineString& polygon);
     // returns offset of a line or polygon. result may be multiple linestrings
     // offset is negative for right side offset / positive for left side
     // determines whether points are a line or polygon by if the first and last point is the same 
     std::vector<LineString> Offset(const LineString& points, float offset, GeosBufferParams& params);
     std::vector<LineString> OffsetLine(const LineString& points, float offset, GeosBufferParams& params);
     std::vector<LineString> OffsetPolygon(const LineString& points, float offset, GeosBufferParams& params);
-    std::vector<LineString> OffsetPolygon_Recursive(const std::vector<LineString>& lineStrings, float pathOffset, bool isReversed, GeosBufferParams& params)
+    
+    struct RecursiveOffset {
+        std::vector<LineString> path;
+        std::vector<LineString> enclosingPath;        
+    };
+    
+    RecursiveOffset OffsetPolygon_Recursive(const std::vector<LineString>& lineStrings, float pathOffset, bool isReversed, GeosBufferParams& params)
     {
-        std::vector<LineString> return_LineStrings;
+        RecursiveOffset returnVals;
         LineString buffer;
         // dynamic start point (finds closest point in offset)
         std::vector<size_t> startIndex(lineStrings.size(), 0);
-        OffsetPolygon_Recursive(return_LineStrings, lineStrings, pathOffset, buffer, startIndex, params);
+        OffsetPolygon_Recursive(returnVals, lineStrings, pathOffset, buffer, startIndex, true, params);
         // reverse
         if(isReversed) {
-            for(size_t i = 0; i < return_LineStrings.size(); i++) {
-                std::reverse(return_LineStrings[i].begin(), return_LineStrings[i].end());
+            for(size_t i = 0; i < returnVals.path.size(); i++) {
+                std::reverse(returnVals.path[i].begin(), returnVals.path[i].end());
             }
-            std::reverse(return_LineStrings.begin(), return_LineStrings.end());
+            for(size_t i = 0; i < returnVals.enclosingPath.size(); i++) {
+                std::reverse(returnVals.enclosingPath[i].begin(), returnVals.enclosingPath[i].end());
+            }
+            std::reverse(returnVals.path.begin(), returnVals.path.end());
+            std::reverse(returnVals.enclosingPath.begin(), returnVals.enclosingPath.end());
         }
-        return return_LineStrings;
+        return returnVals;
     }
     
 private:    
 
     // adds linestring and subsequent offsets into returnPoints
     // if offset > 0 we recursively make offsets until offset fails
-    void OffsetPolygon_Recursive(std::vector<LineString>& return_LineStrings, const std::vector<LineString>& lineStrings, float pathOffset, LineString& buffer, std::vector<size_t> startIndex, GeosBufferParams& params)
+    void OffsetPolygon_Recursive(RecursiveOffset& returnVals, const std::vector<LineString>& lineStrings, float pathOffset, LineString& buffer, std::vector<size_t>& startIndex, bool isEnclosingPath, GeosBufferParams& params)
     {    
         // sanity check
         assert(lineStrings.size() == startIndex.size() && "Start index size isnt equal to linestring size");
         
         auto endOffsetGroup = [&]() {
-            return_LineStrings.push_back(buffer);
+            returnVals.path.push_back(buffer);
             buffer.clear();
         };
         
 
         for(size_t n = 0; n < lineStrings.size(); n++) {
             const LineString& l = lineStrings[n];
-            
             // check there is 2 or more points
             if(l.size() < 2) { continue; }
             
@@ -87,13 +96,15 @@ private:
             for(size_t i = 0; i < l.size()-1; i++) { // -1 because first and last point are the same
                 size_t index = (int)(i + startIndex[n]) % (l.size()-1);
                 assert(index < l.size() && "Index out of range");
-                
-                //printVec2("Adding to buffer", l[index]);
                 buffer.push_back(l[index]);
             }
             // make first and last point the same
-            //printVec2("Adding to buffer", l[startIndex[n]]);
             buffer.push_back(l[startIndex[n]]);
+            
+            if(isEnclosingPath) {
+                returnVals.enclosingPath.push_back(buffer);
+            }
+            
             // break if this is just a single lineloop
             if(pathOffset == 0.0f) { 
                 endOffsetGroup();
@@ -104,20 +115,21 @@ private:
             // if no more offsets, add centroid point as last position
             if(!OffsetLines.size()) {
                 if(auto centroid = Centroid(l)) { 
-                    //printVec2("Adding to buffer", *centroid);
                     buffer.push_back(*centroid); 
                 }
                 endOffsetGroup();
                 continue;
             }
+            bool isNewEnclosingPath = false;
             // we have finished a set of offsets, add buffer to return vector
             if(OffsetLines.size() > lineStrings.size()) {
+                isNewEnclosingPath = true;
                 endOffsetGroup();
             }
             // check for the closest point and make this the new start point
             std::vector<size_t> nextStartIndex = DetermineStartPoints(OffsetLines, l, startIndex[n]);
             // repeat function
-            OffsetPolygon_Recursive(return_LineStrings, OffsetLines, pathOffset, buffer, nextStartIndex, params);
+            OffsetPolygon_Recursive(returnVals, OffsetLines, pathOffset, buffer, nextStartIndex, isNewEnclosingPath, params);
         }
     } 
     

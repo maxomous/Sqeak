@@ -4,8 +4,10 @@
 class GCodeBuilder
 {
 public:
-
+    
     // TODO this should inlclude a tool & tab settings, this would prevent needing to take Settings&
+    enum RetractType { Full, Partial, None };
+    
     typedef struct {
         std::vector<glm::vec2>* points;
         float z0;
@@ -14,11 +16,14 @@ public:
         float feedPlunge;
         float feedCutting;
         bool isLoop = false;
+        RetractType retract = RetractType::None;
     } CutPathParams;
     
     void Add(std::string gcode);
     void Clear();
-    void MoveToZPlane();
+    // move 
+    void Retract(float distance = 1.0f);
+    void RetractToZPlane();
     void MoveToHomePosition();
     void InitCommands(float spindleSpeed);
     void EndCommands();

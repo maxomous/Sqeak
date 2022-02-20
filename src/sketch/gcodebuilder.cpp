@@ -8,7 +8,12 @@ void GCodeBuilder::Add(std::string gcode) {
 void GCodeBuilder::Clear() {
     m_gcodes.clear();
 }
-void GCodeBuilder::MoveToZPlane() {
+void GCodeBuilder::Retract(float distance) {
+    Add("G91\t(Incremental Mode)");
+    Add("G0 Z" + std::to_string(distance) + "\t(Move upward)");
+    Add("G90\t(Absolute Mode)");
+}
+void GCodeBuilder::RetractToZPlane() {
     Add("G91\t(Incremental Mode)");
     Add("G28 Z0\t(Move To ZPlane)");
     Add("G90\t(Absolute Mode)");
@@ -27,7 +32,7 @@ void GCodeBuilder::InitCommands(float spindleSpeed) {
     Add("G94\t(Feedrate/min Mode)"); 
     Add("G21\t(Set units to mm)");
     
-    MoveToZPlane();
+    RetractToZPlane();
     
     if(spindleSpeed) {
         Add("M3 S" + std::to_string((int)spindleSpeed) + "\t(Start Spindle)");
@@ -50,8 +55,9 @@ void GCodeBuilder::FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, b
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();
     
-    bool forward = true;
+    float cutWidth  = tool.Diameter - settings.p.pathCutter.CutOverlap;
     glm::vec2 pNext = p0; 
+    bool forward    = true;
         
     if(isYFirst) {
         int xDirection = ((p1.x - p0.x) > 0) ? FORWARD : BACKWARD;
@@ -66,7 +72,7 @@ void GCodeBuilder::FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, b
                 break;
             }
             
-            pNext.x += xDirection * toolData.cutWidth;
+            pNext.x += xDirection * cutWidth;
             
             if((xDirection == FORWARD && pNext.x > p1.x) || (xDirection == BACKWARD && pNext.x < p1.x)) {
                 pNext.x = p1.x;
@@ -90,7 +96,7 @@ void GCodeBuilder::FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, b
                 break;
             }
             
-            pNext.y += yDirection * toolData.cutWidth;
+            pNext.y += yDirection * cutWidth;
             
             if((yDirection == FORWARD && pNext.y > p1.y) || (yDirection == BACKWARD && pNext.y < p1.y)) {
                 pNext.y = p1.y;
@@ -238,10 +244,15 @@ int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params)
     const std::vector<glm::vec2>* points = params.points;
         
     do {
-        // if first run or start and end points are different in loop (for pocketing)
-        if((zCurrent == params.z0) || ((params.isLoop && (points->front() != points->back())))) {
-            // move to safe z and then to the initial x & y position
-            MoveToZPlane();
+        // retract then move to initial x, y position
+        // if first run or requires retract for pocketing, move to safe z
+        if((zCurrent == params.z0) || params.retract == RetractType::Full) {    //params.isLoop && (points->front() != points->back());
+            RetractToZPlane();
+            Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", (*points)[0].x, (*points)[0].y));
+        }
+        // or retract a small distance
+        if(params.retract == RetractType::Partial) {
+            Retract(settings.p.pathCutter.PartialRetractDistance);
             Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", (*points)[0].x, (*points)[0].y));
         }
         // plunge to next z

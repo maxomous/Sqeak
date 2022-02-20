@@ -8,34 +8,35 @@ using namespace std;
 #define NEWLINE_STRING     std::string("{NEWLINE}")
     
 void Settings::AddSettings()
-{     
+{       
     // Static Settings   
     Setting s = Setting("System", 0);
     s.AddParameter("SerialDevice", &p.system.serialDevice);
     s.AddParameter("SerialBaudrate", &p.system.serialBaudrate); 
-    s.AddParameter("CurrentDirectory", &p.system.curDir);
+    s.AddParameter("CurrentDirectory", &p.system.curDir); 
     s.AddParameter("SaveFileDirectory", &p.system.saveFileDirectory);
     m_SettingsList.push_back(s); 
                 
     s = Setting("Viewer", 0); 
-    s.AddParameter("ToolpathFeedColour", &p.viewer.ToolpathColour_Feed);
-    s.AddParameter("ToolpathRapidColour", &p.viewer.ToolpathColour_Rapid);
-    s.AddParameter("ToolpathHomeColour", &p.viewer.ToolpathColour_Home);
-    s.AddParameter("BackgroundColour", &p.viewer.BackgroundColour);
+    s.AddParameter("ToolpathFeedColour", &p.viewer.toolpath.Colour_Feed);
+    s.AddParameter("ToolpathFeedZColour", &p.viewer.toolpath.Colour_FeedZ);
+    s.AddParameter("ToolpathRapidColour", &p.viewer.toolpath.Colour_Rapid);
+    s.AddParameter("ToolpathHomeColour", &p.viewer.toolpath.Colour_Home);
+    s.AddParameter("BackgroundColour", &p.viewer.general.BackgroundColour);
     m_SettingsList.push_back(s);
     
     s = Setting("Viewer-Elements", 0);
-    s.AddParameter("PointSize",          &p.viewer.point.size);
-    s.AddParameter("PointColour",        &p.viewer.point.colour);
-    s.AddParameter("LineColour",         &p.viewer.line.colour);
-    s.AddParameter("LineColourDisabled", &p.viewer.line.colourDisabled);
+    s.AddParameter("PointSize",          &p.sketch.point.size);
+    s.AddParameter("PointColour",        &p.sketch.point.colour);
+    s.AddParameter("LineColour",         &p.sketch.line.colour);
+    s.AddParameter("LineColourDisabled", &p.sketch.line.colourDisabled);
     m_SettingsList.push_back(s);
 
     s = Setting("Viewer-Axis", 0);
     s.AddParameter("Size", &p.viewer.axis.Size);
     m_SettingsList.push_back(s);
      
-    s = Setting("Viewer-Grid", 0);
+    s = Setting("Viewer-Grid", 0); 
     s.AddParameter("Position", &p.viewer.grid.Position);
     s.AddParameter("Size", &p.viewer.grid.Size);
     s.AddParameter("Spacing", &p.viewer.grid.Spacing);
@@ -43,8 +44,9 @@ void Settings::AddSettings()
     m_SettingsList.push_back(s);
       
     s = Setting("Viewer-Spindle", 0);
-    s.AddParameter("ToolColour", &p.viewer.spindle.toolColour);
-    s.AddParameter("ToolColourOutline", &p.viewer.spindle.toolColourOutline);
+    s.AddParameter("ToolColour", &p.viewer.spindle.colours.tool);
+    s.AddParameter("ToolHolderColour", &p.viewer.spindle.colours.toolHolder);
+    s.AddParameter("ToolColourOutline", &p.viewer.spindle.colours.toolOutline);
     m_SettingsList.push_back(s);  
       
     s = Setting("PathCutter", 0);   
@@ -53,6 +55,7 @@ void Settings::AddSettings()
     s.AddParameter("TabHeight", &p.pathCutter.TabHeight);
     s.AddParameter("TabWidth", &p.pathCutter.TabWidth);
     s.AddParameter("CutOverlap", &p.pathCutter.CutOverlap);
+    s.AddParameter("PartialRetractDistance", &p.pathCutter.PartialRetractDistance);
     s.AddParameter("QuadrantSegments", &p.pathCutter.geosParameters.QuadrantSegments);
     m_SettingsList.push_back(s);
 } 
@@ -107,7 +110,6 @@ void Settings::AddDynamicSettings()
                 setting.AddParameterWithPrefix("CuttingFeedRate", i, &(toolData->feedCutting));
                 setting.AddParameterWithPrefix("PlungeFeedRate",  i, &(toolData->feedPlunge));
                 setting.AddParameterWithPrefix("CutDepth",        i, &(toolData->cutDepth));
-                setting.AddParameterWithPrefix("CutWidth",        i, &(toolData->cutWidth));
             }
         },  
         // check if vector is large enough 
@@ -169,7 +171,7 @@ auto Setting::GetDataLocation(size_t i) {
     return data[i].second; 
 }
     
-DynamicSetting::DynamicSetting(const std::string& name, void* data, 
+DynamicSetting::DynamicSetting(const std::string& name, void* data,  
     std::function<size_t(void* data)> cb_GetSize,
     std::function<void(Setting& setting, void* data, uint id)> cb_AddParameters, 
     std::function<void(void* data, std::string& name, uint id, std::string& paramName)>  cb_UpdateVectorSize

@@ -30,7 +30,7 @@ struct Console
         
         // begin new imgui window
         static ImGuiCustomModules::ImGuiWindow window(settings, "Console", ImVec2(570.0f, 270.0f)); // default size
-        if(window.Begin()) 
+        if(window.Begin(settings, ImGuiWindowFlags_None)) 
         {
             DrawLog();
                 
@@ -43,8 +43,8 @@ struct Console
             if (ImGui::Button("Clear Log")) {
                 Log::ClearConsoleLog();
             }
+            window.End();
         }
-        window.End();
     }
 
     void DrawLog() 
@@ -202,7 +202,7 @@ struct Commands {
     {
         // begin new imgui window
         static ImGuiCustomModules::ImGuiWindow window(settings, "Commands", ImVec2(570.0f, 270.0f)); // default size
-        if(window.Begin()) 
+        if(window.Begin(settings, ImGuiWindowFlags_None)) 
         {        
             DrawCommands(grbl, settings.grblVals);
 
@@ -211,8 +211,8 @@ struct Commands {
             if (ImGui::Button("Clear Commands")) {
                 grbl.clearCompleted();
             }
+            window.End();
         }
-        window.End();
     }
     
     void DrawCommands(GRBL &grbl, GRBLVals& grblVals) 
@@ -228,12 +228,9 @@ struct Commands {
                 // Make top row always visible
                 ImGui::TableSetupScrollFreeze(0, 1);
                 // Set up headers
-                ImGui::TableSetupColumn("Sent", ImGuiTableColumnFlags_None,
-                                        165.0f);
-                ImGui::TableSetupColumn("Reponse", ImGuiTableColumnFlags_None,
-                                        55.0f);
-                ImGui::TableSetupColumn("Description",
-                                        ImGuiTableColumnFlags_None, 600.0f);
+                ImGui::TableSetupColumn("Sent", ImGuiTableColumnFlags_None, 165.0f);
+                ImGui::TableSetupColumn("Reponse", ImGuiTableColumnFlags_None, 55.0f);
+                ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_None, 600.0f);
                 ImGui::TableHeadersRow();
 
                 ImGuiListClipper clipper;
@@ -299,7 +296,7 @@ private:
     bool m_AutoScroll = true;
 
 };
-
+ 
 
 struct PopupMessages {
     
@@ -313,10 +310,34 @@ struct PopupMessages {
         });
     }
     
-    void Draw(Settings& settings, float dt) 
+    void Draw_PopupPosition(Settings& settings) 
     {
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoFocusOnAppearing
+        | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar
+        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNavInputs;
+        
+        float offsetPos = settings.guiSettings.popupPosition_offsetPos;
+        ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(offsetPos, offsetPos));
+        
+        //ImGui::PushStyleColor(ImGuiCol_Text,     { 1.0f, 1.0f, 1.0f, 0.6f } * ImGui::GetStyleColorVec4(ImGuiCol_Text));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, settings.guiSettings.popupPosition_alpha) * ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
+    
+        if(ImGui::Begin("PopupPosition", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
+            glm::vec2 pos = settings.p.sketch.cursor.Position;
+            ImGui::Text("(%g, %g)", pos.x, pos.y);
+        }
+        ImGui::PopStyleColor();
+        ImGui::End(); 
+    }
+    
+    void Draw(Settings& settings, float dt, bool isSketchActive) 
+    {
+        // display x, y coord on screen if not over imgui window
+        if(!ImGui::GetIO().WantCaptureMouse && isSketchActive) {
+            Draw_PopupPosition(settings);
+        }
         // only allow a maximum number of popup messages
-        while(messages.size() > settings.guiSettings.popupMessage_MaxCount) {
+        if(messages.size() > settings.guiSettings.popupMessage_MaxCount) {
             messages.erase(messages.begin());
         }
         
@@ -350,10 +371,11 @@ struct PopupMessages {
             ImGui::SetNextWindowPos(ImVec2(padding, settings.guiSettings.toolbarHeight + 2.0f * padding + yPos));
             //ImGui::SetNextWindowSize(ImVec2(200.0f, 30.0f));
             
-            ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar
-            | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoFocusOnAppearing
+            | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar
+            | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNavInputs;
             
-            if(ImGui::Begin(va_str("PopupMessage%d", i).c_str(), NULL, settings.guiSettings.general_window_flags | window_flags)) {
+            if(ImGui::Begin(va_str("PopupMessage%d", i).c_str(), NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
                 ImGui::TextUnformatted(messages[i].second.c_str());
             }
             
@@ -545,45 +567,138 @@ struct JogController {
     }
 
     void DrawJogController(GRBL &grbl, Settings& settings) 
-    {
+    {        
         if (allow_Keyb_Jogging)
             KeyboardJogging(grbl);
             
         ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Jog].Size;
         ImVec2& buttonImgSize = settings.guiSettings.button[ButtonType::Jog].ImageSize;
+        
+        
+         
+         
+        
+        //float tableHeight = settings.guiSettings.button[ButtonType::FunctionButton].Size.y;
+        
+        ImGui::BeginGroup();
+        // ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX,
+        if (ImGui::BeginTable("JogController",  5, ImGuiTableFlags_NoSavedSettings  | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_PadOuterX, ImVec2(buttonSize.x * 6.0f, 0.0f))) 
+        {    
+            // first row   
+            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
+                
+                // Y +
+                if(ImGui::TableSetColumnIndex(1)) {
+                    if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp, "JogY+")) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(glm::vec3(0, jogDistance, 0), feedRate);
+                    }
+                }
+                
+                // Z+
+                if(ImGui::TableSetColumnIndex(4)) {
+                    if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp, "JogZ+")) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(glm::vec3(0, 0, jogDistance), feedRate);
+                    }
+                } 
+            // next row
+            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
+                
+                // X -
+                if(ImGui::TableSetColumnIndex(0)) {
+                    if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowLeft, "JogX-")) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(glm::vec3(-jogDistance, 0, 0), feedRate);
+                    }
+                }
+                // "X Y" text
+                if(ImGui::TableSetColumnIndex(1)) {
+                    ImGuiModules::CentreItemVerticallyAboutItem(buttonSize.y, settings.guiSettings.font_small->FontSize + 1.0f);
+                    ImGuiCustomModules::Heading(settings, "X Y", buttonSize.x);
+                }
+                // X +
+                if(ImGui::TableSetColumnIndex(2)) {
+                    if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowRight, "JogX+")) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(glm::vec3(jogDistance, 0, 0), feedRate);
+                    }
+                }
+                // "Z" text
+                if(ImGui::TableSetColumnIndex(4)) {                    
+                    ImGuiModules::CentreItemVerticallyAboutItem(buttonSize.y, settings.guiSettings.font_small->FontSize + 2.0f);
+                    ImGuiCustomModules::Heading(settings, "Z", buttonSize.x);
+                }
+                  
+            // next row
+            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
+                            
+                // Y -
+                if(ImGui::TableSetColumnIndex(1)) {
+                    if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown, "JogY-")) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(glm::vec3(0, -jogDistance, 0), feedRate);
+                    }
+                }
+                // Z-
+                if(ImGui::TableSetColumnIndex(4)) {
+                    if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown, "JogZ-")) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(glm::vec3(0, 0, -jogDistance), feedRate);
+                    }
+                }
+            
+            ImGui::EndTable();
+        } 
+    
+        
+        ImGui::EndGroup();
+        
+        
+        
+        
+        
+        /*
+        
+        
         // Draw Jog XY
         ImGui::BeginGroup();
-
-        ImGui::Dummy(buttonSize);
-        ImGui::SameLine();
-
-        if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp)) {
-            if (!currently_Jogging)
-                grbl.sendJog(glm::vec3(0, jogDistance, 0), feedRate);
-        }
-
-        if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowLeft)) {
-            if (!currently_Jogging)
-                grbl.sendJog(glm::vec3(-jogDistance, 0, 0), feedRate);
-        }
-        ImGui::SameLine();
-        ImGui::Dummy(buttonSize);
-        ImGui::SameLine();
-
         ImGui::PushID("JogXY");
+
+            ImGui::Dummy(buttonSize);
+            ImGui::SameLine();
+            // Y +
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(0, jogDistance, 0), feedRate);
+            }
+            // X -
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowLeft)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(-jogDistance, 0, 0), feedRate);
+            }
+            ImGui::SameLine();
+            
+            // "X/Y" text
+            ImGuiModules::MoveCursorPosY(yMove);
+            ImGuiCustomModules::Heading(settings, "X Y", buttonSize.x);
+            ImGuiModules::MoveCursorPosY(-yMove);
+            
+            ImGui::SameLine();
+            // X +
             if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowRight)) {
                 if (!currently_Jogging)
                     grbl.sendJog(glm::vec3(jogDistance, 0, 0), feedRate);
             }
             ImGui::Dummy(buttonSize);
             ImGui::SameLine();
-
+            // Y -
             if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown)) {
                 if (!currently_Jogging)
                     grbl.sendJog(glm::vec3(0, -jogDistance, 0), feedRate);
             }
+            
         ImGui::PopID();
-
         ImGui::EndGroup();
 
         ImGui::SameLine();
@@ -591,19 +706,25 @@ struct JogController {
 
         // Draw Jog Z
         ImGui::BeginGroup();
-        
         ImGui::PushID("JogZ");
-        
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp))
-                grbl.sendJog(glm::vec3(0, 0, jogDistance), feedRate);
-            ImGui::Dummy(buttonSize);
-
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown))
-                grbl.sendJog(glm::vec3(0, 0, -jogDistance), feedRate);
+            // Z+
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(0, 0, jogDistance), feedRate);
+            }
+            // "Z" text
+            ImGuiModules::MoveCursorPosY(yMove);
+            ImGuiCustomModules::Heading(settings, "Z", buttonSize.x);
+            ImGuiModules::MoveCursorPosY(yMove);
+            // Z-
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(0, 0, -jogDistance), feedRate);
+            }
 
         ImGui::PopID();
-        
         ImGui::EndGroup(); 
+        */
     }
     void DrawJogSetting(GRBLVals& grblVals) {
         
@@ -620,8 +741,6 @@ struct JogController {
         ImGui::Separator();
 
         ImGui::SliderInt("Feed Rate", &feedRate, 0, grblVals.settings.max_FeedRate);
-        
-        ImGui::PopItemWidth();
     }
 
 };
@@ -643,31 +762,6 @@ struct Toolbar {
         
     }
      
-    bool EditButton(Settings& settings, const char* id) 
-    {
-        ImVec2& buttonImgSize = settings.guiSettings.button[ButtonType::Edit].ImageSize;
-        
-        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f,0.0f,0.0f,0.0f));
-            ImGui::PushID(id);
-                bool clicked = ImGui::ImageButton(settings.guiSettings.img_Edit, buttonImgSize);    
-            ImGui::PopID();
-        ImGui::PopStyleColor();
-        return clicked;
-    }
-    void DrawTitle(Settings& settings, const std::string& name) 
-    {        
-        ImGui::PushFont(settings.guiSettings.font_small);
-            ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
-                ImGui::TextUnformatted(name.c_str());
-            ImGui::PopStyleColor();
-        ImGui::PopFont();
-    }
-    bool DrawTitleWithEdit(Settings& settings, const std::string& name) 
-    {
-        DrawTitle(settings, name);
-        ImGui::SameLine();
-        return EditButton(settings, name.c_str());
-    }
     
     //void DrawTableSeperator(Settings& settings) 
     //{
@@ -678,6 +772,9 @@ struct Toolbar {
     //    ImGui::GetWindowDrawList()->AddRectFilled(p0, p1, ImGui::GetColorU32(ImGuiCol_Separator));
     //};
     
+
+
+    
     void Draw(GRBL &grbl, Settings& settings, sketch::Sketch& sketcher, FileBrowser* fileBrowser) 
     {        
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -686,14 +783,15 @@ struct Toolbar {
         ImGui::SetNextWindowPos(viewport->WorkPos + ImVec2(padding, padding));
         ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - 2.0f * padding, settings.guiSettings.toolbarHeight));
         
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
         | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
                     
-        if (!ImGui::Begin("Toolbar", NULL, settings.guiSettings.general_window_flags | window_flags)) {
+        if (!ImGui::Begin("Toolbar", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
             ImGui::End();
             return;
         }
         ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
+        ImGuiCustomModules::ImGuiWindow::PushWidgetStyle(settings);
         
         static ToolSettings toolSettings;
         static JogController jogController;
@@ -705,32 +803,109 @@ struct Toolbar {
         bool openPopup_JogSettings      = false;
         
         
+        auto EditButton = [&](const char* name) {
+            bool isClicked = false;
+            // align right: ImGui::GetContentRegionAvail().x - width
+            ImGui::SameLine(ImGui::CalcTextSize(name).x + 5.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            
+            //ImGui::SameLine(13.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+                isClicked = ImGuiCustomModules::EditButton(settings, name); // name as id
+            ImGui::PopStyleVar();
+            return isClicked;
+        };
         
         ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(settings.guiSettings.toolbarSpacer / 2.0f, 2.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, settings.guiSettings.toolbarTableScrollbarSize);
         
-        ImGuiTableFlags flags = ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollX;
+        ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollX;
         
-        if (ImGui::BeginTable("Toolbar",  (sketcher.IsActive()) ? 7 : 4, flags, ImVec2(0.0f, settings.guiSettings.toolbarTableHeight))) 
-        {           
+        int nColumns = (sketcher.IsActive()) ? 8 : 5;
+        
+        if (ImGui::BeginTable("Toolbar",  nColumns, flags, ImVec2(0.0f, settings.guiSettings.toolbarTableHeight))) 
+        {   
+            
+            
+            ImGui::BeginDisabled(); // always disabled to prevent mouse interaction
+            ImGui::PushFont(settings.guiSettings.font_small);
+                ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
+                ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
+            
+                    // setup columns
+                    ImGui::TableSetupColumn("Connect");
+                    ImGui::TableSetupColumn("Open File");
+                    ImGui::TableSetupColumn("Sketch");
+                    if(sketcher.IsActive()) {
+                        ImGui::TableSetupColumn("Tools");
+                        ImGui::TableSetupColumn("Functions");
+                        ImGui::TableSetupColumn(std::string(sketcher.ActiveFunction_Name() + " Commands").c_str());
+                    }
+                    ImGui::TableSetupColumn("##Spacer", ImGuiTableColumnFlags_WidthStretch);
+                    ImGui::TableSetupColumn("Jog");
+                    
+                    
+                    // Instead of calling TableHeadersRow() we'll submit custom headers ourselves
+                    ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+                    for (int column = 0; column < nColumns; column++)
+                    {
+                        ImGui::TableSetColumnIndex(column);
+                        const char* column_name = ImGui::TableGetColumnName(column); // Retrieve name passed to TableSetupColumn()
+                        ImGui::PushID(column);
+                             
+                            ImGui::TableHeader(column_name);
+                            
+                            ImGui::EndDisabled();
+                            // connect
+                            if(column == 0) { 
+                                ImGuiCustomModules::EndDisableWidgets(settings.grblVals); // always enabled
+                                    openPopup_ConnectSettings = EditButton("Connect"); 
+                                ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
+                            }
+                            
+                            if(sketcher.IsActive()) {
+                                // tools
+                                if(column == 3) { openPopup_Tools = EditButton("Tools"); }
+                                // jog
+                                if(column == 7) { openPopup_JogSettings = EditButton("Jog"); }
+                            } else {
+                                if(column == 4) { openPopup_JogSettings = EditButton("Jog"); }
+                            }                            
+                            ImGui::BeginDisabled(); // always disabled to prevent mouse interaction
+                            
+                            
+                        ImGui::PopID();
+                    }
+                    
+                    
+                    
+                    
+                ImGui::PopStyleColor(2);
+            ImGui::PopFont();           
+            ImGui::EndDisabled();
+
+            
+            /*
             // Draw titles
             ImGui::TableNextRow(ImGuiTableRowFlags_None, settings.guiSettings.button[ButtonType::Edit].ImageSize.y + 5.0f);
                 
-            if(ImGui::TableNextColumn()) { openPopup_ConnectSettings    =  DrawTitleWithEdit(settings, "Connect"); }
-            if(ImGui::TableNextColumn()) {                                 DrawTitle(settings, "Open File"); }
-            if(ImGui::TableNextColumn()) {                                 DrawTitle(settings, "Sketch"); }
+            // always enabled
+            ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
+            if(ImGui::TableNextColumn()) { openPopup_ConnectSettings    =  ImGuiCustomModules::HeadingWithEdit(settings, "Connect"); }
+            ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
+                    
+            if(ImGui::TableNextColumn()) {                                 ImGuiCustomModules::Heading(settings, "Open File"); }
+            if(ImGui::TableNextColumn()) {                                 ImGuiCustomModules::Heading(settings, "Sketch"); }
             if(sketcher.IsActive()) {
-                if(ImGui::TableNextColumn()) { openPopup_Tools          =  DrawTitleWithEdit(settings, "Tools"); }
-                if(ImGui::TableNextColumn()) {                             DrawTitle(settings, "Functions"); }
-                if(ImGui::TableNextColumn()) {                             DrawTitle(settings, sketcher.ActiveFunction_Name() + " Commands"); }
+                if(ImGui::TableNextColumn()) { openPopup_Tools          =  ImGuiCustomModules::HeadingWithEdit(settings, "Tools"); }
+                if(ImGui::TableNextColumn()) {                             ImGuiCustomModules::Heading(settings, "Functions"); }
+                if(ImGui::TableNextColumn()) {                             ImGuiCustomModules::Heading(settings, sketcher.ActiveFunction_Name() + " Commands"); }
             }
-            if(ImGui::TableNextColumn()) { openPopup_JogSettings        =  DrawTitleWithEdit(settings, "Jog"); }
-            
+            if(ImGui::TableNextColumn()) { openPopup_JogSettings        =  ImGuiCustomModules::HeadingWithEdit(settings, "Jog"); }
+            */
             ImGui::TableNextRow();
              
                 // Connect
                 if(ImGui::TableNextColumn()) {
-                    // always enabled
                     ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
                     
                     ImGui::BeginGroup();
@@ -788,11 +963,12 @@ struct Toolbar {
                             sketcher.ActiveFunction_DrawImGui_Tools(settings);
                         ImGui::EndGroup();
                     }    
-                }
-                
+                }                
+                // Spacer
+                if(ImGui::TableNextColumn()) {
+                }              
                 // Jog
                 if(ImGui::TableNextColumn()) {
-                    
                     ImGui::BeginGroup();
                         jogController.DrawJogController(grbl, settings);
                     ImGui::EndGroup();
@@ -800,8 +976,6 @@ struct Toolbar {
             ImGui::EndTable();
         } 
     
-        ImGui::PopStyleVar(2);
-        
         
         
         
@@ -820,7 +994,7 @@ struct Toolbar {
                     ImVec2& buttonImgSize   = settings.guiSettings.button[ButtonType::Edit].ImageSize;
                     if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_Edit)) {
                         
-                    }
+                    } 
                 ImGui::EndGroup();
                 ImGui::EndTabItem();
             }            
@@ -854,48 +1028,51 @@ struct Toolbar {
         
         ImGui::Separator();
         
-        // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
-        static pair<Export, string> exportFileName = make_pair(Export::False, "");
+        flags = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_ScrollX;
         
-        DrawPlayButtons(grbl, settings, fileBrowser, sketcher);
-        
-        DrawCurrentFile(settings, fileBrowser);
-    /*    if(!functions.IsActiveFunctionSelected(false)) {
-        } else {
-        //else if(toolbarCommand == ToolbarCommand::Function) {
-            DrawTitle(settings, va_str("Commands (%s)", functions.ActiveFunctionName().c_str())); 
-            DrawPlayButtons(grbl, settings, [&]() {
-                functions.RunActiveFunction(grbl, settings);
-            });
+        if (ImGui::BeginTable("ControlButtons", 3, flags))
+        {
+            ImGui::TableNextRow();
+            // Run, Cancel, Pause & Restart
+            ImGui::TableNextColumn();
+            DrawPlayButtons(grbl, settings, fileBrowser, sketcher);
+            // Current file name
+            ImGui::TableNextColumn();
+            DrawCurrentFile(settings, fileBrowser);
+            // Time elapsed
+            ImGui::TableNextColumn();
+            if(settings.grblVals.isFileRunning) 
+                DrawTimeElapsed(settings.grblVals); 
             
-            ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
+            ImGui::EndTable();
+        }
         
-            ImGui::BeginGroup();
-                ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::Secondary].Size;
-                
-                ImGuiModules::CentreItemVertically(2, buttonSize.y);
-
-                // add GCodes to file
-                if(ImGui::Button("Export", buttonSize)) {
-                    if(functions.IsActiveFunctionSelected()) {
-                        std::string filepath = functions.GetActiveFunctionFilepath(settings.p.system.saveFileDirectory);
-                        exportFileName = make_pair(Export::Pending, filepath);
-                    } 
-                }
-                ImGui::SameLine();
-                
-                if(ImGui::Button("Delete", buttonSize)) {
-                    functions.DeleteActiveFunction(settings);
-                }
-            ImGui::EndGroup();
-        }*/
+        ImGui::PopStyleVar(2);
+        /*
         
-        ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
+        
+        
+        
+        
+        
+        
+        
+        ImGui::SameLine();
         
         ImGui::BeginGroup();
-            DrawTimeElapsed(settings.grblVals);
-        ImGui::EndGroup(); 
-
+            // Time elapsed
+            if(settings.grblVals.isFileRunning) {
+                //ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
+                DrawTimeElapsed(settings.grblVals);
+            }
+            ImGui::SameLine(); //ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
+            
+            // Current file name
+            DrawCurrentFile(settings, fileBrowser);
+        ImGui::EndGroup();
+*/
+        // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
+        static pair<Export, string> exportFileName = make_pair(Export::False, "");
         // handle file export
  //       DoesFileNeedExport(settings, functions, functionsexportFileName);
         
@@ -914,9 +1091,6 @@ struct Toolbar {
         DrawPopup_ConnectSettings(settings);
         
         
-THIS CAUSES CRASH!!
-        
-    
         // Jog Settings        
         if(openPopup_JogSettings) { ImGui::OpenPopup("Edit Jog Popup"); }
         DrawPopup("Edit Jog Popup", [&]() {
@@ -924,6 +1098,7 @@ THIS CAUSES CRASH!!
         });
         
         // end
+        ImGuiCustomModules::ImGuiWindow::PopWidgetStyle();
         ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
         ImGui::End();
         
@@ -932,25 +1107,22 @@ THIS CAUSES CRASH!!
     void DrawConnect(GRBL &grbl, Settings& settings) 
     {
         GRBLVals& grblVals = settings.grblVals;
-        //ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::Primary].Size;
         
         ImGui::BeginGroup();
-            //ImGuiModules::CentreItemVerticallyAboutItem(settings.guiSettings.toolbarItemHeight, buttonSize.y);
             if (!grblVals.isConnected) {
-                //if (ImGui::Button("Connect", buttonSize)) {
                 if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Connect", settings.guiSettings.img_Connect, false, ButtonType::Connect)) {  
                     grbl.connect(settings.p.system.serialDevice, stoi(settings.p.system.serialBaudrate));
                 }
             } 
-            else { //if (grblVals.isConnected)
-                if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Connected", settings.guiSettings.img_Connect, true, ButtonType::Connect)) {  
-                //if (ImGui::Button("Disconnect", buttonSize)) {
+            else {
+                if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Connected", settings.guiSettings.img_Connect, true, ButtonType::Connect)) { 
                     grbl.disconnect();
                 }
             }
         ImGui::EndGroup();           
     }
-    
+
+
     // saves on close
     void DrawPopup(const std::string& name, std::function<void()> cb_ImGuiWidgets) 
     {
@@ -970,12 +1142,15 @@ THIS CAUSES CRASH!!
     
     void DrawPopup_ConnectSettings(Settings& settings) 
     {
+        // always enabled
+        ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
         DrawPopup("Edit Connect Popup", [&]() {
             ImGui::SetNextItemWidth(80.0f);
             ImGui::InputText("Device", &settings.p.system.serialDevice);
             ImGui::SetNextItemWidth(80.0f);
             ImGui::InputText("Baudrate", &settings.p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
         });
+        ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
     }
     
     bool DrawOpenFile(Settings& settings, FileBrowser* fileBrowser)
@@ -1002,8 +1177,7 @@ THIS CAUSES CRASH!!
         }
         (void)settings;
         ImGui::BeginGroup();
-            ImGui::SameLine();
-            //ImGuiModules::CentreItemVertically(settings.guiSettings.button[ButtonType::Primary].Size.y);
+            ImGuiModules::CentreItemVertically(2);
             
             // shortens file path to "...path/at/place.gc" if length > max_FilePathDisplay
             /*int cutOff = 0;
@@ -1012,7 +1186,7 @@ THIS CAUSES CRASH!!
             }                 
             const char* shortenedPath = currentFilePath.c_str() + cutOff;
             ImGui::Text((cutOff ? "..%s" : "%s"), shortenedPath);*/
-            ImGui::Text("%s", fileBrowser->CurrentFile().c_str());
+            ImGuiModules::TextCentredHorizontallyInTable("%s", fileBrowser->CurrentFile().c_str());
             ImGuiModules::ToolTip_IfItemHovered(fileBrowser->CurrentFilePath().c_str());
         ImGui::EndGroup();
     }
@@ -1041,6 +1215,12 @@ THIS CAUSES CRASH!!
     
     void DrawPlayButtons(GRBL& grbl, Settings& settings, FileBrowser* fileBrowser, sketch::Sketch& sketcher)
     {
+        auto SameLineSpacer = [&]() {
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(settings.guiSettings.toolbarSpacer, 0.0f));
+            ImGui::SameLine();
+        };
+        
         ImVec2& buttonSize      = settings.guiSettings.button[ButtonType::Secondary].Size;
         ImVec2& buttonImgSize   = settings.guiSettings.button[ButtonType::Secondary].ImageSize;
         
@@ -1057,19 +1237,16 @@ THIS CAUSES CRASH!!
                     RunFile(grbl, settings, fileBrowser);
                 }
             }
-            ImGui::SameLine();
             
+            ImGui::SameLine();
             if (ImGui::Button("Cancel", buttonSize)) {
                 if (settings.grblVals.isFileRunning) {
                     Log::Info("Cancelling... Note: Any commands remaining in grbl's buffer will still execute.");
                     grbl.cancel();
                 }
             }
-            ImGui::SameLine();
-            ImGui::Dummy(ImVec2(50, 0));
-            ImGui::SameLine();
-
-            ImGui::SameLine();
+            
+            SameLineSpacer();
             if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_Pause)) {
                 Log::Info("Pausing...");
                 grbl.sendRT(GRBL_RT_HOLD);
@@ -1080,8 +1257,9 @@ THIS CAUSES CRASH!!
                 Log::Info("Resuming...");
                 grbl.sendRT(GRBL_RT_RESUME);
             }
-            ImGui::SameLine();
+            SameLineSpacer();
             sketcher.ActiveFunction_Export(settings);
+            
             ImGui::SameLine();
             sketcher.ActiveFunction_Delete(settings);
             
@@ -1090,9 +1268,7 @@ THIS CAUSES CRASH!!
     
     void DrawTimeElapsed(GRBLVals& grblVals)
     {
-        
-        if (grblVals.isFileRunning) 
-        {
+        ImGui::BeginGroup();
             // update time
             timer.UpdateCurrentTime();
             // normalise timer seconds to hours/mins/secs
@@ -1108,11 +1284,15 @@ THIS CAUSES CRASH!!
             
             // progress bar
             ImGuiModules::CentreItemVertically(2);
-            ImGui::ProgressBar(percComplete, ImVec2(0.0f, 0.0f), va_str("%d/%d (%.2f%%)", grblVals.curLine, grblVals.totalLines, 100.0f * percComplete).c_str());
-            
+            // stretch
+            ImGui::SetNextItemWidth(-155.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+                ImGui::ProgressBar(percComplete, ImVec2(0.0f, 0.0f), va_str("%d/%d (%.2f%%)", grblVals.curLine, grblVals.totalLines, 100.0f * percComplete).c_str());
+            ImGui::PopStyleVar();
+        
             ImGui::SameLine();
-            
             ImGui::SetCursorPosY(cursorPos_FrameTop);
+            
             ImGui::BeginGroup();
                 ImGui::TextUnformatted("Time Elapsed:");
                 ImGui::TextUnformatted("Time Remaining:");
@@ -1124,8 +1304,8 @@ THIS CAUSES CRASH!!
                 ImGui::Text("%s", timeElapsedNorm.TimeString().c_str());
                 ImGui::Text("%s", timeRemainingNorm.TimeString().c_str());
             ImGui::EndGroup();
-                        
-        }
+                  
+        ImGui::EndGroup();
     }
     
     /*
@@ -1512,34 +1692,33 @@ struct Stats {
         }
     }
 
-    void DrawZeroing(GRBL &grbl) {
+    void DrawZeroing(GRBL &grbl, Settings& settings) {
         posS.y = 0;
 
-        if (ImGui::BeginTable("XYZ Zeroing", 3,
-                              ImGuiTableFlags_NoSavedSettings)) {
+        if (ImGui::BeginTable("XYZ Zeroing", 3, ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableNextRow();
 
             ImGui::TableSetColumnIndex(0);
             ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
             if (ImGui::Button("Zero X", sizeS)) {
-                Log::Info(
-                    "Setting current X position to 0 for this coord system");
+                Log::Info( "Setting current X position to 0 for this coord system");
                 grbl.send("G10 L20 P0 X0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
+                settings.SetUpdateFlag(ViewerUpdate::Full);
             }
             ImGui::TableSetColumnIndex(1);
             ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
             if (ImGui::Button("Zero Y", sizeS)) {
-                Log::Info(
-                    "Setting current Y position to 0 for this coord system");
+                Log::Info("Setting current Y position to 0 for this coord system");
                 grbl.send("G10 L20 P0 Y0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
+                settings.SetUpdateFlag(ViewerUpdate::Full);
             }
 
             ImGui::TableSetColumnIndex(2);
             ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
             if (ImGui::Button("Zero Z", sizeS)) {
-                Log::Info(
-                    "Setting current Z position to 0 for this coord system");
+                Log::Info("Setting current Z position to 0 for this coord system");
                 grbl.send("G10 L20 P0 Z0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
+                settings.SetUpdateFlag(ViewerUpdate::Full);
             }
             // position cursor to bottom corner of cell so it doesnt clip
             // ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
@@ -1625,7 +1804,7 @@ struct Stats {
             for (string segment; getline(s, segment, ';');) {
                 if (segment != "")
                     grbl.send(segment);
-            }
+            } 
         };
 
         static int customGCIndex = 0;
@@ -1694,138 +1873,135 @@ struct Stats {
             ImGui::EndTable();
         }
     }
-
+    
     void Draw(GRBL &grbl, Settings& settings, float dt) {
         GRBLVals& grblVals = settings.grblVals;
-        // Initialise
-        // ImGui::SetNextWindowSize(ImVec2(250, 300), ImGuiCond_FirstUseEver);
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
-        if (!ImGui::Begin("Stats", NULL, settings.guiSettings.general_window_flags)) {
-            ImGui::End();
-            return;
-        }
-        ImGuiModules::KeepWindowInsideViewport();
-        // grbl State
-        DrawStatus(grbl, settings, dt);
-        ImGui::Separator();
-        // Current x y z location
-        DrawPosition(settings);
-        ImGui::Separator();
-        //Current modal state
-        if(grblVals.isConnected) {
-            DrawCurrentMode(settings);
+            
+        // begin new imgui window
+        static ImGuiCustomModules::ImGuiWindow window(settings, "Stats");
+        if(window.Begin(settings)) 
+        {    
+            // grbl State
+            DrawStatus(grbl, settings, dt);
             ImGui::Separator();
+            // Current x y z location
+            DrawPosition(settings);
+            ImGui::Separator();
+            //Current modal state
+            if(grblVals.isConnected) {
+                DrawCurrentMode(settings);
+                ImGui::Separator();
+            }
+            // Current feedrate & spindle speed
+            DrawMotion(settings);
+            ImGui::Separator();
+            // Limit switches / probe
+            DrawInputPins(grblVals);
+            ImGui::Separator();
+            // zeroing xyz
+            DrawZeroing(grbl, settings);
+            ImGui::Separator();
+
+            DrawCommands(grbl, grblVals);
+            ImGui::Separator();
+
+            DrawCustomGCodes(grbl, settings);
+            ImGui::Separator();
+
+            static bool viewStatus = grbl.getViewStatusReport();
+            if (ImGui::Checkbox("Status Report", &(viewStatus))) {
+                grbl.setViewStatusReport(viewStatus);
+            }
+            
+            window.End();
         }
-        // Current feedrate & spindle speed
-        DrawMotion(settings);
-        ImGui::Separator();
-        // Limit switches / probe
-        DrawInputPins(grblVals);
-        ImGui::Separator();
-        // zeroing xyz
-        DrawZeroing(grbl);
-        ImGui::Separator();
-
-        DrawCommands(grbl, grblVals);
-        ImGui::Separator();
-
-        DrawCustomGCodes(grbl, settings);
-        ImGui::Separator();
-
-        static bool viewStatus = grbl.getViewStatusReport();
-        if (ImGui::Checkbox("Status Report", &(viewStatus))) {
-            grbl.setViewStatusReport(viewStatus);
-        }
-
-        ImGui::End();
     }
 };
 
-
+    
 struct Overrides {
     /*    Other Realtime commands similar but currently unused:
         grbl.SendRT(GRBL_RT_SPINDLE_STOP);
         grbl.SendRT(GRBL_RT_FLOOD_COOLANT);
         grbl.SendRT(GRBL_RT_MIST_COOLANT);
     */
-    void Draw(GRBL &grbl, Settings& settings) {
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
-        if (!ImGui::Begin("Overrides", NULL, settings.guiSettings.general_window_flags)) {
-            ImGui::End();
-            return;  
-        }            
-        ImGuiModules::KeepWindowInsideViewport();
-  
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 10));
-  
-        GRBLStatus_vals status = settings.grblVals.status; 
-        // Override Spindle Speed
-        ImGui::Text("Override Spindle Speed: %d%%",
-                    status.override_SpindleSpeed);
-        // unused parameter, we read directly from status reports instead
-        static int spindleSpeed = 0; 
-        
-        int buttonPress =
-            ImGuiModules::Incrementer("ORSpindle1", "1%", 1, spindleSpeed, false);
-        if (buttonPress == -1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_MINUS_1PERCENT);
-        else if (buttonPress == 1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_ADD_1PERCENT);
-  
-        ImGui::SameLine();
-        buttonPress = 
-            ImGuiModules::Incrementer("ORSpindle10", "10%", 10, spindleSpeed, false);
-        if (buttonPress == -1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_MINUS_10PERCENT);
-        else if (buttonPress == 1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_ADD_10PERCENT);
- 
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Reset##ORSpindleReset"))
-            grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_100PERCENT);
+    void Draw(GRBL &grbl, Settings& settings) 
+    {  
+        // begin new imgui window
+        static ImGuiCustomModules::ImGuiWindow window(settings, "Overrides");
+        if(window.Begin(settings)) 
+        {    
+            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(8, 10));
+      
+            GRBLStatus_vals status = settings.grblVals.status; 
+            // Override Spindle Speed
+            ImGui::Text("Override Spindle Speed: %d%%",
+                        status.override_SpindleSpeed);
+            // unused parameter, we read directly from status reports instead
+            static int spindleSpeed = 0; 
+            
+            int buttonPress =
+                ImGuiModules::Incrementer("ORSpindle1", "1%", 1, spindleSpeed, false);
+            if (buttonPress == -1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_MINUS_1PERCENT);
+            else if (buttonPress == 1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_ADD_1PERCENT);
+      
+            ImGui::SameLine();
+            buttonPress = 
+                ImGuiModules::Incrementer("ORSpindle10", "10%", 10, spindleSpeed, false);
+            if (buttonPress == -1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_MINUS_10PERCENT);
+            else if (buttonPress == 1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_ADD_10PERCENT);
+     
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Reset##ORSpindleReset"))
+                grbl.sendRT(GRBL_RT_OVERRIDE_SPINDLE_100PERCENT);
 
-        ImGui::Separator();
+            ImGui::Separator();
 
-        // Override Feed Rate
-        ImGui::Text("Override Feed Rate: %d%%", status.override_Feedrate);
-        // Unused parameter, we read directly from status reports instead
-        static int feedRate = 0;
+            // Override Feed Rate
+            ImGui::Text("Override Feed Rate: %d%%", status.override_Feedrate);
+            // Unused parameter, we read directly from status reports instead
+            static int feedRate = 0;
 
-        buttonPress = ImGuiModules::Incrementer("ORFeed1", "1%", 1, feedRate, false);
-        if (buttonPress == -1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_FEED_MINUS_1PERCENT);
-        else if (buttonPress == 1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_FEED_ADD_1PERCENT);
+            buttonPress = ImGuiModules::Incrementer("ORFeed1", "1%", 1, feedRate, false);
+            if (buttonPress == -1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_FEED_MINUS_1PERCENT);
+            else if (buttonPress == 1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_FEED_ADD_1PERCENT);
 
-        ImGui::SameLine();
-        buttonPress = ImGuiModules::Incrementer("ORFeed10", "10%", 10, feedRate, false);
-        if (buttonPress == -1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_FEED_MINUS_10PERCENT);
-        else if (buttonPress == 1)
-            grbl.sendRT(GRBL_RT_OVERRIDE_FEED_ADD_10PERCENT);
+            ImGui::SameLine();
+            buttonPress = ImGuiModules::Incrementer("ORFeed10", "10%", 10, feedRate, false);
+            if (buttonPress == -1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_FEED_MINUS_10PERCENT);
+            else if (buttonPress == 1)
+                grbl.sendRT(GRBL_RT_OVERRIDE_FEED_ADD_10PERCENT);
 
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Reset##ORFeedReset"))
-            grbl.sendRT(GRBL_RT_OVERRIDE_FEED_100PERCENT);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Reset##ORFeedReset"))
+                grbl.sendRT(GRBL_RT_OVERRIDE_FEED_100PERCENT);
 
-        ImGui::Separator();
+            ImGui::Separator();
 
-        // override rapid feed rate
-        ImGui::Text("Override Rapid Feed Rate: %d%%",
-                    status.override_RapidFeed);
+            // override rapid feed rate
+            ImGui::Text("Override Rapid Feed Rate: %d%%",
+                        status.override_RapidFeed);
 
-        if (ImGui::SmallButton("25%"))
-            grbl.sendRT(GRBL_RT_OVERRIDE_RAPIDFEED_25PERCENT);
-        ImGui::SameLine();
-        if (ImGui::SmallButton("50%"))
-            grbl.sendRT(GRBL_RT_OVERRIDE_RAPIDFEED_50PERCENT);
-        ImGui::SameLine();
-        if (ImGui::SmallButton("Reset##ORRapidFeed100"))
-            grbl.sendRT(GRBL_RT_OVERRIDE_RAPIDFEED_100PERCENT);
+            if (ImGui::SmallButton("25%"))
+                grbl.sendRT(GRBL_RT_OVERRIDE_RAPIDFEED_25PERCENT);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("50%"))
+                grbl.sendRT(GRBL_RT_OVERRIDE_RAPIDFEED_50PERCENT);
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Reset##ORRapidFeed100"))
+                grbl.sendRT(GRBL_RT_OVERRIDE_RAPIDFEED_100PERCENT);
 
-        ImGui::PopStyleVar();
-
-        ImGui::End();
+            ImGui::PopStyleVar();
+            
+            window.End();
+        }
     }
 };
 
@@ -1869,25 +2045,21 @@ struct Debug {
         ImGui::TextV(format, arglist);
         va_end(arglist);
     };
-
-    void Draw(GRBL &grbl, Settings& settings) {
+  
+    
+    void Draw(GRBL &grbl, Settings& settings) 
+    {
         GRBLVals& grblVals = settings.grblVals;
-        ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_Appearing);
-        if (!ImGui::Begin("Debug", NULL, settings.guiSettings.general_window_flags)) {
-            ImGui::End();
-            return;
-        }
-
-        ImGuiModules::KeepWindowInsideViewport();
-        GRBLVals &v = grblVals;
+        GRBLVals& v = grblVals;
+     
+         
+        // begin new imgui window
+        static ImGuiCustomModules::ImGuiWindow window(settings, "Debug");
+        if(!window.Begin(settings)) return;
+             
 
         if (ImGui::TreeNode("Settings")) {
             ImGui::InputText("Save File Location", &settings.p.system.saveFileDirectory);
-            
-            ImGui::SliderFloat("Point Size", &settings.p.viewer.point.size, 0.0f, 100.0f);
-            ImGui::ColorEdit3("Point Colour", &settings.p.viewer.point.colour[0]);
-            ImGui::ColorEdit3("Line Colour", &settings.p.viewer.line.colour[0]);
-            ImGui::ColorEdit3("Line Colour Disabled", &settings.p.viewer.line.colourDisabled[0]);
             
             ImGui::TreePop();
         }
@@ -1916,12 +2088,22 @@ struct Debug {
             ImGui::SliderFloat("Toolbar ComboBox Width", &settings.guiSettings.toolbarComboBoxWidth, 0.0f, 500.0f);
             ImGui::SliderFloat("Input Box Width", &settings.guiSettings.inputBoxWidth, 0.0f, 500.0f);
             
-            ImGui::SliderFloat("Widget Text Width", &settings.guiSettings.widgetTextWidth, 0.0f, 500.0f);
+            ImGui::SliderFloat("Widget Width", &settings.guiSettings.widgetWidth, 0.0f, 500.0f);
  
             if(ImGui::ColorEdit3("Text Colour", &settings.guiSettings.colour[Colour::Text].x)) {
                 ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
             }
             ImGui::ColorEdit3("Header Text Colour", &settings.guiSettings.colour[Colour::HeaderText].x);
+            
+            ImGui::SliderFloat("Position Popup Opacity", &settings.guiSettings.popupPosition_alpha, 0.0f, 1.0f);
+            ImGui::SliderFloat("Position Popup Offset", &settings.guiSettings.popupPosition_offsetPos, 0.0f, 100.0f);
+ 
+            if(ImGui::SliderFloat("Message Popup Y Spacing", &settings.guiSettings.popupMessage_YSpacing, 0.0f, 100.0f)) {
+                Log::Info("Message!");
+            }
+            if(ImGui::SliderFloat("Message Popup Timeout", &settings.guiSettings.popupMessage_Time, 0.0f, 100.0f)) {
+                Log::Info("Message!");
+            }
             
             ImGui::TreePop();
         }
@@ -1929,9 +2111,7 @@ struct Debug {
 
         if (ImGui::TreeNode("System")) {
             addEntry("OpenGl Version", (char *)glGetString(GL_VERSION));
-            addEntry("Frame Rate", "%.3f ms/frame (%.1f FPS)",
-                     1000.0f / ImGui::GetIO().Framerate,
-                     ImGui::GetIO().Framerate);
+            addEntry("Frame Rate", "%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
             static bool debugGCListBuild = false;
             static bool debugCharacterCounting = false;
@@ -2140,16 +2320,18 @@ struct Debug {
         }
         if (ImGui::TreeNode("Sqeak Settings")) {
             if(ImGui::Button("Save Config")) {
+                Log::Info("Saving Config File...");
                 Event<Event_SaveSettings>::Dispatch({ }); 
                 //settings.SaveToFile();
             }
             if(ImGui::Button("Load Config")) {
+                Log::Info("Loading Config File...");
                 Event<Event_UpdateSettingsFromFile>::Dispatch({ }); 
                 //settings.UpdateFromFile(); 
             }
             ImGui::TreePop();
         }
-        ImGui::End();
+        window.End();
     }
 };
  
@@ -2163,6 +2345,7 @@ void Frames::DrawDockSpace(Settings& settings)
     float toolbarHeight = settings.guiSettings.toolbarHeight;
     // create the dockspace below the main tool bar
     ImGui::SetNextWindowPos(viewport->WorkPos + ImVec2(padding, toolbarHeight + 2.0f*padding));
+    ImGui::SetNextWindowSize(viewport->WorkSize - ImVec2(padding*2.0f, toolbarHeight + 3.0f*padding));
     ImGui::SetNextWindowSize(viewport->WorkSize - ImVec2(padding*2.0f, toolbarHeight + 3.0f*padding));
     ImGui::SetNextWindowViewport(viewport->ID);
     
@@ -2209,10 +2392,9 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
     // show demo 
     ImGui::ShowDemoWindow(NULL);
     
-    ImGui::PushItemWidth(-settings.guiSettings.widgetTextWidth);
         viewer.ImGuiRender(settings);
         
-        sketcher.DrawImGui(grbl, settings);
+        sketcher.DrawImGui(settings);
         
         static PopupMessages popupMessages;
         static Toolbar toolbar;
@@ -2223,12 +2405,12 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
         static Overrides overrides;
         
         // Enable always
-        popupMessages.Draw(settings, dt);
+        popupMessages.Draw(settings, dt, sketcher.IsActive());
         toolbar.Draw(grbl, settings, sketcher, fileBrowser.get());
         
         // Disable all widgets when not connected to grbl  
         ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
-    
+        
             debug.Draw(grbl, settings);
             stats.Draw(grbl, settings, dt);
             console.Draw(grbl, settings);
@@ -2237,7 +2419,4 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
             
         // End disable all widgets when not connected to grbl  
         ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
-        
-    ImGui::PopItemWidth();
-    
 }

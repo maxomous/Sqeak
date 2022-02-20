@@ -63,7 +63,6 @@ struct ParametersList
                 float feedCutting       = 1000.0f;
                 float feedPlunge        = 300.0f;
                 float cutDepth          = 1.0f;
-                float cutWidth          = 1.0f;
             };
             
             Tool(std::string name = "Tool", float diameter = 6.0f, float length = 20.0f) : Name(name), Diameter(diameter), Length(length) {}
@@ -82,23 +81,57 @@ struct ParametersList
 
     struct Viewer3DParameters {
         
-        glm::vec3 BackgroundColour      = { 0.45f, 0.55f, 0.60f };
-        glm::vec3 ToolpathColour_Feed   = { 0.133f, 0.133f, 0.133f };
-        glm::vec3 ToolpathColour_Rapid  = { 0.810f, 0.706f, 0.000f };
-        glm::vec3 ToolpathColour_Home   = { 0.154f, 0.734f, 0.000f };
+        struct General {
+            glm::vec3 BackgroundColour      = { 0.45f, 0.55f, 0.60f };            
+        } general;
         
-        struct ViewerPoint {
-            float size              = 3.0f;
-            glm::vec3 colour        = { 0.615f, 0.810f, 0.219f };
+        struct Toolpath {
+            glm::vec3 Colour_Feed   = { 0.694f, 0.063f, 0.048f };
+            glm::vec3 Colour_FeedZ  = { 0.843f, 0.612f, 0.068f };
+            glm::vec3 Colour_Rapid  = { 0.154f, 0.734f, 0.000f };
+            glm::vec3 Colour_Home   = { 0.160f, 0.396f, 0.722f };
+        } toolpath;
+        
+        struct Axis {
+            float Size                  = 50.0f;
+        } axis;
+        
+        struct Grid {
+            glm::vec3 Position          = { 0.0f, 0.0f, 0.0f };
+            glm::vec2 Size              = { 1200.0f, 600.0f };
+            float Spacing               =   100.0f;
+            glm::vec3 Colour            = { 0.6f, 0.6f, 0.6f };
+        } grid;
+        
+        struct Spindle {
+            bool visibility = true;
+            
+            struct SpindleColour {
+                glm::vec3 tool              = { 0.698f, 0.127f, 0.127f };
+                glm::vec3 toolOutline       = { 0.1f, 0.1f, 0.1f };
+                glm::vec3 toolHolder        = { 0.294f, 0.294f, 0.294f };
+                glm::vec3 toolHolderOutline = { 0.1f, 0.1f, 0.1f };                
+            } colours;
+            
+        } spindle;
+        
+    } viewer;
+
+    struct Sketch
+    {
+        struct Point {
+            float size                  = 3.0f;
+            glm::vec3 colour            = { 0.615f, 0.810f, 0.219f };
         } point;
         
-        struct ViewerLine {
-            glm::vec3 colour            = { 0.099f, 0.778f, 0.794f };
-            glm::vec3 colourDisabled    = { 0.403f, 0.403f, 0.403f };
+        struct Line {
+            glm::vec3 colour            = { 0.246f, 0.246f, 0.246f };
+            glm::vec3 colourDisabled    = { 0.440f, 0.440f, 0.440f };
         } line;
         
         struct Cursor {
-            glm::vec3 Colour        = { 0.9f, 0.9f, 0.9f };
+            glm::vec2 Position;
+            glm::vec3 Colour            = { 0.9f, 0.9f, 0.9f };
             
             float Size                  = 14.0f; // mm
             float Size_Scaled;          // gets updated with change in zoom
@@ -111,35 +144,17 @@ struct ParametersList
             float SelectionTolerance_Scaled; 
             
         } cursor;
-        
-        
-        struct Axis {
-            float Size = 50.0f;
-        } axis;
-        
-        struct Grid {
-            glm::vec3 Position  = { 0.0f, 0.0f, 0.0f };
-            glm::vec2 Size      = { 1200.0f, 600.0f };
-            float Spacing       =   100.0f;
-            glm::vec3 Colour    = { 0.6f, 0.6f, 0.6f };
-        } grid;
-        
-        struct Spindle {
-            glm::vec3 toolColour = { 1.0f, 0.196f, 0.0 };
-            glm::vec3 toolColourOutline = { 0.1f, 0.1f, 0.1f };
-        } spindle;
-        
-    } viewer;
+    } sketch;
 
     struct PathCutter {
         // Tab Parameters
-        bool CutTabs = true;
-        float TabSpacing        = 50.0f;
-        float TabHeight         = 4.0f;
-        float TabWidth          = 8.0f;
+        bool CutTabs                    = true;
+        float TabSpacing                = 50.0f;
+        float TabHeight                 = 4.0f;
+        float TabWidth                  = 8.0f;
         
-        float CutOverlap        = 1.0f;     // mm
-        
+        float CutOverlap                = 1.0f;     // mm
+        float PartialRetractDistance    = 1.0f; // mm
         GeosBufferParams geosParameters;
                    
     } pathCutter;
@@ -174,15 +189,14 @@ struct GUISettings
     GUISettings()
     {
         button[ButtonType::Primary]         = {{ 90.0f, 36.0f }, { 16.0f, 16.0f }};   // Primary
-        button[ButtonType::Secondary]       = {{ 60.0f, 27.0f }, { 16.0f, 16.0f }};   // Secondary
+        button[ButtonType::Secondary]       = {{ 60.0f, 31.0f }, { 16.0f, 16.0f }};   // Secondary
         button[ButtonType::Connect]         = {{ 73.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
         button[ButtonType::New]             = {{ 28.0f, 28.0f }, { 16.0f, 16.0f }};   // New
-        button[ButtonType::Edit]            = {{ 10.0f, 10.0f }, { 10.0f, 10.0f }};   // Edit
+        button[ButtonType::Edit]            = {{ 12.0f, 12.0f }, { 12.0f, 12.0f }};   // Edit
         button[ButtonType::FunctionButton]  = {{ 56.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
-        button[ButtonType::Jog]             = {{ 19.0f, 19.0f }, { 16.0f, 16.0f }};   // Jog
+        button[ButtonType::Jog]             = {{ 18.0f, 18.0f }, { 12.0f, 12.0f }};   // Jog
     }
     
-    ImGuiWindowFlags general_window_flags = ImGuiWindowFlags_AlwaysAutoResize;
     
     ButtonDimension button[7];       //      Button Size,      Image Size
     float functionButtonTextOffset  = 52.0f;
@@ -190,7 +204,7 @@ struct GUISettings
 
     float dockPadding               =   20.0f;
     float toolbarHeight             =   164.0f;
-    float toolbarTableHeight        =   102.0f; // toolbarHeight - 62.0f
+    float toolbarTableHeight        =   91.0f; // toolbarHeight - 62.0f
     float toolbarTableScrollbarSize =   12.0f;
     float toolbarSpacer             =   22.0f;
     float toolbarItemHeight         =   65.0f;
@@ -198,7 +212,11 @@ struct GUISettings
         
     float inputBoxWidth             =   140.0f;
         
-    float widgetTextWidth           =   80.0f;
+    float widgetWidth               =   180.0f;
+        
+    float popupPosition_alpha       =   0.6f;
+    float popupPosition_offsetPos   =   12.0f;
+        
         
     float popupMessage_YSpacing     =   40.0f;  // distance between popup messages
     float popupMessage_Time         =   2.0f;   // time to display popup messages

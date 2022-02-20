@@ -24,3 +24,11 @@
 #include "texture.h"
 #include "modelloader.h"
 #include "material.h"
+
+#define ASSERT(x) if (!(x)) exit(1);
+#define GLCall(x) glClearErrors();\
+	x;\
+	ASSERT(glErrors(#x, __FILE__, __LINE__));
+
+void glClearErrors();
+bool glErrors(const char* function, const char* file, int line);

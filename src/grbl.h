@@ -311,18 +311,22 @@ public:
     bool getViewStatusReport();
     // set the interval timer for the status report
     // no faster than 5Hz (200ns)
-    void setStatusInterval(uint ms);
-    uint getStatusInterval();
+    //void setStatusInterval(uint ms);
+    //uint getStatusInterval();
     // checks whether thread has signalled to reset/cancel
-    void systemChecks();
+    void SystemCommands();
+    // sends a real time status report request to grbl 
+    void RequestStatusReport();
     // get all grbl values, this is much quicker than getting 
     // individually as it prevent lots of mutexes
     void UpdateGRBLVals(GRBLVals& grblVals);
+    // calls updates for each frame
+    void Update(GRBLVals& grblVals);
 private:
     GCList gcList;
     Serial serial;
     // thread variables
-    std::thread t_Read, t_Write, t_StatusReport;
+    std::thread t_Read, t_Write;//, t_StatusReport;
     std::atomic<std::thread::id> m_mainThreadID;
     std::mutex m_mutex;
     std::condition_variable m_cond_reset;
@@ -333,7 +337,6 @@ private:
     int m_threadsReady = 0;
     // status report variables
     bool viewStatusReport = false;
-    uint statusTimerInterval = 100;    // ms
     
     // returns true if end of execution of gcode from grbl ('ok' or 'error' received)
     int processResponse(const std::string& msg);
@@ -355,5 +358,6 @@ private:
     void thread_write();
     // infinate looping thread
     // send status report requests
-    void thread_statusReport();
+    //void thread_RequestStatusReport();
+    //uint statusTimerInterval = 25;    // ms
 };
