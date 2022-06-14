@@ -32,7 +32,7 @@ private:
     std::string m_Filepath;
     
     std::vector<std::string> m_CurrentDirFolders; // list of all folders inside curDir
-    std::vector<filedesc_t> m_Files;
+    std::vector<File::FileDesc> m_Files;
     
     int selectedFileID = -1;
     int sortByName = true; // else sort by date

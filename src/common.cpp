@@ -34,6 +34,14 @@ void upperCase(string& str) {
     transform(str.begin(), str.end(),str.begin(), ::toupper);
 }
 
+bool trigger(bool& input)
+{
+    if(!input) {        
+        return false;
+    }
+    input = false;
+    return true;
+}
  // This takes a std::string of 3 values seperated by commas (,) and will return a 3DPoint
 // 4.000,0.000,0.000
 glm::vec2 stoVec2(const std::string& msg) 

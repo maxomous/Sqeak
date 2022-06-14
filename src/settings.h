@@ -1,6 +1,10 @@
 #pragma once
 
 #include <initializer_list>
+#include <MaxLib/File.h>
+
+using namespace MaxLib;
+
 
 // a vector wrapper which allows a specific item to be currently selected
 template<typename T>
@@ -122,6 +126,7 @@ struct ParametersList
         struct Point {
             float size                  = 3.0f;
             glm::vec3 colour            = { 0.615f, 0.810f, 0.219f };
+            glm::vec3 colourActive      = { 0.815f, 0.500f, 0.419f };
         } point;
         
         struct Line {
@@ -130,7 +135,15 @@ struct ParametersList
         } line;
         
         struct Cursor {
-            glm::vec2 Position;
+            struct Popup {
+                bool shouldOpen = false;
+            } popup;
+            
+            std::optional<glm::vec2> Position_Snapped;              // snapped 2d mouse position in current coord sys
+            std::optional<glm::vec2> Position_Clicked;      // snapped 2d mouse click position in current coord sys
+            std::optional<glm::vec2> Position_Raw;          // raw 2d mouse position in current coord sys
+            std::optional<glm::vec2> Position_WorldCoords;  // snapped 2d mouse position in world space
+    
             glm::vec3 Colour            = { 0.9f, 0.9f, 0.9f };
             
             float Size                  = 14.0f; // mm
@@ -140,7 +153,7 @@ struct ParametersList
             glm::vec2 SnapCursor(const glm::vec2& cursorPos) {
                 return roundVec2(SnapDistance_Scaled, cursorPos);
             }
-            float SelectionTolerance    = 3.0f;
+            float SelectionTolerance    = 10.0f;
             float SelectionTolerance_Scaled; 
             
         } cursor;

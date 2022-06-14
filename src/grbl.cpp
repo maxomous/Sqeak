@@ -426,9 +426,9 @@ void GRBLSystem::decodeStatus(const std::string& msg)
             for (size_t j = 0; j < str.length(); j++) 
             {
             if(str[j] == 'S')
-                status.m_vals.accessory_SpindleDir = CLOCKWISE;    // (1)
+                status.m_vals.accessory_SpindleDir = (int)Direction::CW;    // (1)
             else if(str[j] == 'C')
-                status.m_vals.accessory_SpindleDir = ANTICLOCKWISE;    // (-1)
+                status.m_vals.accessory_SpindleDir = (int)Direction::CCW;    // (-1)
             else if(str[j] == 'F')
                 status.m_vals.accessory_FloodCoolant = true;
             else if(str[j] == 'M')

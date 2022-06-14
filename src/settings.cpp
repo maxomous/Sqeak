@@ -28,6 +28,7 @@ void Settings::AddSettings()
     s = Setting("Viewer-Elements", 0);
     s.AddParameter("PointSize",          &p.sketch.point.size);
     s.AddParameter("PointColour",        &p.sketch.point.colour);
+    s.AddParameter("PointColourActive",        &p.sketch.point.colourActive);
     s.AddParameter("LineColour",         &p.sketch.line.colour);
     s.AddParameter("LineColourDisabled", &p.sketch.line.colourDisabled);
     m_SettingsList.push_back(s);
@@ -47,8 +48,8 @@ void Settings::AddSettings()
     s.AddParameter("ToolColour", &p.viewer.spindle.colours.tool);
     s.AddParameter("ToolHolderColour", &p.viewer.spindle.colours.toolHolder);
     s.AddParameter("ToolColourOutline", &p.viewer.spindle.colours.toolOutline);
-    m_SettingsList.push_back(s);  
-      
+    m_SettingsList.push_back(s);   
+       
     s = Setting("PathCutter", 0);   
     s.AddParameter("CutTabs", &p.pathCutter.CutTabs);
     s.AddParameter("TabSpacing", &p.pathCutter.TabSpacing);  

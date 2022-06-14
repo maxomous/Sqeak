@@ -25,14 +25,14 @@ glm::vec3 stoVec3(const std::string& msg);
 /*
 struct glm::vec2 
 {
-    operator point2D() const;
+    operator Geom::Vec2() const;
     float x, y;
 };
 */
 /*
 namespace glm {
-    vec2(point2D p) { return glm::vec2(p.x, p.y); }
-    vec3(point3D p) { return glm::vec3(p.x, p.y, p.z); }
+    vec2(Geom::Vec2 p) { return glm::vec2(p.x, p.y); }
+    vec3(Geom::Vec3 p) { return glm::vec3(p.x, p.y, p.z); }
 }
 
 
@@ -47,8 +47,8 @@ glm::vec2 glm::vec2() { return new Shape(); }
 //operator glm::vec2() { return glm::vec2(x,y); }
 //operator glm::vec3() { return glm::vec3(x,y,z); }
 
-//point2D(const glm::vec2& p) { x = p.x; y = p.y; }         
-//point3D(const glm::vec3& p) { x = p.x; y = p.y; z = p.z; }
+//Geom::Vec2(const glm::vec2& p) { x = p.x; y = p.y; }         
+//Geom::Vec3(const glm::vec3& p) { x = p.x; y = p.y; z = p.z; }
 
 
 static inline std::ostream& operator<<(std::ostream& os, const glm::vec2& p) { os << "(" << p.x << ", " << p.y << ")"; return os; }
@@ -68,15 +68,15 @@ namespace glm {
         v += translate;
         return std::move(v);
     }
+    static inline glm::vec2 Vec2(glm::vec3 v) { return { v.x, v.y }; }
+    static inline glm::vec3 Vec3(glm::vec2 v) { return { v.x, v.y, 0.0f }; }
 }
 
-static inline glm::vec2 Vec2(glm::vec3 v) { return { v.x, v.y }; }
-static inline glm::vec3 Vec3(glm::vec2 v) { return { v.x, v.y, 0.0f }; }
 
 
 
-static inline float hypot(glm::vec2 v) { return sqrtf(v.x*v.x + v.y*v.y); }
-static inline float hypot(glm::vec3 v) { return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); }
+//static inline float hypot(glm::vec2 v) { return sqrtf(v.x*v.x + v.y*v.y); }
+//static inline float hypot(glm::vec3 v) { return sqrtf(v.x*v.x + v.y*v.y + v.z*v.z); }
 
 static inline glm::vec2 roundVec2(float roundto, const glm::vec2& input) {
     double x = (double)input.x / (double)roundto;

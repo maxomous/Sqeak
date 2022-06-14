@@ -213,7 +213,7 @@ private:
 class GLSystem
 {
 public:
-    GLSystem(int w, int h, const char* name, const char* glsl_version);
+    GLSystem(int w, int h, const char* name, const char* glsl_version, std::function<void()> cb_GLFW_ConfigVersion, std::function<void(GLFWwindow*)> cb_GLFW_Config, std::function<void(GLFWwindow*)> cb_imgui_Config);
     ~GLSystem();
     
     GLFWwindow*& GetWindow() { return m_Window; };

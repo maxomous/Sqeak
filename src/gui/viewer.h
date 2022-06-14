@@ -126,6 +126,8 @@ class DynamicBuffer
 {
 public:
     struct DynamicVertexList {
+        DynamicVertexList() {}
+        DynamicVertexList(const glm::vec3& col) : colour(col) {}
         std::vector<glm::vec3> position; 
         glm::vec3 colour; 
     };
@@ -135,15 +137,16 @@ public:
     void Resize(int maxVertices, int maxIndices);
     void ClearVertices();
     void AddVertex(const glm::vec3& position, const glm::vec3& colour, bool isOutline = false);
-    void AddCursor(Settings& settings, bool isValid, glm::vec2 pos);
+    void AddCursor(Settings& settings, glm::vec2 pos);
     void AddGrid(Settings& settings);
     void AddAxes(float size, glm::vec3 origin);
 
     void AddShapeOutline(const Shape& shape, glm::vec3 colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }); 
     void AddShape(const Shape& shape, glm::vec3 colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }, bool isOutline = false);
-    void AddPathAsLines(const std::vector<glm::vec3>& vertices, glm::vec3 colour, const glm::vec3& zeroPosition);
-    void AddDynamicVertexList(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicLineLists, const glm::vec3& zeroPosition);
 
+    void AddDynamicVertexListAsLines(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
+    void AddDynamicVertexListAsPoints(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
+    
     void Update();
     void Draw(glm::mat4& proj, glm::mat4& view, bool isDrawOutline = false);
     
@@ -202,7 +205,7 @@ private:
     Shapes m_Shapes;
     // tool
     Shape m_Shape_Tool;
-    Shape m_Shape_ToolHolder;; 
+    Shape m_Shape_ToolHolder;
     Shape m_Shape_Tool_Wireframe;
     Shape m_Shape_ToolHolder_Wireframe;
     
@@ -216,7 +219,6 @@ private:
     //std::vector<glm::vec2> m_ShapeOffset;
     //bool m_ShapeIsLoop = false;
     
-    std::pair<bool, glm::vec2> m_Cursor2DPos;
     
     // static buffer for path
     std::unique_ptr<Shader> m_Shader;

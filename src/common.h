@@ -30,10 +30,7 @@
 // OpenGL / ImGui
 #include "glcore/glcore.h"
 
-#include "libs/file.h"
-#include "libs/geom.h"
 #include "libs/geos.h"
-#include "dev/ads1115.h"
 #include "dev/joystick.h"
 
 // allows bitwise operations on enums
@@ -55,8 +52,6 @@ struct InputEvent {
     Event_KeyInput* keyboard = nullptr;
     Event_MouseButton* mouseClick = nullptr;
     Event_MouseMove* mouseMove = nullptr;
-    glm::vec2 screenCoords_Click;
-    glm::vec2 screenCoords_Move;
 };
 
 #include "gclist.h"
@@ -78,10 +73,12 @@ struct InputEvent {
 #include "sketch/gcodebuilder.h"
 #include "sketch/toolsettings.h"
 #include "sketch/sketch.h"
+
+#include "sketcher/sketch.h"
+
 #include "gui/frames.h"
 #include "gui/gui.h"
 
-//#include "sketch/functions/functions.h"
 
 
 struct Event_Update3DModelFromFile      { std::string filename; };
@@ -95,6 +92,7 @@ struct Event_ConsoleScrollToBottom      {};
 struct Event_SaveSettings               {};
 struct Event_UpdateSettingsFromFile     {};
 struct Event_Set2DMode                  { bool isTrue; };
+struct Event_Set2DCursor                { bool isValid; glm::vec2 worldCoords; };
 struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords; };
 
 
@@ -201,7 +199,8 @@ private:
 void lowerCase(std::string &str);
 // modifies string to upper case
 void upperCase(std::string &str);
-
+// returns value of input and switches input to false if true 
+bool trigger(bool& input);
 
 class Log {
 public:

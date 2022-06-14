@@ -1,6 +1,7 @@
 #pragma once
 #include "../common.h" 
 
+using namespace MaxLib::Geom;
 
 
 namespace sketch
@@ -200,20 +201,20 @@ public:
         });
         if(!RawPointPrev) { return false; }
         
-        const glm::vec2& pLast = RawPointPrev->Vec2();
+        Vec2 pLast = { RawPointPrev->Vec2().x, RawPointPrev->Vec2().y };
         
-        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
-        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
+        Vec2 p0  = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
+        Vec2 p1  = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
         // start to end line
-        glm::vec2 dif = p1 - p0;
-        polar pol = polar(glm::vec2(fabsf(dif.x), fabsf(dif.y)));
+        Vec2 dif = p1 - p0;
+        Polar pol = Polar(Vec2(fabsf(dif.x), fabsf(dif.y)));
         
         // angle between pLast to p0 to p1  
         auto totalAngle = Geom::AngleBetween(pLast, p0, p1);
         if(!totalAngle) { return false; } 
                 
         // change direction if left of line
-        SetDirection((*totalAngle < M_PI) ? ANTICLOCKWISE : CLOCKWISE);
+        SetDirection((*totalAngle < M_PI) ? Direction::CCW : Direction::CW);
         
         // if lines are colinear
         if(*totalAngle == 0.0 || *totalAngle == M_PI) {
@@ -247,15 +248,16 @@ public:
         m_Ref_Centre->rawPoint->Vec2() = centre; 
           
         // Geos::PerdendicularDistance(p0, p1, p)
-        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
-        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
-        glm::vec2& pC       = m_Ref_Centre->rawPoint->Vec2();
+        Vec2 p0 = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
+        Vec2 p1 = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
+        Vec2 pC = { m_Ref_Centre->rawPoint->Vec2().x, m_Ref_Centre->rawPoint->Vec2().y };
+        
         
         auto th = Geom::AngleBetween(p0, p1, pC);
         if(!th) return;
-        float H = hypot(p1-pC);
+        float H = Hypot(p1-pC);
         float a = H * -sin(*th);
-        float b = hypot(p1 - p0) / 2.0f;  
+        float b = Hypot(p1-p0) / 2.0f;  
         
         /*
         std::cout << "angle (p0, p1, pC): " << rad2deg(*th) << std::endl;
@@ -268,9 +270,13 @@ public:
         m_Radius = sqrtf(a*a + b*b);
         
         m_Radius += 0.00001;
+        
+        // swap direction if centre is left of line (p0 -> p1)
+        m_Direction = Geom::LeftOfLine(p0, p1, pC) ? Direction::CCW : Direction::CW;
+                
         // direction fixes
-        m_Radius *= m_Direction * sign(a, 1); // zero has value of 1
-         
+        m_Radius *= m_Direction * Sign(a, 1); // zero has value of 1
+        
         m_Priority = DefineArcBy::Radius;
         //m_Priority = DefineArcBy::Centre;
         Update(); 
@@ -281,28 +287,28 @@ public:
         Update();
     }
     void SetDirection(int direction) {
-        if(direction == ANTICLOCKWISE) {
-            m_Direction = ANTICLOCKWISE;
+        if(direction == Direction::CCW) {
+            m_Direction = Direction::CCW;
             m_DirectionImGui = 1;
         } else {
-            m_Direction = CLOCKWISE;
+            m_Direction = Direction::CW;
             m_DirectionImGui = 0;
         }
     }
     
     
     void Path(std::vector<glm::vec2>& returnPath, int arcSegments) override {
-        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
-        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
-        glm::vec2& pCentre  = m_Ref_Centre->rawPoint->Vec2();
+        Vec2 p0       = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
+        Vec2 p1       = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
+        Vec2 pCentre  = { m_Ref_Centre->rawPoint->Vec2().x, m_Ref_Centre->rawPoint->Vec2().y };
         
         std::cout << "p0: " << p0.x << ", " << p0.y << std::endl;
         std::cout << "p1: " << p1.x << ", " << p1.y << std::endl;
         std::cout << "p2: " << pCentre.x << ", " << pCentre.y << std::endl;
         
         // get start and end points relative to the centre point
-        glm::vec2 v_Start = p0 - pCentre;
-        glm::vec2 v_End = p1 - pCentre;
+        Vec2 v_Start = p0 - pCentre;
+        Vec2 v_End = p1 - pCentre;
         
         std::cout << "v_Start: " << v_Start.x << ", " << v_Start.y << std::endl;
         std::cout << "v_End: " << v_End.x << ", " << v_End.y << std::endl;
@@ -310,27 +316,27 @@ public:
         double th_Start  = atan2(v_Start.x, v_Start.y);
         double th_End    = atan2(v_End.x, v_End.y);
         
-        Geom::CleanAngles(th_Start, th_End, m_Direction);
+        Geom::CleanAngles(th_Start, th_End, (Geom::Direction)m_Direction);
         
         std::cout << "th_Start: " << th_Start << std::endl;
         std::cout << "th_End: " << th_End << std::endl;
         
-        float th_Incr   = m_Direction * deg2rad(90.0 / arcSegments);
+        float th_Incr   = m_Direction * Radians(90.0 / arcSegments);
         std::cout << "th_Incr: " << th_Incr << std::endl;
         
         int nIncrements = floorf(fabsf((th_End - th_Start) / th_Incr));
         std::cout << "nIncrements: " << nIncrements << std::endl;
         
-        glm::vec2 p;
+        Vec2 p;
         for (int n = 0; n < nIncrements; n++) {
-            float th = th_Start + n * th_Incr;
+            double th = th_Start + n * th_Incr;
             p = { fabsf(m_Radius) * sin(th), fabsf(m_Radius) * cos(th) };       
                  
-            returnPath.push_back(pCentre + p);
+            returnPath.push_back({ pCentre.x + p.x, pCentre.y + p.y });
         }
         // ensure last point is added
         if(p != p1) {         
-            returnPath.push_back(p1); 
+            returnPath.push_back({ p1.x, p1.y }); 
         }
     }
     // Removes a rawpoint reference (returns true if no references left)
@@ -377,26 +383,27 @@ public:
         glm::vec2 dif = p1 - p0;
         return hypot(dif.x, dif.y) / 2.0;
     }
+    
     // recalculates radius from centre point
     // base can be either 0 or 1 (p0 or p1)
     void RecalculateRadiusFromCentre(int basePoint = 1) 
     {
-        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
-        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
-        glm::vec2& pCentre  = m_Ref_Centre->rawPoint->Vec2();
+        Vec2 p0       = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
+        Vec2 p1       = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
+        Vec2 pCentre  = { m_Ref_Centre->rawPoint->Vec2().x,  m_Ref_Centre->rawPoint->Vec2().y };
         std::cout << "p1: " << p1.x << ", " << p1.y << std::endl;
         std::cout << "pCentre: " << pCentre.x << ", " << pCentre.y << std::endl;
-        glm::vec2 dif = (basePoint) ? (p1 - pCentre) : (p0 - pCentre);
+        Vec2 dif = (basePoint) ? (p1 - pCentre) : (p0 - pCentre);
         m_Radius = hypot((double)dif.x, (double)dif.y);
         if(Geom::LeftOfLine(p0, p1, pCentre)) { m_Radius = -m_Radius; }
     }   
     // recalculates centre point from radius
     void RecalculateCentreFromRadius() 
     {
-        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
-        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
-        glm::vec2& pCentre  = m_Ref_Centre->rawPoint->Vec2();
-        pCentre = Geom::ArcCentreFromRadius(point2D(p0.x, p0.y), point2D(p1.x, p1.y), m_Radius, m_Direction).glm();
+        Vec2 p0       = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
+        Vec2 p1       = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
+        Vec2 pCentre = Geom::ArcCentreFromRadius(p0, p1, m_Radius, (Geom::Direction)m_Direction);
+        m_Ref_Centre->rawPoint->Vec2() = { pCentre.x, pCentre.y };
     }
     
 private:
@@ -411,15 +418,31 @@ private:
 
 class ElementFactory {
 public:
+    std::optional<glm::vec2> RawPoint_GetClosest(const glm::vec2& p, float tolerance)
+    {
+        RawPoint* rawPoint = RawPoint_GetByPosition(p, tolerance);
+        if(rawPoint) { 
+            return rawPoint->Vec2();
+        }
+        return {};
+    }
 
     void ActivePoint_Unset() { m_ActiveSelection = nullptr; }
 
-    void ActivePoint_SetByPosition(const glm::vec2& p, float tolerance)
+    
+    std::optional<glm::vec2> ActivePoint_GetPosition()
     {
-        m_ActiveSelection = RawPoint_GetByPosition(p, tolerance);
-        if(m_ActiveSelection) { 
-            std::cout << "Set active point: " << m_ActiveSelection->ID() << std::endl; 
+        if(!m_ActiveSelection) return {};
+        return m_ActiveSelection->Vec2();
+    }
+    bool ActivePoint_SetByPosition(const glm::vec2& p, float tolerance)
+    {
+        if(auto rawPoint = RawPoint_GetByPosition(p, tolerance)) {
+            m_ActiveSelection = rawPoint;
+            std::cout << "Setting active point to: " << m_ActiveSelection->ID() << std::endl; 
+            return true;
         }
+        return false;
     }
     
     // returns true when update required
@@ -436,30 +459,46 @@ public:
         
         return true;
     }
-
-    struct Sketch_Element_Identifier 
+    // returns true when update required
+    std::optional<RawPointID> ActivePoint_GetID()
     {
-        Sketch_Element_Identifier(ElementID ID, ElementFactory* parent) : id(ID), m_Parent(parent) {}
-        ~Sketch_Element_Identifier() { std::cout << "DELETING ELEMENT" << std::endl; m_Parent->Element_Delete(id); }
+        if(!m_ActiveSelection)              
+            return {};
+        return m_ActiveSelection->ID();
+    }
+    // returns true when update required
+    bool ActivePoint_Delete()
+    {
+        if(!m_ActiveSelection)              
+            return false;
+        
+        std::cout << "Delete Active Point (UNCODED YET)" << std::endl;
+        //m_ActiveSelection->Delete();
+        return true;
+    }
+    struct SketchOld_Element_Identifier 
+    {
+        SketchOld_Element_Identifier(ElementID ID, ElementFactory* parent) : id(ID), m_Parent(parent) {}
+        ~SketchOld_Element_Identifier() { std::cout << "DELETING ELEMENT" << std::endl; m_Parent->Element_Delete(id); }
 
         ElementID id = -1;
     private:
         ElementFactory* m_Parent = nullptr;
     };
     
-    struct Sketch_LineLoop_Identifier
+    struct SketchOld_LineLoop_Identifier
     { 
-        Sketch_LineLoop_Identifier() {}
-        Sketch_LineLoop_Identifier(LineLoopID ID, ElementFactory* parent) : id(ID), m_Parent(parent) {}
-        ~Sketch_LineLoop_Identifier() { std::cout << "DELETING LINELOOP" << std::endl; m_Parent->LineLoop_Delete(id); }
+        SketchOld_LineLoop_Identifier() {}
+        SketchOld_LineLoop_Identifier(LineLoopID ID, ElementFactory* parent) : id(ID), m_Parent(parent) {}
+        ~SketchOld_LineLoop_Identifier() { std::cout << "DELETING LINELOOP" << std::endl; m_Parent->LineLoop_Delete(id); }
 
         LineLoopID id = -1;
     private:
         ElementFactory* m_Parent = nullptr;
     };
         
-    typedef std::unique_ptr<Sketch_Element_Identifier>  Sketch_Element;
-    typedef std::unique_ptr<Sketch_LineLoop_Identifier> Sketch_LineLoop;
+    typedef std::unique_ptr<SketchOld_Element_Identifier>  SketchOld_Element;
+    typedef std::unique_ptr<SketchOld_LineLoop_Identifier> SketchOld_LineLoop;
 
     // Container of elements
     class LineLoop // TODO rename to Container_LineLoop
@@ -475,7 +514,7 @@ public:
 
     private:
         LineLoopID m_ID = -1;
-        std::vector<Sketch_Element> m_Elements;
+        std::vector<SketchOld_Element> m_Elements;
         
         friend class ElementFactory;
     };
@@ -491,7 +530,7 @@ public:
         }
         return move(points);
     }
-    std::vector<glm::vec2> LineLoop_PointsList(Sketch_LineLoop& sketchLineLoop, int arcSegments) {
+    std::vector<glm::vec2> LineLoop_PointsList(SketchOld_LineLoop& sketchLineLoop, int arcSegments) {
         
         LineLoop& lineLoop = LineLoop_GetByID(sketchLineLoop->id);
         //std::cout << std::endl;
@@ -505,7 +544,7 @@ public:
         
         return points;
     }
-    bool LineLoop_IsLoop (Sketch_LineLoop& sketchLineLoop) { 
+    bool LineLoop_IsLoop (SketchOld_LineLoop& sketchLineLoop) { 
         
         LineLoop& lineLoop = LineLoop_GetByID(sketchLineLoop->id);
         if(lineLoop.Size() <= 2) { 
@@ -519,24 +558,24 @@ public:
     
     
     // returns true if update viewer required
-    void LineLoop_DrawImGui(Settings& settings, Sketch_LineLoop& sketchLineLoop);
+    void LineLoop_DrawImGui(Settings& settings, SketchOld_LineLoop& sketchLineLoop);
 
-    size_t LineLoop_Size(Sketch_LineLoop& sketchLineLoop) { return LineLoop_GetByID(sketchLineLoop->id).Size(); }
+    size_t LineLoop_Size(SketchOld_LineLoop& sketchLineLoop) { return LineLoop_GetByID(sketchLineLoop->id).Size(); }
     // Creates a basic Line Loop
-    Sketch_LineLoop LineLoop_Create();
+    SketchOld_LineLoop LineLoop_Create();
     // Set start point
     void LineLoop_SetStartPoint(LineLoop& lineLoop, const glm::vec2& startPoint);
-    void LineLoop_SetStartPoint(LineLoop& lineLoop, Sketch_Element pointElement);
+    void LineLoop_SetStartPoint(LineLoop& lineLoop, SketchOld_Element pointElement);
     // Adds a line to the Line Loop
-    void LineLoop_AddLine(Sketch_LineLoop& lineLoop, const glm::vec2& p1);
+    void LineLoop_AddLine(SketchOld_LineLoop& lineLoop, const glm::vec2& p1);
     // Adds an arc to the Line Loop from centre point
-    void LineLoop_AddArc(Sketch_LineLoop& lineLoop, const glm::vec2& p1, int direction);
+    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const glm::vec2& p1, int direction);
     // Adds an arc to the Line Loop from centre point
-    void LineLoop_AddArc(Sketch_LineLoop& lineLoop, const glm::vec2& p1, int direction, const glm::vec2& centre);
+    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const glm::vec2& p1, int direction, const glm::vec2& centre);
     // Adds an arc to the Line Loop from radius
-    void LineLoop_AddArc(Sketch_LineLoop& lineLoop, const glm::vec2& p1, int direction, float radius);
+    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const glm::vec2& p1, int direction, float radius);
     /*
-    void LineLoop_SetLastArcCentre(Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1) 
+    void LineLoop_SetLastArcCentre(SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1) 
     {
         LineLoop& lineLoop = LineLoop_GetByID(sketchLineLoop->id);
         assert(!lineLoop.IsEmpty() && "Line loop is empty");
@@ -545,7 +584,7 @@ public:
         element->SetCentre(p1);
     }
     
-    void LineLoop_SetLastArcRadius(Sketch_LineLoop& sketchLineLoop, float r) 
+    void LineLoop_SetLastArcRadius(SketchOld_LineLoop& sketchLineLoop, float r) 
     {
         LineLoop& lineLoop = LineLoop_GetByID(sketchLineLoop->id);
         assert(!lineLoop.IsEmpty() && "Line loop is empty");
@@ -563,15 +602,15 @@ public:
 */
     
     // Element creation
-    Sketch_Element Element_CreatePoint(const glm::vec2& p) {
+    SketchOld_Element Element_CreatePoint(const glm::vec2& p) {
         RawPoint* point = RawPoint_Create(p);
         return move(Element_CreatePoint(point));
     }
-    Sketch_Element Element_CreateLine(const glm::vec2& p0, const glm::vec2& p1) {
+    SketchOld_Element Element_CreateLine(const glm::vec2& p0, const glm::vec2& p1) {
         RawPoint* point0 = RawPoint_Create(p0);
         return move(Element_CreateLine(point0, p1));
     }
-    Sketch_Element Element_CreateArc(const glm::vec2& p0, const glm::vec2& p1, int direction, const glm::vec2& centre) { 
+    SketchOld_Element Element_CreateArc(const glm::vec2& p0, const glm::vec2& p1, int direction, const glm::vec2& centre) { 
         RawPoint* point0 = RawPoint_Create(p0);
         return move(Element_CreateArc(point0, p1, direction, centre));
     }
@@ -600,8 +639,101 @@ public:
         return points;
     }
 private:
+
+/*
+// not this:
+// in an attempt to ensure elements and points always have referenece
+// but the other model makes more sense
+
+    create Reference ref()
+    
+    create Element(ref)
+        Element->AddReference(ref);
+    
+    create point(ref, Element)
+    {
+        create Point(ref)
+            Point->AddReference(ref);
+        
+        ref.Add(Point, Element)
+        {
+            point = Point;
+            element = Element;
+        }
+
+        m_Points.push_back(Point)
+        m_Refs_PointElement.push_back(ref)
+    }
+    
+    m_Elements.push_back(Element)
+
+
+
+// we want to add multiple points onto element so this is better
+
+    create Element()
+
+    p0 = CreatePoint(Element)
+    {
+        create Point()
+        
+        create Reference(Point, Element)
+        {
+            point = Point;
+            element = Element;
+            Point->AddReference(this);
+            Element->AddReference(this);
+        }
+        
+        m_Points.push_back(Point)
+        m_Refs_PointElement.push_back(Reference)
+    }
+    
+    m_Elements.push_back(Element)
+
+
+
+// ----- A BETTER IMPLIMENTATION -----
+
+// Creates a 2-way reference between 2 items
+// both items must have a SetReferences(Reference<T1, T2>* ref) function
+template<typename T1, typename T2>
+class Reference
+{
+public
+	Reference(T1* item1, T2* item2) : m_Item1(item1), m_Item2(item2) {
+		item1->SetReference(this);
+		item2->SetReference(this);
+	}
+	T1* Item1() { return m_Item1; };
+	T2* Item2() { return m_Item2; };
+private:
+	T1* m_Item1;
+	T2* m_Item2;
+};
+
+
+
+	// Create Point
+	m_Points.push_back(std::unique_ptr<Point>(new Point(cp_model, x, y));
+    Point* point = m_Points.back().get();
+    
+   // Create Constraint
+	m_Constraints.push_back(std::unique_ptr<Constraint>(new Constraint()));
+	Constraint* constraint = m_Constraints.back().get();
+	    
+	// create Reference
+	m_References.push_back(std::unique_ptr<Reference<Point, Constraint>>>(new Reference<Point, Constraint>>(point, constraint)));
+	Reference<Point, Constraint>* reference = m_References.back().get();
+
+
+
+*/ 
+
+
+
     // Element creation
-    Sketch_Element Element_CreatePoint(RawPoint* point) {
+    SketchOld_Element Element_CreatePoint(RawPoint* point) {
         // make a point/element reference and add to list
         auto ref = std::make_unique<Ref_PointToElement>();
         // add reference onto point
@@ -614,10 +746,10 @@ private:
         // add element and reference to list
         m_Elements.push_back(move(element));
         m_References.push_back(move(ref));
-        return std::make_unique<Sketch_Element_Identifier>(elementID, this);
+        return std::make_unique<SketchOld_Element_Identifier>(elementID, this);
     }
     // for elements which share points (reference to previous element's end point) - used for line loop
-    Sketch_Element Element_CreateLine(RawPoint* point0, const glm::vec2& p1) {
+    SketchOld_Element Element_CreateLine(RawPoint* point0, const glm::vec2& p1) {
         // make a point/element reference and add to list
         auto ref0 = std::make_unique<Ref_PointToElement>();
         auto ref1 = std::make_unique<Ref_PointToElement>();
@@ -636,10 +768,10 @@ private:
         m_Elements.push_back(move(element));
         m_References.push_back(move(ref0));
         m_References.push_back(move(ref1));
-        return std::make_unique<Sketch_Element_Identifier>(elementID, this);
+        return std::make_unique<SketchOld_Element_Identifier>(elementID, this);
     }
         
-    Sketch_Element Element_CreateArc(RawPoint* point0, const glm::vec2& p1, int direction, const glm::vec2& centre) {
+    SketchOld_Element Element_CreateArc(RawPoint* point0, const glm::vec2& p1, int direction, const glm::vec2& centre) {
         // make a point/element reference and add to list
         auto ref0 = std::make_unique<Ref_PointToElement>();
         auto ref1 = std::make_unique<Ref_PointToElement>();
@@ -663,7 +795,7 @@ private:
         m_References.push_back(move(refCentre));
         // update radius from centre point
         m_Elements.back()->Update();
-        return std::make_unique<Sketch_Element_Identifier>(elementID, this);
+        return std::make_unique<SketchOld_Element_Identifier>(elementID, this);
     }
 
     // Deletes an Element (Called by the destructor)
@@ -673,8 +805,13 @@ private:
         // break element references (i.e. refs for a line are p0 & p1)
         // if a rawpoint or element has no references left, it is deleted
         element->GetReferences([&](Ref_PointToElement* ref) { 
-            Element_BreakReference(ref);
+            Reference_Break(ref);
+            //bool isRawPointAndElementDeleted = Reference_Break(ref);
+            //assert(isRawPointAndElementDeleted, "Raw Point & Element weren't deleted when reference was broken")
         });
+        
+        
+        
     }
     
     RawPoint* LineLoop_LastPoint(LineLoopID id) 
@@ -729,7 +866,7 @@ private:
                             
 
             // break the reference and delete the point element (+ rawPoint (p0) if size == 1
-            // HANDLED BY DESTRUCTOR       Element_BreakReference(ref_point0_p0);
+            // HANDLED BY DESTRUCTOR       Reference_Break(ref_point0_p0);
             // delete the old point from the line loop
             lineLoop.m_Elements.erase(lineLoop.m_Elements.begin() + 0);
             // return if that was the only element in the lineloop
@@ -742,7 +879,7 @@ private:
             
             // there is only a point element and a rawpoint
             // make a new point element which references p1
-            Sketch_Element pointElement = Element_CreatePoint(ref_line0_p1->rawPoint);
+            SketchOld_Element pointElement = Element_CreatePoint(ref_line0_p1->rawPoint);
             // break all references in line and delete the line element
             // HANDLED BY DESTRUCTOR       Element_Delete(line0ID);
             // replace lineloop start point (Line0 with pointElememt)
@@ -753,7 +890,7 @@ private:
             if(i < size-1) {
                 Ref_PointToElement* ref_NextP0      = Element_GetByID(lineLoop.m_Elements[i+1]->id)->P0();
                 Ref_PointToElement* ref_PrevPLast   = Element_GetByID(lineLoop.m_Elements[i-1]->id)->Last();
-                Element_ReplaceRawPointReference(ref_NextP0, ref_PrevPLast->rawPoint);
+                Reference_ReplaceRawPoint(ref_NextP0, ref_PrevPLast->rawPoint);
             }
             // break element references and delete it
             // HANDLED BY DESTRUCTOR       Element_Delete(lineLoop.m_Elements[i]->id);
@@ -763,9 +900,11 @@ private:
     }
             
     // removes references from element and rawpoint within ref, deletes the element/rawpoint if they have no references left
-    void Element_BreakReference(Ref_PointToElement* ref);
+    // returns true if element and rawpoint are deleted
+    bool Reference_Break(Ref_PointToElement* ref);
     // removes references from element and rawpoint within ref, deletes the element/rawpoint if they have no references left
-    void Element_ReplaceRawPointReference(Ref_PointToElement* ref, RawPoint* pNew);
+    // returns true if rawpoint is deleted
+    bool Reference_ReplaceRawPoint(Ref_PointToElement* ref, RawPoint* pNew);
 
     void Element_DeleteByID(ElementID elementID);
     Element* Element_GetByID(ElementID id) ;
@@ -815,7 +954,7 @@ public:
     // bool is success
     std::optional<std::vector<std::string>> InterpretGCode(Settings& settings, ElementFactory& elementFactory);
     // adds linelists to viewerLineList
-    virtual void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, bool isDisabled) = 0;
+    virtual void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists, bool isDisabled) = 0;
     
 protected:
     std::string m_Name;
@@ -850,16 +989,17 @@ private:
     // exports gcode from current paramaters
     std::optional<std::vector<std::string>> ExportGCode(Settings& settings, ElementFactory& elementFactory) override;
     
-    void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineList, bool isDisabled) override;
+    void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineList, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists, bool isActive) override;
      //Event<Event_DisplayShapeOffset>::Dispatch( { elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments), elementFactory.RawPoint_PointsList(), false } );
    
     struct Function_Draw_Parameters {
+        int polygoniseOutput = 0;
         glm::vec2 z = { 20.0f, 0.0f };
         int cutSide = (int)CompensateCutter::None;
         float finishingPass = 1.0f;
     } m_Params;
     
-    ElementFactory::Sketch_LineLoop m_LineLoop;
+    ElementFactory::SketchOld_LineLoop m_LineLoop;
     Command m_ActiveCommand = Command::Line;
 };
 
@@ -889,9 +1029,11 @@ public:
     // returns the gcode strings
     std::optional<std::vector<std::string>> ActiveFunction_UpdateViewer(Settings& settings);
     // update viewer
-    void UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists);
+    void UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists);
 
-    void RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists);
+    void ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists);
+
+    void RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists);
     
 private:
     
@@ -903,15 +1045,20 @@ private:
     int m_FunctionIDCounter = 0;
     // used to open tree node of new function
     bool m_IsActiveFunctionChanged = true;
+    // allow sketch to access private members
+    friend class SketchOld;
 };
 
 
-class Sketch
+class SketchOld
 {
 public:
-    Sketch();
+    SketchOld();
     
     std::string  ActiveFunction_Name();
+    
+    std::optional<glm::vec2> RawPoint_GetClosest(const glm::vec2& p, float tolerance);
+    
     void ActiveFunction_Run(GRBL& grbl, Settings& settings);
     void ActiveFunction_Export(Settings& settings);
     void ActiveFunction_Delete(Settings& settings);
@@ -925,7 +1072,9 @@ public:
     // draws the ImGui Widgets for the active drawing's functions
     void ActiveDrawing_DrawImGui_Functions(Settings& settings);
     // draws the ImGui Widgets for connecting (returns true if activated)
-    bool DrawImGui_StartSketch(Settings& settings);
+    bool DrawImGui_StartSketchOld(Settings& settings);
+    // draws the popup at the cursor
+    void DrawPopup_Cursor(Settings& settings);
     // draws the ImGui Widgets for the sketch
     void DrawImGui(Settings& settings);
     // update viewer
@@ -955,4 +1104,4 @@ private:
 };
 
 
-}; // end of namespace
+} // end of namespace

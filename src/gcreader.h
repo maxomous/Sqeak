@@ -1,16 +1,17 @@
 
 #pragma once
 
-
-
-#define XYZ_SET_FLAG_NONE     0x0
-#define XYZ_SET_FLAG_X        0x1 << 0
-#define XYZ_SET_FLAG_Y        0x1 << 1
-#define XYZ_SET_FLAG_Z        0x1 << 2
+#include <MaxLib.h> 
 
 class GCodeReader
 {
 public:
+    enum XYZSetFlag {
+        None = 0x00, 
+        X    = 0x01 << 0,
+        Y    = 0x01 << 1,
+        Z    = 0x01 << 2
+    };
     enum class CoordSystem { Machine, Local };
     enum class MotionType { Absolute /*G90*/, Incremental /*G91*/ };
     enum class Plane { XY /*G17*/, XZ /*G18*/, YZ /*G19*/ };
@@ -43,7 +44,7 @@ private:
     
     // letter values
     glm::vec3 m_XYZ;
-    int m_XYZ_Set;
+    XYZSetFlag m_XYZ_Set;
     glm::vec3 m_IJK;
     float m_R;
     
@@ -78,7 +79,7 @@ private:
     // G0/G1
     void MotionLinear();
     // G2/G3
-    void MotionArc(int direction); 
+    void MotionArc(MaxLib::Geom::Direction dir); 
     // returns point relative to selected plane (set convertDirection to -1 to reverse)
     glm::vec3 PointRelativeToPlane(glm::vec3 p, Plane plane, int convertDirection = 1);
     // reverse of above

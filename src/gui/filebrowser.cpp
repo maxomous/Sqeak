@@ -93,12 +93,12 @@ int FileBrowser::getSelectedFile(string &filename, int &filetype)
         return -1;
 
     int i = 0;
-    for (filedesc_t f : m_Files) {
+    for (File::FileDesc f : m_Files) {
         if (f.id == selectedFileID) {
             filetype = f.type;
             filename = f.name;
             // add on extension
-            if (filetype == FILE_TYPE && f.ext != "")
+            if (filetype == File::FileDesc::Type::File && f.ext != "")
                 filename += "." + f.ext;
             return 0;
         }
@@ -120,7 +120,7 @@ void FileBrowser::openSelectedFile()
         ImGui::CloseCurrentPopup(); // error, couldn't find it... shouldnt
                                     // reach
 
-    if (filetype == FILE_TYPE) {
+    if (filetype == File::FileDesc::Type::File) {
         m_CurrentFile = filename;
         m_Filepath = File::CombineDirPath(*m_CurrentDirectory, m_CurrentFile);
         Log::Info(string("Opening file: ") + m_Filepath);
@@ -135,7 +135,7 @@ void FileBrowser::openSelectedFile()
 }
 
 void FileBrowser::sortFiles(const ImGuiTableColumnSortSpecs *sort_spec) {
-    auto compare = [&](const filedesc_t &a, const filedesc_t &b) {
+    auto compare = [&](const File::FileDesc &a, const File::FileDesc &b) {
         string strA, strB;
 
         switch (sort_spec->ColumnIndex) { // 0 is file/folder icon
@@ -182,7 +182,7 @@ void FileBrowser::sortFiles(const ImGuiTableColumnSortSpecs *sort_spec) {
         return false;
     };
 
-    auto compareType = [&](const filedesc_t &a, const filedesc_t &b) {
+    auto compareType = [&](const File::FileDesc &a, const File::FileDesc &b) {
         return a.type < b.type;
     };
 
@@ -268,13 +268,13 @@ void FileBrowser::DrawFiles()
             for (int row_n = clipper.DisplayStart;
                  row_n < clipper.DisplayEnd; row_n++) {
                 // Display a data item
-                filedesc_t *item = &m_Files[row_n];
+                File::FileDesc *item = &m_Files[row_n];
                 const bool item_is_selected = (item->id == selectedFileID);
 
                 ImGui::PushID(item->id);
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                if (item->type == FOLDER_TYPE)
+                if (item->type == File::FileDesc::Type::Folder)
                     ImGui::Image(img_Folder, ImVec2(16, 16));
                 else
                     ImGui::Image(img_File, ImVec2(16, 16));
@@ -298,7 +298,7 @@ void FileBrowser::DrawFiles()
                         if (getSelectedFile(filename, filetype))
                             ImGui::CloseCurrentPopup(); // error, couldn't find it... shouldnt reach
 
-                        if (filetype == FOLDER_TYPE)
+                        if (filetype == File::FileDesc::Type::Folder)
                             updateDirAndFiles(File::CombineDirPath(*m_CurrentDirectory, filename));
                     }
                 }
@@ -306,7 +306,7 @@ void FileBrowser::DrawFiles()
                 ImGui::TextUnformatted(item->ext.c_str());
                 ImGui::TableNextColumn();
 
-                ImGui::TextUnformatted(item->lastModifiedStr.c_str());
+                ImGui::TextUnformatted(item->lastModifiedAsText.c_str());
                 ImGui::PopID();
             }
         ImGui::EndTable();

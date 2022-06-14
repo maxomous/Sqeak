@@ -76,25 +76,29 @@ static void Callback_SetMouseScroll(GLFWwindow* window, double xOffset, double y
 	Event<Event_MouseScroll>::Dispatch(data);
 }
 
-GLSystem::GLSystem(int w, int h, const char* name, const char* glsl_version)
-{        
+GLSystem::GLSystem(int w, int h, const char* name, const char* glsl_version, std::function<void()> cb_GLFW_ConfigVersion, std::function<void(GLFWwindow*)> cb_GLFW_Config, std::function<void(GLFWwindow*)> cb_imgui_Config)
+{
+    // Initialise GLFW
     if (!glfwInit()) {
         std::cerr << "Error: Couldn't initialise glfw" << std::endl;
         exit(1);
     }
-        
-    glfw_ConfigVersion();
-    
+    // Config GLFW Version
+    cb_GLFW_ConfigVersion();
+    // Initialise GLFW Window
     if(glfw_InitWindow(w, h, name))
         exit(1);
-        
-    glfw_Config();
+    // Config GLFW Version
+    cb_GLFW_Config(m_Window);
     
+    // Initialise GLEW
     if(glew_Init())
         exit(1);
    
-    imgui_Init(); // glsl version        
-    imgui_Config();
+    // Initialise ImGui
+    imgui_Init();  
+    // Config ImGui
+    cb_imgui_Config(m_Window);   
     imgui_Impl(glsl_version);
 }
 GLSystem::~GLSystem()

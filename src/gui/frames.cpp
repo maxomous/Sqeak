@@ -310,32 +310,8 @@ struct PopupMessages {
         });
     }
     
-    void Draw_PopupPosition(Settings& settings) 
+    void Draw(Settings& settings, float dt) 
     {
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoFocusOnAppearing
-        | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar
-        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNavInputs;
-        
-        float offsetPos = settings.guiSettings.popupPosition_offsetPos;
-        ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(offsetPos, offsetPos));
-        
-        //ImGui::PushStyleColor(ImGuiCol_Text,     { 1.0f, 1.0f, 1.0f, 0.6f } * ImGui::GetStyleColorVec4(ImGuiCol_Text));
-        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, settings.guiSettings.popupPosition_alpha) * ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
-    
-        if(ImGui::Begin("PopupPosition", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
-            glm::vec2 pos = settings.p.sketch.cursor.Position;
-            ImGui::Text("(%g, %g)", pos.x, pos.y);
-        }
-        ImGui::PopStyleColor();
-        ImGui::End(); 
-    }
-    
-    void Draw(Settings& settings, float dt, bool isSketchActive) 
-    {
-        // display x, y coord on screen if not over imgui window
-        if(!ImGui::GetIO().WantCaptureMouse && isSketchActive) {
-            Draw_PopupPosition(settings);
-        }
         // only allow a maximum number of popup messages
         if(messages.size() > settings.guiSettings.popupMessage_MaxCount) {
             messages.erase(messages.begin());
@@ -775,7 +751,7 @@ struct Toolbar {
 
 
     
-    void Draw(GRBL &grbl, Settings& settings, sketch::Sketch& sketcher, FileBrowser* fileBrowser) 
+    void Draw(GRBL &grbl, Settings& settings, sketch::SketchOld& sketcher, FileBrowser* fileBrowser) 
     {        
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         float padding = settings.guiSettings.dockPadding;
@@ -931,7 +907,7 @@ struct Toolbar {
                 // Enter Sketch mode button
                 if(ImGui::TableNextColumn()) { 
                     ImGui::BeginGroup();
-                        if(sketcher.DrawImGui_StartSketch(settings)) {
+                        if(sketcher.DrawImGui_StartSketchOld(settings)) {
                             fileBrowser->ClearCurrentFile();
                         }
                         
@@ -1085,17 +1061,33 @@ struct Toolbar {
         if(toolSettings.DrawPopup_Tools(settings)) {    
             settings.SetUpdateFlag(ViewerUpdate::Full);
         }
-        
+         
         // Connect Settings        
-        if(openPopup_ConnectSettings) { ImGui::OpenPopup("Edit Connect Popup"); }
-        DrawPopup_ConnectSettings(settings);
+        static ImGuiCustomModules::ImGuiPopup popup_ConnectSettings("Edit Connect Popup");
+        // open
+        if(openPopup_ConnectSettings) { popup_ConnectSettings.Open(); }        
+        // always enabled
+        ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
+            // draw
+            popup_ConnectSettings.Draw([&]() {
+                ImGui::SetNextItemWidth(80.0f);
+                ImGui::InputText("Device", &settings.p.system.serialDevice);
+                ImGui::SetNextItemWidth(80.0f);
+                ImGui::InputText("Baudrate", &settings.p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
+            });
+        ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
         
         
         // Jog Settings        
-        if(openPopup_JogSettings) { ImGui::OpenPopup("Edit Jog Popup"); }
-        DrawPopup("Edit Jog Popup", [&]() {
+        static ImGuiCustomModules::ImGuiPopup popup_JogSettings("Edit Jog Popup");
+        // open
+        if(openPopup_JogSettings) { popup_JogSettings.Open(); }
+        // draw
+        popup_JogSettings.Draw([&]() {
             jogController.DrawJogSetting(settings.grblVals);
         });
+        
+        
         
         // end
         ImGuiCustomModules::ImGuiWindow::PopWidgetStyle();
@@ -1123,35 +1115,8 @@ struct Toolbar {
     }
 
 
-    // saves on close
-    void DrawPopup(const std::string& name, std::function<void()> cb_ImGuiWidgets) 
-    {
-        static bool requiresSave = false;
-        if (ImGui::BeginPopup(name.c_str())) {
-            // callback
-            cb_ImGuiWidgets();
-            ImGui::EndPopup();
-            requiresSave = true;
-        } else { // if popup has just been closed
-            if (requiresSave == true) {
-                Event<Event_SaveSettings>::Dispatch({ }); 
-                requiresSave = false;
-            }
-        }
-    }
     
-    void DrawPopup_ConnectSettings(Settings& settings) 
-    {
-        // always enabled
-        ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
-        DrawPopup("Edit Connect Popup", [&]() {
-            ImGui::SetNextItemWidth(80.0f);
-            ImGui::InputText("Device", &settings.p.system.serialDevice);
-            ImGui::SetNextItemWidth(80.0f);
-            ImGui::InputText("Baudrate", &settings.p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
-        });
-        ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
-    }
+
     
     bool DrawOpenFile(Settings& settings, FileBrowser* fileBrowser)
     {
@@ -1213,7 +1178,7 @@ struct Toolbar {
         }
     }
     
-    void DrawPlayButtons(GRBL& grbl, Settings& settings, FileBrowser* fileBrowser, sketch::Sketch& sketcher)
+    void DrawPlayButtons(GRBL& grbl, Settings& settings, FileBrowser* fileBrowser, sketch::SketchOld& sketcher)
     {
         auto SameLineSpacer = [&]() {
             ImGui::SameLine();
@@ -2385,7 +2350,7 @@ void Frames::DrawDockSpace(Settings& settings)
     
 }    
       
-void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch& sketcher, float dt)
+void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::SketchOld& sketcher, float dt)
 {
     // draw ImGui windows
     DrawDockSpace(settings);
@@ -2405,7 +2370,7 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
         static Overrides overrides;
         
         // Enable always
-        popupMessages.Draw(settings, dt, sketcher.IsActive());
+        popupMessages.Draw(settings, dt);
         toolbar.Draw(grbl, settings, sketcher, fileBrowser.get());
         
         // Disable all widgets when not connected to grbl  

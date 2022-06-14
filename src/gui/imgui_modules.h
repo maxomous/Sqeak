@@ -227,7 +227,7 @@ struct ImGuiModules
  
     // returns true if current item has changed
     template<typename T>
-    static bool TreeNodes(VectorSelectable<T>& items, bool& isActiveItemInitiallyOpen, std::function<std::string*(T& item)>& cb_GetItemStringPtr, std::function<void()> cb_DrawItemImGui)
+    static bool TreeNodes(VectorSelectable<T>& items, bool& isActiveItemInitiallyOpen, std::function<std::string*(T& item)>& cb_GetItemStringPtr, std::function<void(T&)> cb_DrawItemImGui)
     {
         bool isActiveItemChanged = false;
         
@@ -262,7 +262,7 @@ struct ImGuiModules
             if (ImGui::TreeNode(name->c_str())) {
                 assert(items.HasItemSelected() && "No item selected in cb_DrawTabImGui");
                 // draw the imgui callback for the specific tab
-                cb_DrawItemImGui();
+                cb_DrawItemImGui(items[n]);
                 
                 // set the active index to match the open tree node
                 if(items.CurrentIndex() != (int)n) {

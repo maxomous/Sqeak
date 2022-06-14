@@ -3,53 +3,57 @@
 #include <string>
 using namespace std;
 
+
 #include "gui.h"
 
-void GLSystem::glfw_ConfigVersion()
-{
-   	
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    /*
-	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
-	*/ 
-}
-void GLSystem::glfw_Config()
-{
-    // set minimum window size
-    glfwSetWindowSizeLimits(m_Window, GUI_WINDOW_WMIN, GUI_WINDOW_HMIN, GLFW_DONT_CARE, GLFW_DONT_CARE); 
-}
 
 
-void GLSystem::imgui_Config()
-{
-    // Style
-    ImGui::StyleColorsDark();
-    // Get IO
-    ImGuiIO& io = ImGui::GetIO();
-    
-    // ImGui ini File
-    static string iniFile = File::ThisDir(GUI_CONFIG_FILE);
-    io.IniFilename = iniFile.c_str();
-    
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-    io.ConfigDockingAlwaysTabBar = true;
-    
-    io.ConfigWindowsMoveFromTitleBarOnly = true;
-    
-    ImGuiStyle& style = ImGui::GetStyle();
-    style.WindowMenuButtonPosition  = ImGuiDir_Right;   // icon in menu of window
-    //style.ColorButtonPosition       = ImGuiDir_Left;    // colour icon side for changing colours 
-    style.ScrollbarRounding         = 3.0f;             // scroll bars
-    style.FrameRounding             = 2.0f;             // frames i.e. buttons, textboxes etc.
-    
-    // Load icon
-    static string iconLocation = File::ThisDir(GUI_IMG_ICON);
-    if(!LoadIconFromFile(m_Window, iconLocation.c_str()))
-        Log::Error(string("Could not find icon: ") + iconLocation);
-}
+
+//void GLSystem::glfw_ConfigVersion()
+//{
+//   	
+//	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+//	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+//    /*
+//	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+//	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+//	*/ 
+//}
+//void GLSystem::glfw_Config()
+//{
+//    // set minimum window size
+//    glfwSetWindowSizeLimits(m_Window, GUI_WINDOW_WMIN, GUI_WINDOW_HMIN, GLFW_DONT_CARE, GLFW_DONT_CARE); 
+//}
+
+
+//void GLSystem::imgui_Config()
+//{
+//    // Style
+//    ImGui::StyleColorsDark();
+//    // Get IO
+//    ImGuiIO& io = ImGui::GetIO();
+//    
+//    // ImGui ini File
+//    static string iniFile = File::ThisDir(GUI_CONFIG_FILE);
+//    io.IniFilename = iniFile.c_str();
+//    
+//    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+//    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+//    io.ConfigDockingAlwaysTabBar = true;
+//    
+//    io.ConfigWindowsMoveFromTitleBarOnly = true;
+//    
+//    ImGuiStyle& style = ImGui::GetStyle();
+//    style.WindowMenuButtonPosition  = ImGuiDir_Right;   // icon in menu of window
+//    //style.ColorButtonPosition       = ImGuiDir_Left;    // colour icon side for changing colours 
+//    style.ScrollbarRounding         = 3.0f;             // scroll bars
+//    style.FrameRounding             = 2.0f;             // frames i.e. buttons, textboxes etc.
+//    
+//    // Load icon
+//    static string iconLocation = File::ThisDir(GUI_IMG_ICON);
+//    if(!LoadIconFromFile(m_Window, iconLocation.c_str()))
+//        Log::Error(string("Could not find icon: ") + iconLocation);
+//}
       
 void imgui_Settings(Settings& settings)
 { 
@@ -91,11 +95,55 @@ void imgui_Settings(Settings& settings)
     
     ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
 }
-    
+
 
 int gui(GRBL& grbl, Settings& settings)
 {
-    GLSystem glsys(GUI_WINDOW_W, GUI_WINDOW_H, GUI_WINDOW_NAME, "#version 300 es"); // glsl version   
+    // GLFW Config Version
+    auto cb_GLFW_ConfigVersion = []() {
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+        /*
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+        */ 
+    };
+    // GLFW Config General
+    auto cb_GLFW_Config = [](GLFWwindow* window) {
+        // set minimum window size
+        glfwSetWindowSizeLimits(window, GUI_WINDOW_WMIN, GUI_WINDOW_HMIN, GLFW_DONT_CARE, GLFW_DONT_CARE); 
+    };
+
+    // ImGui Config
+    auto cb_imgui_Config = [](GLFWwindow* window) {
+        // Style
+        ImGui::StyleColorsDark();
+        // Get IO
+        ImGuiIO& io = ImGui::GetIO();
+        
+        // ImGui ini File
+        static string iniFile = File::ThisDir(GUI_CONFIG_FILE);
+        io.IniFilename = iniFile.c_str();
+        
+        io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+        //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+        io.ConfigDockingAlwaysTabBar = true;
+        
+        io.ConfigWindowsMoveFromTitleBarOnly = true;
+        
+        ImGuiStyle& style = ImGui::GetStyle();
+        style.WindowMenuButtonPosition  = ImGuiDir_Right;   // icon in menu of window
+        //style.ColorButtonPosition       = ImGuiDir_Left;    // colour icon side for changing colours 
+        style.ScrollbarRounding         = 3.0f;             // scroll bars
+        style.FrameRounding             = 2.0f;             // frames i.e. buttons, textboxes etc.
+        
+        // Load icon
+        static string iconLocation = File::ThisDir(GUI_IMG_ICON);
+        if(!LoadIconFromFile(window, iconLocation.c_str()))
+            Log::Error(string("Could not find icon: ") + iconLocation);
+    };
+    
+    GLSystem glsys(GUI_WINDOW_W, GUI_WINDOW_H, GUI_WINDOW_NAME, "#version 300 es", cb_GLFW_ConfigVersion, cb_GLFW_Config, cb_imgui_Config); // glsl version   
 	// blending (allows translucence)
 	GLCall(glEnable(GL_BLEND));
 	// what to do with source (overlapping item) / what to do with destination (item we are overlapping)
@@ -106,9 +154,11 @@ int gui(GRBL& grbl, Settings& settings)
     Timer timer;
     GCodeReader gcReader(settings);
     Viewer viewer;
-    sketch::Sketch sketcher;
+    sketch::SketchOld sketcher;
+    Sketch::Sketcher sketcherNew;
     Frames frames(settings);
     
+        
     auto updateGRBL = [&grbl]() {
          // update status (this is probably already done from status thread)
         grbl.sendRT(GRBL_RT_STATUS_QUERY);
@@ -133,42 +183,50 @@ int gui(GRBL& grbl, Settings& settings)
         }
     });
     
-    Event<Event_MouseButton>::RegisterHandler([&settings, &viewer, &sketcher](Event_MouseButton data) {
+    Event<Event_MouseButton>::RegisterHandler([&settings, &sketcher](Event_MouseButton data) {
         if((data.Button != GLFW_MOUSE_BUTTON_LEFT) && (data.Button != GLFW_MOUSE_BUTTON_RIGHT) && (data.Button != GLFW_MOUSE_BUTTON_MIDDLE))
             return; 
+        auto& cursor = settings.p.sketch.cursor;
         // ignore if a ImGui window is hovered over
-        if(ImGui::GetIO().WantCaptureMouse)
+        if(ImGui::GetIO().WantCaptureMouse || !sketcher.IsActive()) {
+            cursor.Position_Clicked = {};
             return;
-        glm::vec2 screenCoords = Window::InvertYCoord(Mouse::GetPositionClicked()) + glm::vec2(0.0f, 1.0f);
-        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - settings.grblVals.status.WCO;
+        }
+        // update 2d cursor position
+        cursor.Position_Clicked = cursor.Position_Snapped;
+        
+        // issue event to sketch
         InputEvent inputEvent; 
-        // set click position
-        inputEvent.screenCoords_Click = Vec2(returnCoords);
         Event_MouseButton mouseClick = data;
         inputEvent.mouseClick = &mouseClick;
         sketcher.HandleEvents(settings, inputEvent);
     });
-
+            
     Event<Event_MouseMove>::RegisterHandler([&settings, &viewer, &sketcher](Event_MouseMove data) {
+        
+        auto& cursor = settings.p.sketch.cursor;
          // ignore if a ImGui window is hovered over or sketch is not active
         if(ImGui::GetIO().WantCaptureMouse || !sketcher.IsActive()) {
-            viewer.SetCursor(false, {});
+            cursor.Position_Snapped = {};
+            cursor.Position_Raw = {};
+            cursor.Position_WorldCoords = {};
             return;
         }
         glm::vec2 screenCoords = Window::InvertYCoord({ data.PosX, data.PosY }) + glm::vec2(0.0f, 1.0f);
         glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - settings.grblVals.status.WCO;
+
+        // update 2d cursor positions
+        cursor.Position_Raw = glm::vec2(returnCoords);
+        // snap cursor or snap to raw point
+        std::optional<glm::vec2> closestPoint = sketcher.RawPoint_GetClosest(*(cursor.Position_Raw), cursor.SelectionTolerance_Scaled);
+        cursor.Position_Snapped = (closestPoint) ? *closestPoint : cursor.SnapCursor(*(cursor.Position_Raw));
+        cursor.Position_WorldCoords = *(cursor.Position_Snapped) + glm::vec2(settings.grblVals.ActiveCoordSys());
+
+        // issue event to sketch
         InputEvent inputEvent;  
-        // set current move position
-        inputEvent.screenCoords_Move = Vec2(returnCoords);
         Event_MouseMove mouseMove = data;
         inputEvent.mouseMove = &mouseMove;
         sketcher.HandleEvents(settings, inputEvent);
-        // set cursor in viewer
-        //glm::vec3 worldCoords = viewer.GetWorldPosition(screenCoords) - ;
-        glm::vec2 snappedCursor = settings.p.sketch.cursor.SnapCursor(Vec2(returnCoords));
-        settings.p.sketch.cursor.Position = snappedCursor;
-        viewer.SetCursor(true, snappedCursor + Vec2(settings.grblVals.ActiveCoordSys()));
-        
     });
     
     auto ScaleMouseData = [](Settings& settings, Viewer& viewer) {
@@ -179,19 +237,19 @@ int gui(GRBL& grbl, Settings& settings)
         // scale the cursor snap distance
         float snapDistance                                  = viewer.ScaleToPx(settings.p.sketch.cursor.SnapDistance);
         // make 0.01, 0.1, 1, 10 or 100
-        if(snapDistance <= 0.01)      { snapDistance = 0.01f; }
-        if(snapDistance <= 0.02)      { snapDistance = 0.02f; }
-        if(snapDistance <= 0.05)      { snapDistance = 0.05f; }
-        else if(snapDistance <= 0.1)  { snapDistance = 0.1f; } 
-        else if(snapDistance <= 0.2)  { snapDistance = 0.2f; } 
-        else if(snapDistance <= 0.5)  { snapDistance = 0.5f; } 
-        else if(snapDistance <= 1.0)  { snapDistance = 1.0f; }
-        else if(snapDistance <= 2.0)  { snapDistance = 2.0f; }
-        else if(snapDistance <= 5.0)  { snapDistance = 5.0f; }
-        else if(snapDistance <= 10.0) { snapDistance = 10.0f; }
-        else if(snapDistance <= 20.0) { snapDistance = 20.0f; }
-        else if(snapDistance <= 50.0) { snapDistance = 50.0f; }
-        else                          { snapDistance = 100.0f; }
+        if(snapDistance <= 0.01f)      { snapDistance = 0.01f; }
+        else if(snapDistance <= 0.02f) { snapDistance = 0.02f; }
+        else if(snapDistance <= 0.05f) { snapDistance = 0.05f; }
+        else if(snapDistance <= 0.1f)  { snapDistance = 0.1f; } 
+        else if(snapDistance <= 0.2f)  { snapDistance = 0.2f; } 
+        else if(snapDistance <= 0.5f)  { snapDistance = 0.5f; } 
+        else if(snapDistance <= 1.0f)  { snapDistance = 1.0f; }
+        else if(snapDistance <= 2.0f)  { snapDistance = 2.0f; }
+        else if(snapDistance <= 5.0f)  { snapDistance = 5.0f; }
+        else if(snapDistance <= 10.0f) { snapDistance = 10.0f; }
+        else if(snapDistance <= 20.0f) { snapDistance = 20.0f; }
+        else if(snapDistance <= 50.0f) { snapDistance = 50.0f; }
+        else                           { snapDistance = 100.0f; }
         
         settings.p.sketch.cursor.SnapDistance_Scaled = snapDistance;        
     };
@@ -204,6 +262,12 @@ int gui(GRBL& grbl, Settings& settings)
     
     // initialise mouse scale data
     ScaleMouseData(settings, viewer);
+    
+    
+    // TEMPORARILY ADDED FOR TESTING
+    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerLineLists;
+    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerPointLists;
+    
     
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(glsys.GetWindow()))
@@ -229,6 +293,43 @@ int gui(GRBL& grbl, Settings& settings)
             frames.Draw(grbl, settings, viewer, sketcher, timer.dt());
             // make updates for viewer
             sketcher.UpdateViewer(settings);
+                    
+                    
+            
+    
+    
+
+                //sketcherNew.Update();
+                
+                // make a list of points / lines which is sent to viewer
+                m_ViewerPointLists.clear();
+                m_ViewerLineLists.clear();
+                
+                const Sketch::RenderData& renderData = sketcherNew.Render();
+                
+                for(const Sketch::Points& points : renderData.points) 
+                {
+                    DynamicBuffer::DynamicVertexList pointsVertices({ 0.0f, 0.5f, 1.0f });
+                                        
+                    for(const Geom::Vec2& p : points) {
+                        pointsVertices.position.push_back({ p.x, p.y, 0.0f });
+                    }
+                    m_ViewerPointLists.push_back(pointsVertices);
+                    
+                }
+                for(const Sketch::LineString& linestring : renderData.linestrings) 
+                {
+                    DynamicBuffer::DynamicVertexList linesVertices({ 1.0f, 0.5f, 0.0f });
+                    
+                    for(const Geom::Vec2& p : linestring) {
+                        linesVertices.position.push_back({ p.x, p.y, 0.0f });
+                    }
+                    m_ViewerLineLists.push_back(linesVertices);
+                }
+                
+                // dispatch points / lines
+                Event<Event_Viewer_AddPointLists>::Dispatch( { &m_ViewerPointLists } );
+                Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
             
             // end dockspace
             ImGui::End();

@@ -18,7 +18,7 @@ using namespace sketch;
             - vertical/horizontal constraint
     
     
-    Sketch
+    SketchOld
         - Drawing
             - (Functions)            
             - Slot
@@ -113,7 +113,7 @@ void Element_Arc::DrawImGui(Settings& settings) {
                 settings.SetUpdateFlag(ViewerUpdate::Full);
             }
             if(ImGui::Combo("Direction", &m_DirectionImGui, "Clockwise\0Anticlockwise\0\0")) {
-                m_Direction = (m_DirectionImGui == 0) ? CLOCKWISE : ANTICLOCKWISE;
+                m_Direction = (m_DirectionImGui == 0) ? Geom::Direction::CW : Geom::Direction::CCW;
                 settings.SetUpdateFlag(ViewerUpdate::Full);
             }
             ImGui::Text("tangent radius: %g", m_TangentRadius);
@@ -122,7 +122,7 @@ void Element_Arc::DrawImGui(Settings& settings) {
     ImGui::PopID();   
 }
  
-void ElementFactory::LineLoop_DrawImGui(Settings& settings, Sketch_LineLoop& sketchLineLoop)  
+void ElementFactory::LineLoop_DrawImGui(Settings& settings, SketchOld_LineLoop& sketchLineLoop)  
 { 
     LineLoop& lineLoop = LineLoop_GetByID(sketchLineLoop->id);
         
@@ -148,34 +148,34 @@ void ElementFactory::RawPoint_DrawImGui(Settings& settings)
     if (ImGui::TreeNode("Raw Points"))
     {
         for (size_t i = 0; i < m_Points.Size(); i++) {
-            m_Points[i]->DrawImGui(settings);
+            m_Points[i]->DrawImGui(settings); 
         }
         ImGui::TreePop();
     }
-} 
+}  
  
 void ElementFactory::RefPointToElement_DrawImGui() 
-{
+{  
     ImGui::PushID(this);
     // set all items open
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::TreeNode("References"))
     {
         for (size_t i = 0; i < m_References.size(); i++) {
-            
-            if (ImGui::TreeNode(NameAndID("Reference", m_References[i].get()).c_str()))
-            {
-                ImGui::Text(NameAndID("Element", m_References[i]->element).c_str());
-                ImGui::SameLine();
+               
+            if (ImGui::TreeNode(NameAndID("Reference", m_References[i].get()).c_str())) 
+            {  
+                ImGui::Text(NameAndID("Element", m_References[i]->element).c_str()); 
+                ImGui::SameLine(); 
                 ImGui::Text(NameAndID("Raw Point", m_References[i]->rawPoint).c_str());
                 ImGui::TreePop();
             }
         }
         ImGui::TreePop();
-    }
-    ImGui::PopID();
-} 
-
+    } 
+    ImGui::PopID(); 
+}   
+ 
 void Function_Draw::DrawImGui_Tools(Settings& settings) 
 {
     if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
@@ -184,7 +184,7 @@ void Function_Draw::DrawImGui_Tools(Settings& settings)
     ImGui::SameLine();
     if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Arc", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
      
-}
+} 
 
 void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings) 
 {
@@ -194,7 +194,8 @@ void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings
     
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::TreeNode("Parameters")) 
-    { 
+    {     
+        updateViewer |= ImGui::Combo("Polygonise Output", &m_Params.polygoniseOutput, "Input\0Cuts\0Dangles\0Invalid Rings\0\0");
         updateViewer |= ImGui::InputText("Name", &m_Name);
         ImGui::Dummy(ImVec2());
         updateViewer |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
@@ -235,13 +236,13 @@ void DrawImGui_PathCutterParameters(Settings& settings)
         updateViewer = true;
     }
 */    
-    updateViewer = ImGui::Checkbox("Cut Tabs", &pathCutter.CutTabs);
+    updateViewer |= ImGui::Checkbox("Cut Tabs", &pathCutter.CutTabs);
         
     ImGui::Indent();
         if(pathCutter.CutTabs) {
-            updateViewer = ImGui::InputFloat("Tab Spacing", &pathCutter.TabSpacing);
-            updateViewer = ImGui::InputFloat("Tab Height",  &pathCutter.TabHeight);
-            updateViewer = ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
+            updateViewer |= ImGui::InputFloat("Tab Spacing", &pathCutter.TabSpacing);
+            updateViewer |= ImGui::InputFloat("Tab Height",  &pathCutter.TabHeight);
+            updateViewer |= ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
         }
     ImGui::Unindent();
     if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
@@ -251,7 +252,7 @@ std::string A_Drawing::ActiveFunction_Name()
     if(!m_ActiveFunctions.HasItemSelected()) { return ""; }
     return m_ActiveFunctions.CurrentItem()->Name();
 } 
-std::string Sketch::ActiveFunction_Name()
+std::string SketchOld::ActiveFunction_Name()
 {    
     if(!m_Drawings.HasItemSelected()) { return ""; }
     return m_Drawings.CurrentItem().ActiveFunction_Name();
@@ -291,15 +292,16 @@ void A_Drawing::DrawImGui(Settings& settings)
     
     ImGui::Separator();
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    
      // active function imgui widgets
     if (ImGui::TreeNode("Active Functions")) 
     { 
         // draw active function Tree Nodes
-        static std::function<std::string*(std::unique_ptr<Function>& item)> cb_GetItemStringPtr = [](std::unique_ptr<Function>& item) { 
-            return &(item->Name()); 
+        static std::function<std::string*(std::unique_ptr<Function>& item)> cb_GetItemStringPtr = [](std::unique_ptr<Function>& activeFunction) { 
+            return &(activeFunction->Name()); 
         };
-        static std::function<void()> cb_DrawTabImGui = [&]() { 
-            m_ActiveFunctions.CurrentItem()->DrawImGui(m_ElementFactory, settings);
+        static std::function<void(std::unique_ptr<Function>&)> cb_DrawTabImGui = [&](std::unique_ptr<Function>& activeFunction) { 
+            activeFunction->DrawImGui(m_ElementFactory, settings);
         };
          
         if(ImGuiModules::TreeNodes(m_ActiveFunctions, m_IsActiveFunctionChanged, cb_GetItemStringPtr, cb_DrawTabImGui)) {
@@ -341,48 +343,151 @@ void A_Drawing::DrawImGui(Settings& settings)
 }
     
     
-void Sketch::ActiveFunction_DrawImGui_Tools(Settings& settings) 
+void SketchOld::ActiveFunction_DrawImGui_Tools(Settings& settings) 
 {
     if(m_Drawings.HasItemSelected()) { 
         m_Drawings.CurrentItem().ActiveFunction_DrawImGui_Tools(settings);
     }
 }
-void Sketch::ActiveDrawing_DrawImGui_Functions(Settings& settings) 
+void SketchOld::ActiveDrawing_DrawImGui_Functions(Settings& settings) 
 {
     if(m_Drawings.HasItemSelected()) { 
         m_Drawings.CurrentItem().DrawImGui_Functions(settings);
     }
 }
 
-bool Sketch::DrawImGui_StartSketch(Settings& settings) 
+bool SketchOld::DrawImGui_StartSketchOld(Settings& settings) 
 {
-    //ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Primary].Size;
-    //ImGuiModules::CentreItemVerticallyAboutItem(settings.guiSettings.toolbarItemHeight, buttonSize.y);
-    
     if(!IsActive()) {
         
-        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Sketch", settings.guiSettings.img_Sketch)) {  
-        //if(ImGui::Button("Sketch", buttonSize)) {
+        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch)) {  
             Activate();
             settings.SetUpdateFlag(ViewerUpdate::Full);
             return true;
         }
     } else {    
         // sketch is active
-        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Sketch", settings.guiSettings.img_Sketch, true)) {  
-        //if(ImGui::Button("Exit Sketch", buttonSize)) {
+        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch, true)) {  
             Deactivate();
         }
     }
     return false;
 }
-    
 
-void Sketch::DrawImGui(Settings& settings) 
+/*
+
+        // if the rawpoint has another element attached, use this as it's tangent basis
+        RawPoint* RawPointPrev = nullptr;
+        m_Ref_P0->rawPoint->GetReferences([&](Ref_PointToElement* ref) { 
+            // get the other element attached to this point
+            if(ref->element->ID() != ID()) { RawPointPrev = ref->element->P0()->rawPoint; }
+        });
+        if(!RawPointPrev) { return false; }
+        
+        
+        LineLoopID id
+        
+        if(ImGui::Button(va_str("Delete##%d",i).c_str())) {
+            LineLoop_DeleteElement(id, (size_t)i);
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+        } 
+        
+           */ 
+            
+            
+void SketchOld::DrawPopup_Cursor(Settings& settings) 
+{   
+    /*
+    const char* popupName = "openPopup_SketchOld_RightClickMenu";
+    // right click menu for point
+    if(m_Drawings.HasItemSelected()) { 
+
+        if(trigger(settings.p.sketch.cursor.popup.shouldOpen)) {
+            ImGui::OpenPopup(popupName);
+        }
+        
+        if (ImGui::BeginPopup(popupName)) 
+        {
+            std::cout << "drawing right click popup: " << std::endl;
+            if(auto id =  m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_GetID()) {
+                std::cout << "active id: " << (uint)*id << std::endl;
+                ImGui::Text("Point %u", (uint)*id);
+                ImGui::Separator();
+                // delete
+                if(ImGui::Selectable("Delete")) {
+                    if(m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_Delete()) {
+                        settings.SetUpdateFlag(ViewerUpdate::Full);
+                    }
+                }
+            }
+            ImGui::EndPopup();
+        } 
+        if(ImGui::IsPopupOpen(popupName)) {
+            std::cout << "popup open: " << true << std::endl;
+            return;
+        }
+    
+    }*/
+    
+    if(auto pos = settings.p.sketch.cursor.Position_Snapped) 
+    {
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMouseInputs | ImGuiWindowFlags_NoFocusOnAppearing
+        | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar
+        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoNavInputs;
+        
+        float offsetPos = settings.guiSettings.popupPosition_offsetPos;
+        ImGui::SetNextWindowPos(ImGui::GetMousePos() + ImVec2(offsetPos, offsetPos));
+        
+        //ImGui::PushStyleColor(ImGuiCol_Text,     { 1.0f, 1.0f, 1.0f, 0.6f } * ImGui::GetStyleColorVec4(ImGuiCol_Text));
+        ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(1.0f, 1.0f, 1.0f, settings.guiSettings.popupPosition_alpha) * ImGui::GetStyleColorVec4(ImGuiCol_WindowBg));
+
+        if(ImGui::Begin("PopupPosition", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
+            ImGui::Text("(%g, %g)", pos->x, pos->y);
+        }
+        ImGui::PopStyleColor();
+        ImGui::End(); 
+    }
+}
+
+void SketchOld::DrawImGui(Settings& settings) 
 {
+      
+    // Cursor Popup
+    static ImGuiCustomModules::ImGuiPopup popup_CursorRightClick("popup_CursorRightClick");
+    // open
+    if(m_Drawings.HasItemSelected()) 
+    {
+        if(auto id =  m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_GetID()) 
+        {
+            // set to open
+            if(!ImGui::GetIO().WantCaptureMouse && IsActive()) {
+                if(trigger(settings.p.sketch.cursor.popup.shouldOpen)) { popup_CursorRightClick.Open(); }
+            }
+            // draw cursor popup
+            popup_CursorRightClick.Draw([&]() {
+                ImGui::Text("Point %u", (uint)*id);
+                ImGui::Separator();
+                // delete
+                if(ImGui::Selectable("Delete")) {
+                    if(m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_Delete()) {
+                        settings.SetUpdateFlag(ViewerUpdate::Full);
+                    }
+                }
+            });
+        }
+    }
+    
+    
+    
     static bool isNewDrawing = true;
+    
+    // display x, y coord on screen if not over imgui window
+    if(!ImGui::GetIO().WantCaptureMouse && IsActive()) {
+        DrawPopup_Cursor(settings);
+    }
+    
     // begin new imgui window
-    static ImGuiCustomModules::ImGuiWindow window(settings, "Sketch"); // default size
+    static ImGuiCustomModules::ImGuiWindow window(settings, "SketchOld"); // default size
     if(window.Begin(settings)) 
     {    
         if (ImGui::SmallButton("New Drawing")) {
@@ -551,7 +656,7 @@ void RawPoint::SetThisRawPointFromRefs(const glm::vec2& p)
         Ref_PointToElement* p1 = element->P1();
         Ref_PointToElement* pC = element->Centre();
         if(p0) {  
-            if(p0->rawPoint->ID() == ID()) {
+            if(p0->rawPoint->ID() == ID()) { 
                 // set position to p
                 element->SetP0(p);
                 update++;
@@ -578,7 +683,7 @@ void RawPoint::SetThisRawPointFromRefs(const glm::vec2& p)
     }
 }
 
-
+ 
 
 // Adds a drawing element reference
 void RawPoint::AddReference(Ref_PointToElement* ref) { 
@@ -654,40 +759,47 @@ bool Element_Arc::RemoveReference(Ref_PointToElement* ref)
 }
             
 // removes references from element and rawpoint within ref, deletes the element/rawpoint if they have no references left
-void ElementFactory::Element_BreakReference(Ref_PointToElement* ref) 
+bool ElementFactory::Reference_Break(Ref_PointToElement* ref) 
 {
     Log::Debug(DEBUG_SKETCH_REFERENCES, "Breaking Reference %d\t(RawPoint: %d\tElement: %d)", (int)ref, (int)ref->rawPoint, (int)ref->element);
-    // remove the reference from point. if no references left on point, delete it
+    int itemsDeleted = 0;
+    // remove the reference from point. if no references left on rawpoint, delete it
     RawPoint* point = ref->rawPoint;
     if(point->RemoveReference(ref)) {
         Log::Debug(DEBUG_SKETCH_REFERENCES, "Deleting RawPoint %d", (int)point);
         RawPoint_DeleteFromFactory(point);
+        itemsDeleted++;
     }
     // remove the reference from element. if no references left on element, delete it
     Element* element = ref->element;
     if(element->RemoveReference(ref)) {
         Log::Debug(DEBUG_SKETCH_REFERENCES, "Deleting Element %d", (int)element);
         Element_DeleteFromFactory(element);
+        itemsDeleted++;
     }
     // delete the reference itself
     Reference_DeleteFromFactory(ref);
+    return (itemsDeleted == 2);
 }
 
 // removes references from element and rawpoint within ref, deletes the element/rawpoint if they have no references left
-void ElementFactory::Element_ReplaceRawPointReference(Ref_PointToElement* ref, RawPoint* pNew) 
+bool ElementFactory::Reference_ReplaceRawPoint(Ref_PointToElement* ref, RawPoint* pNew) 
 {
     Log::Debug(DEBUG_SKETCH_REFERENCES, "Replacing RawPoint Reference");
+    int itemsDeleted = 0;
     // remove the reference from point. if no references left on point, delete it
     RawPoint* point = ref->rawPoint;
     if(point->RemoveReference(ref)) {
         Log::Debug(DEBUG_SKETCH_REFERENCES, "Deleting RawPoint %d", (int)point);
         RawPoint_DeleteFromFactory(point);
+        itemsDeleted++;
     }
     // set reference rawpoint to pNew 
     ref->SetReference(pNew);
     // add reference to pNew
     pNew->AddReference(ref);
     Log::Debug(DEBUG_SKETCH_REFERENCES, "RawPoint has been replaced in Reference:\t%d\t(RawPoint: %d\tElement: %d)", (int)ref, (int)ref->rawPoint, (int)ref->element);
+    return (itemsDeleted == 1);
 } 
 
 void ElementFactory::Element_DeleteByID(ElementID elementID) {
@@ -726,34 +838,31 @@ RawPoint* ElementFactory::RawPoint_GetByID(RawPointID pointID) {
     assert(0 && "Couldn't find point ID");
     return nullptr; // never reaches
 }
-RawPoint* ElementFactory::RawPoint_GetByPosition(glm::vec2 p, float tolerance) {
-    std::cout << "tolerance: " << tolerance << std::endl;
-    std::vector<std::pair<size_t, float>> pointsUnderCursor;
+
+RawPoint* ElementFactory::RawPoint_GetByPosition(glm::vec2 p, float tolerance) 
+{
     glm::vec2 tol = { tolerance, tolerance };
+    int closestPoint = -1;
+    float minDistance = 0.0f;
+
+    // go through all the points and if it falls within the tolerence frame, work out the one with the shortest distance
     for (size_t i = 0; i < m_Points.Size(); i++) {
-        std::cout << "point > cursor-tolerance: " << (m_Points[i]->Vec2() > (p-tol)) << std::endl;
-        if((m_Points[i]->Vec2() > (p-tol)) && (m_Points[i]->Vec2() < (p+tol))) {
+        // does point fall within tolerence frame
+        if((m_Points[i]->Vec2() > (p-tol)) && (m_Points[i]->Vec2() < (p+tol))) 
+        {
             glm::vec2 dif = m_Points[i]->Vec2() - p;
-            pointsUnderCursor.push_back(make_pair(i, hypot(dif)));
-            //return m_Points[i].get();
-        }
+            float distance = Geom::Hypot({ dif.x, dif.y });
+            // if first point found or if this point is closer than previous one found
+            if(closestPoint == -1 || distance < minDistance) {
+                closestPoint = i;
+                minDistance = distance;
+            }
+        }   
     }
-    // no point under cursor
-    if(!pointsUnderCursor.size()) { return nullptr; }
-    
-    size_t closestPoint;
-    float  minDistance;
-    // find closest point
-    for(size_t i = 0; i < pointsUnderCursor.size(); i++) {
-        auto& [index, distance] = pointsUnderCursor[i];
-        if(distance < minDistance || i == 0) {
-            closestPoint = i;
-            minDistance = distance;
-        }
-    }
-    size_t pIndex = pointsUnderCursor[closestPoint].first;
-    return m_Points[pIndex].get();
+    // return nullptr if no point under cursor
+    return (closestPoint > -1) ? m_Points[closestPoint].get() : nullptr;
 }
+
 void ElementFactory::RawPoint_DeleteFromFactory(RawPoint* point) {
     for (size_t i = 0; i < m_Points.Size(); i++) {
         if(m_Points[i].get() == point) {
@@ -791,24 +900,24 @@ void ElementFactory::Reference_DeleteFromFactory(Ref_PointToElement* ref) {
             m_References.erase(m_References.begin() + i);
             return;
         }
-    }
+    } 
     assert(0 && "Couldn't find reference to delete");
 } 
  
 // Creates a basic Line Loop 
-ElementFactory::Sketch_LineLoop ElementFactory::LineLoop_Create() 
+ElementFactory::SketchOld_LineLoop ElementFactory::LineLoop_Create() 
 {
     m_LineLoops.push_back(move(std::make_unique<LineLoop>(m_LineLoopIDCounter++)));
-    return make_unique<Sketch_LineLoop_Identifier>(m_LineLoops.back()->ID(), this);
+    return make_unique<SketchOld_LineLoop_Identifier>(m_LineLoops.back()->ID(), this);
 }
 // Set start point  
 void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, const glm::vec2& startPoint) 
 {
-    Sketch_Element pointElement = Element_CreatePoint(startPoint);
+    SketchOld_Element pointElement = Element_CreatePoint(startPoint);
     LineLoop_SetStartPoint(lineLoop, move(pointElement)); 
 } 
 // Set start point
-void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, Sketch_Element pointElement) 
+void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, SketchOld_Element pointElement) 
 {
     if(!lineLoop.m_Elements.size()) {
         lineLoop.m_Elements.push_back(move(pointElement));
@@ -818,28 +927,28 @@ void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, Sketch_Element p
 }
 
 // Adds a line to the Line Loop
-void ElementFactory::LineLoop_AddLine(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1) 
+void ElementFactory::LineLoop_AddLine(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID); 
     if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
     
-    Sketch_Element lineElement = Element_CreateLine(LineLoop_LastPoint(lineLoopID), p1);
+    SketchOld_Element lineElement = Element_CreateLine(LineLoop_LastPoint(lineLoopID), p1);
     lineLoop.m_Elements.push_back(move(lineElement));
 } 
 
 // Adds an arc to the Line Loop from centre point
-void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, const glm::vec2& centre) 
+void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, const glm::vec2& centre) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID);
     if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
     
-    Sketch_Element arcElement = Element_CreateArc(LineLoop_LastPoint(lineLoopID), p1, direction, centre);
+    SketchOld_Element arcElement = Element_CreateArc(LineLoop_LastPoint(lineLoopID), p1, direction, centre);
     lineLoop.m_Elements.push_back(move(arcElement));
     
 }
-void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction) 
+void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID); 
@@ -851,14 +960,14 @@ void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLine
 }
 
 // Adds an arc to the Line Loop from radius
-void ElementFactory::LineLoop_AddArc(ElementFactory::Sketch_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, float radius) 
+void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, float radius) 
 {    
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID);
     if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
     // calculate centre from radius, then pass on
     RawPoint* p0 = LineLoop_LastPoint(lineLoopID); 
-    point2D centre = Geom::ArcCentreFromRadius(point2D(p0->X(), p0->Y()), point2D(p1.x, p1.y), radius, direction);
+    Geom::Vec2 centre = Geom::ArcCentreFromRadius(Geom::Vec2(p0->X(), p0->Y()), Geom::Vec2(p1.x, p1.y), radius, (Geom::Direction)direction);
     LineLoop_AddArc(sketchLineLoop, p1, direction, glm::vec2(centre.x, centre.y));
 } 
 // returns 0 on success 
@@ -869,7 +978,7 @@ int Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory,
         return callback(move(*gcodes));        
     }
     return -1;
-};
+}
 
 // bool is success
 std::optional<std::vector<std::string>> Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory)
@@ -883,7 +992,7 @@ std::optional<std::vector<std::string>> Function::InterpretGCode(Settings& setti
     // error
     Log::Error("Could not interpret this GCode");
     return {};
-};
+}
  
 Function_Draw::Function_Draw(ElementFactory& elementFactory, std::string name) : Function(name) 
 {
@@ -978,33 +1087,34 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     // calculate offset
     GCodeBuilder::CutPathParams pathParams;
     // populate parameters
-    pathParams.z0 = m_Params.z[0]; 
-    pathParams.z1 = m_Params.z[1];
+    pathParams.z0 = m_Params.z[0];  
+    pathParams.z1 = m_Params.z[1]; 
     pathParams.cutDepth = toolData.cutDepth; 
     pathParams.feedPlunge = toolData.feedPlunge; 
     pathParams.feedCutting = toolData.feedCutting; 
     pathParams.isLoop = elementFactory.LineLoop_IsLoop(m_LineLoop);
-    
+     
     Geos geos;  
     // make a path of line segments (arcs are converted to many line segments)    
     Geos::LineString inputPath = elementFactory.LineLoop_PointsList(m_LineLoop, geosParameters.QuadrantSegments);
     // vector for storing the final paths
-    std::vector<Geos::LineString> path; // = BuildPath();
+    std::vector<Geos::LineString> path;
     bool isPocket = false;
     std::vector<Geos::LineString> enclosingPath;
- 
+     
     // Simple path
     if(m_Params.cutSide == CompensateCutter::None) {
-        path.push_back(inputPath);
+        //path.push_back(inputPath);
+        path = geos.Polygonise(inputPath, m_Params.polygoniseOutput);
     } // Compensate path 
     else {
-        // make the inital offset
+        // make the inital offset   
         path = geos.Offset(inputPath, cutSide * offsetDistance, geosParameters);
-        // add pocket path
-        if(m_Params.cutSide == CompensateCutter::Pocket) {
+        // add pocket path 
+        if(m_Params.cutSide == CompensateCutter::Pocket) { 
             isPocket = true;
             // distance to offset per pass
-            float boringOffset = 2.0f * fabsf(toolRadius) - settings.p.pathCutter.CutOverlap;
+            float boringOffset = 2.0f * fabsf(toolRadius) - settings.p.pathCutter.CutOverlap; 
             // make a copy of the orignal path
             // start a recursive loop of offset for boring, if cutting simple offset, this breaks loop after the first iteration
             Geos::RecursiveOffset recursiveOffset = geos.OffsetPolygon_Recursive(path, boringOffset, true /*reverse*/, geosParameters);
@@ -1102,14 +1212,14 @@ void A_Drawing::ActiveFunction_Delete()
     m_ActiveFunctions.RemoveCurrent();
 }
 
-void Sketch::ActiveFunction_Run(GRBL& grbl, Settings& settings) 
+void SketchOld::ActiveFunction_Run(GRBL& grbl, Settings& settings) 
 {
     if(!m_Drawings.HasItemSelected()) { return; }
     if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
     
     m_Drawings.CurrentItem().ActiveFunction_Run(grbl, settings);
 }
-void Sketch::ActiveFunction_Export(Settings& settings) 
+void SketchOld::ActiveFunction_Export(Settings& settings) 
 {
     if(!m_Drawings.HasItemSelected()) { return; }
     if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
@@ -1122,7 +1232,7 @@ void Sketch::ActiveFunction_Export(Settings& settings)
         }
     }
 }
-void Sketch::ActiveFunction_Delete(Settings& settings) 
+void SketchOld::ActiveFunction_Delete(Settings& settings) 
 {    
     if(!m_Drawings.HasItemSelected()) { return; }
     if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
@@ -1135,7 +1245,13 @@ void Sketch::ActiveFunction_Delete(Settings& settings)
     }
 }
 
-Sketch::Sketch() 
+std::optional<glm::vec2> SketchOld::RawPoint_GetClosest(const glm::vec2& p, float tolerance) 
+{
+    if(!m_Drawings.HasItemSelected()) { return {}; }
+    return m_Drawings.CurrentItem().m_ElementFactory.RawPoint_GetClosest(p, tolerance);
+}
+
+SketchOld::SketchOld() 
 {   
     m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++))); 
 }
@@ -1143,61 +1259,87 @@ Sketch::Sketch()
 
 
 
-
+ 
 void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) 
 { 
-    static bool updateRequiredOnKeyRelease = false;
+    auto selectRawPoint = [&]() 
+    {
+        if(m_ActiveCommand == Command::Select) 
+        {   // select point under cursor
+            if(auto cursorPos = settings.p.sketch.cursor.Position_Snapped) {
+                if(elementFactory.ActivePoint_SetByPosition(*cursorPos, settings.p.sketch.cursor.SelectionTolerance_Scaled)) {
+                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
     
-    auto SnapCursor = [&](const glm::vec2 p) { 
-        return settings.p.sketch.cursor.SnapCursor(p); 
-    }; 
+    static bool updateRequiredOnKeyRelease = false;
     
     // handle mouse events
     if(inputEvent.mouseClick)  
     {
         Event_MouseButton* mouse = inputEvent.mouseClick;
-        if(mouse->Action == GLFW_PRESS  &&  mouse->Button == GLFW_MOUSE_BUTTON_LEFT) 
+         
+        if(mouse->Action == GLFW_PRESS) 
         {  
-            auto snappedCursor = SnapCursor(inputEvent.screenCoords_Click);
-            
-            if(m_ActiveCommand == Command::Select) {
-                elementFactory.ActivePoint_SetByPosition(snappedCursor, settings.p.sketch.cursor.SelectionTolerance_Scaled);
-                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
-            } else { 
-                elementFactory.ActivePoint_Unset(); 
+            // Select point (left / right click)
+            if(mouse->Button == GLFW_MOUSE_BUTTON_LEFT || mouse->Button == GLFW_MOUSE_BUTTON_RIGHT) 
+            {  
+                if(!selectRawPoint()) {
+                    elementFactory.ActivePoint_Unset(); 
+                }
             }
-            if(m_ActiveCommand == Command::Line) {
-                elementFactory.LineLoop_AddLine(m_LineLoop, snappedCursor);
-                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+            // Create New Element (left click)
+            if(mouse->Button == GLFW_MOUSE_BUTTON_LEFT) 
+            {  
+                if(auto cursorPos = settings.p.sketch.cursor.Position_Clicked) {
+                    
+                    if(m_ActiveCommand == Command::Line) {
+                        elementFactory.LineLoop_AddLine(m_LineLoop, *cursorPos);
+                        settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+                    }
+                    if(m_ActiveCommand == Command::Arc) {
+                        elementFactory.LineLoop_AddArc(m_LineLoop, *cursorPos, Geom::Direction::CW);
+                        settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+                    }
+                }
             }
-            if(m_ActiveCommand == Command::Arc) {
-                elementFactory.LineLoop_AddArc(m_LineLoop, snappedCursor, CLOCKWISE);
-                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+            // right click
+            if(mouse->Button == GLFW_MOUSE_BUTTON_RIGHT) 
+            {  
+                settings.p.sketch.cursor.popup.shouldOpen = true;
             }
         }
         // update on key release
-        if(mouse->Action == GLFW_RELEASE  &&  mouse->Button == GLFW_MOUSE_BUTTON_LEFT) {  
-            if(updateRequiredOnKeyRelease) {
-                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
-                updateRequiredOnKeyRelease = false;
-            } 
+        if(mouse->Action == GLFW_RELEASE) 
+        {
+            if(mouse->Button == GLFW_MOUSE_BUTTON_LEFT) 
+            {  
+                if(updateRequiredOnKeyRelease) {
+                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+                    updateRequiredOnKeyRelease = false;
+                } 
+            }
         }
        
     } 
-   
     // handle mouse move events
     if(inputEvent.mouseMove) 
     {
-        // update current mouse position
-        settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
-        
-        // if clicked and held, move a point
-        if(Mouse::IsLeftClicked()) {//inputEvent.mouseClick.Action == GLFW_REPEAT  &&  inputEvent.mouseClick.Button == GLFW_MOUSE_BUTTON_LEFT) {
-            if(elementFactory.ActivePoint_Move(SnapCursor(inputEvent.screenCoords_Move))) {    
-                std::cout << "setting update flag to active drawing" << std::endl;            
-                settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
-                updateRequiredOnKeyRelease = true;
-            }
+        if(auto cursorPos = settings.p.sketch.cursor.Position_Snapped) {
+            // move a point if dragged
+            if(Mouse::IsLeftClicked()) {//inputEvent.mouseClick.Action == GLFW_REPEAT  &&  inputEvent.mouseClick.Button == GLFW_MOUSE_BUTTON_LEFT) {
+                if(elementFactory.ActivePoint_Move(*cursorPos)) {    
+                    std::cout << "setting update flag to active drawing" << std::endl;            
+                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+                    updateRequiredOnKeyRelease = true;
+                }
+            } 
+            // preview next element based on current mouse position
+            settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
         }
     }
     // handle keyboard event
@@ -1216,7 +1358,7 @@ void A_Drawing::HandleEvents(Settings& settings, InputEvent& inputEvent)
 }
 
 
-void Sketch::HandleEvents(Settings& settings, InputEvent& inputEvent)
+void SketchOld::HandleEvents(Settings& settings, InputEvent& inputEvent)
 {
     if(!IsActive() || !m_Drawings.HasItemSelected()) { 
         return;
@@ -1226,70 +1368,78 @@ void Sketch::HandleEvents(Settings& settings, InputEvent& inputEvent)
 }
 
 
-void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, bool isDisabled)
+void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists, bool isActive)
 {
-    DynamicBuffer::DynamicVertexList lineloop_Lines;
-    lineloop_Lines.colour = (isDisabled) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour;
+    // set colours
+    DynamicBuffer::DynamicVertexList lines((!isActive) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour);
+    DynamicBuffer::DynamicVertexList points(settings.p.sketch.point.colour);
     
+    // get line loop positions (return if there are none)
     std::vector<glm::vec2> positions = elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments);
-    // return iif no point positions
     if(positions.empty()) { return; }
     
-    // line loop at z0
-    for(size_t i = 0; i < positions.size(); i++) {
-        lineloop_Lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[0] });
-    }
-    viewerLineLists->push_back(lineloop_Lines);
-    
-    // line loop at z1
-    lineloop_Lines.position.clear();
-    for(size_t i = 0; i < positions.size(); i++) {
-        lineloop_Lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[1] }); 
-    }
-    viewerLineLists->push_back(lineloop_Lines);
-     
-    
-    // draw line / arc to current mouse position
-    lineloop_Lines.position.clear();
-    
-        glm::vec2 p0 = positions.back();
-        glm::vec2 p1 = settings.p.sketch.cursor.Position;
+    lines.position.clear();
+        // copy line loop to viewerLineLists at z0
+        for(size_t i = 0; i < positions.size(); i++) {
+            lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[0] });
+        }
+        viewerLineLists->push_back(lines);
         
-        if(m_ActiveCommand == Command::Line) {
-            lineloop_Lines.position.push_back({ p0.x, p0.y, 0.0f });
-            lineloop_Lines.position.push_back({ p1.x, p1.y, 0.0f });
+        // copy line loop to viewerLineLists at z1
+        lines.position.clear();
+        for(size_t i = 0; i < positions.size(); i++) {
+            lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[1] }); 
         }
-        if(m_ActiveCommand == Command::Arc) {  
-            // start/end point
-            glm::vec2 centre = (p0 + p1) / 2.0f; // midpoint
-            int direction = CLOCKWISE;
-            
-            int quadrantSegments = settings.p.pathCutter.geosParameters.QuadrantSegments;
-            std::vector<glm::vec2> points = elementFactory.Element_GetArcPath(p0, p1, direction, centre, quadrantSegments);
-            
-            for(const glm::vec2& p : points) {
-                lineloop_Lines.position.push_back({ p.x, p.y, 0.0f });
-            }
-        }
-    viewerLineLists->push_back(lineloop_Lines);
+    viewerLineLists->push_back(lines);
+     
+    if(isActive) {
+        if(auto P1 = settings.p.sketch.cursor.Position_Snapped) {
+            // draw line / arc to current mouse position
+            lines.position.clear();
+            points.position.clear();
+                glm::vec2 p0 = positions.back();
+                const glm::vec2& p1 = *P1;
 
-    
+                if(m_ActiveCommand == Command::Line) {
+                    points.position.push_back({ p1.x, p1.y, 0.0f });
+                    lines.position.push_back({ p0.x, p0.y, 0.0f });
+                    lines.position.push_back({ p1.x, p1.y, 0.0f });
+                }
+                if(m_ActiveCommand == Command::Arc) {  
+                    // midpoint
+                    glm::vec2 centre = (p0 + p1) / 2.0f;
+                    // add points
+                    points.position.push_back({ p1.x, p1.y, 0.0f });
+                    points.position.push_back({ centre.x, centre.y, 0.0f });
+                    // get path of arc as lines
+                    int direction = Geom::Direction::CW;
+                    int quadrantSegments = settings.p.pathCutter.geosParameters.QuadrantSegments;
+                    std::vector<glm::vec2> arcPath = elementFactory.Element_GetArcPath(p0, p1, direction, centre, quadrantSegments);
+                    // add lines
+                    for(const glm::vec2& p : arcPath) {
+                        lines.position.push_back({ p.x, p.y, 0.0f });
+                    }
+                }
+            viewerLineLists->push_back(lines);
+            viewerPointLists->push_back(points);
+        }
+    }
 } 
+
 // update viewer
-void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists)
+void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists)
 {
     // update viewer for each active function
     for (size_t i = 0; i < m_ActiveFunctions.Size(); i++) {
-        bool isCurrentItem = (m_ActiveFunctions.CurrentIndex() == (int)i);
-        m_ActiveFunctions[i]->UpdateViewer(settings, m_ElementFactory, viewerLineLists, !isCurrentItem);
+        bool isActiveItem = (m_ActiveFunctions.CurrentIndex() == (int)i);
+        m_ActiveFunctions[i]->UpdateViewer(settings, m_ElementFactory, viewerLineLists, viewerPointLists, isActiveItem);
     }
 }
 // update viewer
 void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists)
 {
     // add raw points to m_ViewerPointLists 
-    DynamicBuffer::DynamicVertexList rawPoints;
-    rawPoints.colour = settings.p.sketch.point.colour;
+    DynamicBuffer::DynamicVertexList rawPoints(settings.p.sketch.point.colour);
     
     std::vector<glm::vec2> positions = m_ElementFactory.RawPoint_PointsList();
     // add positions at z = 0
@@ -1299,25 +1449,36 @@ void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBu
     viewerPointLists->push_back(std::move(rawPoints));
 }
 
+// update viewer
+void A_Drawing::ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists)
+{    
+    if(auto position = m_ElementFactory.ActivePoint_GetPosition()) {
+        // add raw points to m_ViewerPointLists 
+        DynamicBuffer::DynamicVertexList rawPoints(settings.p.sketch.point.colourActive);
+        // add position at z = 0
+        rawPoints.position.push_back({ position->x, position->y, 0.0f });
+        viewerPointLists->push_back(std::move(rawPoints));
+    }  
+}    
 
-void Sketch::ActiveDrawing_UpdateViewer(Settings& settings)
+ 
+void SketchOld::ActiveDrawing_UpdateViewer(Settings& settings)
 {     
     if(!m_Drawings.HasItemSelected()) { return; }
     
-    std::cout << "Updating: Drawing" << std::endl;
-    // make a list of lines which is sent to viewer
+  //  std::cout << "Updating: Drawing" << std::endl;
+    // make a list of points / lines which is sent to viewer
     m_ViewerLineLists.clear();
-    // update the drawing
-    m_Drawings.CurrentItem().UpdateViewer(settings, &m_ViewerLineLists);
-    // dispatch m_ViewerLineLists
-    Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
-    
-    
-    // make a list of points which is sent to viewer
     m_ViewerPointLists.clear();
+    
+    // update the drawing
+    m_Drawings.CurrentItem().UpdateViewer(settings, &m_ViewerLineLists, &m_ViewerPointLists);
     // add points to m_ViewerPointLists
     m_Drawings.CurrentItem().RawPoints_UpdateViewer(settings, &m_ViewerPointLists);
-    // dispatch m_ViewerPointLists
+    // add active point
+    m_Drawings.CurrentItem().ActivePoint_UpdateViewer(settings, &m_ViewerPointLists);
+    // dispatch points / lines
+    Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
     Event<Event_Viewer_AddPointLists>::Dispatch( { &m_ViewerPointLists } );
 }
 
@@ -1333,7 +1494,7 @@ std::optional<std::vector<std::string>> A_Drawing::ActiveFunction_UpdateViewer(S
     return move(m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory));
 }   
 
-void Sketch::ActiveFunction_UpdateViewer(Settings& settings)
+void SketchOld::ActiveFunction_UpdateViewer(Settings& settings)
 { 
     // get current active function's gcodes and update viewer
     if(!m_Drawings.HasItemSelected()) { return; }
@@ -1346,12 +1507,12 @@ void Sketch::ActiveFunction_UpdateViewer(Settings& settings)
     }
 }
 
-void Sketch::UpdateViewer(Settings& settings)
+void SketchOld::UpdateViewer(Settings& settings)
 {
     // return if no update required
     if(settings.GetUpdateFlag() == ViewerUpdate::None) { return; }
     
-    std::cout << "*** UPDATE FLAG *** : " << (int)settings.GetUpdateFlag() << std::endl;
+    //std::cout << "*** UPDATE FLAG *** : " << (int)settings.GetUpdateFlag() << std::endl;
     
     // clear overrides other bits in flag
     if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::Clear) { 
@@ -1360,16 +1521,16 @@ void Sketch::UpdateViewer(Settings& settings)
     } 
     else {     
         // update active drawing
-        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { std::cout << "UPDATING ACTIVE DRAWING" << std::endl;   ActiveDrawing_UpdateViewer(settings); }
+        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { /*8std::cout << "UPDATING ACTIVE DRAWING" << std::endl; */  ActiveDrawing_UpdateViewer(settings); }
         // update active function
-        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { std::cout << "UPDATING ACTIVE FUNCTION" << std::endl;  ActiveFunction_UpdateViewer(settings); }
+        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { /*std::cout << "UPDATING ACTIVE FUNCTION" << std::endl; */ ActiveFunction_UpdateViewer(settings); }
     }
     
     // reset the update flag
     settings.ResetUpdateFlag();
 }
 
-void Sketch::ClearViewer()
+void SketchOld::ClearViewer()
 {
     // line lists
     Event<Event_Viewer_AddLineLists>::Dispatch( { nullptr } );
@@ -1386,12 +1547,7 @@ void Sketch::ClearViewer()
 
 
 
-
-
-
-
-
-void Sketch::Activate()
+void SketchOld::Activate()
 {
     if(m_IsActive == false) {
         m_IsActive = true;
@@ -1399,10 +1555,107 @@ void Sketch::Activate()
     }
 }
 
-void Sketch::Deactivate()
+void SketchOld::Deactivate()
 {
     if(m_IsActive == true) {
         m_IsActive = false;
         Event<Event_Set2DMode>::Dispatch( { false } );
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/*
+
+
+        SketchOld 
+        -> EnterSketchOldMode();
+        -> DrawElement();
+
+
+
+
+
+        Element Point/Line/Arc/Circle
+            m_P0 = RawPoint
+        
+        -> RawPoint  
+            m_Parent = Element
+            m_Constraints
+
+
+        SketchOld_Element == unique_ptr<Element_Identifier>
+            ~SketchOld_Element() { deleteMe(); }
+            
+
+
+        ElementFactory
+            vector<RawPoint> m_RawPoints;
+            vector<Element> m_Elements;
+
+            
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

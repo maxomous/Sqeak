@@ -1,9 +1,9 @@
 
 #include <cmath>
-#include <iostream>
-
-#include <sstream>
-#include <iomanip> // for setprecision
+#include <iostream> 
+ 
+#include <sstream> 
+#include <iomanip> // for setprecision 
 
 #include "geos.h"
 
@@ -25,54 +25,40 @@ std::vector<Geos::LineString> Geos::Offset(const LineString& points, float offse
 
 std::vector<Geos::LineString> Geos::OffsetLine(const LineString& points, float offset, GeosBufferParams& params) 
 {     
-    auto err = std::vector<LineString>();
-    // Define line string  
+    // Define line string   
     GEOSGeometry* lineString = GeosLineString(points);   
-    if(!lineString) return err;   
+    if(!lineString) return {};   
     
     // offset line  
     GEOSGeometry* bufferOp = GEOSOffsetCurve(lineString, offset, params.QuadrantSegments, params.JoinStyle, params.MitreLimit);
-    if(!bufferOp) return err; 
+    if(!bufferOp) return {};   
     
-    // put coords into vector
+    // put coords into vector 
     std::optional<LineString> ls = GeosGetCoords(bufferOp, (offset < 0.0f));  
-    if(!ls) return err;
-    // make the return vector
+    if(!ls) return {};
+    // make the return vector 
     std::vector<Geos::LineString> offsetGeom;
     offsetGeom.push_back(*ls);
     // Frees memory of all as memory ownership is passed along
     GEOSGeom_destroy(bufferOp);
-    
-    return move(offsetGeom);
+     
+    return move(offsetGeom); 
 }
-    
+
 std::vector<Geos::LineString> Geos::OffsetPolygon(const LineString& points, float offset, GeosBufferParams& params) 
 {    
-    auto err = std::vector<LineString>();
     // Define as polygon
     GEOSGeometry* poly = GeosPolygon(points); 
-    if(!poly) return err;
+    if(!poly) return {};
     // offset polygon
     GEOSGeometry* bufferOp = GEOSBufferWithStyle(poly, -offset, params.QuadrantSegments, params.CapStyle, params.JoinStyle, params.MitreLimit); 
-    if(!bufferOp) return err;
+    if(!bufferOp) return {};
     
-    std::vector<Geos::LineString> offsetGeom; 
-
     // there may be multiple polygons produced so loop through and add the return vector
     // type 3 is a polygon      int GEOSGeomTypeId(bufferOp);
     // type 6 multipolygon      char* GEOSGeomType(bufferOp);
-    for (int i = 0; i < GEOSGetNumGeometries(bufferOp); i++)
-    {
-        const GEOSGeometry* polygon = GEOSGetGeometryN(bufferOp, i);
-        if(!polygon) return err;         
-        // Get exterior ring 
-        const GEOSGeometry* exteriorRing = GEOSGetExteriorRing(polygon); 
-        if(!exteriorRing) return err;  
-        // put coords into vector   
-        std::optional<LineString> lineString = GeosGetCoords(exteriorRing, true); 
-        if(!lineString) return err;  
-        offsetGeom.push_back({ *lineString }); 
-    }
+    std::vector<Geos::LineString> offsetGeom = GeosGetPolygons(bufferOp); 
+
     // Frees memory of all as memory ownership is passed along 
     GEOSGeom_destroy(bufferOp);
     return move(offsetGeom);
@@ -104,15 +90,15 @@ std::optional<glm::vec2> Geos::Centroid(const LineString& points)
     // Frees memory of all as memory ownership is passed along
     GEOSGeom_destroy(centroid);
     return {{ x, y }}; 
-}
- 
-// Returns true if Line is inside polygon
+} 
+  
+// Returns true if Line is inside polygon 
 // Will also return true if line is touching boundary but is inside polygon
 std::optional<bool> Geos::LineIsInsidePolygon(const glm::vec2& p0, const glm::vec2& p1, const LineString& polygon) 
 {   
     // turn into geometry
     LineString lineString;
-    lineString.push_back(p0);
+    lineString.push_back(p0); 
     lineString.push_back(p1);
     GEOSGeometry* line = GeosLineString(lineString);
     if(!line) return {};
@@ -145,18 +131,18 @@ GEOSGeometry* Geos::GeosPolygon(const LineString& points)
 {
     GEOSGeometry* geom = GeosLinearRing(points);
     if(!geom) return nullptr;
-    // Define as polygon
+    // Define as polygon 
     return GEOSGeom_createPolygon(geom, NULL, 0);   
-}   
+}    
 
 GEOSGeometry* Geos::GeosLineString(const LineString& points)
 {
-    // error check  
-    if(points.size() < 2) return nullptr;   
-    // make coord sequence from points 
-    auto seq = GeosCoordSequence(points);    
-    if(!seq) return nullptr;  
-    // Define line string  
+    // error check    
+    if(points.size() < 2) return nullptr;     
+    // make coord sequence from points  
+    auto seq = GeosCoordSequence(points);       
+    if(!seq) return nullptr;    
+    // Define line string   
     return GEOSGeom_createLineString(seq);
 }
 
@@ -164,23 +150,23 @@ GEOSGeometry* Geos::GeosLineString(const LineString& points)
 GEOSCoordSequence* Geos::GeosCoordSequence(const Geos::LineString& points) 
 {       
     GEOSCoordSequence* seq = GEOSCoordSeq_create(points.size(), 2); // 2 dimensions
-    if(!seq) return nullptr;
-    
+    if(!seq) return nullptr; 
+     
     for (size_t i = 0; i < points.size(); i++) { 
         GEOSCoordSeq_setX(seq, i, points[i].x);
-        GEOSCoordSeq_setY(seq, i, points[i].y);
+        GEOSCoordSeq_setY(seq, i, points[i].y); 
     }
     return seq;
-}
+}  
 
-std::optional<Geos::LineString> Geos::GeosGetCoords(const GEOSGeometry* points, bool reversePoints) 
+std::optional<Geos::LineString> Geos::GeosGetCoords(const GEOSGeometry* geometry, bool reversePoints) 
 {
      // Convert to coord sequence and draw points
-    const GEOSCoordSequence *coordSeq = GEOSGeom_getCoordSeq(points);
-    if(!coordSeq) return {};
+    const GEOSCoordSequence *coordSeq = GEOSGeom_getCoordSeq(geometry); 
+    if(!coordSeq) return {}; 
     
     // get number of points
-    int nPoints = GEOSGeomGetNumPoints(points);
+    int nPoints = GEOSGeomGetNumPoints(geometry);
     if(nPoints <= 0) return {};
     // output onto vector to return
     LineString output;
@@ -192,11 +178,66 @@ std::optional<Geos::LineString> Geos::GeosGetCoords(const GEOSGeometry* points, 
         double xCoord, yCoord;
         GEOSCoordSeq_getX(coordSeq, index, &xCoord);
         GEOSCoordSeq_getY(coordSeq, index, &yCoord);
-        output.push_back({ xCoord, yCoord });
+        output.push_back({ xCoord, yCoord }); 
     }
      
     return move(output);
-} 
+}  
+
+
+// Converts geometry collection to std::vector<Geos::LineString> 
+std::vector<Geos::LineString> Geos::GeosGetLineStrings(const GEOSGeometry* geometry)
+{  
+    std::vector<Geos::LineString> returnPolygons;
+    for (int i = 0; i < GEOSGetNumGeometries(geometry); i++)
+    { 
+        const GEOSGeometry* lineString = GEOSGetGeometryN(geometry, i);
+        if(!lineString) return {};
+        
+        assert(GEOSGeomTypeId(lineString) == GEOS_LINESTRING && "Type is not a LineString");
+        
+        std::optional<Geos::LineString> coords = GeosGetCoords(lineString, false);
+        if(!coords) return {};  
+        returnPolygons.push_back(*coords); 
+    }
+    return std::move(returnPolygons); 
+}
+
+
+// Converts geometry collection to std::vector<Geos::LineString>
+std::vector<Geos::LineString> Geos::GeosGetPolygons(const GEOSGeometry* geometry)
+{  
+    std::vector<Geos::LineString> returnPolygons;
+    for (int i = 0; i < GEOSGetNumGeometries(geometry); i++)
+    {
+        const GEOSGeometry* polygon = GEOSGetGeometryN(geometry, i);
+        if(!polygon) return {};
+        
+        assert(GEOSGeomTypeId(polygon) == GEOS_POLYGON && "Type is not a polygon");
+        
+        // Get interior rings
+        for(int i = 0; i < GEOSGetNumInteriorRings(polygon); i++)
+        {
+            const GEOSGeometry* interiorRing = GEOSGetInteriorRingN(polygon, i); 
+            if(!interiorRing) return {};
+            
+            // Put coords into vector   
+            std::optional<LineString> ls = GeosGetCoords(interiorRing, true); 
+            if(!ls) return {};  
+            returnPolygons.push_back(*ls); 
+        }
+        
+        // Get exterior ring
+        const GEOSGeometry* exteriorRing = GEOSGetExteriorRing(polygon); 
+        if(!exteriorRing) return {};  
+        
+        // Put coords into vector   
+        std::optional<LineString> ls = GeosGetCoords(exteriorRing, true); 
+        if(!ls) return {};  
+        returnPolygons.push_back(*ls); 
+    }
+    return std::move(returnPolygons);
+}
 
 void Geos::MsgHandler(const char* fmt, ...)
 {

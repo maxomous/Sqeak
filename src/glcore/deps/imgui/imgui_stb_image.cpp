@@ -2,7 +2,8 @@
 // imgui wrapper for image loading - MPW 2021
 
 #include <iostream>
-#include "../stb_image/stb_image.h" 
+#define STB_IMAGE_IMPLEMENTATION
+#include "deps/stb_image/stb_image.h" 
 //#include <GLFW/glfw3.h>
 #include "imgui.h"
 #include "imgui_stb_image.h"

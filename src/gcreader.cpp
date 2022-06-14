@@ -1,6 +1,7 @@
 
 #include "common.h" 
 using namespace std;
+using namespace MaxLib;
 
 
 GCodeReader::GCodeReader(Settings& settings)
@@ -108,7 +109,7 @@ int GCodeReader::ReadFile(string filepath)
 {
     auto executeLine = [this](std::string& str) {
         //Log::Info("GCode Viewer Reading = %s", str.c_str());
-        return (str == "") ? 0 : InputGCodeBlock(str);
+        return InputGCodeBlock(str);
     }; 
         
     if(File::Read(filepath, executeLine)) {
@@ -145,6 +146,7 @@ void GCodeReader::cleanString(std::string& str)
 
 // Input G Code Block function
 // Computes a single line of GCode
+// returns 0 on success
 int GCodeReader::InputGCodeBlock(string& inputString)
 {        
     cleanString(inputString);
@@ -157,7 +159,7 @@ int GCodeReader::InputGCodeBlock(string& inputString)
     float m_G_Val_NonModal    = 0.0f;
     m_IJK               = glm::vec3();
     m_R                 = 0;
-    m_XYZ_Set           = XYZ_SET_FLAG_NONE;
+    m_XYZ_Set           = XYZSetFlag::None;
     m_XYZ = (m_MotionType == MotionType::Incremental) ? glm::vec3(0.0f, 0.0f, 0.0f) : m_WPos;
     m_MotionCoordSys = CoordSystem::Local;
     
@@ -209,19 +211,19 @@ int GCodeReader::InputGCodeBlock(string& inputString)
             case 'X' :
                 m_XYZ.x = value;
                 m_Execute = true; 
-                m_XYZ_Set |= XYZ_SET_FLAG_X;
+                m_XYZ_Set |= XYZSetFlag::X;
                 break;
         
             case 'Y' :
                 m_XYZ.y = value;
                 m_Execute = true; 
-                m_XYZ_Set |= XYZ_SET_FLAG_Y;
+                m_XYZ_Set |= XYZSetFlag::Y;
                 break;
         
             case 'Z' :
                 m_XYZ.z = value;
                 m_Execute = true;
-                m_XYZ_Set |= XYZ_SET_FLAG_Z;
+                m_XYZ_Set |= XYZSetFlag::Z;
                 break;
             
             case 'M' :
@@ -284,9 +286,9 @@ int GCodeReader::ExecuteGCode(float gValue)
     if(gValue == 0.0f || gValue == 1.0f)
         MotionLinear();
     else if(gValue == 2.0f)
-        MotionArc(CLOCKWISE);
+        MotionArc(Direction::CW);
     else if(gValue == 3.0f)
-        MotionArc(ANTICLOCKWISE);
+        MotionArc(Direction::CCW);
         
     else if(gValue == 4.0f) 
         {}  // ignore dwell
@@ -398,7 +400,7 @@ void GCodeReader::SetToolLength(bool update)
         m_ToolLengthOffset = { 0.0f, 0.0f, 0.0f };
     } 
     else {
-        if(m_XYZ_Set & XYZ_SET_FLAG_Z) {
+        if(m_XYZ_Set & XYZSetFlag::Z) {
             m_ToolLengthOffset.z = m_XYZ.z;
         }
     }
@@ -414,13 +416,13 @@ void GCodeReader::SetG92Offset(bool update)
         glm::vec3 offset = { 0.0f, 0.0f, 0.0f };
         glm::vec3 currentPosPreOffset = m_WPos - m_G92Offset;
         
-        if(m_XYZ_Set & XYZ_SET_FLAG_X) {
+        if(m_XYZ_Set & XYZSetFlag::X) {
             offset.x = currentPosPreOffset.x - m_XYZ.x;
         }
-        if(m_XYZ_Set & XYZ_SET_FLAG_Y) {
+        if(m_XYZ_Set & XYZSetFlag::Y) {
             offset.y = currentPosPreOffset.y - m_XYZ.y;
         }
-        if(m_XYZ_Set & XYZ_SET_FLAG_Z) {
+        if(m_XYZ_Set & XYZSetFlag::Z) {
             offset.z = currentPosPreOffset.z - m_XYZ.z;
         }
         m_G92Offset = offset;
@@ -451,7 +453,7 @@ void GCodeReader::ReturnToHome(int homePos) {
     GRBLCoords_vals& coords = m_Settings.grblVals.coords;
     size_t index = (homePos == 28) ? 0 : 1;
     
-    if(m_XYZ_Set == XYZ_SET_FLAG_NONE) {
+    if(m_XYZ_Set == XYZSetFlag::None) {
         glm::vec3 p = coords.homeCoords[index];
         AddVertex(p, CoordSystem::Machine);
     }
@@ -460,15 +462,15 @@ void GCodeReader::ReturnToHome(int homePos) {
         glm::vec3 pSecond = m_WPos;
         glm::vec3 p_XYZ = GetAbsoluteWPos(m_XYZ);
         
-        if(m_XYZ_Set & XYZ_SET_FLAG_X) {
+        if(m_XYZ_Set & XYZSetFlag::X) {
             pFirst.x = p_XYZ.x;
             pSecond.x = coords.homeCoords[index].x - m_WCO.x;
         }
-        if(m_XYZ_Set & XYZ_SET_FLAG_Y) {
+        if(m_XYZ_Set & XYZSetFlag::Y) {
             pFirst.y = p_XYZ.y;
             pSecond.y = coords.homeCoords[index].y - m_WCO.y;
         }
-        if(m_XYZ_Set & XYZ_SET_FLAG_Z) {
+        if(m_XYZ_Set & XYZSetFlag::Z) {
             pFirst.z = p_XYZ.z;
             pSecond.z = coords.homeCoords[index].z - m_WCO.z;
         }
@@ -504,7 +506,7 @@ void GCodeReader::MotionLinear()
 * 
 *     Plane selection (G17/18/19) is possible for G02 & G03 
 *----------------------------------------------------------------------------*/
-void GCodeReader::MotionArc(int Direction)
+void GCodeReader::MotionArc(Geom::Direction dir)
 {
     // get start & end coords relative to the selected plane 
     glm::vec3 xyz_Start   = PointRelativeToPlane(m_WPos, m_Plane);
@@ -514,14 +516,14 @@ void GCodeReader::MotionArc(int Direction)
     glm::vec2 xy_End   = { xyz_End.x, xyz_End.y };
     
     // flip direction if XZ Plane
-    int direction = (m_Plane == Plane::XZ) ? -Direction : Direction;
+    int direction = (m_Plane == Plane::XZ) ? -dir : dir;
      
     glm::vec2 xy_Centre;
     float r;
     
     if(m_R) { // r
         // calculate centre from the radius, start & end points
-        point2D centre = Geom::ArcCentreFromRadius(point2D(xy_Start), point2D(xy_End), m_R, direction);
+        Vec2 centre = Geom::ArcCentreFromRadius({ xy_Start.x, xy_Start.y }, { xy_End.x, xy_End.y }, m_R, (Geom::Direction)direction);
         xy_Centre = { centre.x, centre.y };
         // -r is the second (larger) version of the arc
         r = fabsf(m_R);
@@ -540,9 +542,9 @@ void GCodeReader::MotionArc(int Direction)
     double th_Start  = atan2(v_Start.x, v_Start.y);
     double th_End    = atan2(v_End.x, v_End.y);
     
-    Geom::CleanAngles(th_Start, th_End, direction);
+    Geom::CleanAngles(th_Start, th_End, (Geom::Direction)direction);
     
-    float th_Incr   = direction * deg2rad(5);
+    float th_Incr   = direction * Geom::Radians(5);
     
     int nIncrements = floorf(fabsf((th_End - th_Start) / th_Incr));
     float zIncrement = (xyz_End.z - xyz_Start.z) / nIncrements;

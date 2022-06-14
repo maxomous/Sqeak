@@ -8,7 +8,7 @@
 
 // forward declare
 class FileBrowser;
-namespace sketch { class Sketch; }
+namespace sketch { class SketchOld; }
 
 
 class Frames
@@ -18,7 +18,7 @@ public:
         fileBrowser = std::make_unique<FileBrowser>(&settings.p.system.curDir);
     }
     // draws everything imgui related
-    void Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch& sketcher, float dt);
+    void Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::SketchOld& sketcher, float dt);
 private:
     void DrawDockSpace(Settings& settings);
     

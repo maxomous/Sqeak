@@ -1,5 +1,6 @@
 #pragma once
 
+// Imgui
 #define IMGUI_DEFINE_MATH_OPERATORS 
 #include "deps/imgui/imgui.h"
 #include "deps/imgui/imgui_internal.h" // for vector math overrides
@@ -7,7 +8,8 @@
 #include "deps/imgui/imgui_impl_opengl3.h"
 #include "deps/imgui/imgui_stdlib.h"
 #include "deps/imgui/imgui_stb_image.h"
-#include "deps/imgui/font_geomanist.h"
+// Fonts for Imgui
+#include "deps/imgui/fonts/font_geomanist.h"
 
 // OpenGL Specification
 #include <GL/glew.h>

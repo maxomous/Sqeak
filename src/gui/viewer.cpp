@@ -284,18 +284,15 @@ void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour
     }
 } 
 
-void DynamicBuffer::AddCursor(Settings& settings, bool isValid, glm::vec2 pos)
+void DynamicBuffer::AddCursor(Settings& settings, glm::vec2 pos)
 {    
-    if(!isValid) { 
-        return; 
-    }
     ParametersList::Sketch::Cursor& cursor = settings.p.sketch.cursor;
     float cursorSize = cursor.Size_Scaled / 2.0f;
     
-    AddVertex(Vec3(pos) + glm::vec3(0.0f,         -cursorSize,    0.0f), cursor.Colour);
-    AddVertex(Vec3(pos) + glm::vec3(0.0f,         cursorSize,     0.0f), cursor.Colour);
-    AddVertex(Vec3(pos) + glm::vec3(-cursorSize,  0.0f,           0.0f), cursor.Colour);
-    AddVertex(Vec3(pos) + glm::vec3(cursorSize,   0.0f,           0.0f), cursor.Colour);
+    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(0.0f,         -cursorSize,    0.0f), cursor.Colour);
+    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(0.0f,         cursorSize,     0.0f), cursor.Colour);
+    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(-cursorSize,  0.0f,           0.0f), cursor.Colour);
+    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(cursorSize,   0.0f,           0.0f), cursor.Colour);
 }
 
 void DynamicBuffer::AddGrid(Settings& settings)
@@ -303,7 +300,7 @@ void DynamicBuffer::AddGrid(Settings& settings)
     ParametersList::Viewer3DParameters::Grid& grid = settings.p.viewer.grid;
     if(grid.Spacing <= 0)
         return;
-    glm::vec2 gridOrientation = glm::vec2(sign(grid.Size.x), sign(grid.Size.y));
+    glm::vec2 gridOrientation = glm::vec2(Geom::Sign(grid.Size.x), Geom::Sign(grid.Size.y));
     glm::vec3 offset = settings.grblVals.ActiveCoordSys() + grid.Position;
     
     for (float i = 0.0f; i <= abs(grid.Size.x); i += grid.Spacing) {
@@ -340,18 +337,28 @@ void DynamicBuffer::AddShape(const Shape& shape, glm::vec3 colour, const glm::ve
     }
 } 
 
-void DynamicBuffer::AddPathAsLines(const vector<glm::vec3>& vertices, glm::vec3 colour, const glm::vec3& position) 
-{    
-    for (size_t i = 1; i < vertices.size(); i++) {
-        AddVertex(position + vertices[i-1], colour);
-        AddVertex(position + vertices[i], colour);
+void DynamicBuffer::AddDynamicVertexListAsLines(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
+{
+    for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
+        auto& vertices = (*dynamicVertexLists)[i].position;
+        auto& colour = (*dynamicVertexLists)[i].colour;
+        // add each vertex as lines
+        for (size_t j = 1; j < vertices.size(); j++) {
+            AddVertex(zeroPosition + vertices[j-1], colour);
+            AddVertex(zeroPosition + vertices[j], colour);
+        }
     }
 }
 
-void DynamicBuffer::AddDynamicVertexList(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
+void DynamicBuffer::AddDynamicVertexListAsPoints(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
 {
     for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
-        AddPathAsLines((*dynamicVertexLists)[i].position, (*dynamicVertexLists)[i].colour, zeroPosition);
+        auto& vertices = (*dynamicVertexLists)[i].position;
+        auto& colour = (*dynamicVertexLists)[i].colour;
+        // add each vertex as points
+        for (size_t j = 0; j < vertices.size(); j++) {
+            AddVertex(zeroPosition + vertices[j], colour);
+        }
     }
 }
 
@@ -498,12 +505,6 @@ glm::vec3 Viewer::GetWorldPosition(glm::vec2 px)
     return m_Camera.GetWorldPosition(px);
 }
 
-  
-void Viewer::SetCursor(bool isValid, glm::vec2 worldCoords)
-{        
-    m_Cursor2DPos = make_pair(isValid, worldCoords);
-}
-
 void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& colours)
 { 
     // determine number of vertices to draw (e.g. 3 points is 2 lines, so 4 vertices)
@@ -598,17 +599,18 @@ void Viewer::Update(Settings& settings, float dt)
     
     // add shape and offset path
     if(m_DynamicLineLists) {
-        m_DynamicLines.AddDynamicVertexList(m_DynamicLineLists, zeroPos);
+        m_DynamicLines.AddDynamicVertexListAsLines(m_DynamicLineLists, zeroPos);
     }    
     if(m_DynamicPointLists) {
-        m_DynamicPoints.AddDynamicVertexList(m_DynamicPointLists, zeroPos);
+        m_DynamicPoints.AddDynamicVertexListAsPoints(m_DynamicPointLists, zeroPos);
     }
     // Draw coord system axis
     m_DynamicLines.AddAxes(axisSize, zeroPos);
     // add user cursor
-    m_DynamicLines.AddCursor(settings, m_Cursor2DPos.first, m_Cursor2DPos.second);
-     
-     
+    if(auto cursorPos = settings.p.sketch.cursor.Position_WorldCoords) {
+        m_DynamicLines.AddCursor(settings, *cursorPos);
+    }
+           
 // -------------Bodies----------------
     glm::vec3 scaleTool = settings.p.tools.GetToolScale();
     
@@ -652,7 +654,7 @@ void Viewer::Render(Settings& settings)
         glDepthFunc((GLenum)(m_DepthFunction | 0x0200)); // GL_NEVER = 0x0200, GL_LESS = 0x02001...
     }
     glLineWidth(m_LineWidth_Bodies);
-    m_DynamicBodies.Draw(m_Proj, m_View, (bool)m_DepthFunction);
+    m_DynamicBodies.Draw(m_Proj, m_View, (bool)m_DepthFunction); // draw outline?
     
     glPointSize(settings.p.sketch.point.size);
     m_DynamicPoints.Draw(m_Proj, m_View);
@@ -719,7 +721,10 @@ void Viewer::ImGuiRender(Settings& settings)
     ImGui::Unindent();  ImGui::Separator();
         
     ImGui::TextUnformatted("Cursor"); ImGui::Indent(); 
-        ImGui::Text("Cursor 2D Position: (%g, %g)", m_Cursor2DPos.second.x, m_Cursor2DPos.second.y);
+        ImGuiCustomModules::Text("2D Raw Position", settings.p.sketch.cursor.Position_Raw);
+        ImGuiCustomModules::Text("2D World Position", settings.p.sketch.cursor.Position_WorldCoords);
+        ImGuiCustomModules::Text("2D Snapped Position", settings.p.sketch.cursor.Position_Snapped);
+        ImGuiCustomModules::Text("2D Clicked Position", settings.p.sketch.cursor.Position_Clicked);
         
         if(ImGui::SliderFloat("Cursor Size", &settings.p.sketch.cursor.Size, 0.0f, 100.0f))  {
             settings.p.sketch.cursor.Size_Scaled = ScaleToPx(settings.p.sketch.cursor.Size);
@@ -730,7 +735,7 @@ void Viewer::ImGuiRender(Settings& settings)
         if(ImGui::InputFloat("Selection Tolerance", &settings.p.sketch.cursor.SelectionTolerance)) {
              settings.p.sketch.cursor.SelectionTolerance_Scaled = ScaleToPx(settings.p.sketch.cursor.SelectionTolerance);
         }
-       
+        
         ImGui::SliderFloat("Cursor Snap Distance", &settings.p.sketch.cursor.SnapDistance, 0.1f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
         ImGui::SameLine();
         ImGui::Text("%g Scaled", settings.p.sketch.cursor.SnapDistance_Scaled);
@@ -738,7 +743,7 @@ void Viewer::ImGuiRender(Settings& settings)
          
     ImGui::TextUnformatted("Tool Path"); ImGui::Indent(); 
         ImGui::SliderInt("Vertices", &m_DrawCount, 0, m_DrawMax); 
-        ImGui::Checkbox("Show", &m_Show);
+        ImGui::Checkbox("Show##toolpath", &m_Show);
         ImGui::SameLine();
         if(ImGui::Button("Clear")) { Clear(); }
     ImGui::Unindent();  ImGui::Separator();
@@ -756,7 +761,7 @@ void Viewer::ImGuiRender(Settings& settings)
     ImGui::Unindent();  ImGui::Separator();
     
     ImGui::TextUnformatted("Tool Holder"); ImGui::Indent();  
-        ImGui::Checkbox("Show", &settings.p.viewer.spindle.visibility);
+        ImGui::Checkbox("Show##toolholder", &settings.p.viewer.spindle.visibility);
     ImGui::Unindent();  ImGui::Separator();
     
     ImGui::TextUnformatted("Colours"); ImGui::Indent();
@@ -784,6 +789,7 @@ void Viewer::ImGuiRender(Settings& settings)
         
         ImGui::TextUnformatted("Sketch"); ImGui::Indent();
             ImGui::ColorEdit3("Points", &settings.p.sketch.point.colour[0], colourFlags);
+            ImGui::ColorEdit3("Active Point", &settings.p.sketch.point.colourActive[0], colourFlags);
             ImGui::ColorEdit3("Lines", &settings.p.sketch.line.colour[0], colourFlags);
             ImGui::ColorEdit3("Lines (Disabled)", &settings.p.sketch.line.colourDisabled[0], colourFlags);
             ImGui::Unindent();            
