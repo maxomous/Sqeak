@@ -1,13 +1,14 @@
 
 #include <iostream>
 #include <string>
-using namespace std;
-
 
 #include "gui.h"
 
+using namespace std;
+using namespace MaxLib;
 
 
+namespace Sqeak { 
 
 //void GLSystem::glfw_ConfigVersion()
 //{
@@ -96,6 +97,88 @@ void imgui_Settings(Settings& settings)
     ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
 }
 
+// Updates the dynamic vertex buffer in viewer
+class Updater
+{
+public:
+
+    void HandleUpdateFlag(Settings& settings, Sketch::Sketcher& sketcher) 
+    {
+        // return if no update required
+        if(settings.GetUpdateFlag() == ViewerUpdate::None) { return; }
+        
+        // clear overrides other bits in flag
+        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::Clear) { 
+            std::cout << "Clearing viewer" << std::endl;  
+            ClearViewer(); 
+        } 
+        else {     
+            // update 
+            UpdateViewer(settings, sketcher);
+        }
+        
+        // reset the update flag
+        settings.ResetUpdateFlag();
+    }
+    
+private:
+    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerLineLists;
+    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerPointLists;
+    
+    
+    void UpdateViewer(Settings& settings, Sketch::Sketcher& sketcher)
+    {
+        // make a list of points / lines which is sent to viewer
+        m_ViewerPointLists.clear();
+        m_ViewerLineLists.clear();
+
+        RenderSketcher(settings, sketcher);
+        
+        // dispatch points / lines
+        Event<Event_Viewer_AddPointLists>::Dispatch( { &m_ViewerPointLists } );
+        Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
+    }
+          
+    void ClearViewer()
+    {
+        // line lists
+        Event<Event_Viewer_AddLineLists>::Dispatch( { nullptr } );
+        // points lists
+        Event<Event_Viewer_AddPointLists>::Dispatch( { nullptr } );
+        //
+        Event<Event_Update3DModelFromVector>::Dispatch( { vector<string>(/*empty*/) } );
+    }
+    
+    void RenderSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
+    {
+        sketcher.Renderer().UpdateRenderData();
+        
+        const Sketch::RenderData& renderData = sketcher.Renderer().GetRenderData();
+
+        for(const Sketch::Points& points : renderData.points) 
+        {
+            DynamicBuffer::DynamicVertexList pointsVertices(settings.p.sketch.point.colour);
+                                
+            for(const Geom::Vec2& p : points) {
+                pointsVertices.position.push_back({ p.x, p.y, 0.0f });
+            }
+            m_ViewerPointLists.push_back(pointsVertices);
+            
+        }
+        std::cout << "renderData.linestrings " << renderData.linestrings.size() << std::endl;
+        for(const Sketch::LineString& linestring : renderData.linestrings) 
+        {
+            DynamicBuffer::DynamicVertexList linesVertices(settings.p.sketch.line.colour);
+            
+            for(const Geom::Vec2& p : linestring) {
+                linesVertices.position.push_back({ p.x, p.y, 0.0f });
+            }
+            m_ViewerLineLists.push_back(linesVertices);
+        }
+    }
+    
+};
+      
 
 int gui(GRBL& grbl, Settings& settings)
 {
@@ -157,7 +240,7 @@ int gui(GRBL& grbl, Settings& settings)
     sketch::SketchOld sketcher;
     Sketch::Sketcher sketcherNew;
     Frames frames(settings);
-    
+    Updater updater;
         
     auto updateGRBL = [&grbl]() {
          // update status (this is probably already done from status thread)
@@ -183,12 +266,12 @@ int gui(GRBL& grbl, Settings& settings)
         }
     });
     
-    Event<Event_MouseButton>::RegisterHandler([&settings, &sketcher](Event_MouseButton data) {
+    Event<Event_MouseButton>::RegisterHandler([&settings, &sketcher, &sketcherNew](Event_MouseButton data) {
         if((data.Button != GLFW_MOUSE_BUTTON_LEFT) && (data.Button != GLFW_MOUSE_BUTTON_RIGHT) && (data.Button != GLFW_MOUSE_BUTTON_MIDDLE))
             return; 
         auto& cursor = settings.p.sketch.cursor;
         // ignore if a ImGui window is hovered over
-        if(ImGui::GetIO().WantCaptureMouse || !sketcher.IsActive()) {
+        if(ImGui::GetIO().WantCaptureMouse /*|| !sketchNew.IsActive()*/) {
             cursor.Position_Clicked = {};
             return;
         }
@@ -199,14 +282,25 @@ int gui(GRBL& grbl, Settings& settings)
         InputEvent inputEvent; 
         Event_MouseButton mouseClick = data;
         inputEvent.mouseClick = &mouseClick;
-        sketcher.HandleEvents(settings, inputEvent);
+     //   sketcher.HandleEvents(settings, inputEvent);
+        
+        if(cursor.Position_Snapped) {   
+            if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_PRESS) {
+                sketcherNew.Commands().Event_Click({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });                
+            }
+            if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_RELEASE) {
+                sketcherNew.Commands().Event_MouseRelease();                
+            }        
+        }
+        // TODO THIS SHOULDNT BE HERER
+        settings.SetUpdateFlag(ViewerUpdate::Full);
     });
             
-    Event<Event_MouseMove>::RegisterHandler([&settings, &viewer, &sketcher](Event_MouseMove data) {
+    Event<Event_MouseMove>::RegisterHandler([&settings, &viewer, &sketcher, &sketcherNew](Event_MouseMove data) {
         
         auto& cursor = settings.p.sketch.cursor;
          // ignore if a ImGui window is hovered over or sketch is not active
-        if(ImGui::GetIO().WantCaptureMouse || !sketcher.IsActive()) {
+        if(ImGui::GetIO().WantCaptureMouse /*|| !sketchNew.IsActive()*/) {
             cursor.Position_Snapped = {};
             cursor.Position_Raw = {};
             cursor.Position_WorldCoords = {};
@@ -226,7 +320,14 @@ int gui(GRBL& grbl, Settings& settings)
         InputEvent inputEvent;  
         Event_MouseMove mouseMove = data;
         inputEvent.mouseMove = &mouseMove;
-        sketcher.HandleEvents(settings, inputEvent);
+     //   sketcher.HandleEvents(settings, inputEvent);
+           
+        if(cursor.Position_Snapped) {            
+            sketcherNew.Commands().Event_Hover(sketcherNew.Renderer(), { (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });
+            
+            // TODO THIS SHOULDNT BE HERER
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+        }
     });
     
     auto ScaleMouseData = [](Settings& settings, Viewer& viewer) {
@@ -264,9 +365,8 @@ int gui(GRBL& grbl, Settings& settings)
     ScaleMouseData(settings, viewer);
     
     
-    // TEMPORARILY ADDED FOR TESTING
-    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerLineLists;
-    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerPointLists;
+    Event<Event_Set2DMode>::Dispatch( { true } );
+    
     
     
     // Loop until the user closes the window
@@ -290,47 +390,18 @@ int gui(GRBL& grbl, Settings& settings)
             viewer.Render(settings);
             
             // draw imgui frames
-            frames.Draw(grbl, settings, viewer, sketcher, timer.dt());
+            frames.Draw(grbl, settings, viewer, sketcher, sketcherNew, timer.dt());
+            
+            
             // make updates for viewer
-            sketcher.UpdateViewer(settings);
-                    
-                    
+            updater.HandleUpdateFlag(settings, sketcherNew);
             
-    
-    
+        
 
-                //sketcherNew.Update();
-                
-                // make a list of points / lines which is sent to viewer
-                m_ViewerPointLists.clear();
-                m_ViewerLineLists.clear();
-                
-                const Sketch::RenderData& renderData = sketcherNew.Render();
-                
-                for(const Sketch::Points& points : renderData.points) 
-                {
-                    DynamicBuffer::DynamicVertexList pointsVertices({ 0.0f, 0.5f, 1.0f });
-                                        
-                    for(const Geom::Vec2& p : points) {
-                        pointsVertices.position.push_back({ p.x, p.y, 0.0f });
-                    }
-                    m_ViewerPointLists.push_back(pointsVertices);
-                    
-                }
-                for(const Sketch::LineString& linestring : renderData.linestrings) 
-                {
-                    DynamicBuffer::DynamicVertexList linesVertices({ 1.0f, 0.5f, 0.0f });
-                    
-                    for(const Geom::Vec2& p : linestring) {
-                        linesVertices.position.push_back({ p.x, p.y, 0.0f });
-                    }
-                    m_ViewerLineLists.push_back(linesVertices);
-                }
-                
-                // dispatch points / lines
-                Event<Event_Viewer_AddPointLists>::Dispatch( { &m_ViewerPointLists } );
-                Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
             
+            
+            
+                
             // end dockspace
             ImGui::End();
 		}
@@ -343,3 +414,5 @@ int gui(GRBL& grbl, Settings& settings)
     Event<Event_SaveSettings>::Dispatch({ }); 
     return 0;
 }
+
+} // end namespace Sqeak

@@ -1,6 +1,8 @@
 #pragma once    
 #include "../common.h"
 
+namespace Sqeak { 
+    
 class ToolSettings
 {
 public:
@@ -18,3 +20,5 @@ private:
     float xSpacer       = 30.0f;
     int listHeight      = 5; // in items
 };
+
+} // end namespace Sqeak

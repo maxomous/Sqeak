@@ -6,6 +6,7 @@
 #include "common.h" 
 using namespace std;
 
+namespace Sqeak { 
 
 Serial::Serial() 
 {
@@ -216,3 +217,5 @@ void Serial::clearQueue()
     m_available = MAX_GRBL_BUFFER;
 }
 
+
+} // end namespace Sqeak

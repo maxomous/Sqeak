@@ -7,9 +7,9 @@
 namespace Sketch
 {
 // Global counter for elements
-static ElementID m_ElementCounter = 0; 
-    
-    
+static ElementID m_ElementCounter = 0;
+
+
 Element::Element() : m_ID(++m_ElementCounter) {
     std::cout << "Adding Element: " << m_ID << std::endl;
 }
@@ -17,7 +17,7 @@ Element::Element() : m_ID(++m_ElementCounter) {
 ElementID Element::ID() const { 
     return m_ID; 
 }
-    
+
 void Element::ClearSolverData() 
 { 
     m_SolverElement.reset(); 
@@ -33,24 +33,24 @@ const Vec2& Point::P() const {
     return m_P; 
 }
 
-PointRef Point::Ref_P() {
-    return { this, PointType::Point }; 
+const SketchItem Point::Ref_P() const {
+    return { SketchItem::Type::Point, m_ID }; 
 }
 
 void Point::Print() 
 {
-    std::cout << "Point Element (" << (int)this << ")\n";
+    std::cout << "Point Element (" << (int)m_ID << ")\n";
     std::cout << "\tP: (" << m_P.x << ", " << m_P.y << ")\n" << std::endl;
 }
 
-void Point::AddToSolver(Solver::Constraints& constraints) 
+void Point::AddToSolver(Solver::ConstraintSolver& solver) 
 {
-    m_SolverElement = move(std::make_unique<Solver::Point2D>(constraints.CreatePoint2D(m_P.x, m_P.y)));
+    m_SolverElement = move(std::make_unique<Solver::Point2D>(solver.CreatePoint2D(m_P.x, m_P.y)));
 }
 
-void Point::UseSolverValues(Solver::Constraints& constraints) 
+void Point::UseSolverValues(Solver::ConstraintSolver& solver) 
 {
-    m_P = GetResult(constraints, *SolverElement<Solver::Point2D>());
+    m_P = GetResult(solver, *SolverElement<Solver::Point2D>());
 }
 
 
@@ -67,32 +67,32 @@ const Vec2& Line::P1() const {
     return m_P1; 
 }
 
-PointRef Line::Ref_P0() { 
-    return { this, PointType::Line_P0 }; 
+const SketchItem Line::Ref_P0() const { 
+    return { SketchItem::Type::Line_P0, m_ID }; 
 }
-PointRef Line::Ref_P1() { 
-    return { this, PointType::Line_P1 }; 
+const SketchItem Line::Ref_P1() const { 
+    return { SketchItem::Type::Line_P1, m_ID }; 
 }
 
 void Line::Print() {
-    std::cout << "Line Element (" << (int)this << ")\n";
+    std::cout << "Line Element (" << (int)m_ID << ")\n";
     std::cout << "\tP0: (" << m_P0.x << ", " << m_P0.y << ")\n";
     std::cout << "\tP1: (" << m_P1.x << ", " << m_P1.y << ")\n" << std::endl;
 }
 
-void Line::AddToSolver(Solver::Constraints& constraints) {
-    m_SolverElement = std::make_unique<Solver::Line>(constraints.CreateLine(m_P0.x, m_P0.y, m_P1.x, m_P1.y));
+void Line::AddToSolver(Solver::ConstraintSolver& solver) {
+    m_SolverElement = std::make_unique<Solver::Line>(solver.CreateLine(m_P0.x, m_P0.y, m_P1.x, m_P1.y));
 }
-void Line::UseSolverValues(Solver::Constraints& constraints) {
+void Line::UseSolverValues(Solver::ConstraintSolver& solver) {
     Solver::Line* element = SolverElement<Solver::Line>();
-    m_P0 = GetResult(constraints, element->p0);
-    m_P1 = GetResult(constraints, element->p1);
+    m_P0 = GetResult(solver, element->p0);
+    m_P1 = GetResult(solver, element->p1);
 }
 
 // Arc
 
-Arc::Arc(const Vec2& p0, const Vec2& p1, const Vec2& pC) 
-    : Element(), m_P0(p0), m_P1(p1), m_PC(pC) {}
+Arc::Arc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction) 
+    : Element(), m_P0(p0), m_P1(p1), m_PC(pC), m_Direction(direction) {}
     
 const Vec2& Arc::P0() const { 
     return m_P0; 
@@ -103,126 +103,68 @@ const Vec2& Arc::P1() const {
 const Vec2& Arc::PC() const { 
     return m_PC; 
 }
+const MaxLib::Geom::Direction& Arc::Direction() const { 
+    return m_Direction; 
+}
 
-PointRef Arc::Ref_P0() { 
-    return { this, PointType::Arc_P0 }; 
+const SketchItem Arc::Ref_P0() const { 
+    return { SketchItem::Type::Arc_P0, m_ID }; 
 }
-PointRef Arc::Ref_P1() { 
-    return { this, PointType::Arc_P1 }; 
+const SketchItem Arc::Ref_P1() const { 
+    return { SketchItem::Type::Arc_P1, m_ID }; 
 }
-PointRef Arc::Ref_PC() { 
-    return { this, PointType::Arc_PC }; 
+const SketchItem Arc::Ref_PC() const { 
+    return { SketchItem::Type::Arc_PC, m_ID }; 
 }
 
 void Arc::Print() {
-    std::cout << "Arc Element (" << (int)this << ")\n";
+    std::cout << "Arc Element (" << (int)m_ID << ")\n";
     std::cout << "\tP0: (" << m_P0.x << ", " << m_P0.y << ")\n";
     std::cout << "\tP1: (" << m_P1.x << ", " << m_P1.y << ")\n";
     std::cout << "\tPC: (" << m_PC.x << ", " << m_PC.y << ")\n" << std::endl;
 }
 
-void Arc::AddToSolver(Solver::Constraints& constraints) {
-    m_SolverElement = std::make_unique<Solver::Arc>(constraints.CreateArc(m_PC.x, m_PC.y, m_P0.x, m_P0.y, m_P1.x, m_P1.y));
+void Arc::AddToSolver(Solver::ConstraintSolver& solver) {
+    m_SolverElement = std::make_unique<Solver::Arc>(solver.CreateArc(m_PC.x, m_PC.y, m_P0.x, m_P0.y, m_P1.x, m_P1.y));
 }
 
-void Arc::UseSolverValues(Solver::Constraints& constraints) {
+void Arc::UseSolverValues(Solver::ConstraintSolver& solver) {
     Solver::Arc* element = SolverElement<Solver::Arc>(); 
-    m_P0 = GetResult(constraints, element->p0);
-    m_P1 = GetResult(constraints, element->p1);
-    m_PC = GetResult(constraints, element->pC);
+    m_P0 = GetResult(solver, element->p0);
+    m_P1 = GetResult(solver, element->p1);
+    m_PC = GetResult(solver, element->pC);
 }
     
 // Circle
 
-Circle::Circle(const Vec2& pC, float radius) 
+Circle::Circle(const Vec2& pC, double radius) 
     : Element(), m_PC(pC), m_Radius(radius) {}
     
 const Vec2& Circle::PC() const { 
     return m_PC; 
 }
-float Circle::Radius() const { 
+double Circle::Radius() const { 
     return m_Radius; 
 }
 
-PointRef Circle::Ref_PC() { 
-    return { this, PointType::Circle_PC }; 
+const SketchItem Circle::Ref_PC() const { 
+    return { SketchItem::Type::Circle_PC, m_ID }; 
 }
 
 void Circle::Print() {
-    std::cout << "Circle Element (" << (int)this << ")\n";
+    std::cout << "Circle Element (" << (int)m_ID << ")\n";
     std::cout << "\tPC: (" << m_PC.x << ", " << m_PC.y << ")\n";
     std::cout << "\tRadius: " << m_Radius << std::endl;
 }
 
-void Circle::AddToSolver(Solver::Constraints& constraints) {
-    m_SolverElement = std::make_unique<Solver::Circle>(constraints.CreateCircle(m_PC.x, m_PC.y, m_Radius));
+void Circle::AddToSolver(Solver::ConstraintSolver& solver) {
+    m_SolverElement = std::make_unique<Solver::Circle>(solver.CreateCircle(m_PC.x, m_PC.y, m_Radius));
 }
 
-void Circle::UseSolverValues(Solver::Constraints& constraints) {
+void Circle::UseSolverValues(Solver::ConstraintSolver& solver) {
     Solver::Circle* element = SolverElement<Solver::Circle>();
-    m_PC = GetResult(constraints, element->pC);          
-    m_Radius = constraints.GetResult(element->radius.parameter);
+    m_PC = GetResult(solver, element->pC);          
+    m_Radius = solver.GetResult(element->radius.parameter);
 }
 
-// Point Referenvce Constructors
-PointRef::PointRef(const Element* e, PointType t) 
-    : element(e), type(t) {}
-PointRef::PointRef(const Point* e) 
-    : element(dynamic_cast<const Element*>(e)), type(PointType::Point) {}
-PointRef::PointRef(const Line* e) 
-    : element(dynamic_cast<const Element*>(e)), type(PointType::Line) {}
-PointRef::PointRef(const Arc* e) 
-    : element(dynamic_cast<const Element*>(e)), type(PointType::Arc) {}
-PointRef::PointRef(const Circle* e) 
-    : element(dynamic_cast<const Element*>(e)), type(PointType::Circle) {}
-
-
-
-const Solver::Point2D& PointRef::GetPoint() 
-{
-    if(type == PointType::Point ) {
-        return *dynamic_cast<const Point*>(element)->SolverElement<Solver::Point2D>();
-    }
-    else if(type == PointType::Line_P0) {
-        return dynamic_cast<const Line*>(element)->SolverElement<Solver::Line>()->p0;
-    } 
-    else if(type == PointType::Line_P1) {
-        return dynamic_cast<const Line*>(element)->SolverElement<Solver::Line>()->p1;
-    } 
-    else if(type == PointType::Arc_P0) {
-        return dynamic_cast<const Arc*>(element)->SolverElement<Solver::Arc>()->p0;
-    } 
-    else if(type == PointType::Arc_P1) {
-        return dynamic_cast<const Arc*>(element)->SolverElement<Solver::Arc>()->p1;
-    } 
-    else if(type == PointType::Arc_PC) {
-        return dynamic_cast<const Arc*>(element)->SolverElement<Solver::Arc>()->pC;
-    } 
-    else if(type == PointType::Circle_PC) {
-        return dynamic_cast<const Circle*>(element)->SolverElement<Solver::Circle>()->pC;
-    } 
-    // Should never reach
-    assert(0 && "Type unknown");
-}
-
-const Solver::Line& PointRef::GetLine() 
-{
-    if(type == PointType::Line)      { return *dynamic_cast<const Line*>(element)->SolverElement<Solver::Line>(); }  
-    // Should never reach
-    assert(0 && "Type is not a Line");
-}
-
-const Solver::Arc& PointRef::GetArc() 
-{
-    if(type == PointType::Arc)       { return *dynamic_cast<const Arc*>(element)->SolverElement<Solver::Arc>(); } 
-    // Should never reach
-    assert(0 && "Type is not a Arc");
-}
-
-const Solver::Circle& PointRef::GetCircle() 
-{
-    if(type == PointType::Circle)    { return *dynamic_cast<const Circle*>(element)->SolverElement<Solver::Circle>(); } 
-    // Should never reach
-    assert(0 && "Type is not a Circle");
-}
 } // end namespace Sketch

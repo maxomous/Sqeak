@@ -6,6 +6,8 @@
 #pragma once
 
 
+namespace Sqeak { 
+
 typedef struct {
     std::string str;
     int status;
@@ -79,3 +81,5 @@ private:
     void cleanString(std::string& str);
 };
 
+
+} // end namespace Sqeak

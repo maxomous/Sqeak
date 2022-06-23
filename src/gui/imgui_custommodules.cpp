@@ -1,43 +1,28 @@
 #include "imgui_custommodules.h"
 using namespace std; 
 
-ImGuiCustomModules::ImGuiWindow::ImGuiWindow(Settings& settings, std::string name, const ImVec2& defaultSize) 
-    : m_Name(name), m_Size(defaultSize) 
-{
-    float padding = settings.guiSettings.dockPadding;
-    // set default position to under toolbar
-    m_Pos = ImVec2(padding, settings.guiSettings.toolbarHeight + padding * 2.0f);
-    // set default position to bottom of screen: 
-    //m_Pos = ImVec2(padding, ImGui::GetMainViewport()->WorkSize.y - windowSize.y - padding);
-}
+namespace Sqeak { 
+    
+// default position is under toolbar
+ImGuiCustomModules::ImGuiWindow::ImGuiWindow(Settings& settings, std::string name, const ImVec2& position, const ImVec2& size) 
+    : ImGuiModules::ImGuiWindow(name, (position.x == 0 && position.y == 0) ? settings.guiSettings.FramePosition_UnderToolbar() : position, size)
+{}
 
 bool ImGuiCustomModules::ImGuiWindow::Begin(Settings& settings, ImGuiWindowFlags flags)
 {
-    // set default size / position
-    ImGui::SetNextWindowSize(m_Size, ImGuiCond_Appearing);
-    ImGui::SetNextWindowPos(m_Pos, ImGuiCond_Appearing);
-    
-    if (!ImGui::Begin(m_Name.c_str(), NULL, flags)) {
-        // window closed
-        ImGui::End(); 
-        return false;
-    }
-    // update size / position if user changed
-    m_Size = ImGui::GetWindowSize();
-    m_Pos = ImGui::GetWindowPos();
-    
+    // Begin ImGui Window
+    bool isOpen = ImGuiModules::ImGuiWindow::Begin(flags);
+    // Keep inside Viewport
     ImGuiModules::KeepWindowInsideViewport();
-    
-    // generic styling for widgets
+    // Generic styling for widgets
     PushWidgetStyle(settings);
     
-    return true;
+    return isOpen;
 }
 
 void ImGuiCustomModules::ImGuiWindow::End() 
 { 
-    PopWidgetStyle();
-    ImGui::End(); 
+    ImGuiModules::ImGuiWindow::End();
 }
 
 void ImGuiCustomModules::ImGuiWindow::PushWidgetStyle(Settings& settings) 
@@ -128,3 +113,6 @@ bool ImGuiCustomModules::EditButton(Settings& settings, const char* id)
     ImGui::PopStyleColor();
     return clicked;
 }
+
+
+} // end namespace Sqeak

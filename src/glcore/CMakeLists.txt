@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.8.12)
 #               Project Properties
 ####################################################
 
-project( "GLCore"
+project("GLCore"
     DESCRIPTION "A simple interface to OpenGL"
     LANGUAGES CXX
 )
@@ -18,7 +18,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #          Include Source File Directories
 ####################################################
 
-set(DIRS "deps/tinyobjloader" )
+set(DIRS "deps/tinyobjloader" "deps/imgui_modules")
 
 ####################################################
 #           Create List of Source Files

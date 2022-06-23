@@ -3,6 +3,8 @@
 
 #include <MaxLib.h> 
 
+namespace Sqeak { 
+    
 class GCodeReader
 {
 public:
@@ -87,3 +89,5 @@ private:
     // set current colour for path
     void SetPathColour(float gValue);
 };
+
+} // end namespace Sqeak

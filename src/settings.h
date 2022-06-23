@@ -1,18 +1,20 @@
 #pragma once
-
+#include "common.h"
 #include <initializer_list>
-#include <MaxLib/File.h>
 
-using namespace MaxLib;
-
+namespace Sqeak { 
+    using namespace MaxLib::Vector;
+    
+    
+/*
 
 // a vector wrapper which allows a specific item to be currently selected
 template<typename T>
-class  VectorSelectable
+class  Vector_SelectablePtrs
 {
 public:
-    VectorSelectable() {};
-    VectorSelectable(std::initializer_list<T> items) : m_Items(items) {};
+    Vector_SelectablePtrs() {};
+    Vector_SelectablePtrs(std::initializer_list<T> items) : m_Items(items) {};
     void Add(const T& v)                { m_Items.push_back(std::move(v)); m_CurrentIndex = m_Items.size()-1; } // lvalue & refs
     void Add(T&& v)                     { m_Items.push_back(std::move(v)); m_CurrentIndex = m_Items.size()-1; } // rvalue
     void Remove(size_t index) { 
@@ -44,6 +46,8 @@ private:
     std::vector<T> m_Items;
     int m_CurrentIndex = -1;
 };
+*/
+
 
 
 struct ParametersList
@@ -52,8 +56,8 @@ struct ParametersList
     struct System {
         std::string     serialDevice        = "/dev/ttyS0"; // "/dev/ttyAMA0"
         std::string     serialBaudrate      = "115200";
-        std::string     curDir              = File::ThisDir();
-        std::string     saveFileDirectory   = File::ThisDir();
+        std::string     curDir              = MaxLib::File::ThisDir();
+        std::string     saveFileDirectory   = MaxLib::File::ThisDir();
     } system;
     
 
@@ -71,12 +75,12 @@ struct ParametersList
             
             Tool(std::string name = "Tool", float diameter = 6.0f, float length = 20.0f) : Name(name), Diameter(diameter), Length(length) {}
             
-            VectorSelectable<ToolData> Data;
+            Vector_SelectablePtrs<ToolData> Data;
             std::string Name;
             float Diameter;
             float Length;    
         };
-        VectorSelectable<Tool> toolList;
+        Vector_SelectablePtrs<Tool> toolList;
         // check if tool & material is selected
         bool IsToolAndMaterialSelected();
         glm::vec3 GetToolScale();
@@ -191,6 +195,7 @@ struct ButtonDimension {
 // internal settings (not added to user settings ini file)
 struct GUISettings 
 {   
+    
     /*             
     struct _
     {
@@ -222,7 +227,11 @@ struct GUISettings
     float toolbarSpacer             =   22.0f;
     float toolbarItemHeight         =   65.0f;
     float toolbarComboBoxWidth      =   150.0f;
+    
+    ImVec2 FramePosition_UnderToolbar();
+    //ImVec2 FramePosition_BottomOfScreen() { return { dockPadding, ImGui::GetMainViewport()->WorkSize.y - windowSize.y - dockPadding }; } //under toolbar
         
+
     float inputBoxWidth             =   140.0f;
         
     float widgetWidth               =   180.0f;
@@ -372,3 +381,5 @@ private:
 
 };
 
+
+} // end namespace Sqeak

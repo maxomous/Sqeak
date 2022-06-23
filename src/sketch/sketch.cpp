@@ -1,8 +1,12 @@
 #include "sketch.h"
 using namespace std; 
-using namespace sketch;
-    
+using namespace MaxLib;
+using namespace MaxLib::String;
       
+namespace Sqeak { 
+    
+using namespace sketch;
+
  /*    
     sketch requirements:
         - loop button instead ofmaking new last = start point
@@ -453,7 +457,7 @@ void SketchOld::DrawImGui(Settings& settings)
 {
       
     // Cursor Popup
-    static ImGuiCustomModules::ImGuiPopup popup_CursorRightClick("popup_CursorRightClick");
+    static ImGuiModules::ImGuiPopup popup_CursorRightClick("popup_CursorRightClick");
     // open
     if(m_Drawings.HasItemSelected()) 
     {
@@ -491,7 +495,7 @@ void SketchOld::DrawImGui(Settings& settings)
     if(window.Begin(settings)) 
     {    
         if (ImGui::SmallButton("New Drawing")) {
-            m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)));
+            m_Drawings.Add("Drawing " + to_string(m_DrawingIDCounter++));
             isNewDrawing = true;
             settings.SetUpdateFlag(ViewerUpdate::Full);
         } 
@@ -1253,7 +1257,7 @@ std::optional<glm::vec2> SketchOld::RawPoint_GetClosest(const glm::vec2& p, floa
 
 SketchOld::SketchOld() 
 {   
-    m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++))); 
+    m_Drawings.Add("Drawing " + to_string(m_DrawingIDCounter++)); 
 }
 
 
@@ -1651,7 +1655,7 @@ void SketchOld::Deactivate()
 
 
 
-
+} // end namespace Sqeak
 
 
 

@@ -10,33 +10,85 @@ void ElementFactory::PrintElements() {
 }
     
 
-    
-Sketch::Point* ElementFactory::AddPoint(const Vec2& p) {
-    return AddElement<Sketch::Point>(p);
+// Get SketchItem functions
+
+const Solver::Point2D& ElementFactory::GetPoint(SketchItem item) 
+{
+   //Element* element = GetElementByID<Element>(item.element);
+   /* 
+    if(item.type == SketchItem::Type::Point)           { return *dynamic_cast<Point*>(element)->SolverElement<Solver::Point2D>(); }
+    else if(item.type == SketchItem::Type::Line_P0)    { return dynamic_cast<Line*>(element)->SolverElement<Solver::Line>()->p0; } 
+    else if(item.type == SketchItem::Type::Line_P1)    { return dynamic_cast<Line*>(element)->SolverElement<Solver::Line>()->p1; } 
+    else if(item.type == SketchItem::Type::Arc_P0)     { return dynamic_cast<Arc*>(element)->SolverElement<Solver::Arc>()->p0; } 
+    else if(item.type == SketchItem::Type::Arc_P1)     { return dynamic_cast<Arc*>(element)->SolverElement<Solver::Arc>()->p1; } 
+    else if(item.type == SketchItem::Type::Arc_PC)     { return dynamic_cast<Arc*>(element)->SolverElement<Solver::Arc>()->pC; } 
+    else if(item.type == SketchItem::Type::Circle_PC)  { return dynamic_cast<Circle*>(element)->SolverElement<Solver::Circle>()->pC; } 
+*/
+
+    if(item.type == SketchItem::Type::Point)           { return *GetElementByID<Sketch::Point>(item.element)->SolverElement<Solver::Point2D>(); }
+    else if(item.type == SketchItem::Type::Line_P0)    { return GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>()->p0; } 
+    else if(item.type == SketchItem::Type::Line_P1)    { return GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>()->p1; } 
+    else if(item.type == SketchItem::Type::Arc_P0)     { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->p0; } 
+    else if(item.type == SketchItem::Type::Arc_P1)     { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->p1; } 
+    else if(item.type == SketchItem::Type::Arc_PC)     { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->pC; } 
+    else if(item.type == SketchItem::Type::Circle_PC)  { return GetElementByID<Sketch::Circle>(item.element)->SolverElement<Solver::Circle>()->pC; } 
+
+
+    // Should never reach
+    assert(0 && "Type unknown");
 }
 
-Sketch::Line* ElementFactory::AddLine(const Vec2& p0, const Vec2& p1) {
-    return AddElement<Sketch::Line>(p0, p1);
+const Solver::Line& ElementFactory::GetLine(SketchItem item)
+{    
+    if(item.type == SketchItem::Type::Line)      { return *GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>(); }  
+    // Should never reach
+    assert(0 && "Type is not a Line");
 }
 
-Sketch::Arc* ElementFactory::AddArc(const Vec2& p0, const Vec2& p1, const Vec2& pC) {
-    return AddElement<Sketch::Arc>(p0, p1, pC);
+const Solver::Arc& ElementFactory::GetArc(SketchItem item)
+{
+    if(item.type == SketchItem::Type::Arc)       { return *GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>(); } 
+    // Should never reach
+    assert(0 && "Type is not a Arc");
 }
 
-Sketch::Circle* ElementFactory::AddCircle(const Vec2& pC, float radius) {
-    return AddElement<Sketch::Circle>(pC, radius);
+const Solver::Circle& ElementFactory::GetCircle(SketchItem item) 
+{
+    if(item.type == SketchItem::Type::Circle)    { return *GetElementByID<Sketch::Circle>(item.element)->SolverElement<Solver::Circle>(); } 
+    // Should never reach
+    assert(0 && "Type is not a Circle");
 }
+
+  
+  
     
-    
-    
+Sketch::ElementID ElementFactory::AddPoint(const Vec2& p) {
+    return AddElement<Sketch::Point>(p)->ID();
+}
+
+Sketch::ElementID ElementFactory::AddLine(const Vec2& p0, const Vec2& p1) {
+    return AddElement<Sketch::Line>(p0, p1)->ID();
+}
+
+Sketch::ElementID ElementFactory::AddArc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction) {
+    return AddElement<Sketch::Arc>(p0, p1, pC, direction)->ID();
+}
+
+Sketch::ElementID ElementFactory::AddCircle(const Vec2& pC, double radius) {
+    return AddElement<Sketch::Circle>(pC, radius)->ID();
+}
+
+
+
 
 // Runs solver with current constraints, 
 // On success, Element positions are updated
 // On failure, failed Elements are flagged
 // Returns: success
-bool ElementFactory::UpdateSolver(Sketch::Point* draggedPoint, const Vec2& draggedPosition, uint maxItems) 
+bool ElementFactory::UpdateSolver(SketchItem draggedPoint, const Vec2& draggedPosition)
 {
-    Solver::Constraints constraints(maxItems);
+        
+    Solver::ConstraintSolver solver;
 
     // Clear the Solver Data from Elements / Constraints
     ResetSolverElements();
@@ -46,24 +98,26 @@ bool ElementFactory::UpdateSolver(Sketch::Point* draggedPoint, const Vec2& dragg
         
     // Add Elements
     for(auto& element : m_Elements) {
-        element->AddToSolver(constraints);
+        element->AddToSolver(solver);
     }
     // Add Constraints
     for(auto& constraint : m_Constraints) {
-        constraint->AddToSolver(constraints);
+        constraint->AddToSolver(solver);
     }
     
     // Fix dragged point to the dragged position
-    SetDraggedPoint(constraints, draggedPoint, draggedPosition);
-    
+    if(draggedPoint.type != SketchItem::Type::Unset) {
+        // Set new position for dragged point and fix it
+        SetDraggedPoint(solver, draggedPoint, draggedPosition);   
+    }
     // Solve
-    Solver::SolverResult result = constraints.Solve();
+    Solver::SolverResult result = solver.Solve();
     
     // Success
     if(result.success == Solver::Success::Okay)
     {
         for(auto& element : m_Elements) {
-            element->UseSolverValues(constraints);
+            element->UseSolverValues(solver);
         }
         
     }
@@ -120,17 +174,15 @@ void ElementFactory::ResetSolverFailedConstraints() {
 
 // Temporarily modifies the dragged point's solver parameters to 
 // the new dragged position, and fixes it there by changing its group
-void ElementFactory::SetDraggedPoint(Solver::Constraints& constraints, Sketch::Point* draggedPoint, const Vec2& draggedPosition) 
-{
-    Solver::Point2D* p = draggedPoint->SolverElement<Solver::Point2D>();
+void ElementFactory::SetDraggedPoint(Solver::ConstraintSolver& solver, SketchItem draggedPoint, const Vec2& draggedPosition) 
+{   
+    const Solver::Point2D& p = GetPoint(draggedPoint);  
     // Update the parameters for the new dragged position
-    constraints.ModifyParamValue(p->paramX, draggedPosition.x);
-    constraints.ModifyParamValue(p->paramY, draggedPosition.y);
+    solver.ModifyParamValue(p.paramX, draggedPosition.x);
+    solver.ModifyParamValue(p.paramY, draggedPosition.y);
     // Move the point into the fixed group (this was done as a fix because SetDraggedPoint would only make it close to the correct position)
-    constraints.ModifyParamGroup(p->paramX, Solver::Group::Fixed);
-    constraints.ModifyParamGroup(p->paramY, Solver::Group::Fixed);
-    // Set dragged point in solver (replaced with ModifyGroup as this only got close)
-    //constraints.SetDraggedPoint(*p); // removed as it 
+    solver.ModifyParamGroup(p.paramX, Solver::Group::Fixed);
+    solver.ModifyParamGroup(p.paramY, Solver::Group::Fixed);
 }
 
 // Clear the Solver Data from Elements / Constraints

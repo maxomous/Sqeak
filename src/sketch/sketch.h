@@ -1,12 +1,14 @@
 #pragma once
 #include "../common.h" 
 
-using namespace MaxLib::Geom;
 
 
+namespace Sqeak { 
+    
 namespace sketch
 {
 
+using namespace MaxLib::Geom;
 
 
 enum CompensateCutter {
@@ -179,7 +181,7 @@ public:
         m_Ref_P1 = ref_p1;
         m_Ref_Centre = ref_centre;
         m_Direction = direction;
-        
+         
     }
     
     Ref_PointToElement* P1()     override { return m_Ref_P1; }
@@ -210,7 +212,7 @@ public:
         Polar pol = Polar(Vec2(fabsf(dif.x), fabsf(dif.y)));
         
         // angle between pLast to p0 to p1  
-        auto totalAngle = Geom::AngleBetween(pLast, p0, p1);
+        auto totalAngle = AngleBetween(pLast, p0, p1);
         if(!totalAngle) { return false; } 
                 
         // change direction if left of line
@@ -220,7 +222,7 @@ public:
         if(*totalAngle == 0.0 || *totalAngle == M_PI) {
             m_Radius = pol.r / 2.0;
         } else {
-            m_Radius = (pol.r / 2.0) / fabs(cos(Geom::CleanAngle(*totalAngle - M_PI_2)));
+            m_Radius = (pol.r / 2.0) / fabs(cos(CleanAngle(*totalAngle - M_PI_2)));
         }
         return true; 
     }
@@ -253,7 +255,7 @@ public:
         Vec2 pC = { m_Ref_Centre->rawPoint->Vec2().x, m_Ref_Centre->rawPoint->Vec2().y };
         
         
-        auto th = Geom::AngleBetween(p0, p1, pC);
+        auto th = AngleBetween(p0, p1, pC);
         if(!th) return;
         float H = Hypot(p1-pC);
         float a = H * -sin(*th);
@@ -272,7 +274,7 @@ public:
         m_Radius += 0.00001;
         
         // swap direction if centre is left of line (p0 -> p1)
-        m_Direction = Geom::LeftOfLine(p0, p1, pC) ? Direction::CCW : Direction::CW;
+        m_Direction = LeftOfLine(p0, p1, pC) ? Direction::CCW : Direction::CW;
                 
         // direction fixes
         m_Radius *= m_Direction * Sign(a, 1); // zero has value of 1
@@ -316,7 +318,7 @@ public:
         double th_Start  = atan2(v_Start.x, v_Start.y);
         double th_End    = atan2(v_End.x, v_End.y);
         
-        Geom::CleanAngles(th_Start, th_End, (Geom::Direction)m_Direction);
+        CleanAngles(th_Start, th_End, (MaxLib::Geom::Direction)m_Direction);
         
         std::cout << "th_Start: " << th_Start << std::endl;
         std::cout << "th_End: " << th_End << std::endl;
@@ -395,14 +397,14 @@ public:
         std::cout << "pCentre: " << pCentre.x << ", " << pCentre.y << std::endl;
         Vec2 dif = (basePoint) ? (p1 - pCentre) : (p0 - pCentre);
         m_Radius = hypot((double)dif.x, (double)dif.y);
-        if(Geom::LeftOfLine(p0, p1, pCentre)) { m_Radius = -m_Radius; }
+        if(LeftOfLine(p0, p1, pCentre)) { m_Radius = -m_Radius; }
     }   
     // recalculates centre point from radius
     void RecalculateCentreFromRadius() 
     {
         Vec2 p0       = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
         Vec2 p1       = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
-        Vec2 pCentre = Geom::ArcCentreFromRadius(p0, p1, m_Radius, (Geom::Direction)m_Direction);
+        Vec2 pCentre = ArcCentreFromRadius(p0, p1, m_Radius, (MaxLib::Geom::Direction)m_Direction);
         m_Ref_Centre->rawPoint->Vec2() = { pCentre.x, pCentre.y };
     }
     
@@ -921,7 +923,7 @@ private:
     // lists of all elements, lineloops & points in drawing
     std::vector<std::unique_ptr<LineLoop>> m_LineLoops;
     std::vector<std::unique_ptr<Element>> m_Elements;
-    VectorSelectable<std::unique_ptr<RawPoint>> m_Points;
+    Vector_SelectablePtrs<std::unique_ptr<RawPoint>> m_Points;
     // references between m_Points and m_Elements
     std::vector<std::unique_ptr<Ref_PointToElement>> m_References;
         
@@ -1041,7 +1043,7 @@ private:
     // contains a list of all the points in a drawing
     ElementFactory m_ElementFactory;
     // contains a list of all the active functions in a drawing
-    VectorSelectable<std::unique_ptr<Function>> m_ActiveFunctions;
+    Vector_SelectablePtrs<std::unique_ptr<Function>> m_ActiveFunctions;
     int m_FunctionIDCounter = 0;
     // used to open tree node of new function
     bool m_IsActiveFunctionChanged = true;
@@ -1090,7 +1092,7 @@ public:
     void Deactivate();
     
 private:
-    VectorSelectable<A_Drawing> m_Drawings;
+    Vector_SelectablePtrs<A_Drawing> m_Drawings;
     int m_DrawingIDCounter = 0;
     bool m_IsActive = false;
 
@@ -1105,3 +1107,5 @@ private:
 
 
 } // end of namespace
+
+} // end namespace Sqeak

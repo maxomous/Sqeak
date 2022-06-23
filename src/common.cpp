@@ -1,22 +1,10 @@
-/*
- * common.cpp
- *  Max Peglar-Willis & Luke Mitchell 2021
- */
 
 #include "common.h"
+
 using namespace std; 
  
-string va_str(const char* format, ... )
-{ 
-    va_list arglist;
-    char buf[255];
-    va_start( arglist, format );
-    vsnprintf(buf, sizeof(buf), format, arglist);
-    va_end( arglist );
+namespace Sqeak { 
     
-    return string(buf);
-}
-  
 Time::Time(uint seconds) 
 { 
     m_hr = seconds / 3600;
@@ -26,13 +14,6 @@ Time::Time(uint seconds)
     m_sec = seconds; 
 }
     
-void lowerCase(string& str) {
-    transform(str.begin(), str.end(),str.begin(), ::tolower);
-}
-
-void upperCase(string& str) {
-    transform(str.begin(), str.end(),str.begin(), ::toupper);
-}
 
 bool trigger(bool& input)
 {
@@ -72,3 +53,5 @@ glm::vec3 stoVec3(const std::string& msg)
     return p;
 }
   
+
+} // end namespace Sqeak

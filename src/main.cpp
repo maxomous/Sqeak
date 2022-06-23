@@ -1,8 +1,4 @@
 
-#include "common.h"
-
-using namespace std;
-            
 /*            
     The below image shows a rough breakdown of the program stucture:
     
@@ -267,6 +263,8 @@ TODO:
     - check for memory leaks in geos, everytime we return, items remain.... maybe just destroy() everything even if it gets carried to next geometry
 
     - upgrade geos with the c++ version of the library to avoid free issues
+    * 
+    * a c file should include its header first thing, that way it is self contained
 
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01
@@ -281,6 +279,12 @@ Other notes:
     Grbl's EEPROM read commands: G54-G59, G28, G30, $$, $I, $N, $#
 */
     
+
+#include "common.h"
+
+using namespace std;
+using namespace MaxLib;
+using namespace Sqeak; 
 
 
 
@@ -352,7 +356,10 @@ int main()
 
 
 
-// all available sends
+
+
+// All available send Commands
+
 
 // KILL ALARM LOCK
 //Grbl.Send("$X");
@@ -398,8 +405,7 @@ Grbl.Send("G91 G38.2 Z-200 F100\n");
 Grbl.Send("G91 G38.4 Z1 F100\n");
 */
 /*
-string file = "/home/pi/Desktop/New.nc";
-Grbl.FileRun(file);
+Grbl.FileRun("/home/pi/Desktop/New.nc");
 */
 
 

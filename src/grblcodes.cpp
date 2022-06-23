@@ -5,6 +5,8 @@
 
 #include "common.h"
 
+namespace Sqeak { 
+    
 #define NUM_ERROR_MSG 36
 //"Error Code in v1.1+", "Error Message in v1.0-", "Error Description"
 static std::string errMessages[NUM_ERROR_MSG][3] = {
@@ -152,3 +154,5 @@ int getAlarmMsg(int num, std::string* name, std::string* desc) {
 	}
 	return -1;
 }
+
+} // end namespace Sqeak

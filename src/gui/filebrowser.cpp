@@ -1,5 +1,9 @@
 #include "filebrowser.h"
 using namespace std;
+using namespace MaxLib;
+
+namespace Sqeak { 
+
 
 #define SORT_BY_NAME 1
 #define SORT_BY_DATE 2
@@ -142,8 +146,8 @@ void FileBrowser::sortFiles(const ImGuiTableColumnSortSpecs *sort_spec) {
         case 1:                           // name
             strA = a.name;
             strB = b.name;
-            lowerCase(strA);
-            lowerCase(strB);
+            MaxLib::String::LowerCase(strA);
+            MaxLib::String::LowerCase(strB);
             if (sort_spec->SortDirection == ImGuiSortDirection_Ascending)
                 return (strA < strB);
             else
@@ -153,8 +157,8 @@ void FileBrowser::sortFiles(const ImGuiTableColumnSortSpecs *sort_spec) {
         case 2: // Type
             strA = a.ext;
             strB = b.ext;
-            lowerCase(strA);
-            lowerCase(strB);
+            MaxLib::String::LowerCase(strA);
+            MaxLib::String::LowerCase(strB);
             if (sort_spec->SortDirection == ImGuiSortDirection_Ascending)
                 return (strA < strB);
             else
@@ -312,3 +316,6 @@ void FileBrowser::DrawFiles()
         ImGui::EndTable();
     }
 }
+
+
+} // end namespace Sqeak

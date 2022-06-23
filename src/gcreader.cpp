@@ -3,6 +3,7 @@
 using namespace std;
 using namespace MaxLib;
 
+namespace Sqeak { 
 
 GCodeReader::GCodeReader(Settings& settings)
     : m_Settings(settings) {
@@ -137,7 +138,7 @@ void GCodeReader::cleanString(std::string& str)
     if(c != std::string::npos)
     str.erase(c, str.length()-c );
     // make all uppercase
-    upperCase(str);
+    MaxLib::String::UpperCase(str);
     // strip out whitespace & out non printable characters- this means we can fit more in the buffer
     str.erase(remove_if(str.begin(), str.end(), [](char c){ return !isgraph(c); }), str.end());
     // add a newline character to end
@@ -506,8 +507,9 @@ void GCodeReader::MotionLinear()
 * 
 *     Plane selection (G17/18/19) is possible for G02 & G03 
 *----------------------------------------------------------------------------*/
-void GCodeReader::MotionArc(Geom::Direction dir)
+void GCodeReader::MotionArc(MaxLib::Geom::Direction dir)
 {
+    using namespace MaxLib;
     // get start & end coords relative to the selected plane 
     glm::vec3 xyz_Start   = PointRelativeToPlane(m_WPos, m_Plane);
     glm::vec3 xyz_End     = PointRelativeToPlane(GetAbsoluteWPos(m_XYZ), m_Plane);
@@ -599,3 +601,5 @@ void GCodeReader::SetPathColour(float gValue)
         m_Colour = m_Settings.p.viewer.toolpath.Colour_Home;
     }
 }
+
+} // end namespace Sqeak

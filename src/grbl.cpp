@@ -5,7 +5,10 @@
 
 #include "common.h" 
 using namespace std;
+using namespace MaxLib;
  
+
+namespace Sqeak { 
 
 // returns a copy of vals
 const GRBLCoords_vals GRBLCoords::getVals() { 
@@ -1283,3 +1286,5 @@ void GRBL::Update(GRBLVals& grblVals)
     // build a structure of all values so we dont have to constantly be locking mutexes throughout program
     UpdateGRBLVals(grblVals);
 }
+
+} // end namespace Sqeak

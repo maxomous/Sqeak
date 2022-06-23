@@ -6,6 +6,8 @@
 #include "common.h"  
 using namespace std;  
 
+namespace Sqeak { 
+    
 GCList::GCList() 
 {
     // lock the mutex (unlikely to be needed on init)
@@ -286,10 +288,12 @@ void GCList::cleanString(std::string& str)
     if(c != std::string::npos)
     str.erase(c, str.length()-c );
     // make all uppercase
-    upperCase(str);
+    MaxLib::String::UpperCase(str);
     // strip out whitespace & out non printable characters- this means we can fit more in the buffer
     str.erase(remove_if(str.begin(), str.end(), [](char c){ return !isgraph(c); }), str.end());
     // add a newline character to end
     str.append("\n");
 }
 
+
+} // end namespace Sqeak

@@ -1,6 +1,8 @@
 #include "common.h" 
 using namespace std;
+using namespace MaxLib;
 
+namespace Sqeak { 
 // *************************************************************************************************************
 // ********************************************* USER SETTINGS *************************************************
 
@@ -90,7 +92,9 @@ void Settings::AddDynamicSettings()
             }
         });
     m_VectorList.push_back(d);          
-    
+    /*
+     *  TODO: Make this accept Vector_Ptrs
+     * 
     static const std::string ToolListStr = "ToolList";
     d = DynamicSetting(ToolListStr, (void*)p.tools.toolList.DataPtr(), 
         // get size
@@ -138,8 +142,9 @@ void Settings::AddDynamicSettings()
             } 
         });
     m_VectorList.push_back(d); 
+    */
 }    
-        
+   
 // ****************************************** END OF USER SETTINGS *********************************************
 // *************************************************************************************************************
 
@@ -455,3 +460,11 @@ void Settings::SetSettingFromString(Setting& setting, size_t paramIndex, std::st
 }
     
     
+     
+ImVec2 GUISettings::FramePosition_UnderToolbar()  
+{ 
+    return { dockPadding, toolbarHeight + dockPadding * 2.0f }; 
+}
+
+
+} // end namespace Sqeak

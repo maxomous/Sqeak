@@ -1,6 +1,8 @@
 #pragma once
 #include "../common.h" 
 
+namespace Sqeak { 
+    
 class GCodeBuilder
 {
 public:
@@ -45,3 +47,6 @@ private:
     std::vector<std::pair<size_t, glm::vec2>> GetTabPositions(Settings& settings, const CutPathParams& params);
     void CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, glm::vec2>> tabPositions, glm::vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i);
 };
+
+ 
+} // end namespace Sqeak

@@ -4,6 +4,8 @@ using namespace std;
 
 #include "../common.h" 
 
+namespace Sqeak { 
+    
   
 void Shape::AddVertex(const glm::vec3& vertex) 
 { 
@@ -800,3 +802,6 @@ void Viewer::ImGuiRender(Settings& settings)
     
     window.End();
 }
+
+
+} // end namespace Sqeak

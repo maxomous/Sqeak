@@ -10,6 +10,8 @@
 #include "deps/imgui/imgui_stb_image.h"
 // Fonts for Imgui
 #include "deps/imgui/fonts/font_geomanist.h"
+// Imgui add-ons
+#include "deps/imgui_modules/imgui_modules.h"
 
 // OpenGL Specification
 #include <GL/glew.h>
@@ -26,6 +28,7 @@
 #include "texture.h"
 #include "modelloader.h"
 #include "material.h"
+
 
 #define ASSERT(x) if (!(x)) exit(1);
 #define GLCall(x) glClearErrors();\

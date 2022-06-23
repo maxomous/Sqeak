@@ -1,6 +1,11 @@
 #include "gcodebuilder.h"
 
+    
 using namespace std;
+using namespace MaxLib::String;
+
+
+namespace Sqeak { 
 
 void GCodeBuilder::Add(std::string gcode) {
     m_gcodes.push_back(gcode);
@@ -289,3 +294,5 @@ int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params)
     return 0;
 }
 
+
+} // end namespace Sqeak

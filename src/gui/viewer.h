@@ -3,6 +3,8 @@
 
 #include "../glcore/glcore.h"
 
+namespace Sqeak { 
+    
 // basic shaders for just position and colour. No lighting. No normals, No texture coords
 static const std::string Viewer_BasicVertexShader = R"(
 // #version 140
@@ -255,3 +257,4 @@ private:
 
 };
 
+} // end namespace Sqeak

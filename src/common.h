@@ -1,7 +1,3 @@
-/*
- * common.h
- *  Max Peglar-Willis 2021
- */
 
 #pragma once
 
@@ -31,7 +27,6 @@
 #include "glcore/glcore.h"
 
 #include "libs/geos.h"
-#include "dev/joystick.h"
 
 // allows bitwise operations on enums
 template<class T> inline T operator~ (T a) { return (T)~(int)a; }
@@ -54,6 +49,11 @@ struct InputEvent {
     Event_MouseMove* mouseMove = nullptr;
 };
 
+
+#include <MaxLib.h>
+
+#include "dev/joystick.h"
+
 #include "gclist.h"
 #include "serial.h"
 
@@ -65,7 +65,6 @@ struct InputEvent {
 #include "gcreader.h"
 
 
-#include "gui/imgui_modules.h"
 #include "gui/imgui_custommodules.h"
 
 #include "gui/filebrowser.h"
@@ -81,6 +80,8 @@ struct InputEvent {
 
 
 
+namespace Sqeak {
+    
 struct Event_Update3DModelFromFile      { std::string filename; };
 struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
 struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::DynamicVertexList>* dynamicLineLists; };
@@ -179,8 +180,6 @@ struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords
 #define DEBUG_GCREADER                              0x1 << 5
 #define DEBUG_SKETCH_REFERENCES                     0x1 << 6
 
-// converts variable arguments to a string
-std::string va_str(const char *format, ...);
 
 // Normalises seconds into hours, minutes & seconds
 class Time {
@@ -189,16 +188,21 @@ public:
     uint Hours() { return m_hr; }
     uint Mins() { return m_min; }
     uint Secs() { return m_sec; }
-    std::string TimeString() { return va_str("%u:%.2u:%.2u", m_hr, m_min, m_sec); }
+    std::string TimeString() { return MaxLib::String::va_str("%u:%.2u:%.2u", m_hr, m_min, m_sec); }
 private:
     uint m_hr;
     uint m_min;
     uint m_sec;
 };
-// modifies string to lower case
-void lowerCase(std::string &str);
-// modifies string to upper case
-void upperCase(std::string &str);
+ // This takes a std::string of 3 values seperated by commas (,) and will return a 3DPoint
+// 4.000,0.000,0.000
+glm::vec2 stoVec2(const std::string& msg);
+// This takes a std::string of 3 values seperated by commas (,) and will return a 3DPoint
+// 4.000,0.000,0.000
+glm::vec3 stoVec3(const std::string& msg);
+
+
+
 // returns value of input and switches input to false if true 
 bool trigger(bool& input);
 
@@ -332,7 +336,7 @@ private:
     void PrintToGUI(LogLevel level, const char *msg, Args... args) {
         if (m_logLevelConsole <= level) {
             std::string str = levelPrefix(level);
-            str += va_str(msg, args...);
+            str += MaxLib::String::va_str(msg, args...);
             // print to console
             m_consoleLog.emplace_back(str);
             Event<Event_ConsoleScrollToBottom>::Dispatch({});
@@ -350,3 +354,5 @@ private:
     Log(const Log &) = delete;              // delete the copy constructor
     Log &operator=(const Log &) = delete;   // delete the copy assignment operatory
 };
+
+} // end namespace Sqeak

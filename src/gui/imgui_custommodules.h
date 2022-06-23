@@ -1,14 +1,17 @@
 #pragma once    
 #include "../common.h"
 
+namespace Sqeak { 
+    
 struct ImGuiCustomModules
 {    
-    class ImGuiWindow
+    class ImGuiWindow : public ImGuiModules::ImGuiWindow
     {
     public:
         static const ImGuiWindowFlags generalWindowFlags = ImGuiWindowFlags_AlwaysAutoResize;
         
-        ImGuiWindow(Settings& settings, std::string name, const ImVec2& defaultSize = ImVec2(0.0f, 0.0f));
+        ImGuiWindow(Settings& settings, std::string name, const ImVec2& position = ImVec2(0.0f, 0.0f), const ImVec2& size = ImVec2(0.0f, 0.0f));
+        // returns false if closed 
         bool Begin(Settings& settings, ImGuiWindowFlags flags = generalWindowFlags);
         void End();
         // Standard styling for widgets (called from Begin() / End())
@@ -17,37 +20,9 @@ struct ImGuiCustomModules
         
     private:
         std::string m_Name;
-        ImVec2 m_Size;
         ImVec2 m_Pos;
+        ImVec2 m_Size;
     };
-
-    class ImGuiPopup
-    {
-    public:
-        ImGuiPopup(const std::string& name) : m_Name(name) {}
-        
-        void Open() { ImGui::OpenPopup(m_Name.c_str()); }
-        // returns true on close (next frame)
-        bool Draw(std::function<void()> cb_ImGuiWidgets) 
-        {
-            if (ImGui::BeginPopup(m_Name.c_str())) {
-                // callback
-                cb_ImGuiWidgets();
-                ImGui::EndPopup();
-                m_IsOpen = true;
-            } else { // if popup has just been closed
-                if (m_IsOpen == true) {
-                    m_IsOpen = false;
-                    return true;
-                }
-            }
-            return false;
-        }
-    private:
-        std::string m_Name;
-        bool m_IsOpen = false;
-    };
-
 
 
     static void Text(std::string label, std::optional<glm::vec2> position)
@@ -73,3 +48,5 @@ struct ImGuiCustomModules
     // edit button
     static bool EditButton(Settings& settings, const char* id);
 };
+
+} // end namespace Sqeak

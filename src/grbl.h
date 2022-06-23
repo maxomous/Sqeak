@@ -1,6 +1,8 @@
 
 #pragma once
 
+namespace Sqeak { 
+    
 // *********************** //
 //     GRBL Settings        //
 // *********************** //
@@ -361,3 +363,5 @@ private:
     //void thread_RequestStatusReport();
     //uint statusTimerInterval = 25;    // ms
 };
+
+} // end namespace Sqeak

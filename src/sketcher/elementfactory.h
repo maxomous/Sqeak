@@ -1,46 +1,109 @@
 #pragma once
 
-#include <MaxLib.h>
+#include "sketch_common.h"
 
 #include "elements.h"
 #include "constraints.h"
 
 
+
 namespace Sketch {
 
+using namespace MaxLib::Vector;
+using namespace MaxLib::Geom;
 
 class ElementFactory
 {
 public:
     // TODO: Test these ptrs * with references & instead
-    void ForEachElement(std::function<void(const Sketch::Element*)> cb_Element) 
+    void ForEachElement(std::function<void(Sketch::Element*)> cb_Element) 
     {
         // Call callback for each element
         for(size_t i = 0; i < m_Elements.Size(); i++) {
-            cb_Element(m_Elements.CastItem<Sketch::Element>(i));         
+            // Cast so we can get the ptr
+            cb_Element(m_Elements.CastItem<Sketch::Element>(i)); 
         }
     }
-    void ForEachConstraint(std::function<void(const Sketch::Constraint*)> cb_Constraint) 
+    void ForEachConstraint(std::function<void(Sketch::Constraint*)> cb_Constraint) 
     {
         // Call callback for each constraint
         for(size_t i = 0; i < m_Constraints.Size(); i++) {
+            // Cast so we can get the ptr
             cb_Constraint(m_Constraints.CastItem<Sketch::Constraint>(i));       
         }
     }
     
+    // Finds points within a tolerance to position p
+    // Result a list of points and their distance to p 
+    std::vector<std::pair<SketchItem, double>> GetPointsByPosition(Vec2 p, double tolerance)
+    {
+        std::vector<std::pair<SketchItem, double>> pointsFound; // and distance from p
+        
+        // Adds point to pointsFound if point falls within tolerance
+        auto CheckPosition = [&](const Vec2& pos, SketchItem ref) {
+            double distance = Hypot(pos - p);
+            if(distance <= tolerance) { 
+                pointsFound.push_back(std::make_pair(ref, distance)); 
+            }
+        };
+        
+        // Check each point on each element to see whether it falls within tolerance
+        ForEachElement([&](const Sketch::Element* element) {
+                        
+            if(auto* point = dynamic_cast<const Sketch::Point*>(element)) {
+                CheckPosition(point->P(), point->Ref_P());
+            }   
+            else if(auto* line = dynamic_cast<const Sketch::Line*>(element)) {
+                CheckPosition(line->P0(), line->Ref_P0());
+                CheckPosition(line->P1(), line->Ref_P1());
+            }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element)) {
+                CheckPosition(arc->P0(), arc->Ref_P0());
+                CheckPosition(arc->P1(), arc->Ref_P1());
+                CheckPosition(arc->PC(), arc->Ref_PC());
+            }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element)) {
+                CheckPosition(circle->PC(), circle->Ref_PC());
+            }
+            else { // Should never reach
+                assert(0 && "Cannot render element, type unknown");                
+            }
+        });
+        
+        // Sort by distance
+        // TODO: Having issues gettng this to work
+        std::sort(pointsFound.begin(), pointsFound.end(), [](auto &a, auto &b) {
+            return a.second < b.second;
+        });
+        
+        
+        return std::move(pointsFound);
+    }
+    
+   
     void PrintElements();
     
-    Point*  AddPoint(const Vec2& p) ;
-    Line*   AddLine(const Vec2& p0, const Vec2& p1) ;
-    Arc*    AddArc(const Vec2& p0, const Vec2& p1, const Vec2& pC) ;
-    Circle* AddCircle(const Vec2& pC, float radius);
+  
+  
+    
+    const Solver::Point2D&  GetPoint(SketchItem item);
+    const Solver::Line&     GetLine(SketchItem item);
+    const Solver::Arc&      GetArc(SketchItem item); 
+    const Solver::Circle&   GetCircle(SketchItem item);
+
+    
+    
+    ElementID AddPoint(const Vec2& p) ;
+    ElementID AddLine(const Vec2& p0, const Vec2& p1) ;
+    ElementID AddArc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction);
+    ElementID AddCircle(const Vec2& pC, double radius);
   
          // Usage:
     //    AddConstraint<Coincident_PointToPoint>(p0, p1)
     // See "constraints.h"
     template<typename T, typename... Args>
     T* AddConstraint(Args&&... args)  {
-        m_Constraints.Add<T>(std::forward<Args>(args)...);
+        m_Constraints.Add<T>(this, std::forward<Args>(args)...);
         return m_Constraints.CastItem<T>(m_Constraints.Size()-1);
     }
        
@@ -53,10 +116,9 @@ public:
         for(size_t i = 0; i < m_Constraints.Size(); i++)
         {
             // For each Element inside Constraint
-            m_Constraints[i].ForEachElement([&](PointRef& ref) {
-                
+            m_Constraints[i].ForEachElement([&](SketchItem& ref) {
                 // Check if the element ids match
-                if(ref.element->ID() == id) {
+                if(ref.element == id) {                    
                     // Mark this Constraint to be deleted
                     constraintsToDelete.push_back(m_Constraints[i].ID());
                 }
@@ -68,45 +130,25 @@ public:
         }
         
         // Remove the Element
-        m_Elements.Remove(GetElementIndex(id));
+        m_Elements.Remove(GetElementIndexByID(id));
     }
     
     void RemoveConstraint(ConstraintID id) {
-        m_Constraints.Remove(GetConstraintIndex(id));
+        m_Constraints.Remove(GetConstraintIndexByID(id));
     }
         
     // Runs solver with current constraints, 
     // On success, Element positions are updated
     // On failure, failed Elements are flagged
+    // if draggedPoint is set, solver will fix this point to draggedPosition
     // Returns: success
-    bool UpdateSolver(Point* draggedPoint, const Vec2& draggedPosition, uint maxItems = 1000);
-    // Resets the failed flags on constraints
-    void ResetSolverFailedConstraints();
-    
+    bool UpdateSolver(SketchItem draggedPoint = SketchItem(), const Vec2& draggedPosition = Vec2());
   
-private:   
- 
-    size_t GetElementIndex(ElementID id)  
-    {
-        for(size_t i = 0; i < m_Elements.Size(); i++) {
-            if(m_Elements[i].ID() == id) { return i; }            
-        }
-        assert("Could not find element");
-        return 0; // never reaches
-    }
+private:    
+
     
-    size_t GetConstraintIndex(ConstraintID id)  
-    {
-        for(size_t i = 0; i < m_Constraints.Size(); i++) {
-            if(m_Constraints[i].ID() == id) { return i; }            
-        }
-        assert("Could not find constraint");
-        return 0; // never reaches
-    }
-    
-    
-    MaxLib::Vector::Vector_SelectablePtrs<Element> m_Elements;
-    MaxLib::Vector::Vector_SelectablePtrs<Constraint> m_Constraints; // Constraints holds links to elements
+    Vector_SelectablePtrs<Element> m_Elements;
+    Vector_SelectablePtrs<Constraint> m_Constraints; // Constraints holds links to elements
     
     template <typename T, typename... Args>
     T* AddElement(Args&&... args) {
@@ -122,14 +164,38 @@ private:
     }
     // Temporarily modifies the dragged point's solver parameters to 
     // the new dragged position, and fixes it there by changing its group
-    void SetDraggedPoint(Solver::Constraints& constraints, Point* draggedPoint, const Vec2& draggedPosition);
+    void SetDraggedPoint(Solver::ConstraintSolver& solver, SketchItem draggedPoint, const Vec2& draggedPosition);
     
     // Clear the Solver Data from Elements / Constraints
     void ResetSolverElements();
     void ResetSolverConstraints();
-    
-    
-    
+    // Resets the failed flags on constraints
+    void ResetSolverFailedConstraints();
+        
+        
+    // Access functinos
+    template<typename T>
+    T* GetElementByID(ElementID id) 
+    {
+        size_t index = GetElementIndexByID(id);
+        return m_Elements.CastItem<T>(index);
+    }
+    size_t GetElementIndexByID(ElementID id)  
+    {
+        for(size_t i = 0; i < m_Elements.Size(); i++) {
+            if(m_Elements[i].ID() == id) { return i; }            
+        }
+        assert("Could not find element");
+        return 0; // never reaches
+    }
+    size_t GetConstraintIndexByID(ConstraintID id)  
+    {
+        for(size_t i = 0; i < m_Constraints.Size(); i++) {
+            if(m_Constraints[i].ID() == id) { return i; }            
+        }
+        assert("Could not find constraint");
+        return 0; // never reaches
+    }
     
 };
 

@@ -2,6 +2,8 @@
 #include "toolsettings.h"
 using namespace std;
 
+namespace Sqeak { 
+    
 bool ToolSettings::Draw(Settings& settings) 
 { 
     auto& tools = settings.p.tools; 
@@ -108,9 +110,9 @@ int ToolSettings::Draw_SelectTool(Settings& settings)
     ImGuiModules::ListBox_Reorderable("##Tools", ImVec2(listWidth, listHeight * ImGui::GetTextLineHeightWithSpacing()), tools.toolList, cb_GetToolName);
     
     if(ImGui::Button("+##AddTool")) {
-        tools.toolList.Add(ParametersList::Tools::Tool("Tool 1"));
-        auto& lastTool = tools.toolList.Item(tools.toolList.Size()-1);
-        lastTool.Data.Add(ParametersList::Tools::Tool::ToolData());
+        tools.toolList.Add("Tool 1");
+        auto& lastTool = tools.toolList[tools.toolList.Size()-1];
+        lastTool.Data.Add();
         return -1;
     }
     ImGui::SameLine();
@@ -201,3 +203,5 @@ void ToolSettings::Draw_MaterialData(Settings& settings)
         ImGui::InputFloat("Depth of Cut", &data.cutDepth, 0.1f, 1.0f, "%.3f");
     }
 }
+
+} // end namespace Sqeak

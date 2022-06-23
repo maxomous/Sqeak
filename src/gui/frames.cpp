@@ -7,6 +7,12 @@
 #include "frames.h"
 
 using namespace std;
+using namespace MaxLib;
+using namespace MaxLib::String;
+
+
+namespace Sqeak { 
+
 
 #define MAX_CUSTOM_GCODES 12 // should be divisible by 3
 #define MAX_HISTORY 100
@@ -1063,7 +1069,7 @@ struct Toolbar {
         }
          
         // Connect Settings        
-        static ImGuiCustomModules::ImGuiPopup popup_ConnectSettings("Edit Connect Popup");
+        static ImGuiModules::ImGuiPopup popup_ConnectSettings("Edit Connect Popup");
         // open
         if(openPopup_ConnectSettings) { popup_ConnectSettings.Open(); }        
         // always enabled
@@ -1079,7 +1085,7 @@ struct Toolbar {
         
         
         // Jog Settings        
-        static ImGuiCustomModules::ImGuiPopup popup_JogSettings("Edit Jog Popup");
+        static ImGuiModules::ImGuiPopup popup_JogSettings("Edit Jog Popup");
         // open
         if(openPopup_JogSettings) { popup_JogSettings.Open(); }
         // draw
@@ -1801,7 +1807,7 @@ struct Stats {
                         if (ImGui::Button(settings.p.customGCodes[i].name.c_str(), sizeCust))
                             sendCustomGCode(settings.p.customGCodes[i].gcode);
 
-                        if (ImGuiModules::RightClickedLastItem()) {
+                        if (ImGuiModules::WasLastItemRightClicked()) {
                             customGCIndex = i;
                             ImGui::OpenPopup("Custom GCode");
                         }
@@ -2301,6 +2307,100 @@ struct Debug {
 };
  
 
+
+void Frames::DrawSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
+{
+    (void)settings; (void)sketcher;
+    /*  
+    // Cursor Popup
+    static ImGuiModules::ImGuiPopup popup_CursorRightClick("popup_Sketch_CursorRightClick");
+    // open
+    if(m_Drawings.HasItemSelected()) 
+    {
+        if(auto id =  m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_GetID()) 
+        {
+            // set to open
+            if(!ImGui::GetIO().WantCaptureMouse && IsActive()) {
+                if(trigger(settings.p.sketch.cursor.popup.shouldOpen)) { popup_CursorRightClick.Open(); }
+            }
+            // draw cursor popup
+            popup_CursorRightClick.Draw([&]() {
+                ImGui::Text("Point %u", (uint)*id);
+                ImGui::Separator();
+                // delete
+                if(ImGui::Selectable("Delete")) {
+                    if(m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_Delete()) {
+                        settings.SetUpdateFlag(ViewerUpdate::Full);
+                    }
+                }
+            });
+        }
+    }
+    
+    
+    static bool isNewDrawing = true;
+    
+    // display x, y coord on screen if not over imgui window
+    if(!ImGui::GetIO().WantCaptureMouse && IsActive()) {
+        DrawPopup_Cursor(settings);
+    }
+    
+    */
+    // begin new imgui window
+ ////  static ImGuiCustomModules::ImGuiWindow window(settings, "Sketcher"); // default size
+ ////  if(window.Begin(settings)) 
+ ////  {    
+ ////      if(ImGui::Button("Update")) {
+ ////          sketcher.Update(2, { 100.0f, 200.0f});
+ ////      }
+ ////      window.End();
+ ////  }
+        
+        
+        /*
+        if (ImGui::SmallButton("New Drawing")) {
+            m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)));
+            isNewDrawing = true;
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+        } 
+        
+        for(size_t i = 0; i < m_Drawings.Size(); )
+        {
+            // set active drawing to be open initially & inactive drawings to be closed
+            if(m_Drawings.CurrentIndex() == (int)i) { 
+                if(isNewDrawing) {
+                    ImGui::SetNextItemOpen(true); 
+                    isNewDrawing = false;
+                }
+            } else { ImGui::SetNextItemOpen(false); }
+            // close button flag - set by imgui
+            bool closeIsntClicked = true; 
+            if (ImGui::CollapsingHeader(m_Drawings[i].Name().c_str(), &closeIsntClicked)) {
+                // set the active index to match the open tab
+                if(m_Drawings.CurrentIndex() != (int)i) {
+                    std::cout << "Setting current drawing index" << std::endl;
+                    m_Drawings.SetCurrentIndex(i);
+                    settings.SetUpdateFlag(ViewerUpdate::Full);
+                }
+                // draw the imgui widgets for drawing 
+                m_Drawings.CurrentItem().DrawImGui(settings); 
+            }
+            if(!closeIsntClicked) { // has been closed
+                m_Drawings.Remove(i); 
+                settings.SetUpdateFlag(ViewerUpdate::Full);
+            } else { 
+                i++; 
+            }                        
+
+        }
+        window.End();
+    }*/
+    
+
+     
+}
+
+
 void Frames::DrawDockSpace(Settings& settings)
 {
     // fullscreen dockspace
@@ -2350,16 +2450,30 @@ void Frames::DrawDockSpace(Settings& settings)
     
 }    
       
-void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::SketchOld& sketcher, float dt)
+      
+      
+      
+      
+      
+void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::SketchOld& sketcher, Sketch::Sketcher& sketcherNew, float dt)
 {
+    
     // draw ImGui windows
     DrawDockSpace(settings);
     // show demo 
     ImGui::ShowDemoWindow(NULL);
     
+        // Draw Viewer Imgui Widgets
         viewer.ImGuiRender(settings);
         
-        sketcher.DrawImGui(settings);
+        // Draw Sketch ImGui
+        if(sketcherNew.DrawImGui()) {
+            settings.SetUpdateFlag(ViewerUpdate::Full);
+        }
+        //DrawSketcher(settings, sketcherNew);
+        
+        
+        
         
         static PopupMessages popupMessages;
         static Toolbar toolbar;
@@ -2385,3 +2499,5 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
         // End disable all widgets when not connected to grbl  
         ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
 }
+
+} // end namespace Sqeak

@@ -6,6 +6,8 @@
 
 #pragma once
 
+namespace Sqeak { 
+    
 class Serial 
 {
 public:
@@ -51,3 +53,4 @@ private:
     void clearQueue();
 };
 
+} // end namespace Sqeak

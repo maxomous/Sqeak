@@ -3,6 +3,8 @@
 
 #include <MaxLib.h>
 
+namespace Sqeak { 
+    
 using namespace MaxLib::Devices;
 using namespace MaxLib::Geom;
 
@@ -59,3 +61,5 @@ private:
         m_ButtonB = m_ADC.Read(JOYSTICK_BUTTONB) > JOYSTICK_VTRIG;
     }
 };
+
+} // end namespace Sqeak

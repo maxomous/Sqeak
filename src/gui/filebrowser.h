@@ -1,6 +1,10 @@
 #pragma once
 #include "../common.h"
 
+namespace Sqeak { 
+    
+using namespace MaxLib;
+
 class FileBrowser 
 {
 public:
@@ -22,7 +26,7 @@ public:
     std::string CurrentFilePath()   { return m_Filepath; }
     
 private:
-    VectorSelectable<FileType> m_FileTypes = { {"nc", "*.nc"}, {"txt", "*.txt"}, {"", "All Files"} };
+    Vector_SelectablePtrs<FileType> m_FileTypes = { {"nc", "*.nc"}, {"txt", "*.txt"}, {"", "All Files"} };
     
     ImageTexture img_File;
     ImageTexture img_Folder;
@@ -59,3 +63,6 @@ private:
     void DrawFolders();
     void DrawFiles();
 };
+
+
+} // end namespace Sqeak
