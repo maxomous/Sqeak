@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <MaxLib.h>
 
 #include "sketch_common.h"
@@ -22,6 +23,13 @@ class Sketcher;
 
 
 /*
+
+
+
+    // TODO:    - SketchItem to become ItemRef
+    //          - Should SketchItem just be a ref to Item_Element / Item_Point?
+    //          - remove comments (old code)
+
 
 
 
@@ -48,14 +56,16 @@ class Sketcher;
     * from header files
 */
 
-
+    
+    
+    
 
 class SketchRenderer
 {
 public:
-    SketchRenderer(Sketcher* parent) : m_Parent(parent) {}
+    SketchRenderer(Sketcher* parent);
     
-    const RenderData&   GetRenderData() const;
+    const std::vector<RenderData>&   GetRenderData() const;
     // Goes through each element and each constraint and updates RenderData accordingly
     void                UpdateRenderData();
     // Render element to linestring
@@ -66,38 +76,90 @@ public:
     LineString          RenderCircle(const Vec2& pC, double radius) const;
     Vec2                AdjustCentrePoint(const Vec2& p0, const Vec2& p1, const Vec2& pC) const;
 private:
-    uint m_ArcSegments = 8;
+    uint m_ArcSegments = 16;
     // draw list for viewer
-    RenderData m_RenderData;
+    std::vector<RenderData> m_RenderData;
     
     Sketcher* m_Parent = nullptr;
+    
+    RenderData m_PreviewPoints;
+    RenderData m_PreviewLines;
+    
+    
+    friend class SketchEvents;
 };
-
-
-class SketchCommands
+    
+    
+class SketchEvents
 {
 public:
-    enum CommandType { None, Select, Add_Point, Add_Line, Add_Arc, Add_Circle, Add_Constraint_1_Item, Add_Constraint_2_Items };
+    enum class CommandType { None, Select, Add_Point, Add_Line, Add_Arc, Add_Circle, Add_Constraint_1_Item, Add_Constraint_2_Items };
     
-    SketchCommands(Sketcher* parent) : m_Parent(parent) {}
-    
-    const Points&       RenderPreview_Points() const        { return m_Preview_Points; };
-    const LineString&   RenderPreview_LineString() const    { return m_Preview_LineString; };
+    // Equivelent to:
+    //  GLFW_MOUSE_BUTTON_LEFT      0
+    //  GLFW_MOUSE_BUTTON_RIGHT     1
+    //  GLFW_MOUSE_BUTTON_MIDDLE    2
+    enum class MouseButton { None = -1, Left = 0, Right = 1, Middle = 2 };
+
+    // Equivelent to:
+    // GLFW_RELEASE     0
+    // GLFW_PRESS       1
+    enum class MouseAction { None = -1, Release = 0, Press = 1 };
+
+    // GLFW_REPEAT      2
+    enum class KeyAction   { None = -1, Release = 0, Press = 1, Repeat = 2 };
+
+    // Equivelent to:
+    // GLFW_MOD_SHIFT      0x0001
+    // GLFW_MOD_CONTROL    0x0002
+    // GLFW_MOD_ALT        0x0004
+    // GLFW_MOD_SUPER      0x0008
+    // GLFW_MOD_CAPS_LOCK  0x0010
+    // GLFW_MOD_NUM_LOCK   0x0020
+    enum class KeyModifier { None = 0x00, Shift = 0x01, Ctrl = 0x02, Alt = 0x04, Super = 0x08, CapsLock = 0x10, NumLock = 0x20 };
+
+
+    SketchEvents(Sketcher* parent) : m_Parent(parent) {}
     
     CommandType GetCommandType() const;
     void GetCommandType(CommandType command);
 
-    void Event_MouseRelease();
-    void Event_Click(const Vec2& p);
-    void Event_Hover(const SketchRenderer& sketchRenderer, const Vec2& p);
+
+    // Mouse Button Event
+    //
+    //   On Left Click                 
+    //       -  select item
+    //       -  if(there is no item), deselect items
+    //   Left Click w/ Ctrl or Shift
+    //       -  add to selection
+    //   On Release
+    //       -  if(selection box) select these items
+    void Mouse_Button(MouseButton button, MouseAction action, KeyModifier modifier);
     
+    // Mouse Move Event
+    //
+    //  Input should be (x, y) coords in sketch space
+    //
+    //  Hover over item -  Highlights it
+    //  Drag            -  if (clicked)
+    //                        -  if(Selected) drag items
+    //                        -  if(!selected) drag selection box
+    void Mouse_Move(const Vec2& p);
+
+
+        
 private:
-    SketchItem m_SelectedItem;
     CommandType m_CommandType = CommandType::None;
     std::vector<Vec2> m_InputData;
     
-    Points m_Preview_Points;
-    LineString m_Preview_LineString;
+    Vec2 m_CursorPos;
+    Vec2 m_CursorClickedPos;
+    double m_SelectionTolerance = 1.0;
+
+    MouseButton m_MouseButton;
+    MouseAction m_MouseAction;
+
+    //KeyModifier m_Modifier;
     
     Sketcher* m_Parent = nullptr;
 };
@@ -110,16 +172,15 @@ public:
     Sketcher();
     
     ElementFactory& Factory()   { return m_Factory; }
-    SketchCommands& Commands()  { return m_Commands; }
+    SketchEvents& Events()  { return m_Events; }
     SketchRenderer& Renderer()  { return m_Renderer; }
     
     
     
     // Attempts to solve constraints. 
     // movedPoint can be set for moving a point
-    void SolveConstraints(SketchItem movedPoint = {}, Vec2 p = Vec2()); 
+    void SolveConstraints(Vec2 p = Vec2()); 
     
-    std::vector<std::pair<SketchItem, double>>    GetItemByPosition(Vec2 p, double tolerance);
     
     bool DrawImGui();
     bool DrawImGui_Elements();
@@ -129,7 +190,7 @@ private:
     bool m_IsActive = false;
     
     ElementFactory m_Factory;
-    SketchCommands m_Commands;  
+    SketchEvents m_Events;  
     SketchRenderer m_Renderer;
 };
      

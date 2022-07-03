@@ -184,6 +184,8 @@ public:
 
 private:
     // Only Constraints can construct this
+    // The arc runs counter-clockwise from its beginning to its end (with
+    // the workplane's normal pointing towards the viewer)
     Arc(ConstraintSolver* parent, Group group, Axis& axis, double xC, double yC, double x0, double y0, double x1, double y1);
     friend class ConstraintSolver;
 };

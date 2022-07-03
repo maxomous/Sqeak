@@ -1,0 +1,34 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include/slvs.h
+stdint.h
+-
+string.h
+-
+
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.cpp
+iostream
+-
+functional
+-
+solver.h
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.h
+
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.h
+iostream
+-
+vector
+-
+functional
+-
+assert.h
+-
+libslvs/include/slvs.h
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include/slvs.h
+

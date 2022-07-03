@@ -6,7 +6,6 @@
 #include "constraints.h"
 
 
-
 namespace Sketch {
 
 using namespace MaxLib::Vector;
@@ -33,45 +32,115 @@ public:
         }
     }
     
+    
+
+    void ForEachItemElement(std::function<void(Item_Element&)> cb) {
+        
+        ForEachElement([&](Sketch::Element* element) {
+            cb(element->Item_Elem());
+        });
+    }
+
+    void ForEachItemPoint(std::function<void(Item_Point&)> cb) {
+        
+        ForEachElement([&](Sketch::Element* element) {
+            if(auto* point = dynamic_cast<Sketch::Point*>(element)) { 
+                point->ForEachItemPoint(cb); 
+            } else if(auto* line = dynamic_cast<Sketch::Line*>(element)) { 
+                line->ForEachItemPoint(cb);
+            } else if(auto* arc = dynamic_cast<Sketch::Arc*>(element)) { 
+                arc->ForEachItemPoint(cb);
+            } else if(auto* circle = dynamic_cast<Sketch::Circle*>(element)) { 
+                circle->ForEachItemPoint(cb); 
+            } else { // Should never reach
+                assert(0 && "Could not cast element, type unknown");                
+            }
+        });
+    }
+
+    void ForEachItem(std::function<void(Item&)> cb) 
+    {
+        ForEachItemElement(cb);
+        ForEachItemPoint(cb);
+    }
+
+    
+
+
+    Item& GetItemBySketchItem(SketchItem item) {
+        
+        if(item.type == SketchItem::Type::Point)            { return GetElementByID<Sketch::Point>(item.element)->Item_Elem(); }
+        else if(item.type == SketchItem::Type::Line)        { return GetElementByID<Sketch::Line>(item.element)->Item_Elem(); }
+        else if(item.type == SketchItem::Type::Arc)         { return GetElementByID<Sketch::Arc>(item.element)->Item_Elem(); }
+        else if(item.type == SketchItem::Type::Circle)      { return GetElementByID<Sketch::Circle>(item.element)->Item_Elem(); }
+        else if(item.type == SketchItem::Type::Line_P0)     { return GetElementByID<Sketch::Line>(item.element)->Item_P0(); }
+        else if(item.type == SketchItem::Type::Line_P1)     { return GetElementByID<Sketch::Line>(item.element)->Item_P1(); }
+        else if(item.type == SketchItem::Type::Arc_P0)      { return GetElementByID<Sketch::Arc>(item.element)->Item_P0(); }
+        else if(item.type == SketchItem::Type::Arc_P1)      { return GetElementByID<Sketch::Arc>(item.element)->Item_P1(); }
+        else if(item.type == SketchItem::Type::Arc_PC)      { return GetElementByID<Sketch::Arc>(item.element)->Item_PC(); }
+        else if(item.type == SketchItem::Type::Circle_PC)   { return GetElementByID<Sketch::Circle>(item.element)->Item_PC(); }
+        else { assert(0 && "Could not cast element, type unknown"); }// Should never reach 
+    }
+
+       
+    
+
+    void ClearHovered() 
+    {
+        ForEachItem([](Item& item) {
+            item.SetHovered(false);
+        });
+    }
+
+    void ClearSelection() 
+    {
+        ForEachItem([](Item& item) {
+            item.SetSelected(false);
+        });
+    }
+  
+    
     // Finds points within a tolerance to position p
     // Result a list of points and their distance to p 
-    std::vector<std::pair<SketchItem, double>> GetPointsByPosition(Vec2 p, double tolerance)
+    void AddSelectionByPosition(Vec2 p, double tolerance)
+    {
+        // Check each point on each element to see whether it falls within tolerance
+        ForEachItemPoint([&](Sketch::Item_Point& item) {
+            // Adds point to pointsFound if point falls within tolerance
+            double distance = Hypot(item.p - p);
+            if(distance <= tolerance) { 
+                item.SetSelected(true);
+            }
+        });
+       //  // Check each point on each element to see whether it falls within tolerance
+       // ForEachItemElement([&](const Sketch::Item_Element& item) {
+       //     // Adds point to pointsFound if point falls within tolerance
+       //     LiesOnElement = Geos::Intersect_Point_Element
+       //     double distance = Hypot(centroid - p);
+       //     if(distance <= tolerance) { 
+       //         item.SetSelected(true);
+       //     }
+       // });
+    }
+    
+    
+/*  
+    // Finds points within a tolerance to position p
+    // Result a list of points and their distance to p 
+    std::vector<std::pair<SketchItem, double>> GetItemsByPosition(Vec2 p, double tolerance)
     {
         std::vector<std::pair<SketchItem, double>> pointsFound; // and distance from p
         
-        // Adds point to pointsFound if point falls within tolerance
-        auto CheckPosition = [&](const Vec2& pos, SketchItem ref) {
-            double distance = Hypot(pos - p);
-            if(distance <= tolerance) { 
-                pointsFound.push_back(std::make_pair(ref, distance)); 
-            }
-        };
-        
         // Check each point on each element to see whether it falls within tolerance
-        ForEachElement([&](const Sketch::Element* element) {
-                        
-            if(auto* point = dynamic_cast<const Sketch::Point*>(element)) {
-                CheckPosition(point->P(), point->Ref_P());
-            }   
-            else if(auto* line = dynamic_cast<const Sketch::Line*>(element)) {
-                CheckPosition(line->P0(), line->Ref_P0());
-                CheckPosition(line->P1(), line->Ref_P1());
+        ForEachItemPoint([&](const Sketch::Item_Point& item) {
+            // Adds point to pointsFound if point falls within tolerance
+            double distance = Hypot(item.P() - p);
+            if(distance <= tolerance) { 
+                pointsFound.push_back(std::make_pair(item.Reference(), distance)); 
             }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element)) {
-                CheckPosition(arc->P0(), arc->Ref_P0());
-                CheckPosition(arc->P1(), arc->Ref_P1());
-                CheckPosition(arc->PC(), arc->Ref_PC());
-            }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element)) {
-                CheckPosition(circle->PC(), circle->Ref_PC());
-            }
-            else { // Should never reach
-                assert(0 && "Cannot render element, type unknown");                
-            }
-        });
+        }
         
         // Sort by distance
-        // TODO: Having issues gettng this to work
         std::sort(pointsFound.begin(), pointsFound.end(), [](auto &a, auto &b) {
             return a.second < b.second;
         });
@@ -79,6 +148,60 @@ public:
         
         return std::move(pointsFound);
     }
+*/
+     //   // Adds point to pointsFound if point falls within tolerance
+     //   auto CheckPosition = [&](const Vec2& pos, SketchItem ref) {
+     //       double distance = Hypot(pos - p);
+     //       if(distance <= tolerance) { 
+     //           pointsFound.push_back(std::make_pair(ref, distance)); 
+     //       }
+     //   };
+     //   
+     //   // Check each point on each element to see whether it falls within tolerance
+     //   ForEachElement([&](const Sketch::Element* element) {
+     //                   
+     //       if(auto* point = dynamic_cast<const Sketch::Point*>(element)) {
+     //           CheckPosition(point->P(), point->Ref_P());
+     //       }   
+     //       else if(auto* line = dynamic_cast<const Sketch::Line*>(element)) {
+     //           CheckPosition(line->P0(), line->Ref_P0());
+     //           CheckPosition(line->P1(), line->Ref_P1());
+     //       }
+     //       else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element)) {
+     //           CheckPosition(arc->P0(), arc->Ref_P0());
+     //           CheckPosition(arc->P1(), arc->Ref_P1());
+     //           CheckPosition(arc->PC(), arc->Ref_PC());
+     //       }
+     //       else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element)) {
+     //           CheckPosition(circle->PC(), circle->Ref_PC());
+     //       }
+     //       else { // Should never reach
+     //           assert(0 && "Cannot render element, type unknown");                
+     //       }
+     //   });
+        
+    
+    
+    
+    
+    /*
+    
+    std::vector<SketchItem> GetSelection() {
+        
+        std::vector<SketchItem> itemsSelected;
+        
+        // Check each point on each element to see whether it falls within tolerance
+        ForEachItemPoint([&](const Sketch::Item_Point& item) {
+            if(item.IsSelected()) {
+                itemsSelected.push_back(item.Reference()));                
+            }
+        }        
+        
+        return std::move(itemsSelected);
+    }*/
+    
+    
+    
     
    
     void PrintElements();
@@ -140,9 +263,9 @@ public:
     // Runs solver with current constraints, 
     // On success, Element positions are updated
     // On failure, failed Elements are flagged
-    // if draggedPoint is set, solver will fix this point to draggedPosition
+    // if dragPoint is set, solver will fix this point to dragPosition
     // Returns: success
-    bool UpdateSolver(SketchItem draggedPoint = SketchItem(), const Vec2& draggedPosition = Vec2());
+    bool UpdateSolver(std::optional<Vec2> dragPosition = {});
   
 private:    
 

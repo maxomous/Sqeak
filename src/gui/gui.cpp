@@ -111,7 +111,7 @@ public:
         if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::Clear) { 
             std::cout << "Clearing viewer" << std::endl;  
             ClearViewer(); 
-        } 
+            } 
         else {     
             // update 
             UpdateViewer(settings, sketcher);
@@ -138,17 +138,79 @@ private:
         Event<Event_Viewer_AddPointLists>::Dispatch( { &m_ViewerPointLists } );
         Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
     }
-          
-    void ClearViewer()
-    {
-        // line lists
-        Event<Event_Viewer_AddLineLists>::Dispatch( { nullptr } );
-        // points lists
-        Event<Event_Viewer_AddPointLists>::Dispatch( { nullptr } );
-        //
-        Event<Event_Update3DModelFromVector>::Dispatch( { vector<string>(/*empty*/) } );
-    }
     
+    void RenderSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
+    {    
+        using namespace Sketch;
+        using Sketch::RenderData;
+        
+        sketcher.Renderer().UpdateRenderData();
+        
+        for(const RenderData& data : sketcher.Renderer().GetRenderData()) 
+        {
+            DynamicBuffer::DynamicVertexList vertices;
+            
+            // Set colour
+            if(data.GetDataType() == RenderData::DataType::Items) 
+            {
+                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = settings.p.sketch.point.colour; } 
+                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = settings.p.sketch.line.colour; }
+            }
+            else if(data.GetDataType() == RenderData::DataType::Preview) 
+            {
+                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = settings.p.sketch.point.colour; } 
+                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = settings.p.sketch.line.colour; }
+            }
+            else if(data.GetDataType() == RenderData::DataType::Selected) 
+            {
+                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = { 1.0f, 0.0f, 0.0f }; } 
+                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = { 1.0f, 0.0f, 0.0f }; }
+            }
+            else if(data.GetDataType() == RenderData::DataType::Constraints) 
+            {
+                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = { 0.0f, 0.0f, 0.0f }; } 
+                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = { 0.0f, 0.0f, 0.0f }; }
+            } 
+            else { assert(0 && "Unknown Datatype"); }
+            
+                        
+            for(const Geometry& geometry : data.Geometries())
+            {
+                vertices.position.clear();
+                for(const Geom::Vec2& p : geometry) {
+                    vertices.position.push_back({ p.x, p.y, 0.0f });
+                }
+                if(data.GetRenderType() == RenderData::RenderType::Points)            { m_ViewerPointLists.push_back(vertices); }
+                else if(data.GetRenderType() == RenderData::RenderType::LineStrings)  { m_ViewerLineLists.push_back(vertices); }
+            }
+            
+        }
+    }
+        /*
+
+        for(const Sketch::Points& points : renderData.points) 
+        {
+            DynamicBuffer::DynamicVertexList pointsVertices(settings.p.sketch.point.colour);
+                                
+            for(const Geom::Vec2& p : points) {
+                pointsVertices.position.push_back({ p.x, p.y, 0.0f });
+            }
+            m_ViewerPointLists.push_back(pointsVertices);
+            
+        }
+        std::cout << "renderData.linestrings " << renderData.linestrings.size() << std::endl;
+        for(const Sketch::LineString& linestring : renderData.linestrings) 
+        {
+            DynamicBuffer::DynamicVertexList linesVertices(settings.p.sketch.line.colour);
+            
+            for(const Geom::Vec2& p : linestring) {
+                linesVertices.position.push_back({ p.x, p.y, 0.0f });
+            }
+            m_ViewerLineLists.push_back(linesVertices);
+        }*/
+    
+    
+    /*
     void RenderSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
     {
         sketcher.Renderer().UpdateRenderData();
@@ -175,6 +237,16 @@ private:
             }
             m_ViewerLineLists.push_back(linesVertices);
         }
+    }
+    */
+    void ClearViewer()
+    {
+        // line lists
+        Event<Event_Viewer_AddLineLists>::Dispatch( { nullptr } );
+        // points lists
+        Event<Event_Viewer_AddPointLists>::Dispatch( { nullptr } );
+        //
+        Event<Event_Update3DModelFromVector>::Dispatch( { vector<string>(/*empty*/) } );
     }
     
 };
@@ -284,13 +356,23 @@ int gui(GRBL& grbl, Settings& settings)
         inputEvent.mouseClick = &mouseClick;
      //   sketcher.HandleEvents(settings, inputEvent);
         
-        if(cursor.Position_Snapped) {   
-            if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_PRESS) {
-                sketcherNew.Commands().Event_Click({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });                
-            }
-            if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_RELEASE) {
-                sketcherNew.Commands().Event_MouseRelease();                
-            }        
+        if(cursor.Position_Snapped) {  
+             
+                
+            sketcherNew.Events().Mouse_Button((Sketch::SketchEvents::MouseButton)data.Button, (Sketch::SketchEvents::MouseAction)data.Action, (Sketch::SketchEvents::KeyModifier)data.Modifier);
+            
+            
+
+            
+            
+            
+            
+            //if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_PRESS) {
+            //    sketcherNew.Events().Event_Click({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });                
+            //}
+            //if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_RELEASE) {
+            //    sketcherNew.Events().Event_MouseRelease();                
+            //}        
         }
         // TODO THIS SHOULDNT BE HERER
         settings.SetUpdateFlag(ViewerUpdate::Full);
@@ -322,8 +404,12 @@ int gui(GRBL& grbl, Settings& settings)
         inputEvent.mouseMove = &mouseMove;
      //   sketcher.HandleEvents(settings, inputEvent);
            
-        if(cursor.Position_Snapped) {            
-            sketcherNew.Commands().Event_Hover(sketcherNew.Renderer(), { (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });
+        if(cursor.Position_Snapped) {       
+            
+            
+            sketcherNew.Events().Mouse_Move({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });
+                 
+            //sketcherNew.Events().Event_Hover(sketcherNew.Renderer(), { (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });
             
             // TODO THIS SHOULDNT BE HERER
             settings.SetUpdateFlag(ViewerUpdate::Full);

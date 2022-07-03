@@ -3,12 +3,6 @@
 
 namespace Sketch {
 
-void ElementFactory::PrintElements() {
-    for(auto& element : m_Elements) {
-        element->Print();
-    }
-}
-    
 
 // Get SketchItem functions
 
@@ -85,7 +79,7 @@ Sketch::ElementID ElementFactory::AddCircle(const Vec2& pC, double radius) {
 // On success, Element positions are updated
 // On failure, failed Elements are flagged
 // Returns: success
-bool ElementFactory::UpdateSolver(SketchItem draggedPoint, const Vec2& draggedPosition)
+bool ElementFactory::UpdateSolver(std::optional<Vec2> dragPosition)
 {
         
     Solver::ConstraintSolver solver;
@@ -105,11 +99,33 @@ bool ElementFactory::UpdateSolver(SketchItem draggedPoint, const Vec2& draggedPo
         constraint->AddToSolver(solver);
     }
     
-    // Fix dragged point to the dragged position
-    if(draggedPoint.type != SketchItem::Type::Unset) {
-        // Set new position for dragged point and fix it
-        SetDraggedPoint(solver, draggedPoint, draggedPosition);   
+    if(dragPosition) 
+    {
+        std::vector<SketchItem> draggedItems;
+        
+        ForEachItemPoint([&](Item_Point& item) {
+            if(item.IsSelected()) {
+                draggedItems.push_back(item.Reference());
+            }
+        });
+        ForEachItemElement([&](Item_Element& item) {
+            if(item.IsSelected()) {
+                draggedItems.push_back(item.Reference());
+            }
+        });
+        
+        // point(s) were found at position p
+        if(!draggedItems.empty()) {
+            // TODO: Handle moving multiple points
+            SketchItem draggedItem = draggedItems[0];
+            // Fix dragged point to the dragged position
+            if(draggedItem.type != SketchItem::Type::Unset) {
+                // Set new position for dragged point and fix it
+                SetDraggedPoint(solver, draggedItem, *dragPosition);   
+            }
+        }
     }
+    
     // Solve
     Solver::SolverResult result = solver.Solve();
     

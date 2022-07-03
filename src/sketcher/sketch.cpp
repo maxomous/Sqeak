@@ -3,6 +3,10 @@
 #include "../glcore/deps/imgui/imgui.h"
 #include "sketch.h"
 
+ 
+// TODO: Check if point on arc works?
+
+
 /*
     The following pattern allows us to be in control of all of the members within the factory, the user receives ID's for the members and uses these IDs to call functions.
 
@@ -38,7 +42,13 @@ using namespace MaxLib::String;
 using namespace MaxLib::Geom;
 
 
-
+SketchRenderer::SketchRenderer(Sketcher* parent) 
+    : m_Parent(parent),
+    m_PreviewPoints(Sketch::RenderData::RenderType::Points, RenderData::DataType::Preview),
+    m_PreviewLines(RenderData::RenderType::LineStrings, RenderData::DataType::Preview)
+{}
+    
+    
 LineString SketchRenderer::RenderLine(const Vec2& p0, const Vec2& p1) const
 {
     return std::move(LineString({ p0, p1 }));
@@ -103,50 +113,134 @@ Vec2 SketchRenderer::AdjustCentrePoint(const Vec2& p0, const Vec2& p1, const Vec
     return pMid + newCentre.Cartesian() * flipSide;
 }
 
-const RenderData& SketchRenderer::GetRenderData() const { 
+const std::vector<RenderData>& SketchRenderer::GetRenderData() const { 
     return m_RenderData; 
 }
-
+ 
 void SketchRenderer::UpdateRenderData()
 {
-    PointsCollection& pointsCollection = m_RenderData.points;   // vector<vector<Vec2>>>
-    LineStrings& linestrings = m_RenderData.linestrings;        // vector<vector<Vec2>>>
+    //PointsCollection& pointsCollection = m_RenderData.points;   // vector<vector<Vec2>>>
+    //LineStrings& linestrings = m_RenderData.linestrings;        // vector<vector<Vec2>>>
+    
+    //pointsCollection.clear();
+    //linestrings.clear();
     
     // Clear any existing data
-    pointsCollection.clear();
-    linestrings.clear();
+    m_RenderData.clear();
     
+    
+    
+
+    RenderData pointData(RenderData::RenderType::Points, RenderData::DataType::Items);  // takes in a vector<LineString> equiv.
+    RenderData pointData_Selected(RenderData::RenderType::Points, RenderData::DataType::Selected);
+
+    m_Parent->Factory().ForEachElement([&](Sketch::Element* element) {
+        
+        Points points;
+        Points points_Selected;
+
+        element->ForEachItemPoint([&](const Sketch::Item_Point& item) {
+            Points& p = (item.IsSelected()) ? points_Selected : points ;
+            p.push_back(item.p);
+        });
+        if(!points.empty())                 { pointData.Add(std::move(points)); } 
+        if(!points_Selected.empty())        { pointData_Selected.Add(std::move(points_Selected)); } 
+    });
+    
+    if(!pointData.Empty())              { m_RenderData.emplace_back(std::move(pointData)); } 
+    if(!pointData_Selected.Empty())     { m_RenderData.emplace_back(std::move(pointData_Selected)); } 
+    
+
+
+    RenderData lineData(RenderData::RenderType::LineStrings, RenderData::DataType::Items);
+    RenderData lineData_Selected(RenderData::RenderType::LineStrings, RenderData::DataType::Selected);
+    
+    m_Parent->Factory().ForEachElement([&](Sketch::Element* element) {
+        
+        LineString linestring;
+        LineString linestring_Selected;
+        LineString& l = (element->Item_Elem().IsSelected()) ? linestring_Selected : linestring;
+        
+        if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; } // do nothing
+        else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
+        else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+        else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
+        else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
+        
+        // Return values    
+        if(!l.empty())             { lineData.Add(std::move(l)); }    
+    }); 
+    
+    // Add Selected Data
+    if(!lineData.Empty())               { m_RenderData.emplace_back(std::move(lineData)); }  
+    if(!lineData_Selected.Empty())      { m_RenderData.emplace_back(std::move(lineData_Selected)); }  
+    
+    /*   
     m_Parent->Factory().ForEachElement([&](const Sketch::Element* element) {
+        
         Points points;
         LineString linestring;
+        
+        Points points_Selected;
+        LineString linestring_Selected;
+        
+        
+        auto AddPoint = [&points, &points_Selected](bool isSelected, const Vec2& p) {
+            (isSelected) ? points_Selected.push_back(p) : points.push_back(p);
+        };
+        auto AddLineString = [&linestring, linestring_Selected](bool isSelected, const LineString& l) {
+            (isSelected) ? linestring_Selected.push_back(l) : linestring.push_back(l);
+        };
+        
+        
         if(auto* point = dynamic_cast<const Sketch::Point*>(element)) {
-            points.push_back(point->P());
+            AddPoint(point->IsSelected_P(), point->P());
+            //points.push_back(point->P());
         }
         else if(auto* line = dynamic_cast<const Sketch::Line*>(element)) {
-            points.push_back(line->P0());
-            points.push_back(line->P1());
-            linestring = RenderLine(line->P0(), line->P1());
+            AddPoint(point->IsSelected_P0(), point->P0());
+            AddPoint(point->IsSelected_P1(), point->P1());
+            AddLineString(point->IsSelected(), RenderLine(line->P0(), line->P1()));
+            //points.push_back(line->P0());
+            //points.push_back(line->P1());
+            //linestring = RenderLine(line->P0(), line->P1());
         }
         else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element)) {
-            points.push_back(arc->P0());
-            points.push_back(arc->P1());
-            points.push_back(arc->PC());
-            linestring = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction());
+            AddPoint(arc->IsSelected_P0(), arc->P0());
+            AddPoint(arc->IsSelected_P1(), arc->P1());
+            AddPoint(arc->IsSelected_PC(), arc->PC());
+            AddLineString(arc->IsSelected(), RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()));
+            //points.push_back(arc->P0());
+            //points.push_back(arc->P1());
+            //points.push_back(arc->PC());
+            //linestring = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction());
         }
         else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element)) {
-            points.push_back(circle->PC());
-            linestring = RenderCircle(circle->PC(), circle->Radius());
+            AddPoint(circle->IsSelected_PC(), circle->PC());
+            AddLineString(circle->IsSelected(), RenderCircle(circle->PC(), circle->Radius()));
+            //points.push_back(circle->PC());
+            //linestring = RenderCircle(circle->PC(), circle->Radius());
         }
         else { // Should never reach
             assert(0 && "Cannot render element, type unknown");                
         }
         
-        // Reeturn values
-        if(!points.empty())             { pointsCollection.emplace_back(std::move(points)); } 
-        if(!linestring.empty())         { linestrings.emplace_back(std::move(linestring)); }    
+        // Return values
+        //if(!points.empty())             { pointsCollection.emplace_back(std::move(points)); } 
+        //if(!linestring.empty())         { linestrings.emplace_back(std::move(linestring)); }    
+        if(!points.empty())                 { pointData.Add(std::move(points)); } 
+        if(!linestring.empty())             { lineData.Add(std::move(linestring)); }    
+        if(!points_Selected.empty())        { pointData_Selected.Add(std::move(points_Selected)); } 
+        if(!linestring_Selected.empty())    { lineData_Selected.Add(std::move(linestring_Selected)); }    
+    
     });
+    */
+    
+            
     
     
+      
+    /*
     m_Parent->Factory().ForEachConstraint([&](const Sketch::Constraint* constraint) 
     {
         if(auto* c = dynamic_cast<const Sketch::Constraint_Template_OneItem*>(constraint)) {
@@ -160,170 +254,291 @@ void SketchRenderer::UpdateRenderData()
         }
     });
     
-    
+    */
     
     
     // Add preview render data
-    pointsCollection.push_back(m_Parent->Commands().RenderPreview_Points()); 
-    linestrings.push_back(m_Parent->Commands().RenderPreview_LineString());   
+    if(!m_PreviewPoints.Empty())       { m_RenderData.emplace_back(std::move(m_PreviewPoints)); }
+    if(!m_PreviewLines.Empty())        { m_RenderData.emplace_back(std::move(m_PreviewLines)); }
+    
+
+    
 }
 
+SketchEvents::CommandType SketchEvents::GetCommandType() const { return m_CommandType; }
 
-
-SketchCommands::CommandType SketchCommands::GetCommandType() const { return m_CommandType; }
-
-void SketchCommands::GetCommandType(CommandType commandType) {
+void SketchEvents::GetCommandType(CommandType commandType) {
     m_CommandType = commandType;
     m_InputData.clear();   
 }
 
-void SketchCommands::Event_MouseRelease() {
-    // Reset selected item
-    m_SelectedItem = {};
-}
 
-void SketchCommands::Event_Click(const Vec2& p) {
-    
-    // Return if no command set
-    if(m_CommandType == None) { return; }
-    
-    // TODO: Work out where point should be (i.e. if snapped etc) 
-    
-    if(m_CommandType == CommandType::Select) {
-        // Find items close to p
-        std::vector<std::pair<SketchItem, double>> items = m_Parent->GetItemByPosition(p, 1.0);
-        // Return if no point found
-        if(items.empty()) { return; }
-        m_SelectedItem = items[0].first;
-        std::cout << "Selected Point: " << m_SelectedItem.Name() << std::endl;
-        
-        return;
-    }
-    
-    
-    m_InputData.push_back(p); 
-    std::cout << "InputData Size: " << m_InputData.size() << std::endl;
-    // Handle Add Point     
-    if(m_CommandType == CommandType::Add_Point) {
-        m_Parent->Factory().AddPoint(m_InputData[0]);                
-        m_InputData.clear();
-    }
-    // Handle Add Line
-    else if(m_CommandType == CommandType::Add_Line) {
-        if(m_InputData.size() == 2) {
-            m_Parent->Factory().AddLine(m_InputData[0], m_InputData[1]);
-            m_InputData.clear();
-        }
-    }
-    // Handle Add Arc
-    else if(m_CommandType == CommandType::Add_Arc) {
-        if(m_InputData.size() == 3) {
-            //TODO Make direction settable
-            Direction direction = Direction::CW;
-            // Calculate centre from point
-            Vec2 newCentre = m_Parent->Renderer().AdjustCentrePoint(m_InputData[0], m_InputData[1], m_InputData[2]);
-            m_Parent->Factory().AddArc(m_InputData[0], m_InputData[1], newCentre, direction);
-            m_InputData.clear();
-        }
-    }
-    // Handle Add Circle
-    else if(m_CommandType == CommandType::Add_Circle) {
-        if(m_InputData.size() == 2) {
-            double radius = Hypot(m_InputData[1] - m_InputData[0]);
-            m_Parent->Factory().AddCircle(m_InputData[0], radius);
-            m_InputData.clear();
-        }
-    }
-    else {
-        assert(0 && "Command doesn't exist");
-    }
-}
 
-void SketchCommands::Event_Hover(const SketchRenderer& sketchRenderer, const Vec2& p) {
-    
-    // Clear preview data
-    m_Preview_Points.clear();
-    m_Preview_LineString.clear();
-    
+
+// Mouse Button Event
+//
+//   On Left Click                 
+//       -  select item
+//       -  if(there is no item), deselect items
+//   Left Click w/ Ctrl or Shift
+//       -  add to selection
+//   On Release
+//       -  if(selection box) select these items
+
+void SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModifier modifier) 
+{    
+    m_MouseButton = button;
+    m_MouseAction = action;
+    // Update cursor clicked pos
+    if(button == MouseButton::Left && action == MouseAction::Press) { m_CursorClickedPos = m_CursorPos; }
+
     // Return if no command set
-    if(m_CommandType == None) { return; }
+    if(m_CommandType == CommandType::None) { return; }
     
     // TODO: Work out where point should be (i.e. if snapped etc) 
     
     
+    // Handle Select Command
+    if(m_CommandType == CommandType::Select) {
+        
+        if(button == MouseButton::Left && action == MouseAction::Press) {
+            // Reset selected item if ctrl or shift is not pressed
+            if(!(modifier == KeyModifier::Ctrl || modifier == KeyModifier::Shift)) {
+                m_Parent->Factory().ClearSelection();
+                //ClearSelected();
+            }
+            
+            m_Parent->Factory().AddSelectionByPosition(m_CursorPos, m_SelectionTolerance);
+            
+            
+           //// Find closest items to p
+           //std::vector<std::pair<SketchItem, double>> items = m_Parent->Factory().GetItemsByPosition(m_CursorPos, m_SelectionTolerance);
+           //// Deselect items and return if no point found
+           //if(!items.empty()) { 
+           //    SketchItem selectedItem = items[0].first;
+           //    
+           //    // Check if it exists inside vector
+           //    bool itemExists = std::find_if(m_Selected.begin(), m_Selected.end(), [&](const SketchItem& item) { return ((item.element == selectedItem.element) && (item.type == selectedItem.type)); }) != m_Selected.end();
+           //    // Add closest item to selection if it doesn't already exist
+           //    if(!itemExists) { m_Selected.push_back(selectedItem); }
+           //                  
+           //      
+           //    // Print items
+           //    std::cout << "Selected Items: " << std::endl;
+           //    for(SketchItem& item : m_Selected) { 
+           //        std::cout << item.Name() << std::endl; 
+           //    }
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //    
+           //} else { // Clear selection if no item found at p
+           //    ClearSelected();
+           //}        
+        }
+        else if(button == MouseButton::Left && action == MouseAction::Release) {
+            // If we have dragged the cursor whilst button was pressed
+            if(m_CursorPos != m_CursorClickedPos) {
+                // Find selection inside selection box
+                
+                // TODO: work out only if fully inside or partially inside selection box
+                //m_Selected = m_Parent->GetItemsByBetweenPositions(m_CursorPos, m_CursorClickedPos);
+            }
+        }
+        return;     
+    }
+        
+    // Handle other commands
+    if(button == MouseButton::Left && action == MouseAction::Press) {
+    
+        m_InputData.push_back(m_CursorClickedPos); 
+        std::cout << "InputData Size: " << m_InputData.size() << std::endl;
+        // Handle Add Point     
+        if(m_CommandType == CommandType::Add_Point) {
+            m_Parent->Factory().AddPoint(m_InputData[0]);                
+            m_InputData.clear();
+        }
+        // Handle Add Line
+        else if(m_CommandType == CommandType::Add_Line) {
+            if(m_InputData.size() == 2) {
+                m_Parent->Factory().AddLine(m_InputData[0], m_InputData[1]);
+                m_InputData.clear();
+            }
+        }
+        // Handle Add Arc
+        else if(m_CommandType == CommandType::Add_Arc) {
+            if(m_InputData.size() == 3) {
+                // make sure points arent the same
+                if(!(m_InputData[0] == m_InputData[1] && m_InputData[1] == m_InputData[2])) {
+                    //TODO Make direction settable
+                    Direction direction = Direction::CW;
+                    // Calculate centre from point
+                    Vec2 newCentre = m_Parent->Renderer().AdjustCentrePoint(m_InputData[0], m_InputData[1], m_InputData[2]);
+                    m_Parent->Factory().AddArc(m_InputData[0], m_InputData[1], newCentre, direction);                    
+                }
+                m_InputData.clear();
+            }
+        }
+        // Handle Add Circle
+        else if(m_CommandType == CommandType::Add_Circle) {
+            if(m_InputData.size() == 2) {
+                double radius = Hypot(m_InputData[1] - m_InputData[0]);
+                m_Parent->Factory().AddCircle(m_InputData[0], radius);
+                m_InputData.clear();
+            }
+        }
+        else {
+            assert(0 && "Command doesn't exist");
+        }
+    }
+    
+}
+
+// Mouse Move Event
+//
+//  Input should be (x, y) coords in sketch space
+//
+//  Hover over item -  Highlights it
+//  Drag            -  if (clicked)
+//                        -  if(Selected) drag items
+//                        -  if(!selected) drag selection box
+
+void SketchEvents::Mouse_Move(const Vec2& p)
+{ 
+    // Update cursor
+    m_CursorPos = p;
+    
+    // Reset the mouse button / action
+    if(m_MouseAction == MouseAction::Release) { m_MouseButton = MouseButton::None; m_MouseAction = MouseAction::None; }
+    
+    // TODO: Work out where point should be (i.e. if snapped etc) 
+    
+     
+    // Return if no command set
+    if(m_CommandType == CommandType::None) { return; }
     
     if(m_CommandType == CommandType::Select) {
         
-        if(ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
-            m_Parent->SolveConstraints(m_SelectedItem , p);            
+        // Highlight item if hovered over
+        if(m_MouseButton == MouseButton::None) { 
+                
+            //if(!items.empty()) {
+                //HighlightItem(items[0].first);
+            //}
         }
         
-        // do nothing
+        if(m_MouseButton == MouseButton::Left && m_MouseAction == MouseAction::Press) {
+            // Drag items(s)
+            
+            
+            
+            m_Parent->SolveConstraints(p);
+            
+            //if(!m_Selected.empty()) {
+            //    m_Parent->SolveConstraints(m_Selected[0], p);
+            //} 
+            // Selection box
+            //else { 
+                // Draw selection box
+            //}
+        }
         return;
     }
     
     
+    // Preview New Element
+     
+    
+    
+    
+    const SketchRenderer& renderer = m_Parent->Renderer();
+    
+    Points preview_Points;
+    LineString preview_LineString;
     
     // Handle Add Point     
     if(m_CommandType == CommandType::Add_Point) {
-        m_Preview_Points.push_back(p);
+        preview_Points.push_back(p);
             
     }
     // Handle Add Line
     else if(m_CommandType == CommandType::Add_Line) {
-        m_Preview_Points.push_back(p); 
+        preview_Points.push_back(p); 
         if(m_InputData.size() > 0) {
-            m_Preview_Points.push_back(m_InputData[0]);
-            m_Preview_LineString = sketchRenderer.RenderLine(p, m_InputData[0]);
+            preview_Points.push_back(m_InputData[0]);
+            preview_LineString = renderer.RenderLine(p, m_InputData[0]);
         }
     }
     // Handle Add Arc
     else if(m_CommandType == CommandType::Add_Arc) {
         if(m_InputData.size() == 0) {
-            m_Preview_Points.push_back(p); 
+            preview_Points.push_back(p); 
         }
         else if(m_InputData.size() == 1) {
-            m_Preview_Points.push_back(m_InputData[0]); 
-            m_Preview_Points.push_back(p); 
+            preview_Points.push_back(m_InputData[0]); 
+            preview_Points.push_back(p); 
             Vec2 midPoint = (p + m_InputData[0]) / 2;
-            m_Preview_LineString = sketchRenderer.RenderArc(m_InputData[0], p, midPoint, Direction::CW);    
+            preview_LineString = renderer.RenderArc(m_InputData[0], p, midPoint, Direction::CW);    
             // TODO: Direction should be settable
         }
         else if(m_InputData.size() == 2) {
-            m_Preview_Points.push_back(m_InputData[0]); 
-            m_Preview_Points.push_back(m_InputData[1]); 
+            preview_Points.push_back(m_InputData[0]); 
+            preview_Points.push_back(m_InputData[1]); 
             
             // Calculate centre based on p
-            Vec2 newCentre = sketchRenderer.AdjustCentrePoint(m_InputData[0], m_InputData[1], p);
-            m_Preview_Points.push_back(newCentre); 
+            Vec2 newCentre = renderer.AdjustCentrePoint(m_InputData[0], m_InputData[1], p);
+            preview_Points.push_back(newCentre); 
                         
-            m_Preview_LineString = sketchRenderer.RenderArc(m_InputData[0], m_InputData[1], newCentre, Direction::CW);
+            preview_LineString = renderer.RenderArc(m_InputData[0], m_InputData[1], newCentre, Direction::CW);
         }
     }
     // Handle Add Circle
     else if(m_CommandType == CommandType::Add_Circle) {
         if(m_InputData.size() == 0) {
-            m_Preview_Points.push_back(p); 
+            preview_Points.push_back(p); 
         }
         else if(m_InputData.size() == 1) {
-            m_Preview_Points.push_back(m_InputData[0]); 
-            // dont show mouse point for circle? m_Preview_Points.push_back(p);
-            m_Preview_LineString = sketchRenderer.RenderCircle(m_InputData[0], Hypot(p-m_InputData[0]));
+            preview_Points.push_back(m_InputData[0]); 
+            // dont show mouse point for circle? preview_Points.push_back(p);
+            preview_LineString = renderer.RenderCircle(m_InputData[0], Hypot(p-m_InputData[0]));
         }
     }
     else {
         assert(0 && "Command doesn't exist");
     }
     
+    if(!preview_Points.empty())       { m_Parent->Renderer().m_PreviewPoints.Add(std::move(preview_Points)); } 
+    if(!preview_LineString.empty())   { m_Parent->Renderer().m_PreviewLines.Add(std::move(preview_LineString)); }   
+    
+} 
+
+
+    
+    
+    
+    
+    
+    
+/*
+void SketchEvents::Event_Keyboard(int key, int scancode, KeyAction action, KeyModifier modifier) 
+{   
+    
 }
-
- 
-// TODO: Check if point on arc works?
-
+*/
 
 
 Sketcher::Sketcher() 
-    : m_Commands(this), m_Renderer(this)
+    : m_Events(this), m_Renderer(this)
 {
     
     ElementFactory& f = Factory(); // sketcher.Factory();
@@ -350,8 +565,6 @@ Sketcher::Sketcher()
     
     
     
-    std::cout << "\n\n**** Elements Before Solving ****\n" << std::endl;
-    f.PrintElements();
     
 }
 
@@ -360,30 +573,19 @@ Sketcher::Sketcher()
 
 
 
-
-
-
-void Sketcher::SolveConstraints(SketchItem movedPoint, Vec2 p) 
-{
+void Sketcher::SolveConstraints(Vec2 p) 
+{      
     // Update Solver set dragged point and its position
-    if(bool success = m_Factory.UpdateSolver(movedPoint, p)) {
+    if(bool success = m_Factory.UpdateSolver(p)) {
         (void)success;
-        
-        m_Factory.PrintElements();
     }
-}
-
-// Get ID of point 
-std::vector<std::pair<SketchItem, double>> Sketcher::GetItemByPosition(Vec2 p, double tolerance)
-{  
-    return m_Factory.GetPointsByPosition(p, tolerance);
 }
 
 
 bool Sketcher::DrawImGui()
 {
     bool updateRequired = false;
-    /*  
+      /*
     // Cursor Popup
     static ImGuiModules::ImGuiPopup popup_CursorRightClick("popup_Sketch_CursorRightClick");
     // open
@@ -440,12 +642,12 @@ bool Sketcher::DrawImGui()
         
         static int command = 0;
         if(ImGui::Combo("Command", &command, "None\0Select\0Add Point\0Add Line\0Add Arc\0Add Circle\0\0")) {
-            if(command == 0) { m_Commands.GetCommandType(SketchCommands::CommandType::None); }
-            if(command == 1) { m_Commands.GetCommandType(SketchCommands::CommandType::Select); }
-            if(command == 2) { m_Commands.GetCommandType(SketchCommands::CommandType::Add_Point); }
-            if(command == 3) { m_Commands.GetCommandType(SketchCommands::CommandType::Add_Line); }
-            if(command == 4) { m_Commands.GetCommandType(SketchCommands::CommandType::Add_Arc); }
-            if(command == 5) { m_Commands.GetCommandType(SketchCommands::CommandType::Add_Circle); }
+            if(command == 0) { m_Events.GetCommandType(SketchEvents::CommandType::None); }
+            if(command == 1) { m_Events.GetCommandType(SketchEvents::CommandType::Select); }
+            if(command == 2) { m_Events.GetCommandType(SketchEvents::CommandType::Add_Point); }
+            if(command == 3) { m_Events.GetCommandType(SketchEvents::CommandType::Add_Line); }
+            if(command == 4) { m_Events.GetCommandType(SketchEvents::CommandType::Add_Arc); }
+            if(command == 5) { m_Events.GetCommandType(SketchEvents::CommandType::Add_Circle); }
             updateRequired = true;
         }
         
@@ -556,7 +758,7 @@ bool Sketcher::DrawImGui_Elements()
     bool updateRequired = false;
     if (ImGui::CollapsingHeader("Elements"))
     {
-        m_Factory.ForEachElement([&](const Sketch::Element* element) {
+        m_Factory.ForEachElement([&](Sketch::Element* element) {
             if(auto* point = dynamic_cast<const Sketch::Point*>(element)) {
                 
                 if (ImGui::TreeNode(va_str("Point %d", point->ID()).c_str())) {

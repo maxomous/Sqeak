@@ -11,31 +11,103 @@ namespace Sketch {
 
 using namespace MaxLib::Geom;
 
-// Forward declare
-//typedef int ElementID;
-//class SketchItem;
-/*
-    class Element;
-    class Point;
-    class Line;
-    class Arc;
-    class Circle;
-*/
 
 
-/*
+class Element;
 
-class _
+
+// Contains functions and variables specific to the item
+class Item
+{
+public:     Item(Element* parent) 
+            : m_Parent(parent) {}
+    
+public:     
+    bool IsHovered() const { return m_IsHovered; }
+    bool IsSelected() const { return m_IsSelected; }
+
+private:    
+    void SetHovered(bool isHovered) { m_IsHovered = isHovered; }
+    void SetSelected(bool isSelected) { m_IsSelected = isSelected; }
+
+    bool m_IsHovered = false;
+    bool m_IsSelected = false;
+    
+protected:
+    Element* m_Parent;
+        
+    friend class ElementFactory;
+};
+
+
+
+
+// Item_Parameter is a parameter inside an element
+class Item_Parameter : public Item
+{
+public:     
+    Item_Parameter(Element* parent, double val, std::function<Slvs_hParam(Element*)> solverValue) 
+        : Item(parent), value(val), cb_SolverValue(std::move(solverValue)) {}
+
+    double value;
+
+private:    
+    // Set Parameter from Solver
+    std::function<Slvs_hParam(Element*)> cb_SolverValue;
+    void UseSolverValue(Solver::ConstraintSolver& solver) { value = solver.GetResult(cb_SolverValue(m_Parent)); }
+    friend class Element;
+};
+
+
+
+
+// Contains functions and variables specific to the item
+class Item_WithReference : public Item
+{
+public:     
+    Item_WithReference(Element* parent, SketchItem::Type type) 
+        : Item(parent), m_Type(type) {}
+        
+    SketchItem Reference();
+    SketchItem::Type Type() { return m_Type; }
+
+private:
+    SketchItem::Type m_Type;
+};
+
+
+
+// Item_Element is the element itself
+class Item_Element : public Item_WithReference
+{
+public:     
+    Item_Element(Element* parent, SketchItem::Type type) 
+        : Item_WithReference(parent, type) {}
+        
+};
+
+
+// Item_Point is a point inside an element
+class Item_Point : public Item_WithReference
 {
 public:
+    Item_Point(Element* parent, SketchItem::Type type, const Vec2& position, std::function<Solver::Point2D&(Element* element)> solverValue) 
+        : Item_WithReference(parent, type), p(position), cb_SolverValue(std::move(solverValue)) {}
     
-private:
-    VertexData m_VertexData;
+    Vec2 p;
+
+private:    
+    // Set Position from Solver
+    std::function<Solver::Point2D&(Element* element)> cb_SolverValue;
+    void UseSolverValue(Solver::ConstraintSolver& solver);
+    friend class Element;
 };
-*/
+ 
 
 
 
+
+// Contains functions specific to element
 class Element
 {
 public:
@@ -44,81 +116,95 @@ public:
     
     ElementID ID() const;
     
-    virtual void Print() = 0;
+    Item_Element& Item_Elem() { return m_Item_Element; }
     
+    virtual void ForEachItemPoint(std::function<void(Item_Point&)> cb) = 0;
+    virtual void ForEachItemParameter(std::function<void(Item_Parameter&)> cb) { (void)cb; } // unused
+    
+    void UseSolverValues(Solver::ConstraintSolver& solver) 
+    {    
+        ForEachItemPoint([&solver](Item_Point& item) {
+            item.UseSolverValue(solver);
+        });
+        ForEachItemParameter([&solver](Item_Parameter& item) {
+            item.UseSolverValue(solver);
+        });
+    }
+        
     virtual void AddToSolver(Solver::ConstraintSolver& solver) = 0;
-    virtual void UseSolverValues(Solver::ConstraintSolver& solver) = 0;
+    
     void         ClearSolverData();
     
     template<typename T>
-    T* SolverElement() const 
+    T* SolverElement() 
     { 
         auto element = dynamic_cast<T*>(m_SolverElement.get());
-        if(element) {
-            return element;
-        } else {
-            assert(0 && "Casting to element failed!");
-        }
+        
+        assert(element && "Casting to element failed!");
+        
+        return element;
     }
     
-protected:
-    Element();
-    
-    ElementID m_ID = 0;
-    
-    std::unique_ptr<Solver::Element> m_SolverElement;
-        
-    Vec2 GetResult(Solver::ConstraintSolver& solver, Solver::Point2D point) 
-    {    
+    Vec2 GetResult(Solver::ConstraintSolver& solver, Solver::Point2D point)
+    {
         std::array<double, 2> p = solver.GetResult(point);
         return { p[0], p[1] };
     }
+    
+protected:
+    Element(SketchItem::Type type);
+    
+    ElementID m_ID = 0;
+    
+    Item_Element m_Item_Element;
+    
+    std::unique_ptr<Solver::Element> m_SolverElement;
+        
 };
 
 
 
-    
     
 class Point : public Element
 {
 public:
     Point(const Vec2& p);
     
-    const Vec2& P() const;
-    
-    const SketchItem Ref_P() const;
-    
-    void Print() override;
+    const Vec2& P() const { return m_Item_P.p; }
+    Item_Point& Item_P() { return m_Item_P; }
+
+    void ForEachItemPoint(std::function<void(Item_Point&)> cb) override {
+        cb(m_Item_P);
+    }
     
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-    void UseSolverValues(Solver::ConstraintSolver& solver) override;
     
 private:
-
-    Vec2 m_P;
+    // Note: The solver treats a point the same as a point element
+    Item_Point m_Item_P;
 };
-
 
 
 class Line : public Element
 {
 public:
     Line(const Vec2& p0, const Vec2& p1);
-    const Vec2& P0() const;
-    const Vec2& P1() const;
     
-    const SketchItem Ref_P0() const;
-    const SketchItem Ref_P1() const;
-    
-    void Print() override;
-    
+    const Vec2& P0() const { return m_Item_P0.p; }
+    const Vec2& P1() const { return m_Item_P1.p; }
+    Item_Point& Item_P0() { return m_Item_P0; }
+    Item_Point& Item_P1() { return m_Item_P1; }
+
+    void ForEachItemPoint(std::function<void(Item_Point&)> cb) override {
+        cb(m_Item_P0);
+        cb(m_Item_P1);
+    }
+        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-    void UseSolverValues(Solver::ConstraintSolver& solver) override;
     
 private:
-
-    Vec2 m_P0;
-    Vec2 m_P1;
+    Item_Point m_Item_P0;
+    Item_Point m_Item_P1;
 };
 
 
@@ -126,45 +212,57 @@ class Arc : public Element
 {
 public:
     Arc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction);
-    const Vec2& P0() const;
-    const Vec2& P1() const;
-    const Vec2& PC() const;
+    
     const MaxLib::Geom::Direction& Direction() const;
+    
+    const Vec2& P0() const { return m_Item_P0.p; }
+    const Vec2& P1() const { return m_Item_P1.p; }
+    const Vec2& PC() const { return m_Item_PC.p; }
+    Item_Point& Item_P0() { return m_Item_P0; }
+    Item_Point& Item_P1() { return m_Item_P1; }
+    Item_Point& Item_PC() { return m_Item_PC; }
 
-    const SketchItem Ref_P0() const;
-    const SketchItem Ref_P1() const;
-    const SketchItem Ref_PC() const;
-    
-    void Print() override;
-    
+    void ForEachItemPoint(std::function<void(Item_Point&)> cb) override {
+        cb(m_Item_P0);
+        cb(m_Item_P1);
+        cb(m_Item_PC);
+    }
+            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-    void UseSolverValues(Solver::ConstraintSolver& solver) override;
     
 private:
-    Vec2 m_P0;
-    Vec2 m_P1;
-    Vec2 m_PC;
     MaxLib::Geom::Direction m_Direction;
+    
+    Item_Point m_Item_P0;
+    Item_Point m_Item_P1;
+    Item_Point m_Item_PC;
 };
 
-
+ 
 class Circle : public Element
 {
 public:
     Circle(const Vec2& pC, double radius);
-    const Vec2& PC() const;
-    double Radius() const;
+    
+    double Radius() const { return m_Item_Radius.value; }
+    Item_Parameter& Item_Radius() { return m_Item_Radius; }
 
-    const SketchItem Ref_PC() const;
+    const Vec2& PC() const { return m_Item_PC.p; }
+    Item_Point& Item_PC() { return m_Item_PC; }
     
-    void Print() override;
-    
+
+    void ForEachItemPoint(std::function<void(Item_Point&)> cb) override {
+        cb(m_Item_PC);
+    }
+    void ForEachItemParameter(std::function<void(Item_Parameter&)> cb) override {
+        cb(m_Item_Radius);
+    }
+            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-    void UseSolverValues(Solver::ConstraintSolver& solver) override;
     
 private:
-    Vec2 m_PC;
-    double m_Radius;
+    Item_Parameter m_Item_Radius;
+    Item_Point m_Item_PC;
 };
 
 } // end namespace Sketch
