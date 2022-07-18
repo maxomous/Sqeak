@@ -11,7 +11,7 @@ public:
     enum RetractType { Full, Partial, None };
     
     typedef struct {
-        std::vector<glm::vec2>* points;
+        std::vector<Vec2>* points;
         float z0;
         float z1;
         float cutDepth;
@@ -35,7 +35,7 @@ public:
     };
     
     // executes length in one axis and then moves width of cutter in other axis
-    void FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, bool isYFirst = false);
+    void FacingCutXY(Settings& settings, Vec2 p0, Vec2 p1, bool isYFirst = false);
     // adds gcodes to cut a generic path or loop at depths between z0 and z1
     // moves to safe z position, then moves to p0
     // returns value on error
@@ -44,8 +44,8 @@ public:
 private:
     std::vector<std::string> m_gcodes;
         // determines the positions of tabs along path
-    std::vector<std::pair<size_t, glm::vec2>> GetTabPositions(Settings& settings, const CutPathParams& params);
-    void CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, glm::vec2>> tabPositions, glm::vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i);
+    std::vector<std::pair<size_t, Vec2>> GetTabPositions(Settings& settings, const CutPathParams& params);
+    void CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, Vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i);
 };
 
  

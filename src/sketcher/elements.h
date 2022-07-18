@@ -4,24 +4,20 @@
 #include <MaxLib.h>
 
 #include "sketch_common.h"
-
+ 
 #include "deps/constraintsolver/solver.h"
 
 namespace Sketch {
 
 using namespace MaxLib::Geom;
 
-
-
+// Forward Declare
 class Element;
 
 
-// Contains functions and variables specific to the item
-class Item
-{
-public:     Item(Element* parent) 
-            : m_Parent(parent) {}
-    
+// a selectable 
+class Selectable
+{    
 public:     
     bool IsHovered() const { return m_IsHovered; }
     bool IsSelected() const { return m_IsSelected; }
@@ -33,10 +29,18 @@ private:
     bool m_IsHovered = false;
     bool m_IsSelected = false;
     
+    friend class ElementFactory;
+}; 
+
+// Contains functions and variables specific to the item
+class Item : public Selectable
+{
+public:     
+    Item(Element* parent) : m_Parent(parent) {}
+    
 protected:
     Element* m_Parent;
         
-    friend class ElementFactory;
 };
 
 

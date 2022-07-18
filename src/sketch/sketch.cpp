@@ -2,6 +2,7 @@
 using namespace std; 
 using namespace MaxLib;
 using namespace MaxLib::String;
+using namespace MaxLib::Geom;
       
 namespace Sqeak { 
     
@@ -53,10 +54,13 @@ std::string NameAndID(const std::string& name, Ref_PointToElement* r) {
 
 
 bool DrawRawPointPosition(Settings& settings, RawPoint* p) {
-    if(ImGui::InputFloat2(va_str("##(ID:%d)", p->ID()).c_str(), &(p->Vec2().x))) {
-        settings.SetUpdateFlag(ViewerUpdate::Full);
-        return true;
-    }
+    
+    (void)settings;
+    (void)p;
+   // if(ImGui::InputFloat2(va_str("##(ID:%d)", p->ID()).c_str(), &(p->Vec2().x))) {
+   //     settings.SetUpdateFlag(ViewerUpdate::Full);
+   //     return true;
+   // }
     return false;
 }
 
@@ -202,7 +206,7 @@ void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings
         updateViewer |= ImGui::Combo("Polygonise Output", &m_Params.polygoniseOutput, "Input\0Cuts\0Dangles\0Invalid Rings\0\0");
         updateViewer |= ImGui::InputText("Name", &m_Name);
         ImGui::Dummy(ImVec2());
-        updateViewer |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
+  //      updateViewer |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
         updateViewer |= ImGui::Combo("Cut Side", &m_Params.cutSide, "None\0Left\0Right\0Pocket\0\0");
         updateViewer |= ImGui::InputFloat("Finishing Pass", &m_Params.finishingPass);
         
@@ -624,14 +628,14 @@ class RawPoint
 
 struct UpdatedPoint
 {
-    UpdatedPoint(RawPoint* point, glm::vec2 position) : rawPoint(point), pos(position) {}
+    UpdatedPoint(RawPoint* point, Vec2 position) : rawPoint(point), pos(position) {}
     
     RawPoint* rawPoint = nullptr;
-    glm::vec2 pos;
+    Vec2 pos;
     bool isFixed = false;
 };
 
-void ElementFactory::RawPoint_Move(RawPoint* rawPoint, glm::vec2 pos) 
+void ElementFactory::RawPoint_Move(RawPoint* rawPoint, Vec2 pos) 
 {
     
     std::vector<UpdatedPoint> updatedPoints;
@@ -648,7 +652,7 @@ void ElementFactory::RawPoint_Move(RawPoint* rawPoint, glm::vec2 pos)
 */
 
 
-void RawPoint::SetThisRawPointFromRefs(const glm::vec2& p) 
+void RawPoint::SetThisRawPointFromRefs(const MaxLib::Geom::Vec2& p) 
 {  
     // update element(s) attached to point
     for(Ref_PointToElement* ref : m_ElementRefs) { // GetReferences([&](Ref_PointToElement* ref) { 
@@ -826,7 +830,7 @@ Element* ElementFactory::Element_GetByID(ElementID id)
     return nullptr; // never reaches
 } 
 // should not be called with nullptr!
-RawPoint* ElementFactory::RawPoint_Create(glm::vec2 p, Ref_PointToElement* ref) {
+RawPoint* ElementFactory::RawPoint_Create(Vec2 p, Ref_PointToElement* ref) {
     std::unique_ptr<RawPoint> rawPoint = std::make_unique<RawPoint>(m_PointIDCounter++, p);
     if(ref) { rawPoint->AddReference(ref); }
     m_Points.Add(move(rawPoint));
@@ -843,9 +847,9 @@ RawPoint* ElementFactory::RawPoint_GetByID(RawPointID pointID) {
     return nullptr; // never reaches
 }
 
-RawPoint* ElementFactory::RawPoint_GetByPosition(glm::vec2 p, float tolerance) 
+RawPoint* ElementFactory::RawPoint_GetByPosition(Vec2 p, float tolerance) 
 {
-    glm::vec2 tol = { tolerance, tolerance };
+    Vec2 tol = { tolerance, tolerance };
     int closestPoint = -1;
     float minDistance = 0.0f;
 
@@ -854,7 +858,7 @@ RawPoint* ElementFactory::RawPoint_GetByPosition(glm::vec2 p, float tolerance)
         // does point fall within tolerence frame
         if((m_Points[i]->Vec2() > (p-tol)) && (m_Points[i]->Vec2() < (p+tol))) 
         {
-            glm::vec2 dif = m_Points[i]->Vec2() - p;
+            Vec2 dif = m_Points[i]->Vec2() - p;
             float distance = Geom::Hypot({ dif.x, dif.y });
             // if first point found or if this point is closer than previous one found
             if(closestPoint == -1 || distance < minDistance) {
@@ -915,7 +919,7 @@ ElementFactory::SketchOld_LineLoop ElementFactory::LineLoop_Create()
     return make_unique<SketchOld_LineLoop_Identifier>(m_LineLoops.back()->ID(), this);
 }
 // Set start point  
-void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, const glm::vec2& startPoint) 
+void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, const Vec2& startPoint) 
 {
     SketchOld_Element pointElement = Element_CreatePoint(startPoint);
     LineLoop_SetStartPoint(lineLoop, move(pointElement)); 
@@ -931,7 +935,7 @@ void ElementFactory::LineLoop_SetStartPoint(LineLoop& lineLoop, SketchOld_Elemen
 }
 
 // Adds a line to the Line Loop
-void ElementFactory::LineLoop_AddLine(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1) 
+void ElementFactory::LineLoop_AddLine(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const Vec2& p1) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID); 
@@ -942,7 +946,7 @@ void ElementFactory::LineLoop_AddLine(ElementFactory::SketchOld_LineLoop& sketch
 } 
 
 // Adds an arc to the Line Loop from centre point
-void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, const glm::vec2& centre) 
+void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const Vec2& p1, int direction, const Vec2& centre) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID);
@@ -952,19 +956,19 @@ void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchL
     lineLoop.m_Elements.push_back(move(arcElement));
     
 }
-void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction) 
+void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const Vec2& p1, int direction) 
 {
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID); 
     if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
     
-    glm::vec2& p0 = LineLoop_LastPoint(sketchLineLoop->id)->Vec2();
-    glm::vec2 centre = (p0 + p1) / 2.0f;
+    Vec2& p0 = LineLoop_LastPoint(sketchLineLoop->id)->Vec2();
+    Vec2 centre = (p0 + p1) / 2.0f;
     LineLoop_AddArc(sketchLineLoop, p1, direction, centre);
 }
 
 // Adds an arc to the Line Loop from radius
-void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1, int direction, float radius) 
+void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchLineLoop, const Vec2& p1, int direction, float radius) 
 {    
     LineLoopID lineLoopID = sketchLineLoop->id;
     LineLoop& lineLoop = LineLoop_GetByID(lineLoopID);
@@ -972,7 +976,7 @@ void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchL
     // calculate centre from radius, then pass on
     RawPoint* p0 = LineLoop_LastPoint(lineLoopID); 
     Geom::Vec2 centre = Geom::ArcCentreFromRadius(Geom::Vec2(p0->X(), p0->Y()), Geom::Vec2(p1.x, p1.y), radius, (Geom::Direction)direction);
-    LineLoop_AddArc(sketchLineLoop, p1, direction, glm::vec2(centre.x, centre.y));
+    LineLoop_AddArc(sketchLineLoop, p1, direction, Vec2(centre.x, centre.y));
 } 
 // returns 0 on success 
 int Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory, std::function<int(std::vector<std::string> gcode)> callback)
@@ -1020,7 +1024,7 @@ bool Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFac
         return false;
     }
     // z top and bottom
-    if(m_Params.z[1] > m_Params.z[0]) {
+    if(m_Params.z.x > m_Params.z.y) {
         Log::Error("Z Bottom must be below or equal to Z Top");
         return false;
     }
@@ -1044,7 +1048,7 @@ std::string Function_Draw::HeaderText(Settings& settings, ElementFactory& elemen
     // write header
     std::ostringstream stream;
     stream << "; Function: " << m_Name << '\n';
-    stream << "; \tBetween: " << p.z[0] << " and " << p.z[1] << '\n';
+    stream << "; \tBetween: " << p.z.x << " and " << p.z.y << '\n';
     stream << "; \tPoints:" << '\n';
     
     // TODO add header text
@@ -1091,8 +1095,8 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     // calculate offset
     GCodeBuilder::CutPathParams pathParams;
     // populate parameters
-    pathParams.z0 = m_Params.z[0];  
-    pathParams.z1 = m_Params.z[1]; 
+    pathParams.z0 = m_Params.z.x;  
+    pathParams.z1 = m_Params.z.y; 
     pathParams.cutDepth = toolData.cutDepth; 
     pathParams.feedPlunge = toolData.feedPlunge; 
     pathParams.feedCutting = toolData.feedCutting; 
@@ -1100,16 +1104,16 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
      
     Geos geos;  
     // make a path of line segments (arcs are converted to many line segments)    
-    Geos::LineString inputPath = elementFactory.LineLoop_PointsList(m_LineLoop, geosParameters.QuadrantSegments);
+    Geom::LineString inputPath = elementFactory.LineLoop_PointsList(m_LineLoop, geosParameters.QuadrantSegments);
     // vector for storing the final paths
-    std::vector<Geos::LineString> path;
+    std::vector<Geom::LineString> path;
     bool isPocket = false;
-    std::vector<Geos::LineString> enclosingPath;
+    std::vector<Geom::LineString> enclosingPath;
      
     // Simple path
     if(m_Params.cutSide == CompensateCutter::None) {
         //path.push_back(inputPath);
-        path = geos.Polygonise(inputPath, m_Params.polygoniseOutput);
+        //path = geos.Polygonise(inputPath, m_Params.polygoniseOutput);
     } // Compensate path 
     else {
         // make the inital offset   
@@ -1154,7 +1158,7 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     // add finishing path
     if(m_Params.finishingPass) {
         pathParams.z0 = pathParams.z1;
-        std::vector<Geos::LineString> finishPath = geos.Offset(inputPath, cutSide * fabsf(toolRadius), geosParameters);     
+        std::vector<Geom::LineString> finishPath = geos.Offset(inputPath, cutSide * fabsf(toolRadius), geosParameters);     
         for(size_t i = 0; i < finishPath.size(); i++) {
             pathParams.points = &(finishPath[i]);
             // add gcodes for path at depths
@@ -1249,7 +1253,7 @@ void SketchOld::ActiveFunction_Delete(Settings& settings)
     }
 }
 
-std::optional<glm::vec2> SketchOld::RawPoint_GetClosest(const glm::vec2& p, float tolerance) 
+std::optional<Vec2> SketchOld::RawPoint_GetClosest(const Vec2& p, float tolerance) 
 {
     if(!m_Drawings.HasItemSelected()) { return {}; }
     return m_Drawings.CurrentItem().m_ElementFactory.RawPoint_GetClosest(p, tolerance);
@@ -1271,7 +1275,7 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
         if(m_ActiveCommand == Command::Select) 
         {   // select point under cursor
             if(auto cursorPos = settings.p.sketch.cursor.Position_Snapped) {
-                if(elementFactory.ActivePoint_SetByPosition(*cursorPos, settings.p.sketch.cursor.SelectionTolerance_Scaled)) {
+                if(elementFactory.ActivePoint_SetByPosition(Vec2((*cursorPos).x, (*cursorPos).y), settings.p.sketch.cursor.SelectionTolerance_Scaled)) {
                     settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
                     return true;
                 }
@@ -1302,11 +1306,11 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
                 if(auto cursorPos = settings.p.sketch.cursor.Position_Clicked) {
                     
                     if(m_ActiveCommand == Command::Line) {
-                        elementFactory.LineLoop_AddLine(m_LineLoop, *cursorPos);
+                        elementFactory.LineLoop_AddLine(m_LineLoop, { (*cursorPos).x,  (*cursorPos).y });
                         settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
                     }
                     if(m_ActiveCommand == Command::Arc) {
-                        elementFactory.LineLoop_AddArc(m_LineLoop, *cursorPos, Geom::Direction::CW);
+                        elementFactory.LineLoop_AddArc(m_LineLoop, { (*cursorPos).x,  (*cursorPos).y }, Geom::Direction::CW);
                         settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
                     }
                 }
@@ -1336,7 +1340,7 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
         if(auto cursorPos = settings.p.sketch.cursor.Position_Snapped) {
             // move a point if dragged
             if(Mouse::IsLeftClicked()) {//inputEvent.mouseClick.Action == GLFW_REPEAT  &&  inputEvent.mouseClick.Button == GLFW_MOUSE_BUTTON_LEFT) {
-                if(elementFactory.ActivePoint_Move(*cursorPos)) {    
+                if(elementFactory.ActivePoint_Move({ (*cursorPos).x,  (*cursorPos).y })) {    
                     std::cout << "setting update flag to active drawing" << std::endl;            
                     settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
                     updateRequiredOnKeyRelease = true;
@@ -1372,27 +1376,27 @@ void SketchOld::HandleEvents(Settings& settings, InputEvent& inputEvent)
 }
 
 
-void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists, bool isActive)
+void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isActive)
 {
     // set colours
-    DynamicBuffer::DynamicVertexList lines((!isActive) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour);
-    DynamicBuffer::DynamicVertexList points(settings.p.sketch.point.colour);
+    DynamicBuffer::ColouredVertexList lines((!isActive) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour);
+    DynamicBuffer::ColouredVertexList points(settings.p.sketch.point.colour);
     
     // get line loop positions (return if there are none)
-    std::vector<glm::vec2> positions = elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments);
+    std::vector<Vec2> positions = elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments);
     if(positions.empty()) { return; }
     
     lines.position.clear();
         // copy line loop to viewerLineLists at z0
         for(size_t i = 0; i < positions.size(); i++) {
-            lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[0] });
+            lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z.x });
         }
         viewerLineLists->push_back(lines);
         
         // copy line loop to viewerLineLists at z1
         lines.position.clear();
         for(size_t i = 0; i < positions.size(); i++) {
-            lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z[1] }); 
+            lines.position.push_back({ positions[i].x, positions[i].y, m_Params.z.y }); 
         }
     viewerLineLists->push_back(lines);
      
@@ -1401,8 +1405,8 @@ void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFact
             // draw line / arc to current mouse position
             lines.position.clear();
             points.position.clear();
-                glm::vec2 p0 = positions.back();
-                const glm::vec2& p1 = *P1;
+                Vec2 p0 = positions.back();
+                const Vec2& p1 = { (*P1).x,  (*P1).y };
 
                 if(m_ActiveCommand == Command::Line) {
                     points.position.push_back({ p1.x, p1.y, 0.0f });
@@ -1411,16 +1415,16 @@ void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFact
                 }
                 if(m_ActiveCommand == Command::Arc) {  
                     // midpoint
-                    glm::vec2 centre = (p0 + p1) / 2.0f;
+                    Vec2 centre = (p0 + p1) / 2.0f;
                     // add points
                     points.position.push_back({ p1.x, p1.y, 0.0f });
                     points.position.push_back({ centre.x, centre.y, 0.0f });
                     // get path of arc as lines
                     int direction = Geom::Direction::CW;
                     int quadrantSegments = settings.p.pathCutter.geosParameters.QuadrantSegments;
-                    std::vector<glm::vec2> arcPath = elementFactory.Element_GetArcPath(p0, p1, direction, centre, quadrantSegments);
+                    std::vector<Vec2> arcPath = elementFactory.Element_GetArcPath(p0, p1, direction, centre, quadrantSegments);
                     // add lines
-                    for(const glm::vec2& p : arcPath) {
+                    for(const Vec2& p : arcPath) {
                         lines.position.push_back({ p.x, p.y, 0.0f });
                     }
                 }
@@ -1431,7 +1435,7 @@ void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFact
 } 
 
 // update viewer
-void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists)
+void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists)
 {
     // update viewer for each active function
     for (size_t i = 0; i < m_ActiveFunctions.Size(); i++) {
@@ -1440,12 +1444,12 @@ void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::Dyna
     }
 }
 // update viewer
-void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists)
+void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists)
 {
     // add raw points to m_ViewerPointLists 
-    DynamicBuffer::DynamicVertexList rawPoints(settings.p.sketch.point.colour);
+    DynamicBuffer::ColouredVertexList rawPoints(settings.p.sketch.point.colour);
     
-    std::vector<glm::vec2> positions = m_ElementFactory.RawPoint_PointsList();
+    std::vector<Vec2> positions = m_ElementFactory.RawPoint_PointsList();
     // add positions at z = 0
     for(size_t i = 0; i < positions.size(); i++) {
         rawPoints.position.push_back({ positions[i].x, positions[i].y, 0.0f });
@@ -1454,11 +1458,11 @@ void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBu
 }
 
 // update viewer
-void A_Drawing::ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists)
+void A_Drawing::ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists)
 {    
     if(auto position = m_ElementFactory.ActivePoint_GetPosition()) {
         // add raw points to m_ViewerPointLists 
-        DynamicBuffer::DynamicVertexList rawPoints(settings.p.sketch.point.colourActive);
+        DynamicBuffer::ColouredVertexList rawPoints(settings.p.sketch.point.colourActive);
         // add position at z = 0
         rawPoints.position.push_back({ position->x, position->y, 0.0f });
         viewerPointLists->push_back(std::move(rawPoints));

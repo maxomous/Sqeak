@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <MaxLib.h>
 
+
 #include "sketch_common.h"
 
 //#include "deps/constraintsolver/solver.h"
@@ -13,6 +14,7 @@
 
 namespace Sketch {
 
+using namespace MaxLib;
 using namespace MaxLib::Vector;
 using namespace MaxLib::Geom;
 
@@ -23,6 +25,11 @@ class Sketcher;
 
 
 /*
+    LATEST:
+    * circle doesnt seem to render as a polygon (in select loop, top is split)
+
+
+
 
 
 
@@ -54,46 +61,184 @@ class Sketcher;
     * remove 
         using namespace MaxLib::;
     * from header files
-*/
+
+    TODO: Perhaps SelectableGeometry should replace how we select all stuff?...
+      this is slightly different as other finds closest point for points, but we can handle this inside the class, not easily as requires p + tolerance
+   
+    TODO: Check if point on arc works?
+    
+TODO: RenderLine, Arc etc. should be on renderer, not elementfactory
+
+  */
+
+/*
+    The following pattern allows us to be in control of all of the members within the factory, the user receives ID's for the members and uses these IDs to call functions.
+
+        class Member
+        {
+        public:
+            Member(Factory* parent) : parent(m_Parent), m_ID(#)
+        private:
+            Factory* m_Parent
+            ID m_ID;
+        };
+         
+        class Factory
+        {
+        public:
+            CreateMember() { m_Members.push_back(...); return m_Members.back().ID(); }
+            DoSomething(ID id)  { member = FindMember(id); do something... }
+        private:
+            vector<Member> m_Members;
+            FindMember(ID id) { for each ... }
+        };
+        
+        
+        ** User **
+        
+        Factory factory;
+        ID memberID = factory.CreateMember();
+        factory.DoSomething(memberID) 
+
+ */
+  
 
     
+// A container of all the renderable data in sketcher
+struct RenderData
+{
+    struct Data  // equiv. to a vector<LineString>
+    {
+        vector<Geometry> points;
+        vector<Geometry> linestrings;
+        
+        void Clear() { 
+            points.clear(); 
+            linestrings.clear(); 
+        } 
+    };
+        
+    struct Data_Selectable
+    {
+        Data unselected;
+        Data selected;
+        Data hovered;
+        
+        void Clear() {
+            unselected.Clear();
+            selected.Clear();
+            hovered.Clear();
+        }
+    };
+    
+    Data_Selectable  elements;      // all the elements 
+    Data_Selectable  constraints;   // the contraints
+    Data             preview;       // preview elements before adding them
+    Data             cursor;        // dragged box etc.
+};
+ 
+
+
+// A piece of geometry which can be either selected or hovered
+// This will take ownership of input geometry
+class SelectableGeometry
+{
+public:     
+    // Geometry is equiv. to std::vector<Vec2>, LineString, Polygon, Points
+    // Will take ownership of input geometry
+    SelectableGeometry(Geom::Geometry&& geometry) : m_Geometry(std::move(geometry)) {}
+    
+    const std::vector<Vec2>& Geometry() { return m_Geometry; }
+    bool IsSelected() const             { return m_IsSelected; }
+    bool IsHovered() const              { return m_IsHovered; }
+    
+private:
+    Geom::Geometry m_Geometry;
+    bool m_IsSelected = false;
+    bool m_IsHovered = false;
+    friend class PolygonisedGeometry;
+};
     
     
+// a collection of selectable geometry
+// will consume input geometries
+class PolygonisedGeometry
+{
+public:
+    // Generates the polygonised selection geometry
+    PolygonisedGeometry(Sketcher* parent = nullptr, const std::vector<Geometry>& geometries = {});
+    
+    // Clears all of the geometries' hovered flags
+    void ClearHovered();
+    // Clears all of the geometries' seleceted flags
+    void ClearSelected();
+    // Finds geometry within a tolerance to position p and sets their Hovered flag to true
+    bool SetHoveredByPosition(const Vec2& p, double tolerance);
+    // Finds geometry within a tolerance to position p and sets their Selected flag to true
+    bool SetSelectedByPosition(const Vec2& p, double tolerance);
+    // Calls callback function on each SelectableGeometry item  
+    void ForEachGeometry(std::function<void(SelectableGeometry&)> cb);
+     
+private:
+    Sketcher* m_Parent = nullptr;
+    // Polygonised linestring data
+    std::vector<SelectableGeometry> m_Geometry;
+
+    // Finds geometry within a tolerance to position p and sets their hovered flag to true
+    // l is a polygon which 
+    bool FindIntersects(const Vec2& p, double tolerance, std::function<void(SelectableGeometry&)> cb);
+}; 
+
+// A flag used when building render data to only render the required item
+enum class UpdateFlag { 
+    None            = 0x00,  
+    Cursor          = 0x01, // handles dragged selection box
+    Selection       = 0x02, // handles selected & hovered
+    Elements        = 0x04, // handles change to elements, also polygonises elements 
+    Preview         = 0x08, // handles element preview whilst creating an element
+    Constraints     = 0x10, // handles constraints
+    
+    System          = 0b10000000, // resets render system flags
+    FullNoSystem    = 0b01111111, // updates all but doesnt reset system flags
+    Full            = 0b11111111  // updates all above
+};
+inline UpdateFlag operator|(UpdateFlag a, UpdateFlag b) { return static_cast<UpdateFlag>(static_cast<int>(a) | static_cast<int>(b)); }
+inline bool operator&(UpdateFlag a, UpdateFlag b) { return static_cast<bool>(static_cast<int>(a) & static_cast<int>(b)); }
+
 
 class SketchRenderer
 {
-public:
+public:   
+
+    
     SketchRenderer(Sketcher* parent);
     
-    const std::vector<RenderData>&   GetRenderData() const;
-    // Goes through each element and each constraint and updates RenderData accordingly
-    void                UpdateRenderData();
-    // Render element to linestring
-
-    LineString          RenderLine(const Vec2& p0, const Vec2& p1) const;
-    LineString          RenderArc(const Vec2& pC, double radius, Direction direction, double th_Start, double th_End) const;
-    LineString          RenderArc(const Vec2& p0, const Vec2& p1, const Vec2& pC, Direction direction) const;
-    LineString          RenderCircle(const Vec2& pC, double radius) const;
-    Vec2                AdjustCentrePoint(const Vec2& p0, const Vec2& p1, const Vec2& pC) const;
-private:
-    uint m_ArcSegments = 16;
+    //const std::vector<RenderData>&   GetRenderData() const;
+    const RenderData&   GetRenderData() const;
+    
+    // Updates RenderData based on update flag
+    bool UpdateRenderData();
+    
+    
+    void SetUpdateFlag(UpdateFlag flag);
+    
+private: 
+    Sketcher* m_Parent = nullptr;   
+    // update flag
+    UpdateFlag m_Update = UpdateFlag::Full;
     // draw list for viewer
-    std::vector<RenderData> m_RenderData;
+    RenderData m_RenderData;
     
-    Sketcher* m_Parent = nullptr;
-    
-    RenderData m_PreviewPoints;
-    RenderData m_PreviewLines;
-    
+    // update the preview render data from the cursorPos
+    void UpdatePreview();
     
     friend class SketchEvents;
 };
     
-    
 class SketchEvents
 {
 public:
-    enum class CommandType { None, Select, Add_Point, Add_Line, Add_Arc, Add_Circle, Add_Constraint_1_Item, Add_Constraint_2_Items };
+    enum class CommandType { None, Select, SelectLoop, Add_Point, Add_Line, Add_Arc, Add_Circle, Add_Constraint_1_Item, Add_Constraint_2_Items };
     
     // Equivelent to:
     //  GLFW_MOUSE_BUTTON_LEFT      0
@@ -122,9 +267,11 @@ public:
     SketchEvents(Sketcher* parent) : m_Parent(parent) {}
     
     CommandType GetCommandType() const;
-    void GetCommandType(CommandType command);
+    void SetCommandType(CommandType command);
 
 
+    void Event_Keyboard(int key, KeyAction action, KeyModifier modifier);
+    
     // Mouse Button Event
     //
     //   On Left Click                 
@@ -134,7 +281,8 @@ public:
     //       -  add to selection
     //   On Release
     //       -  if(selection box) select these items
-    void Mouse_Button(MouseButton button, MouseAction action, KeyModifier modifier);
+    //   Returns true if update required
+    bool Mouse_Button(MouseButton button, MouseAction action, KeyModifier modifier);
     
     // Mouse Move Event
     //
@@ -144,24 +292,37 @@ public:
     //  Drag            -  if (clicked)
     //                        -  if(Selected) drag items
     //                        -  if(!selected) drag selection box
-    void Mouse_Move(const Vec2& p);
+    //   Returns true if update required
+    bool Mouse_Move(const Vec2& p);
 
-
-        
+    
 private:
+    double m_SelectionTolerance = 10.0;
+    
+    Sketcher* m_Parent = nullptr;
     CommandType m_CommandType = CommandType::None;
     std::vector<Vec2> m_InputData;
+    Direction m_InputDirection = Direction::CW;
     
     Vec2 m_CursorPos;
     Vec2 m_CursorClickedPos;
-    double m_SelectionTolerance = 1.0;
-
+    bool m_IsDragSelectionBox = false; 
+    
     MouseButton m_MouseButton;
     MouseAction m_MouseAction;
-
     //KeyModifier m_Modifier;
+
+
+    // polygonises all of the geometry so we can select loops
+    PolygonisedGeometry m_PolygonisedGeometry;
+
+
+
+    std::vector<Vec2>& InputData() { return m_InputData; }
     
-    Sketcher* m_Parent = nullptr;
+    
+    friend class Sketcher;
+    friend class SketchRenderer;
 };
 
 
@@ -175,16 +336,21 @@ public:
     SketchEvents& Events()  { return m_Events; }
     SketchRenderer& Renderer()  { return m_Renderer; }
     
-    
+    bool Update() 
+    {
+        bool updateRequired = m_Renderer.UpdateRenderData();
+        return updateRequired;
+    }
+            
     
     // Attempts to solve constraints. 
     // movedPoint can be set for moving a point
-    void SolveConstraints(Vec2 p = Vec2()); 
+    void SolveConstraints(Vec2 pDif = Vec2()); 
     
     
-    bool DrawImGui();
-    bool DrawImGui_Elements();
-    bool DrawImGui_Constraints();
+    void DrawImGui();
+    bool DrawImGui_Elements(ElementID& deleteElement);
+    bool DrawImGui_Constraints(ConstraintID& deleteConstraint);
 
 private:
     bool m_IsActive = false;

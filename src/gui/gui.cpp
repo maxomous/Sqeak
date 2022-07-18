@@ -6,56 +6,27 @@
 
 using namespace std;
 using namespace MaxLib;
+using namespace MaxLib::Geom;
 
 
 namespace Sqeak { 
 
-//void GLSystem::glfw_ConfigVersion()
-//{
-//   	
-//	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-//	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-//    /*
-//	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
-//	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
-//	*/ 
-//}
-//void GLSystem::glfw_Config()
-//{
-//    // set minimum window size
-//    glfwSetWindowSizeLimits(m_Window, GUI_WINDOW_WMIN, GUI_WINDOW_HMIN, GLFW_DONT_CARE, GLFW_DONT_CARE); 
-//}
+/*
+        
+        TODO: 
+        
+        Viewer Dynamic Buffer:
+            The raw value Viewer needs is a Vertex (glm::vec3 position; glm::vec3 colour; )
+            currently we are using a ColouredVertexList (std::vector<glm::vec3> positions; glm::vec3 colour; )
+            We want to tell the dynamic buffer, this is where the data is.. e.g:
+            - allow a custom vector as a parameter like imgui does
+            - AddVertexPtr() Callback function to show where the point is to render and how to render it. emplace_back(glm::vec3 pos, glm::vec3 colour)
+            - maybe a template so you can pass anything?
 
 
-//void GLSystem::imgui_Config()
-//{
-//    // Style
-//    ImGui::StyleColorsDark();
-//    // Get IO
-//    ImGuiIO& io = ImGui::GetIO();
-//    
-//    // ImGui ini File
-//    static string iniFile = File::ThisDir(GUI_CONFIG_FILE);
-//    io.IniFilename = iniFile.c_str();
-//    
-//    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-//    //io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-//    io.ConfigDockingAlwaysTabBar = true;
-//    
-//    io.ConfigWindowsMoveFromTitleBarOnly = true;
-//    
-//    ImGuiStyle& style = ImGui::GetStyle();
-//    style.WindowMenuButtonPosition  = ImGuiDir_Right;   // icon in menu of window
-//    //style.ColorButtonPosition       = ImGuiDir_Left;    // colour icon side for changing colours 
-//    style.ScrollbarRounding         = 3.0f;             // scroll bars
-//    style.FrameRounding             = 2.0f;             // frames i.e. buttons, textboxes etc.
-//    
-//    // Load icon
-//    static string iconLocation = File::ThisDir(GUI_IMG_ICON);
-//    if(!LoadIconFromFile(m_Window, iconLocation.c_str()))
-//        Log::Error(string("Could not find icon: ") + iconLocation);
-//}
-      
+*/            
+    
+    
 void imgui_Settings(Settings& settings)
 { 
     GUISettings& s = settings.guiSettings;
@@ -109,10 +80,11 @@ public:
         
         // clear overrides other bits in flag
         if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::Clear) { 
-            std::cout << "Clearing viewer" << std::endl;  
+            std::cout << "Clearing Ciewer" << std::endl;  
             ClearViewer(); 
-            } 
+        } 
         else {     
+            std::cout << "Updating Viewer" << std::endl;  
             // update 
             UpdateViewer(settings, sketcher);
         }
@@ -122,12 +94,12 @@ public:
     }
     
 private:
-    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerLineLists;
-    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerPointLists;
+    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerLineLists;
+    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerPointLists;
     
     
     void UpdateViewer(Settings& settings, Sketch::Sketcher& sketcher)
-    {
+    { 
         // make a list of points / lines which is sent to viewer
         m_ViewerPointLists.clear();
         m_ViewerLineLists.clear();
@@ -139,106 +111,52 @@ private:
         Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
     }
     
+
+        
     void RenderSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
     {    
         using namespace Sketch;
-        using Sketch::RenderData;
         
-        sketcher.Renderer().UpdateRenderData();
-        
-        for(const RenderData& data : sketcher.Renderer().GetRenderData()) 
-        {
-            DynamicBuffer::DynamicVertexList vertices;
+        auto CopyVertices = [](std::vector<DynamicBuffer::ColouredVertexList>& list, const vector<Geometry>& data, const glm::vec3& colour) {
             
-            // Set colour
-            if(data.GetDataType() == RenderData::DataType::Items) 
-            {
-                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = settings.p.sketch.point.colour; } 
-                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = settings.p.sketch.line.colour; }
-            }
-            else if(data.GetDataType() == RenderData::DataType::Preview) 
-            {
-                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = settings.p.sketch.point.colour; } 
-                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = settings.p.sketch.line.colour; }
-            }
-            else if(data.GetDataType() == RenderData::DataType::Selected) 
-            {
-                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = { 1.0f, 0.0f, 0.0f }; } 
-                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = { 1.0f, 0.0f, 0.0f }; }
-            }
-            else if(data.GetDataType() == RenderData::DataType::Constraints) 
-            {
-                if(data.GetRenderType() == RenderData::RenderType::Points)           { vertices.colour = { 0.0f, 0.0f, 0.0f }; } 
-                else if(data.GetRenderType() == RenderData::RenderType::LineStrings) { vertices.colour = { 0.0f, 0.0f, 0.0f }; }
-            } 
-            else { assert(0 && "Unknown Datatype"); }
-            
-                        
-            for(const Geometry& geometry : data.Geometries())
-            {
-                vertices.position.clear();
-                for(const Geom::Vec2& p : geometry) {
-                    vertices.position.push_back({ p.x, p.y, 0.0f });
+            for(const Geometry& geometry : data) {
+                
+                DynamicBuffer::ColouredVertexList vertices(colour);
+                
+                for(const Vec2& p : geometry) {
+                    vertices.position.emplace_back(p.x, p.y, 0.0f);
                 }
-                if(data.GetRenderType() == RenderData::RenderType::Points)            { m_ViewerPointLists.push_back(vertices); }
-                else if(data.GetRenderType() == RenderData::RenderType::LineStrings)  { m_ViewerLineLists.push_back(vertices); }
+                list.push_back(std::move(vertices));     
             }
-            
-        }
-    }
-        /*
-
-        for(const Sketch::Points& points : renderData.points) 
-        {
-            DynamicBuffer::DynamicVertexList pointsVertices(settings.p.sketch.point.colour);
-                                
-            for(const Geom::Vec2& p : points) {
-                pointsVertices.position.push_back({ p.x, p.y, 0.0f });
-            }
-            m_ViewerPointLists.push_back(pointsVertices);
-            
-        }
-        std::cout << "renderData.linestrings " << renderData.linestrings.size() << std::endl;
-        for(const Sketch::LineString& linestring : renderData.linestrings) 
-        {
-            DynamicBuffer::DynamicVertexList linesVertices(settings.p.sketch.line.colour);
-            
-            for(const Geom::Vec2& p : linestring) {
-                linesVertices.position.push_back({ p.x, p.y, 0.0f });
-            }
-            m_ViewerLineLists.push_back(linesVertices);
-        }*/
-    
-    
-    /*
-    void RenderSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
-    {
-        sketcher.Renderer().UpdateRenderData();
+        };
+        
+        auto CopyData = [&](const Sketch::RenderData::Data& data, const glm::vec3& colourPoints, const glm::vec3& colourLines) {
+            CopyVertices(m_ViewerPointLists, data.points, colourPoints);
+            CopyVertices(m_ViewerLineLists, data.linestrings, colourLines);
+        };
         
         const Sketch::RenderData& renderData = sketcher.Renderer().GetRenderData();
-
-        for(const Sketch::Points& points : renderData.points) 
-        {
-            DynamicBuffer::DynamicVertexList pointsVertices(settings.p.sketch.point.colour);
-                                
-            for(const Geom::Vec2& p : points) {
-                pointsVertices.position.push_back({ p.x, p.y, 0.0f });
-            }
-            m_ViewerPointLists.push_back(pointsVertices);
+        
+        CopyData(renderData.elements.unselected,        settings.p.sketch.point.colour,     settings.p.sketch.line.colour);
+        CopyData(renderData.elements.selected,          { 1.0f, 0.0f, 0.0f },               { 1.0f, 0.0f, 0.0f });
+        CopyData(renderData.elements.hovered,           { 0.568f, 0.019f, 0.940f },         { 0.6f, 0.8f, 0.8f });
+                
+        CopyData(renderData.constraints.unselected,     { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
+        CopyData(renderData.constraints.selected,       { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
+        CopyData(renderData.constraints.hovered,        { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
             
-        }
-        std::cout << "renderData.linestrings " << renderData.linestrings.size() << std::endl;
-        for(const Sketch::LineString& linestring : renderData.linestrings) 
-        {
-            DynamicBuffer::DynamicVertexList linesVertices(settings.p.sketch.line.colour);
-            
-            for(const Geom::Vec2& p : linestring) {
-                linesVertices.position.push_back({ p.x, p.y, 0.0f });
+        CopyData(renderData.preview,                    settings.p.sketch.point.colour,     settings.p.sketch.line.colour);
+        const Sketch::RenderData::Data& cursor = renderData.cursor;
+        // Change colour of selection box if left of click position
+        if(cursor.points.size() == 1) {
+            if(cursor.points[0].size() == 4) {
+                glm::vec3 selectionBoxColour = ((cursor.points[0][2].x - cursor.points[0][0].x) < 0) ? glm::vec3(0.1f, 0.3f, 0.8f) : glm::vec3(0.306f, 0.959f, 0.109f);
+                CopyData(cursor,                     { 1.0f, 1.0f, 0.0f },               selectionBoxColour);
             }
-            m_ViewerLineLists.push_back(linesVertices);
         }
+        
     }
-    */
+    
     void ClearViewer()
     {
         // line lists
@@ -338,6 +256,19 @@ int gui(GRBL& grbl, Settings& settings)
         }
     });
     
+    
+    Event<Event_KeyInput>::RegisterHandler([&settings, &sketcherNew](Event_KeyInput data) {
+            
+        
+        sketcherNew.Events().Event_Keyboard(data.Key, (Sketch::SketchEvents::KeyAction)data.Action, (Sketch::SketchEvents::KeyModifier)data.Modifier);
+            
+        // TODO THIS SHOULDNT BE HERER
+        settings.SetUpdateFlag(ViewerUpdate::Full);
+    
+    
+    
+    });
+    
     Event<Event_MouseButton>::RegisterHandler([&settings, &sketcher, &sketcherNew](Event_MouseButton data) {
         if((data.Button != GLFW_MOUSE_BUTTON_LEFT) && (data.Button != GLFW_MOUSE_BUTTON_RIGHT) && (data.Button != GLFW_MOUSE_BUTTON_MIDDLE))
             return; 
@@ -358,13 +289,10 @@ int gui(GRBL& grbl, Settings& settings)
         
         if(cursor.Position_Snapped) {  
              
+            if(sketcherNew.Events().Mouse_Button((Sketch::SketchEvents::MouseButton)data.Button, (Sketch::SketchEvents::MouseAction)data.Action, (Sketch::SketchEvents::KeyModifier)data.Modifier)) {
                 
-            sketcherNew.Events().Mouse_Button((Sketch::SketchEvents::MouseButton)data.Button, (Sketch::SketchEvents::MouseAction)data.Action, (Sketch::SketchEvents::KeyModifier)data.Modifier);
-            
-            
-
-            
-            
+                settings.SetUpdateFlag(ViewerUpdate::Full);
+            }
             
             
             //if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_PRESS) {
@@ -373,9 +301,8 @@ int gui(GRBL& grbl, Settings& settings)
             //if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_RELEASE) {
             //    sketcherNew.Events().Event_MouseRelease();                
             //}        
+            
         }
-        // TODO THIS SHOULDNT BE HERER
-        settings.SetUpdateFlag(ViewerUpdate::Full);
     });
             
     Event<Event_MouseMove>::RegisterHandler([&settings, &viewer, &sketcher, &sketcherNew](Event_MouseMove data) {
@@ -394,8 +321,8 @@ int gui(GRBL& grbl, Settings& settings)
         // update 2d cursor positions
         cursor.Position_Raw = glm::vec2(returnCoords);
         // snap cursor or snap to raw point
-        std::optional<glm::vec2> closestPoint = sketcher.RawPoint_GetClosest(*(cursor.Position_Raw), cursor.SelectionTolerance_Scaled);
-        cursor.Position_Snapped = (closestPoint) ? *closestPoint : cursor.SnapCursor(*(cursor.Position_Raw));
+        std::optional<Vec2> closestPoint = sketcher.RawPoint_GetClosest({ returnCoords.x, returnCoords.y }, cursor.SelectionTolerance_Scaled);
+        cursor.Position_Snapped = (closestPoint) ? glm::vec2({ (*closestPoint).x, (*closestPoint).y }) : cursor.SnapCursor({ returnCoords.x, returnCoords.y });
         cursor.Position_WorldCoords = *(cursor.Position_Snapped) + glm::vec2(settings.grblVals.ActiveCoordSys());
 
         // issue event to sketch
@@ -406,13 +333,9 @@ int gui(GRBL& grbl, Settings& settings)
            
         if(cursor.Position_Snapped) {       
             
-            
-            sketcherNew.Events().Mouse_Move({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });
-                 
-            //sketcherNew.Events().Event_Hover(sketcherNew.Renderer(), { (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });
-            
-            // TODO THIS SHOULDNT BE HERER
-            settings.SetUpdateFlag(ViewerUpdate::Full);
+            if(sketcherNew.Events().Mouse_Move({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y })) {
+                settings.SetUpdateFlag(ViewerUpdate::Full);                
+            }            
         }
     });
     
@@ -471,20 +394,22 @@ int gui(GRBL& grbl, Settings& settings)
         // Draw ImGui
         glsys.imgui_NewFrame();
 		{
+            // Updates the skether when needed
+            if(sketcherNew.Update()) { settings.SetUpdateFlag(ViewerUpdate::Sketch); }
+            
+            // make updates for viewer
+            updater.HandleUpdateFlag(settings, sketcherNew);
+            
             // update and render 3D Viewer
             viewer.Update(settings, timer.dt()); 
             viewer.Render(settings);
+            
             
             // draw imgui frames
             frames.Draw(grbl, settings, viewer, sketcher, sketcherNew, timer.dt());
             
             
-            // make updates for viewer
-            updater.HandleUpdateFlag(settings, sketcherNew);
-            
-        
-
-            
+    
             
             
                 

@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 2.8.12)
 ####################################################
 
 project("Sketcher"
-    DESCRIPTION "A 2D Sketch Library"
+    DESCRIPTION "A 2D Sketch Library integrated with ImGui"
     LANGUAGES CXX
 )
 
@@ -68,6 +68,6 @@ target_link_libraries(${PROJECT_NAME}
 #             Set Compiler Options
 ####################################################
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g) 
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g -O0) #-O0 -v -Q for valgrind (try -Q for showing function names)
 
 ####################################################

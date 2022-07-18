@@ -364,6 +364,14 @@ IGNORE:
 */
 
 
+    // Add dragged point
+    Constraint Add_Dragged(Axis& axis, const Point& point) 
+    {
+        return MakeConstraint(axis, SLVS_C_WHERE_DRAGGED, 0.0, point.entity, 0, 0, 0);
+    }
+    Constraint Add_Dragged(const Point& point)    { return Add_Dragged(defaultAxis, point); }
+    
+
     // Coincident Point to Point*
     //    Points ptA and ptB are coincident (i.e., exactly on top of each other).
     Constraint Add_Coincident_PointToPoint(Axis& axis, const Point& pointA, const Point& pointB) 
@@ -572,7 +580,9 @@ IGNORE:
     Constraint Add_EqualRadius(const Arc& arc1, const Arc& arc2)                                    { return Add_EqualRadius(defaultAxis, arc1, arc2); }
     Constraint Add_EqualRadius(const Circle& circle1, const Circle& circle2)                        { return Add_EqualRadius(defaultAxis, circle1, circle2); }
     
+    
     // Attempts to not move given point when solving
+    // values dont tend to sit exactly at dragged point so instead we fix the point to the position
     void SetDraggedPoint(Point2D& point)
     {
         sys.dragged[0] = point.paramX; // x
@@ -637,27 +647,29 @@ private:
     size_t m_Capacity_Constraint = 64;
 
     template<typename T>
-    void Resize(T* array, size_t currentSize, size_t newSize)
+    void Resize(T** array, size_t currentSize, size_t newSize)
     {
-        std::cout << "resizing " << (int)array << " from " << currentSize << " to " << newSize << std::endl;
         // make new array
         T* newArr = new T[newSize];
         // copy data across
-        memcpy( newArr, array, currentSize * sizeof(T) );
+        for(size_t i = 0; i < currentSize; i++) {
+            memcpy(&(newArr[i]), &((*array)[i]), sizeof(T));
+        }
         // delete old array
-        delete[] array;
+        delete[] *array;
         // assign new array
-        array = newArr;
+        *array = newArr;
     }
-
-    
+                
+            
     Slvs_hParam MakeParam(Group group, double value) 
     {
         // Check array capacity
         while(sys.params >= (int)m_Capacity_Param) {
             // If it's not big enough, double its capacity
             size_t newCapacity = m_Capacity_Param * 2;
-            Resize<Slvs_Param>(sys.param, m_Capacity_Param, newCapacity);
+            std::cout << "resizing params" << (int)sys.param << " from " << m_Capacity_Param << " to " << newCapacity << std::endl;
+            Resize<Slvs_Param>(&sys.param, m_Capacity_Param, newCapacity);
             m_Capacity_Param = newCapacity;
         }
 
@@ -672,7 +684,8 @@ private:
         while(sys.entities >= (int)m_Capacity_Entity) {
             // If it's not big enough, double its capacity
             size_t newCapacity = m_Capacity_Entity * 2;
-            Resize<Slvs_Entity>(sys.entity, m_Capacity_Entity, newCapacity); 
+            std::cout << "resizing entity" << (int)sys.entity << " from " << m_Capacity_Entity << " to " << newCapacity << std::endl;
+            Resize<Slvs_Entity>(&sys.entity, m_Capacity_Entity, newCapacity); 
             m_Capacity_Entity = newCapacity;
         }
         Slvs_hEntity id = sys.entities + 1;
@@ -686,8 +699,10 @@ private:
         while(sys.constraints >= (int)m_Capacity_Constraint) {
             // If it's not big enough, double its capacity
             size_t newCapacity = m_Capacity_Constraint * 2;
-            Resize<Slvs_Constraint>(sys.constraint, m_Capacity_Constraint, newCapacity);
-            Resize<Slvs_hConstraint>(sys.failed, m_Capacity_Constraint, newCapacity);
+            std::cout << "resizing constraint" << (int)sys.constraint << " from " << m_Capacity_Constraint << " to " << newCapacity << std::endl;
+            Resize<Slvs_Constraint>(&sys.constraint, m_Capacity_Constraint, newCapacity);
+            std::cout << "resizing failed" << (int)sys.failed << " from " << m_Capacity_Constraint << " to " << newCapacity << std::endl;
+            Resize<Slvs_hConstraint>(&sys.failed, m_Capacity_Constraint, newCapacity);
             m_Capacity_Constraint = newCapacity;
             sys.faileds = newCapacity;
         }

@@ -1,4 +1,5 @@
 #pragma once
+#include <MaxLib.h> 
 #include "../common.h" 
 
 
@@ -20,8 +21,6 @@ static inline int GetCutSide(CompensateCutter cutSide) {
     else { return 1; } //(cutSide == CompensateCutter::Left || cutSide == CompensateCutter::Pocket) 
 }
        
-
-
 typedef size_t RawPointID;
 typedef size_t ReferenceID;
 typedef size_t ElementID;
@@ -47,13 +46,13 @@ public:
 class RawPoint
 {
 public: 
-    RawPoint(RawPointID id, const glm::vec2& position)
+    RawPoint(RawPointID id, const MaxLib::Geom::Vec2& position)
         : m_ID(id), m_Position(position) {}
     
     RawPointID ID()             { return m_ID; }
     float X()                   { return m_Position.x; }
     float Y()                   { return m_Position.y; }
-    glm::vec2& Vec2()           { return m_Position; }
+    MaxLib::Geom::Vec2& Vec2()                { return m_Position; }
     
     // Adds a drawing element reference
     void AddReference(Ref_PointToElement* ref);
@@ -64,13 +63,13 @@ public:
     
     void GetReferences(std::function<void(Ref_PointToElement*)> callback);
     
-    void SetThisRawPointFromRefs(const glm::vec2& p);
+    void SetThisRawPointFromRefs(const MaxLib::Geom::Vec2& p);
 
     // for debugging
     void DrawImGui(Settings& settings);
 private:
     RawPointID m_ID;
-    glm::vec2 m_Position;
+    MaxLib::Geom::Vec2 m_Position;
     //std::vector<Element*> m_ElementRefs;
     std::vector<Ref_PointToElement*> m_ElementRefs;
     
@@ -89,7 +88,7 @@ public:
     virtual Ref_PointToElement* Centre() { return nullptr; }
     virtual Ref_PointToElement* Last() = 0;
     // Adds points to return path
-    virtual void Path(std::vector<glm::vec2>& returnPath, int arcSegments) {
+    virtual void Path(std::vector<Vec2>& returnPath, int arcSegments) {
         (void) arcSegments;
         returnPath.push_back(Last()->rawPoint->Vec2());
     }    
@@ -107,9 +106,9 @@ public:
     
     virtual void DrawImGui(Settings& settings) = 0;
     
-    virtual void SetP0(const glm::vec2& p0)         { m_Ref_P0->rawPoint->Vec2() = p0;  Update(); }
-    virtual void SetP1(const glm::vec2& p1)         { (void)p1; }
-    virtual void SetCentre(const glm::vec2& centre) { (void)centre; }
+    virtual void SetP0(const Vec2& p0)         { m_Ref_P0->rawPoint->Vec2() = p0;  Update(); }
+    virtual void SetP1(const Vec2& p1)         { (void)p1; }
+    virtual void SetCentre(const Vec2& centre) { (void)centre; }
     virtual void SetRadius(float r)                 { (void)r; }
 protected:
     Element(ElementID id) 
@@ -163,7 +162,7 @@ public:
     
     void DrawImGui(Settings& settings) override;
     
-    void SetP1(const glm::vec2& p1) override { m_Ref_P1->rawPoint->Vec2() = p1;  Update(); }
+    void SetP1(const Vec2& p1) override { m_Ref_P1->rawPoint->Vec2() = p1;  Update(); }
 private:
     Ref_PointToElement* m_Ref_P1 = nullptr;
 };
@@ -227,7 +226,7 @@ public:
         return true; 
     }
     
-    void SetP0(const glm::vec2& p0)                         override {
+    void SetP0(const Vec2& p0)                         override {
         m_Ref_P0->rawPoint->Vec2() = p0;
         m_Priority = DefineArcBy::P0;
         if(SetTangentRadiusAndDirection()) {
@@ -236,7 +235,7 @@ public:
         Update(); 
     }
    
-    void SetP1(const glm::vec2& p1)                         override {
+    void SetP1(const Vec2& p1)                         override {
         m_Ref_P1->rawPoint->Vec2() = p1;
         m_Priority = DefineArcBy::P1;
         if(SetTangentRadiusAndDirection()) {
@@ -246,7 +245,7 @@ public:
     }
    
     
-    void SetCentre(const glm::vec2& centre)                 override {
+    void SetCentre(const Vec2& centre)                 override {
         m_Ref_Centre->rawPoint->Vec2() = centre; 
           
         // Geos::PerdendicularDistance(p0, p1, p)
@@ -299,7 +298,7 @@ public:
     }
     
     
-    void Path(std::vector<glm::vec2>& returnPath, int arcSegments) override {
+    void Path(std::vector<Vec2>& returnPath, int arcSegments) override {
         Vec2 p0       = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
         Vec2 p1       = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
         Vec2 pCentre  = { m_Ref_Centre->rawPoint->Vec2().x, m_Ref_Centre->rawPoint->Vec2().y };
@@ -380,9 +379,9 @@ public:
     
     float MinimumRadius()
     {
-        glm::vec2& p0       = m_Ref_P0->rawPoint->Vec2();
-        glm::vec2& p1       = m_Ref_P1->rawPoint->Vec2();
-        glm::vec2 dif = p1 - p0;
+        Vec2& p0       = m_Ref_P0->rawPoint->Vec2();
+        Vec2& p1       = m_Ref_P1->rawPoint->Vec2();
+        Vec2 dif = p1 - p0;
         return hypot(dif.x, dif.y) / 2.0;
     }
     
@@ -420,7 +419,7 @@ private:
 
 class ElementFactory {
 public:
-    std::optional<glm::vec2> RawPoint_GetClosest(const glm::vec2& p, float tolerance)
+    std::optional<Vec2> RawPoint_GetClosest(const Vec2& p, float tolerance)
     {
         RawPoint* rawPoint = RawPoint_GetByPosition(p, tolerance);
         if(rawPoint) { 
@@ -432,12 +431,12 @@ public:
     void ActivePoint_Unset() { m_ActiveSelection = nullptr; }
 
     
-    std::optional<glm::vec2> ActivePoint_GetPosition()
+    std::optional<Vec2> ActivePoint_GetPosition()
     {
         if(!m_ActiveSelection) return {};
         return m_ActiveSelection->Vec2();
     }
-    bool ActivePoint_SetByPosition(const glm::vec2& p, float tolerance)
+    bool ActivePoint_SetByPosition(const Vec2& p, float tolerance)
     {
         if(auto rawPoint = RawPoint_GetByPosition(p, tolerance)) {
             m_ActiveSelection = rawPoint;
@@ -448,7 +447,7 @@ public:
     }
     
     // returns true when update required
-    bool ActivePoint_Move(const glm::vec2& p)
+    bool ActivePoint_Move(const Vec2& p)
     {
         if(!m_ActiveSelection)              
             return false;
@@ -525,18 +524,18 @@ public:
     void RawPoint_DrawImGui(Settings& settings);
     void RefPointToElement_DrawImGui();
     
-    std::vector<glm::vec2> RawPoint_PointsList() {
-        std::vector<glm::vec2> points;
+    std::vector<Vec2> RawPoint_PointsList() {
+        std::vector<Vec2> points;
         for (size_t i = 0; i < m_Points.Size(); i++) {
             points.push_back(m_Points[i]->Vec2());
         }
         return move(points);
     }
-    std::vector<glm::vec2> LineLoop_PointsList(SketchOld_LineLoop& sketchLineLoop, int arcSegments) {
+    std::vector<Vec2> LineLoop_PointsList(SketchOld_LineLoop& sketchLineLoop, int arcSegments) {
         
         LineLoop& lineLoop = LineLoop_GetByID(sketchLineLoop->id);
         //std::cout << std::endl;
-        std::vector<glm::vec2> points;
+        std::vector<Vec2> points;
         
         for (size_t i = 0; i < lineLoop.m_Elements.size(); i++) {
             //std::cout << i << "  :  p1 = " << m_Elements[i]->Last()->Vec2() << std::endl;
@@ -566,18 +565,18 @@ public:
     // Creates a basic Line Loop
     SketchOld_LineLoop LineLoop_Create();
     // Set start point
-    void LineLoop_SetStartPoint(LineLoop& lineLoop, const glm::vec2& startPoint);
+    void LineLoop_SetStartPoint(LineLoop& lineLoop, const Vec2& startPoint);
     void LineLoop_SetStartPoint(LineLoop& lineLoop, SketchOld_Element pointElement);
     // Adds a line to the Line Loop
-    void LineLoop_AddLine(SketchOld_LineLoop& lineLoop, const glm::vec2& p1);
+    void LineLoop_AddLine(SketchOld_LineLoop& lineLoop, const Vec2& p1);
     // Adds an arc to the Line Loop from centre point
-    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const glm::vec2& p1, int direction);
+    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const Vec2& p1, int direction);
     // Adds an arc to the Line Loop from centre point
-    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const glm::vec2& p1, int direction, const glm::vec2& centre);
+    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const Vec2& p1, int direction, const Vec2& centre);
     // Adds an arc to the Line Loop from radius
-    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const glm::vec2& p1, int direction, float radius);
+    void LineLoop_AddArc(SketchOld_LineLoop& lineLoop, const Vec2& p1, int direction, float radius);
     /*
-    void LineLoop_SetLastArcCentre(SketchOld_LineLoop& sketchLineLoop, const glm::vec2& p1) 
+    void LineLoop_SetLastArcCentre(SketchOld_LineLoop& sketchLineLoop, const Vec2& p1) 
     {
         LineLoop& lineLoop = LineLoop_GetByID(sketchLineLoop->id);
         assert(!lineLoop.IsEmpty() && "Line loop is empty");
@@ -597,27 +596,27 @@ public:
     */
 /* 
     // set lineloop element position
-    void Element_SetP0(ElementID id, glm::vec2 p0)         { Element_GetByID(id)->SetP0(p0); }
-    void Element_SetP1(ElementID id, glm::vec2 p1)         { Element_GetByID(id)->SetP1(p1); }    
-    void Element_SetCentre(ElementID id, glm::vec2 centre) { Element_GetByID(id)->SetCentre(centre); }    
+    void Element_SetP0(ElementID id, Vec2 p0)         { Element_GetByID(id)->SetP0(p0); }
+    void Element_SetP1(ElementID id, Vec2 p1)         { Element_GetByID(id)->SetP1(p1); }    
+    void Element_SetCentre(ElementID id, Vec2 centre) { Element_GetByID(id)->SetCentre(centre); }    
     void Element_SetRadius(ElementID id, float r)          { Element_GetByID(id)->SetRadius(r); }    
 */
     
     // Element creation
-    SketchOld_Element Element_CreatePoint(const glm::vec2& p) {
+    SketchOld_Element Element_CreatePoint(const Vec2& p) {
         RawPoint* point = RawPoint_Create(p);
         return move(Element_CreatePoint(point));
     }
-    SketchOld_Element Element_CreateLine(const glm::vec2& p0, const glm::vec2& p1) {
+    SketchOld_Element Element_CreateLine(const Vec2& p0, const Vec2& p1) {
         RawPoint* point0 = RawPoint_Create(p0);
         return move(Element_CreateLine(point0, p1));
     }
-    SketchOld_Element Element_CreateArc(const glm::vec2& p0, const glm::vec2& p1, int direction, const glm::vec2& centre) { 
+    SketchOld_Element Element_CreateArc(const Vec2& p0, const Vec2& p1, int direction, const Vec2& centre) { 
         RawPoint* point0 = RawPoint_Create(p0);
         return move(Element_CreateArc(point0, p1, direction, centre));
     }
     
-    std::vector<glm::vec2> Element_GetArcPath(const glm::vec2& p0, const glm::vec2& p1, int direction, const glm::vec2& centre, int arcSegments) {
+    std::vector<Vec2> Element_GetArcPath(const Vec2& p0, const Vec2& p1, int direction, const Vec2& centre, int arcSegments) {
         
         // make a point/element reference and add to list
         Ref_PointToElement ref0, ref1, refCentre;
@@ -636,7 +635,7 @@ public:
         // to ensure update (radius etc)
         arcElement.Update();
         
-        std::vector<glm::vec2> points;
+        std::vector<Vec2> points;
         arcElement.Path(points, arcSegments);
         return points;
     }
@@ -751,7 +750,7 @@ private:
         return std::make_unique<SketchOld_Element_Identifier>(elementID, this);
     }
     // for elements which share points (reference to previous element's end point) - used for line loop
-    SketchOld_Element Element_CreateLine(RawPoint* point0, const glm::vec2& p1) {
+    SketchOld_Element Element_CreateLine(RawPoint* point0, const Vec2& p1) {
         // make a point/element reference and add to list
         auto ref0 = std::make_unique<Ref_PointToElement>();
         auto ref1 = std::make_unique<Ref_PointToElement>();
@@ -773,7 +772,7 @@ private:
         return std::make_unique<SketchOld_Element_Identifier>(elementID, this);
     }
         
-    SketchOld_Element Element_CreateArc(RawPoint* point0, const glm::vec2& p1, int direction, const glm::vec2& centre) {
+    SketchOld_Element Element_CreateArc(RawPoint* point0, const Vec2& p1, int direction, const Vec2& centre) {
         // make a point/element reference and add to list
         auto ref0 = std::make_unique<Ref_PointToElement>();
         auto ref1 = std::make_unique<Ref_PointToElement>();
@@ -911,10 +910,10 @@ private:
     void Element_DeleteByID(ElementID elementID);
     Element* Element_GetByID(ElementID id) ;
     // should not be called with nullptr!
-    RawPoint* RawPoint_Create(glm::vec2 p, Ref_PointToElement* ref = nullptr);
+    RawPoint* RawPoint_Create(Vec2 p, Ref_PointToElement* ref = nullptr);
     
     RawPoint* RawPoint_GetByID(RawPointID pointID);
-    RawPoint* RawPoint_GetByPosition(glm::vec2 p, float tolerance);
+    RawPoint* RawPoint_GetByPosition(Vec2 p, float tolerance);
     void RawPoint_DeleteFromFactory(RawPoint* point);
     void Element_DeleteFromFactory(Element* element);
     void LineLoop_DeleteFromFactory(LineLoopID id);
@@ -956,7 +955,7 @@ public:
     // bool is success
     std::optional<std::vector<std::string>> InterpretGCode(Settings& settings, ElementFactory& elementFactory);
     // adds linelists to viewerLineList
-    virtual void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists, bool isDisabled) = 0;
+    virtual void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isDisabled) = 0;
     
 protected:
     std::string m_Name;
@@ -991,12 +990,12 @@ private:
     // exports gcode from current paramaters
     std::optional<std::vector<std::string>> ExportGCode(Settings& settings, ElementFactory& elementFactory) override;
     
-    void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineList, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists, bool isActive) override;
+    void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineList, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isActive) override;
      //Event<Event_DisplayShapeOffset>::Dispatch( { elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments), elementFactory.RawPoint_PointsList(), false } );
    
     struct Function_Draw_Parameters {
         int polygoniseOutput = 0;
-        glm::vec2 z = { 20.0f, 0.0f };
+        Vec2 z = { 20.0f, 0.0f };
         int cutSide = (int)CompensateCutter::None;
         float finishingPass = 1.0f;
     } m_Params;
@@ -1031,11 +1030,11 @@ public:
     // returns the gcode strings
     std::optional<std::vector<std::string>> ActiveFunction_UpdateViewer(Settings& settings);
     // update viewer
-    void UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerLineLists, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists);
+    void UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists);
 
-    void ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists);
+    void ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists);
 
-    void RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::DynamicVertexList>* viewerPointLists);
+    void RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists);
     
 private:
     
@@ -1059,7 +1058,7 @@ public:
     
     std::string  ActiveFunction_Name();
     
-    std::optional<glm::vec2> RawPoint_GetClosest(const glm::vec2& p, float tolerance);
+    std::optional<Vec2> RawPoint_GetClosest(const Vec2& p, float tolerance);
     
     void ActiveFunction_Run(GRBL& grbl, Settings& settings);
     void ActiveFunction_Export(Settings& settings);
@@ -1097,8 +1096,8 @@ private:
     bool m_IsActive = false;
 
     // draw list for viewer
-    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerLineLists;
-    std::vector<DynamicBuffer::DynamicVertexList> m_ViewerPointLists;
+    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerLineLists;
+    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerPointLists;
     
     // updates viewer for active drawing
     void ActiveFunction_UpdateViewer(Settings& settings);

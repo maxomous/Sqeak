@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <vector>
 #include <MaxLib.h>
+#include "../libs/geos.h" // TODO: Sketch shouldn't own geos
 
-using namespace MaxLib::Geom;
 
 namespace Sketch {
 
@@ -39,46 +39,6 @@ struct SketchItem
     };
 };
 
-
-typedef std::vector<Vec2>       Geometry;
-typedef Geometry                Points;
-typedef Geometry                LineString;
-//typedef std::vector<Points>     PointsCollection;
-//typedef std::vector<LineString> LineStrings;
-
-
-class RenderData
-{
-public:
-    enum class RenderType { Points, LineStrings };
-    enum class DataType { Items, Constraints, Selected, Preview };
-    
-    RenderData(RenderType renderType, DataType dataType)  : m_RenderType(renderType), m_DataType(dataType) {};
-    
-    RenderType GetRenderType() const { return m_RenderType; }
-    DataType GetDataType() const    { return m_DataType; }
- 
-    // A group of a single type geometry (e.g. a few linestrings etc.)
-    const std::vector<Geometry>& Geometries() const { return m_Geometries; };
-    std::vector<Geometry>& Geometries() { return m_Geometries; };
-    
-    void Add(const Geometry& geometry) { m_Geometries.emplace_back(std::move(geometry)); };
-    bool Empty() { return m_Geometries.empty(); };
-private:
-    RenderType m_RenderType;
-    DataType m_DataType;
-    std::vector<Geometry> m_Geometries;
-};
-
-
-
-/*
-struct RenderData
-{
-    PointsCollection points;  // vector<vector<Vec2>>>
-    LineStrings linestrings;  // vector<vector<Vec2>>>
-};
-*/
 
 
 } // end namespace Sketch

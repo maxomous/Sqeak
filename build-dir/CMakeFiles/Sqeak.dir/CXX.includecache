@@ -347,7 +347,7 @@ optional
 -
 algorithm
 -
-glm/glm.hpp
+MaxLib.h
 -
 
 /home/pi/Desktop/Projects/Sqeak/src/main.cpp
@@ -383,6 +383,8 @@ sketch.h
 /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
+MaxLib.h
+-
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
@@ -461,4 +463,6 @@ vector
 -
 MaxLib.h
 -
+../libs/geos.h
+/home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
 

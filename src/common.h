@@ -84,8 +84,8 @@ namespace Sqeak {
     
 struct Event_Update3DModelFromFile      { std::string filename; };
 struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
-struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::DynamicVertexList>* dynamicLineLists; };
-struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::DynamicVertexList>* dynamicPointLists; };
+struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::ColouredVertexList>* dynamicLineLists; };
+struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::ColouredVertexList>* dynamicPointLists; };
 
 struct Event_PopupMessage               { std::string msg; };
 struct Event_ResetFileTimer             {};

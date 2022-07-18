@@ -127,9 +127,10 @@ private:
 class DynamicBuffer
 {
 public:
-    struct DynamicVertexList {
-        DynamicVertexList() {}
-        DynamicVertexList(const glm::vec3& col) : colour(col) {}
+    // contains a list of points/lines + a colour
+    struct ColouredVertexList {
+        ColouredVertexList() {}
+        ColouredVertexList(const glm::vec3& col) : colour(col) {}
         std::vector<glm::vec3> position; 
         glm::vec3 colour; 
     };
@@ -146,8 +147,8 @@ public:
     void AddShapeOutline(const Shape& shape, glm::vec3 colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }); 
     void AddShape(const Shape& shape, glm::vec3 colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }, bool isOutline = false);
 
-    void AddDynamicVertexListAsLines(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
-    void AddDynamicVertexListAsPoints(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
+    void AddColouredVertexListAsLines(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
+    void AddColouredVertexListAsPoints(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
     
     void Update();
     void Draw(glm::mat4& proj, glm::mat4& view, bool isDrawOutline = false);
@@ -215,8 +216,8 @@ private:
     DynamicBuffer m_DynamicLines = { GL_LINES, 1024, 1024 };
     DynamicBuffer m_DynamicBodies = { GL_TRIANGLES, 4096, 4096 };
     
-    std::vector<DynamicBuffer::DynamicVertexList>* m_DynamicLineLists = nullptr;
-    std::vector<DynamicBuffer::DynamicVertexList>* m_DynamicPointLists = nullptr;
+    std::vector<DynamicBuffer::ColouredVertexList>* m_DynamicLineLists = nullptr;
+    std::vector<DynamicBuffer::ColouredVertexList>* m_DynamicPointLists = nullptr;
     //std::vector<glm::vec2> m_Shape;
     //std::vector<glm::vec2> m_ShapeOffset;
     //bool m_ShapeIsLoop = false;

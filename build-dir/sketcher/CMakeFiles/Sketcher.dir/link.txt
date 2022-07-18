@@ -1,2 +1,2 @@
-/usr/bin/ar qc libSketcher.a  CMakeFiles/Sketcher.dir/constraints.cpp.o CMakeFiles/Sketcher.dir/elementfactory.cpp.o CMakeFiles/Sketcher.dir/elements.cpp.o CMakeFiles/Sketcher.dir/sketch.cpp.o CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o
+/usr/bin/ar qc libSketcher.a  CMakeFiles/Sketcher.dir/constraints.cpp.o CMakeFiles/Sketcher.dir/elementfactory.cpp.o CMakeFiles/Sketcher.dir/elements.cpp.o CMakeFiles/Sketcher.dir/sketch.cpp.o CMakeFiles/Sketcher.dir/sketch_common.cpp.o CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o
 /usr/bin/ranlib libSketcher.a

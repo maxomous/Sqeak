@@ -6,11 +6,11 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <optional>
-#include <algorithm>
-#include <glm/glm.hpp> 	
+#include <algorithm>	
+#include <MaxLib.h>	
 
 // delete this, for debugging only
-//static void printVec2(const std::string& text, const glm::vec2& v) {
+//static void printVec2(const std::string& text, const MaxLib::Geom::Vec2& v) {
 //    std::cout << text << ": (" << v.x << ", " << v.y << ")" << std::endl;
 //}
 
@@ -30,177 +30,128 @@ struct GeosBufferParams {
 
 class Geos {
 public:    
-    // a linestring is a polygon when the first and last point are identical
-    typedef std::vector<glm::vec2> LineString;
-
+    
     Geos();
     ~Geos();
     // returns centroid of a polygon
-    std::optional<glm::vec2> Centroid(const LineString& points);
+    std::optional<MaxLib::Geom::Vec2> Centroid(const MaxLib::Geom::LineString& points);
     // Returns true if Line is inside polygon or line is touching boundary but is inside polygon
-    std::optional<bool> LineIsInsidePolygon(const glm::vec2& p0, const glm::vec2& p1, const LineString& polygon);
+    std::optional<bool> LineIsInsidePolygon(const MaxLib::Geom::Vec2& p0, const MaxLib::Geom::Vec2& p1, const MaxLib::Geom::LineString& polygon);
     
-    /*
-    
-    Draw Sketch Elements:
-        - Points
-        - Lines
-        - Arcs
-    
-       | | | 
-       v v v
-       
-    Exit Sketch
-    
-       | | | 
-       v v v
-    
-    Make Selectable Geometry
-        Polygonise
-        - Make vector<Polygons>
-        - Make vector<Lines>
+    // converts a vector<Vec2> to a Geos Point, LineString or Polygon, defined by the number of points it contains
+    GEOSGeometry* GeosPointLineStringOrPolygon(const MaxLib::Geom::LineString& points) {
+        // err if no points
+        if(points.size() == 0) { return {}; }
+        // input is point
+        if(points.size() == 1) { return GEOSGeom_createPointFromXY(points[0].x, points[0].y); }
+        // return polygon if loop, linestring if not
+        if(points.front() == points.back()) {
+            return GeosPolygon(points); 
+        } else {
+            return GeosLineString(points);    
+        }
+    }
+    // input can be a point, linestring or polygon (a polygon's start and end points must be identical)
+    std::optional<bool> Intersect(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) {
         
-    */
+        GEOSGeometry* geom_A = GeosPointLineStringOrPolygon(geomA);
+        if(!geom_A) return {};
+        GEOSGeometry* geom_B = GeosPointLineStringOrPolygon(geomB);
+        if(!geom_B) return {};
+        
+        char result = GEOSIntersects(geom_A, geom_B);
+        if(result == 2) { return {}; } // error
+        
+        GEOSGeom_destroy(geom_A);
+        GEOSGeom_destroy(geom_B);
+        return result;
+    }
+    
+    // returns true if polygon conatians geom
+    // geom can be either a point, linestring or polygon (a polygon's start and end points must be identical)
+    std::optional<bool> Contains(const MaxLib::Geom::LineString& polygon, const MaxLib::Geom::LineString& geom) {
+        
+        GEOSGeometry* geom_A = GeosPolygon(polygon);
+        if(!geom_A) return {};
+        GEOSGeometry* geom_B = GeosPointLineStringOrPolygon(geom);
+        if(!geom_B) return {};
+        
+        char result = GEOSContains(geom_A, geom_B);
+        //GEOSCovers??
+        if(result == 2) { return {}; } // return 2 on exception
+        
+        GEOSGeom_destroy(geom_A);
+        GEOSGeom_destroy(geom_B);
+        return result;
+    }
+ //   
+ //   // ALL: returns 1 on true, 0 on false, 2 on exception
+ //
+ //   // True if no point of either geometry touchess or is within the other.
+ //   extern char GEOS_DLL GEOSDisjoint(const GEOSGeometry* g1, const GEOSGeometry* g2);
+ //
+ //   // True if geometries share boundaries at one or more points, but do not have interior overlaps.
+ //   extern char GEOS_DLL GEOSTouches(const GEOSGeometry* g1, const GEOSGeometry* g2);
+ //
+ //   // True if geometries are not disjoint.
+ //   extern char GEOS_DLL GEOSIntersects(const GEOSGeometry* g1, const GEOSGeometry* g2);
+ //
+ //   // True if geometries interiors interact but their boundares do not. Most useful for finding line crosses cases.
+ //   extern char GEOS_DLL GEOSCrosses(const GEOSGeometry* g1, const GEOSGeometry* g2);
+ //
+
     
     
-    
-    
-    
-    
-    
-    
+    struct PolygonisedData
+    {
+        std::vector<MaxLib::Geom::LineString> valid;
+        std::vector<MaxLib::Geom::LineString> cuts;
+        std::vector<MaxLib::Geom::LineString> dangles;
+        std::vector<MaxLib::Geom::LineString> invalid;
+    };
     
     
     // Converts a vector of linestrings into polygons 
     // (calculates nodes at intersections between lines and generates new polygons using these nodes)
     // usage should be:
     //  if inside polygon and closest to centroid, select that shape
-    
-    std::vector<LineString> Polygonise(const LineString& input, int type)
+    // Geometry can be vector of Linestring or Polyons
+    PolygonisedData Polygonise(const std::vector<MaxLib::Geom::Geometry>& input)
     {   
-        // make a vector<LineString> polygons;
-        // make a vector<LineString> lines;
-                
-        // when selecting lines(string) - only allow lines connected to previous 
-            // combines points by making linestring from lines?
-        
-        
-        
-        // TODO: ignore ANY of the input linestring's size < 2...
-        if(input.size() < 2) return {};
-        
-        
-        LineString points = { { 10.0f, 10.0f }, { 100.0f, 150.0f }};
-        
-        /* Two points in an array */
-        size_t nLineStrings = 2;
-        //GEOSGeometry** lineStrings = (GEOSGeometry**)malloc(sizeof(GEOSGeometry*) * nLineStrings);
-        GEOSGeometry* lineStrings[2];// = (GEOSGeometry**)malloc(sizeof(GEOSGeometry*) * nLineStrings);
-        lineStrings[0] = GeosLineString(input);
-        lineStrings[1] = GeosLineString(points);
-
+        std::vector<GEOSGeometry*> lineStrings;
+        // Make geos line string for each input linestring
+        for(const MaxLib::Geom::LineString& linestring : input) {
+            if(linestring.size() >= 2) {                
+                lineStrings.push_back(GeosLineString(linestring));
+            }
+        }
         /* takes ownership of the points in the array */
         /* but not the array itself */
-        GEOSGeometry* collection = GEOSGeom_createCollection(GEOS_MULTILINESTRING, lineStrings, nLineStrings);
+        GEOSGeometry* collection = GEOSGeom_createCollection(GEOS_MULTILINESTRING, lineStrings.data(), lineStrings.size());
 
-
-        
-              
-        /*
-        // Define line string
-        GEOSGeometry* lineString = GeosLineString(input);
-        if(!lineString) return {};
-        */
-        
-        
-  /*      
-        // Define line string
-        GEOSGeometry* lineStrings[2];
-        
-        lineStrings[0] = GeosLineString(input);
-        if(!lineStrings[0]) return {};
-    
-        LineString points{ { 10.0f, 10.0f }, { 100.0f, 150.0f } };
-    
-        lineStrings[1] = GeosLineString(points);
-        if(!lineStrings[1]) return {};
-        
-        
-        // Make a collection of linestrings
-        GEOSGeometry* collection = GEOSGeom_createCollection(GEOS_LINESTRING, lineStrings, 2);
-        //GEOSGeometry* collection = GEOSGeom_createCollection(GEOS_LINESTRING, GEOSGeometry** geoms, unsigned int ngeoms);
-
-*/
-
-
-        
-        
         // Create nodes at intersections
-        //GEOSGeometry* nodedLines = GEOSNode(lineString);
-    GEOSGeometry* nodedLines = GEOSNode(collection);
-    if(!nodedLines) return {};   
+        GEOSGeometry* nodedLines = GEOSNode(collection);
+        if(!nodedLines) return {};   
      
         // Type: Geometry Collection
-        GEOSGeometry* cuts;
-        GEOSGeometry* dangles;
-        GEOSGeometry* invalid; 
+        GEOSGeometry *cuts, *dangles, *invalid; 
     
         // Polygonise (convert the noded linestring into polygons)
         GEOSGeometry* polygons = GEOSPolygonize_full(nodedLines, &cuts, &dangles, &invalid);
         if(!polygons) return {}; 
         
-        // Make the return vector and copy points into it for each polygon produced
-        std::vector<Geos::LineString> returnPolygons;// = GeosGetPolygons(polygons);
-        std::optional<Geos::LineString> coords;
         
-        switch (type)
-        {
-            case 0: // input
-                returnPolygons = GeosGetPolygons(polygons);
-                break;
-            case 1: // Cuts
-                returnPolygons = GeosGetLineStrings(cuts);
-                break;
-            case 2: // dangles
-                returnPolygons = GeosGetLineStrings(dangles);
-                break;
-            case 3: // invalid loops
-                returnPolygons = GeosGetPolygons(invalid);
-                break;
-        }
-        /*
-        switch (type)
-        {
-            case 0: // input
-                returnPolygons = GeosGetPolygons(polygons);
-                break;
-            case 1: // Cuts
-                coords = GeosGetCoords(cuts, false);
-                if(coords) { returnPolygons.push_back(*coords); }
-                break;
-            case 2: // dangles
-                coords = GeosGetCoords(dangles, false);
-                if(coords) { returnPolygons.push_back(*coords); }
-                break;
-            case 3: // invalid loops
-                coords = GeosGetCoords(invalid, false);
-                if(coords) { returnPolygons.push_back(*coords); }
-                break;
-        }
-        */
+        PolygonisedData output;
+        output.valid = GeosGetPolygons(polygons);
+        output.cuts = GeosGetLineStrings(cuts);
+        output.dangles = GeosGetLineStrings(dangles);
+        output.invalid = GeosGetPolygons(invalid);
         
-        
-
+        // Free memory        
 
         /* frees collection and contained points */
         GEOSGeom_destroy(collection);
-
-        /* frees the containing array */
-      //  free(lineStrings);
         
-        
-        // Free memory        
-        //GEOSGeom_destroy(lineString); 
  //       GEOSGeom_destroy(nodedLines);
         GEOSGeom_destroy(cuts);
         GEOSGeom_destroy(dangles);
@@ -208,25 +159,25 @@ public:
         GEOSGeom_destroy(polygons);
        
         // return polygons
-        return move(returnPolygons);        
+        return std::move(output);        
     }
     
     // returns offset of a line or polygon. result may be multiple linestrings
     // offset is negative for right side offset / positive for left side
     // determines whether points are a line or polygon by if the first and last point is the same 
-    std::vector<LineString> Offset(const LineString& points, float offset, GeosBufferParams& params);
-    std::vector<LineString> OffsetLine(const LineString& points, float offset, GeosBufferParams& params);
-    std::vector<LineString> OffsetPolygon(const LineString& points, float offset, GeosBufferParams& params);
+    std::vector<MaxLib::Geom::LineString> Offset(const MaxLib::Geom::LineString& points, float offset, GeosBufferParams& params);
+    std::vector<MaxLib::Geom::LineString> OffsetLine(const MaxLib::Geom::LineString& points, float offset, GeosBufferParams& params);
+    std::vector<MaxLib::Geom::LineString> OffsetPolygon(const MaxLib::Geom::LineString& points, float offset, GeosBufferParams& params);
     
     struct RecursiveOffset {
-        std::vector<LineString> path;
-        std::vector<LineString> enclosingPath;        
+        std::vector<MaxLib::Geom::LineString> path;
+        std::vector<MaxLib::Geom::LineString> enclosingPath;        
     };
     
-    RecursiveOffset OffsetPolygon_Recursive(const std::vector<LineString>& lineStrings, float pathOffset, bool isReversed, GeosBufferParams& params)
+    RecursiveOffset OffsetPolygon_Recursive(const std::vector<MaxLib::Geom::LineString>& lineStrings, float pathOffset, bool isReversed, GeosBufferParams& params)
     {
         RecursiveOffset returnVals;
-        LineString buffer;
+        MaxLib::Geom::LineString buffer;
         // dynamic start point (finds closest point in offset)
         std::vector<size_t> startIndex(lineStrings.size(), 0);
         OffsetPolygon_Recursive(returnVals, lineStrings, pathOffset, buffer, startIndex, true, params);
@@ -248,7 +199,7 @@ private:
 
     // adds linestring and subsequent offsets into returnPoints
     // if offset > 0 we recursively make offsets until offset fails
-    void OffsetPolygon_Recursive(RecursiveOffset& returnVals, const std::vector<LineString>& lineStrings, float pathOffset, LineString& buffer, std::vector<size_t>& startIndex, bool isEnclosingPath, GeosBufferParams& params)
+    void OffsetPolygon_Recursive(RecursiveOffset& returnVals, const std::vector<MaxLib::Geom::LineString>& lineStrings, float pathOffset, MaxLib::Geom::LineString& buffer, std::vector<size_t>& startIndex, bool isEnclosingPath, GeosBufferParams& params)
     {    
         // sanity check
         assert(lineStrings.size() == startIndex.size() && "Start index size isnt equal to linestring size");
@@ -260,7 +211,7 @@ private:
         
 
         for(size_t n = 0; n < lineStrings.size(); n++) {
-            const LineString& l = lineStrings[n];
+            const MaxLib::Geom::LineString& l = lineStrings[n];
             // check there is 2 or more points
             if(l.size() < 2) { continue; }
             
@@ -287,7 +238,7 @@ private:
                 continue; 
             } 
             // recursively offset the lineString to bore out
-            std::vector<LineString> OffsetLines = OffsetPolygon(l, pathOffset, params);
+            std::vector<MaxLib::Geom::LineString> OffsetLines = OffsetPolygon(l, pathOffset, params);
             // if no more offsets, add centroid point as last position
             if(!OffsetLines.size()) {
                 if(auto centroid = Centroid(l)) { 
@@ -309,12 +260,12 @@ private:
         }
     } 
     
-    std::vector<size_t> DetermineStartPoints(std::vector<LineString>& OffsetLines, const LineString& l, size_t startIndex)
+    std::vector<size_t> DetermineStartPoints(std::vector<MaxLib::Geom::LineString>& OffsetLines, const MaxLib::Geom::LineString& l, size_t startIndex)
     {
         assert(OffsetLines.size());
         assert(startIndex < l.size());
         
-        const glm::vec2& p0 = l[startIndex];
+        const MaxLib::Geom::Vec2& p0 = l[startIndex];
         
         std::vector<size_t> startIndexNew;
         
@@ -324,7 +275,7 @@ private:
             // ensure the line falls within the current offset polygon (to prevent cutting material we wouldn't want to)
             for(size_t i = 0; i < OffsetLines[n].size()-1; i++) // -1 because first and last point are the same
             {
-                glm::vec2& p1 = OffsetLines[n][i];
+                MaxLib::Geom::Vec2& p1 = OffsetLines[n][i];
                 if(LineIsInsidePolygon(p0, p1, l)) {
                     newIndex = i;
                     break;
@@ -338,8 +289,8 @@ private:
             
             for(size_t i = 0; i < OffsetLines[n].size()-1; i++) // -1 because first and last point are the same
             {   // get next point in offset and compare its length to prev
-                glm::vec2& p1 = OffsetLines[n][i];                
-                glm::vec2 dif = p1 - p0;
+                MaxLib::Geom::Vec2& p1 = OffsetLines[n][i];                
+                MaxLib::Geom::Vec2 dif = p1 - p0;
                 // compare length
                 float L = hypotf(dif.x, dif.y);
                 if(L < LMin || LMin == -1.0f) {
@@ -358,20 +309,20 @@ private:
     
 private:
 
-    GEOSGeometry* GeosLinearRing(const LineString& points);
-    GEOSGeometry* GeosPolygon(const LineString& points);
-    GEOSGeometry* GeosLineString(const LineString& points);
+    GEOSGeometry* GeosLinearRing(const MaxLib::Geom::LineString& points);
+    GEOSGeometry* GeosPolygon(const MaxLib::Geom::LineString& points);
+    GEOSGeometry* GeosLineString(const MaxLib::Geom::LineString& points);
     
 
-    GEOSCoordSequence*         GeosCoordSequence(const LineString& points);
+    GEOSCoordSequence*         GeosCoordSequence(const MaxLib::Geom::LineString& points);
     
-    // Converts GEOS point or GEOS linestring to Geos::LineString
-    std::optional<LineString>  GeosGetCoords(const GEOSGeometry* geometry, bool reversePoints);
+    // Converts GEOS point or GEOS linestring to Geom::LineString
+    std::optional<MaxLib::Geom::LineString>  GeosGetCoords(const GEOSGeometry* geometry, bool reversePoints);
     
-    // Converts GEOS geometry collection to std::vector<Geos::LineString>
-    std::vector<LineString>    GeosGetLineStrings(const GEOSGeometry* geometry);
-    // Converts GEOS geometry collection to std::vector<Geos::LineString>
-    std::vector<LineString>    GeosGetPolygons(const GEOSGeometry* geometry);
+    // Converts GEOS geometry collection to std::vector<Geom::LineString>
+    std::vector<MaxLib::Geom::LineString>    GeosGetLineStrings(const GEOSGeometry* geometry);
+    // Converts GEOS geometry collection to std::vector<Geom::LineString>
+    std::vector<MaxLib::Geom::LineString>    GeosGetPolygons(const GEOSGeometry* geometry);
 
     static void   MsgHandler(const char* fmt, ...);
 };

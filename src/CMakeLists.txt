@@ -75,6 +75,7 @@ add_subdirectory(sketcher)
 #target_include_directories()
 #add_library() or similar in other cmakefile
 
+
 # WiringPi
 find_library(WIRING_PI_LIBRARIES NAMES wiringPi)
 # pThreads
@@ -112,6 +113,6 @@ target_link_libraries(${PROJECT_NAME}
 #             Set Compiler Options
 ####################################################
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g) 
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g -O0) #-O0 -v -Q for valgrind (try -Q for showing function names)
 
 ####################################################

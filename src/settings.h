@@ -330,10 +330,11 @@ private:
 };
 
 enum class ViewerUpdate {
-    None            = 0,
-    Clear           = 1 << 0,
-    ActiveDrawing   = 1 << 1,
-    ActiveFunction  = 1 << 2,
+    None            = 0x00,
+    Clear           = 0x01,
+    Sketch          = 0x02,
+    ActiveDrawing   = 0x04,
+    ActiveFunction  = 0x08,
     Full            = ActiveDrawing | ActiveFunction
 };
 inline ViewerUpdate operator|(ViewerUpdate a, ViewerUpdate b) { return static_cast<ViewerUpdate>(static_cast<int>(a) | static_cast<int>(b)); }

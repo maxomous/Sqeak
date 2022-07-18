@@ -26,6 +26,22 @@ stdint.h
 imgui_user.h
 /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_user.h
 
+/home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
+geos_c.h
+-
+vector
+-
+stdio.h
+-
+stdarg.h
+-
+optional
+-
+algorithm
+-
+MaxLib.h
+-
+
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
 vector
 -
@@ -99,4 +115,6 @@ vector
 -
 MaxLib.h
 -
+../libs/geos.h
+/home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
 

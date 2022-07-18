@@ -2467,9 +2467,7 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
         viewer.ImGuiRender(settings);
         
         // Draw Sketch ImGui
-        if(sketcherNew.DrawImGui()) {
-            settings.SetUpdateFlag(ViewerUpdate::Full);
-        }
+        sketcherNew.DrawImGui();
         //DrawSketcher(settings, sketcherNew);
         
         

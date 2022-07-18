@@ -260,6 +260,33 @@ sketch.cpp.s:
 	cd /home/pi/Desktop/Projects/Sqeak/build-dir && $(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/sketch.cpp.s
 .PHONY : sketch.cpp.s
 
+sketch_common.o: sketch_common.cpp.o
+
+.PHONY : sketch_common.o
+
+# target to build an object file
+sketch_common.cpp.o:
+	cd /home/pi/Desktop/Projects/Sqeak/build-dir && $(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.o
+.PHONY : sketch_common.cpp.o
+
+sketch_common.i: sketch_common.cpp.i
+
+.PHONY : sketch_common.i
+
+# target to preprocess a source file
+sketch_common.cpp.i:
+	cd /home/pi/Desktop/Projects/Sqeak/build-dir && $(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.i
+.PHONY : sketch_common.cpp.i
+
+sketch_common.s: sketch_common.cpp.s
+
+.PHONY : sketch_common.s
+
+# target to generate assembly for a file
+sketch_common.cpp.s:
+	cd /home/pi/Desktop/Projects/Sqeak/build-dir && $(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.s
+.PHONY : sketch_common.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -284,6 +311,9 @@ help:
 	@echo "... sketch.o"
 	@echo "... sketch.i"
 	@echo "... sketch.s"
+	@echo "... sketch_common.o"
+	@echo "... sketch_common.i"
+	@echo "... sketch_common.s"
 .PHONY : help
 
 

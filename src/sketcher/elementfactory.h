@@ -14,6 +14,79 @@ using namespace MaxLib::Geom;
 class ElementFactory
 {
 public:
+
+    // segments per 90 degrees of arc
+    int arcSegments = 32;
+    
+    // Render element to linestring
+    LineString RenderLine(const Vec2& p0, const Vec2& p1)
+    {
+        return std::move(LineString({ p0, p1 }));
+    }
+
+    LineString RenderArc(const Vec2& pC, double radius, Direction direction, double th_Start, double th_End)
+    {
+        LineString linestring;
+        // Clean up angles
+        CleanAngles(th_Start, th_End, direction);
+        // Calculate increment from n segments in 90 degrees
+        double th_Incr = direction * (M_PI / 2.0) / arcSegments;
+        // Calculate number of incrments for loop
+        int nIncrements = floorf(fabsf((th_End - th_Start) / th_Incr));
+        
+        // from 'n == 1' because we have already calculated the first angle
+        // to 'n == nIncremenets' to ensure last point is added
+        for (int n = 0; n <= nIncrements; n++) {
+            
+            double th = (n == nIncrements) ? th_End : th_Start + n * th_Incr;
+            // Calculate position from radius and angle
+            Vec2 p = pC + Vec2(fabsf(radius) * sin(th), fabsf(radius) * cos(th));       
+            
+            // This prevents double inclution of point 
+            if(!linestring.empty()) { 
+                if(p == linestring.back()) { continue; }
+            }
+            
+            //Add Line to output
+            linestring.emplace_back(move(p));
+        }
+        return std::move(linestring);
+    }
+    LineString RenderArc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction)
+    {
+        // get start and end points relative to the centre point
+        Vec2 v_Start    = p0 - pC;
+        Vec2 v_End      = p1 - pC;
+        // get start and end angles
+        double th_Start = atan2(v_Start.x, v_Start.y);
+        double th_End   = atan2(v_End.x, v_End.y);
+        double radius   = hypot(v_End.x, v_End.y);
+        // draw arc between angles
+        return std::move(RenderArc(pC, radius, direction, th_Start, th_End));
+    }
+
+    LineString RenderCircle(const Vec2& pC, double radius) {
+        // draw arc between angles
+        LineString circle = RenderArc(pC, radius, Direction::CW, 0.0, 2.0 * M_PI);
+        // make sure the first and last points match as 2PI produces a rounding error
+        if(!circle.empty()) { circle.back() = circle.front(); }
+        return std::move(circle);
+    }
+
+    Vec2 AdjustCentrePoint(const Vec2& p0, const Vec2& p1, const Vec2& pC) {
+        // Get distance between line and point
+        double d = DistanceBetween(p0, p1, pC);
+        
+        double th = Polar(p1 - p0).th;
+        double thPerpendicular = CleanAngle(th + M_PI_2);
+        Polar newCentre = Polar(d, thPerpendicular);
+        
+        Vec2 pMid = (p0 + p1) / 2.0;
+        int flipSide = LeftOfLine(p0, p1, pC) ? -1 : 1;
+        return pMid + newCentre.Cartesian() * flipSide;
+    }
+    
+
     // TODO: Test these ptrs * with references & instead
     void ForEachElement(std::function<void(Sketch::Element*)> cb_Element) 
     {
@@ -83,8 +156,27 @@ public:
     }
 
        
+ //   
+ //   selecting 1st point     closest (prioritises closest point, if none, then it will select the first element within tolerence)
+ //       
+ //   
+ //   shift click 2nd point   closest (dont clear selection)
+ //       
+ //   
+ //   drag right              any fully inside 
+ //       create a bounding box of mouse drag
+ //       create a bounding box around element's linestring
+ //       check for inside
+ //       
+ //   drag left               any partially inside 
+ //       "
+ //       check for intersect
     
-
+    
+    
+    // A Point's item_element and item_point have their selected and hovered flags tied together 
+    
+    // Clears all hovered flags
     void ClearHovered() 
     {
         ForEachItem([](Item& item) {
@@ -92,38 +184,148 @@ public:
         });
     }
 
-    void ClearSelection() 
+    void ClearSelected() 
     {
         ForEachItem([](Item& item) {
             item.SetSelected(false);
         });
     }
   
-    
-    // Finds points within a tolerance to position p
-    // Result a list of points and their distance to p 
-    void AddSelectionByPosition(Vec2 p, double tolerance)
+    // Finds points within a tolerance to position p and sets their hovered flag to true
+    bool SetHoveredByPosition(const Vec2& p, double tolerance) 
     {
+        return EditItemByPosition(p, tolerance, [](Sketch::Item& item) {
+            item.SetHovered(true);
+        });        
+    }
+    
+    // Finds points within a tolerance to position p and sets their selected flag to true
+    bool SetSelectedByPosition(const Vec2& p, double tolerance) 
+    {
+        return EditItemByPosition(p, tolerance, [](Sketch::Item& item) {
+            item.SetSelected(true);
+        });
+    }    
+private:    
+    // Finds points within a tolerance to position p and calls callback function, passing the item as a parameter
+    // Points are prioritised over elements
+    // Callback on a Point element will be ignored and handled within the ItemPoint instead to prevent testing position twice
+    // Returns success
+    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb)
+    {     
+        Sketch::SketchItem closestItem;
+        double closestDistance = tolerance;
+        
         // Check each point on each element to see whether it falls within tolerance
         ForEachItemPoint([&](Sketch::Item_Point& item) {
             // Adds point to pointsFound if point falls within tolerance
             double distance = Hypot(item.p - p);
-            if(distance <= tolerance) { 
-                item.SetSelected(true);
+            if(distance < closestDistance) {
+                closestItem = item.Reference();
+                closestDistance = distance;
             }
         });
-       //  // Check each point on each element to see whether it falls within tolerance
-       // ForEachItemElement([&](const Sketch::Item_Element& item) {
-       //     // Adds point to pointsFound if point falls within tolerance
-       //     LiesOnElement = Geos::Intersect_Point_Element
-       //     double distance = Hypot(centroid - p);
-       //     if(distance <= tolerance) { 
-       //         item.SetSelected(true);
-       //     }
-       // });
+        
+        // prioritise point if one is within tolerance and set closest to selected
+        if(closestItem.type != Sketch::SketchItem::Type::Unset) {
+            // add point to selection
+            cb(GetItemBySketchItem(closestItem));
+            // A point is a special case where we also set its element
+            if(closestItem.type == Sketch::SketchItem::Type::Point) {
+                cb(GetElementByID<Point>(closestItem.element)->Item_P());
+            }
+            return true;
+        } 
+        
+        // Check each element to see whether it falls within tolerance
+        bool isElementFound = false;
+        // draw a tolerence ring around point, to check if intersect
+        LineString p_with_tol = RenderCircle(p, tolerance);
+         
+        ForEachElement([&](Sketch::Element* element) {
+            // The first element found is the one which is set to selected
+            // So skip until end if element was already found
+            if(isElementFound) { return; } 
+            
+            LineString l;
+            if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, this is handled above
+            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
+            else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
+            
+            assert(!l.empty() && "Linestring is empty");
+            // Check if point and element intersect 
+            Geos geos;
+            if(auto success = geos.Intersect(p_with_tol, l)) {
+                if(*success) {
+                    cb(element->Item_Elem());
+                    isElementFound = true;
+                }
+            }    
+        }); 
+        return isElementFound;
     }
     
-    
+public:
+    // Finds points within a tolerance to position p
+    void AddSelectionBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside)
+    {        
+        Geos geos;
+        // Make bounding box (minimum in bottom left, max in top right)
+        Vec2 boundary_p0 = { std::min(p0.x, p1.x), std::min(p0.y, p1.y) };
+        Vec2 boundary_p1 = { std::max(p0.x, p1.x), std::max(p0.y, p1.y) };
+        LineString boundingBox = { boundary_p0, { boundary_p0.x, boundary_p1.y }, boundary_p1, { boundary_p1.x, boundary_p0.y }, boundary_p0 };
+                
+        // Check each point on each element to see whether it falls within tolerance
+        ForEachItemPoint([&](Sketch::Item_Point& item) {
+            // Adds point to selected if point falls within bounding box
+            if(boundary_p0 <= item.p && item.p <= boundary_p1) {
+                item.SetSelected(true);
+                // Points are a specical case where we also set its element flag
+                if(item.Type() == SketchItem::Type::Point) { 
+                    GetElementByID<Point>(item.Reference().element)->Item_Elem().SetSelected(true);
+                }
+            }
+        });
+        // Check each element to see whether it falls within tolerance
+        ForEachElement([&](Sketch::Element* element) {
+                                    
+            LineString l;
+            if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, handled above
+            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
+            else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
+            
+            assert(!l.empty() && "Linestring is empty");
+            
+            // Return values      
+            if(auto success = (includePartiallyInside) ? geos.Intersect(boundingBox, l) : geos.Contains(boundingBox, l)) {
+                if(*success) {
+                    element->Item_Elem().SetSelected(true);
+                }
+            } 
+            
+        }); 
+        
+    }
+    // Deletes all items in selcetion
+    void DeleteSelection() 
+    {
+        // make a list of all the elements to delete
+        std::vector<ElementID> elementsToDelete;
+        
+        ForEachItemElement([&](Item_Element& item) {
+            if(item.IsSelected()) {
+                elementsToDelete.push_back(item.Reference().element);
+            }
+        });
+        // Remove each element
+        for(ElementID element : elementsToDelete) {
+            RemoveElement(element);            
+        }
+    }
 /*  
     // Finds points within a tolerance to position p
     // Result a list of points and their distance to p 
@@ -209,15 +411,15 @@ public:
   
   
     
-    const Solver::Point2D&  GetPoint(SketchItem item);
-    const Solver::Line&     GetLine(SketchItem item);
-    const Solver::Arc&      GetArc(SketchItem item); 
-    const Solver::Circle&   GetCircle(SketchItem item);
-
+    Solver::Point2D&  GetPoint(SketchItem item);
+    Solver::Line&     GetLine(SketchItem item);
+    Solver::Arc&      GetArc(SketchItem item); 
+    Solver::Circle&   GetCircle(SketchItem item);
+ 
     
     
-    ElementID AddPoint(const Vec2& p) ;
-    ElementID AddLine(const Vec2& p0, const Vec2& p1) ;
+    ElementID AddPoint(const Vec2& p);
+    ElementID AddLine(const Vec2& p0, const Vec2& p1);
     ElementID AddArc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction);
     ElementID AddCircle(const Vec2& pC, double radius);
   
@@ -235,7 +437,7 @@ public:
         // Stores any constraints which need to be deleted
         std::vector<ConstraintID> constraintsToDelete;
         
-        // For each Constraint
+        // For each Constraint 
         for(size_t i = 0; i < m_Constraints.Size(); i++)
         {
             // For each Element inside Constraint
@@ -247,6 +449,10 @@ public:
                 }
             });
         }
+        // sort and remove duplicates
+        std::sort(constraintsToDelete.begin(), constraintsToDelete.end());
+        constraintsToDelete.erase(std::unique(constraintsToDelete.begin(), constraintsToDelete.end()), constraintsToDelete.end());
+        
         // Go through all the Constraints to be deleted, and delete them
         for(ConstraintID constraintID : constraintsToDelete) {
             RemoveConstraint(constraintID);
@@ -265,7 +471,7 @@ public:
     // On failure, failed Elements are flagged
     // if dragPoint is set, solver will fix this point to dragPosition
     // Returns: success
-    bool UpdateSolver(std::optional<Vec2> dragPosition = {});
+    bool UpdateSolver(std::optional<Vec2> pDif = {});
   
 private:    
 
@@ -287,7 +493,7 @@ private:
     }
     // Temporarily modifies the dragged point's solver parameters to 
     // the new dragged position, and fixes it there by changing its group
-    void SetDraggedPoint(Solver::ConstraintSolver& solver, SketchItem draggedPoint, const Vec2& draggedPosition);
+    void SetDraggedPoint(Solver::ConstraintSolver& solver, Item_Point& draggedPoint, const Vec2& pDif);
     
     // Clear the Solver Data from Elements / Constraints
     void ResetSolverElements();
@@ -308,7 +514,7 @@ private:
         for(size_t i = 0; i < m_Elements.Size(); i++) {
             if(m_Elements[i].ID() == id) { return i; }            
         }
-        assert("Could not find element");
+        assert(0 && "Could not find element");
         return 0; // never reaches
     }
     size_t GetConstraintIndexByID(ConstraintID id)  
@@ -316,7 +522,7 @@ private:
         for(size_t i = 0; i < m_Constraints.Size(); i++) {
             if(m_Constraints[i].ID() == id) { return i; }            
         }
-        assert("Could not find constraint");
+        assert(0 && "Could not find constraint");
         return 0; // never reaches
     }
     

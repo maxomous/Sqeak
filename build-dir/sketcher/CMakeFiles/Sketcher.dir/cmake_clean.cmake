@@ -4,6 +4,7 @@ file(REMOVE_RECURSE
   "CMakeFiles/Sketcher.dir/elementfactory.cpp.o"
   "CMakeFiles/Sketcher.dir/elements.cpp.o"
   "CMakeFiles/Sketcher.dir/sketch.cpp.o"
+  "CMakeFiles/Sketcher.dir/sketch_common.cpp.o"
   "libSketcher.a"
   "libSketcher.pdb"
 )

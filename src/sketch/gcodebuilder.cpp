@@ -55,13 +55,13 @@ void GCodeBuilder::EndCommands() {
 }
 
 // executes length in one axis and then moves width of cutter in other axis
-void GCodeBuilder::FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, bool isYFirst) 
+void GCodeBuilder::FacingCutXY(Settings& settings, Vec2 p0, Vec2 p1, bool isYFirst) 
 {
     ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
     ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();
     
     float cutWidth  = tool.Diameter - settings.p.pathCutter.CutOverlap;
-    glm::vec2 pNext = p0; 
+    Vec2 pNext = p0; 
     bool forward    = true;
         
     if(isYFirst) {
@@ -115,7 +115,7 @@ void GCodeBuilder::FacingCutXY(Settings& settings, glm::vec2 p0, glm::vec2 p1, b
 }
  
 
-std::vector<std::pair<size_t, glm::vec2>> GCodeBuilder::GetTabPositions(Settings& settings, const CutPathParams& params)
+std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(Settings& settings, const CutPathParams& params)
 { 
     if(!settings.p.pathCutter.CutTabs) {
         return {}; 
@@ -123,21 +123,21 @@ std::vector<std::pair<size_t, glm::vec2>> GCodeBuilder::GetTabPositions(Settings
     float& tabSpacing = settings.p.pathCutter.TabSpacing;
     float& tabWidth   = settings.p.pathCutter.TabWidth;
     
-    const std::vector<glm::vec2>* points = params.points;
+    const std::vector<Vec2>* points = params.points;
     
     // Tab variables
-    glm::vec2 p0 = (*points)[0];
+    Vec2 p0 = (*points)[0];
     float distanceAtLastPoint = 0.0f;
     float nextTabPos = tabSpacing;
     int tabCount = 0;
     // vector to return
-    std::vector<std::pair<size_t, glm::vec2>> tabPositions;
+    std::vector<std::pair<size_t, Vec2>> tabPositions;
     
     for (size_t i = 1; i < points->size(); i++) 
     {
-        glm::vec2 p1 = (*points)[i];
+        Vec2 p1 = (*points)[i];
         // calculate distance
-        glm::vec dif = p1-p0;
+        Vec2 dif = p1-p0;
         float distance = hypotf(dif.x, dif.y);
         
         // make tab
@@ -154,8 +154,8 @@ std::vector<std::pair<size_t, glm::vec2>> GCodeBuilder::GetTabPositions(Settings
                 continue;
             }
             
-            glm::vec2 normalised = dif / distance;
-            glm::vec2 tabPos = p0 + (tabPosAlongLine * normalised);
+            Vec2 normalised = dif / distance;
+            Vec2 tabPos = p0 + (normalised * tabPosAlongLine);
             
             // add tab position to vector //
             tabPositions.push_back(std::make_pair(i, tabPos));
@@ -171,7 +171,7 @@ std::vector<std::pair<size_t, glm::vec2>> GCodeBuilder::GetTabPositions(Settings
     return move(tabPositions);
 }
 
-void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, glm::vec2>> tabPositions, glm::vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
+void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, Vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
 {
     if(!settings.p.pathCutter.CutTabs) {
         return; 
@@ -182,15 +182,15 @@ void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, 
     
     auto addTab = [&]() {
         // get tab position
-        glm::vec2& tabPosition = tabPositions[tabIndex].second;
+        Vec2& tabPosition = tabPositions[tabIndex].second;
         // calculate tab start / end
         float distance = hypotf(pDif.x, pDif.y);
         
-        glm::vec2 normalised = pDif / distance;
+        Vec2 normalised = pDif / distance;
         float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
-        glm::vec2 tabOffset = ((tabWidth / 2.0f) +  toolRadius) * normalised;
-        glm::vec2 tabStart = tabPosition - tabOffset;
-        glm::vec2 tabEnd = tabPosition + tabOffset;
+        Vec2 tabOffset = normalised * ((tabWidth / 2.0f) +  toolRadius);
+        Vec2 tabStart = tabPosition - tabOffset;
+        Vec2 tabEnd = tabPosition + tabOffset;
         
         // start of tab
         Add(va_str("G1 X%.3f Y%.3f Z%.3f F%.0f", tabStart.x, tabStart.y, zCurrent, params.feedCutting));
@@ -240,13 +240,13 @@ int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params)
         return -1;
     }
     // get the positions of where tabs should lie and their indexes within points[]
-    std::vector<std::pair<size_t, glm::vec2>> tabPositions = GetTabPositions(settings, params);
+    std::vector<std::pair<size_t, Vec2>> tabPositions = GetTabPositions(settings, params);
     
     float zCurrent = params.z0;
     int zDirection = ((params.z1 - params.z0) > 0) ? FORWARD : BACKWARD; // 1 or -1
     bool isMovingForward = true;
     
-    const std::vector<glm::vec2>* points = params.points;
+    const std::vector<Vec2>* points = params.points;
         
     do {
         // retract then move to initial x, y position
@@ -267,8 +267,8 @@ int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params)
         // Feed along path
         for (size_t i = 1; i < (*points).size(); i++) {
             // get start and end points of current line
-            const glm::vec2& pLast = (isMovingForward) ? (*points)[i-1] : (*points)[points->size()-i];
-            const glm::vec2& pNext = (isMovingForward) ? (*points)[i]   : (*points)[points->size()-i-1];
+            const Vec2& pLast = (isMovingForward) ? (*points)[i-1] : (*points)[points->size()-i];
+            const Vec2& pNext = (isMovingForward) ? (*points)[i]   : (*points)[points->size()-i-1];
             // check for and draw tabs
             CheckForTab(settings, params, tabPositions, pNext-pLast, zCurrent, isMovingForward, tabIndex, i);
             // move to next point in linestring

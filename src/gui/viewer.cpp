@@ -276,9 +276,12 @@ void DynamicBuffer::ClearVertices()
     m_OutlineVertexCount = 0;
 }
 
+
+// TODO: this should allow moving the object aswell
+
 void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour, bool isOutline)
 {
-    m_Vertices.emplace_back(Vertex(position, colour)); 
+    m_Vertices.emplace_back(position, colour); 
     m_VertexCount++;
     if(isOutline) {
         m_OutlineVertexCount++;
@@ -286,15 +289,18 @@ void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour
     }
 } 
 
+
+
+
 void DynamicBuffer::AddCursor(Settings& settings, glm::vec2 pos)
 {    
     ParametersList::Sketch::Cursor& cursor = settings.p.sketch.cursor;
     float cursorSize = cursor.Size_Scaled / 2.0f;
-    
-    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(0.0f,         -cursorSize,    0.0f), cursor.Colour);
-    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(0.0f,         cursorSize,     0.0f), cursor.Colour);
-    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(-cursorSize,  0.0f,           0.0f), cursor.Colour);
-    AddVertex(glm::vec3(pos.x, pos.y, 0.0f) + glm::vec3(cursorSize,   0.0f,           0.0f), cursor.Colour);
+    glm::vec3 p = glm::vec3(pos.x, pos.y, 0.0f);
+    AddVertex(p + glm::vec3(0.0f,         -cursorSize,    0.0f), cursor.Colour);
+    AddVertex(p + glm::vec3(0.0f,         cursorSize,     0.0f), cursor.Colour);
+    AddVertex(p + glm::vec3(-cursorSize,  0.0f,           0.0f), cursor.Colour);
+    AddVertex(p + glm::vec3(cursorSize,   0.0f,           0.0f), cursor.Colour);
 }
 
 void DynamicBuffer::AddGrid(Settings& settings)
@@ -339,7 +345,7 @@ void DynamicBuffer::AddShape(const Shape& shape, glm::vec3 colour, const glm::ve
     }
 } 
 
-void DynamicBuffer::AddDynamicVertexListAsLines(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
+void DynamicBuffer::AddColouredVertexListAsLines(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
 {
     for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
         auto& vertices = (*dynamicVertexLists)[i].position;
@@ -352,7 +358,7 @@ void DynamicBuffer::AddDynamicVertexListAsLines(const std::vector<DynamicBuffer:
     }
 }
 
-void DynamicBuffer::AddDynamicVertexListAsPoints(const std::vector<DynamicBuffer::DynamicVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
+void DynamicBuffer::AddColouredVertexListAsPoints(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
 {
     for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
         auto& vertices = (*dynamicVertexLists)[i].position;
@@ -430,7 +436,7 @@ Viewer::Viewer()
             }*/
         } 
     };
-    auto AddDynamicVertexLists = [&](Event_Viewer_AddLineLists data) {
+    auto AddColouredVertexLists = [&](Event_Viewer_AddLineLists data) {
         m_DynamicLineLists = data.dynamicLineLists;
     };
     auto AddDynamicPointLists = [&](Event_Viewer_AddPointLists data) {
@@ -455,7 +461,7 @@ Viewer::Viewer()
     event_MouseScroll           = make_unique<EventHandler<Event_MouseScroll>>(MouseScrollEvent);
     event_MouseDrag             = make_unique<EventHandler<Event_MouseMove>>(MouseDragEvent);
     event_Keyboard              = make_unique<EventHandler<Event_KeyInput>>(KeyboardEvent);
-    event_AddLineLists          = make_unique<EventHandler<Event_Viewer_AddLineLists>>(AddDynamicVertexLists); 
+    event_AddLineLists          = make_unique<EventHandler<Event_Viewer_AddLineLists>>(AddColouredVertexLists); 
     event_AddPointLists         = make_unique<EventHandler<Event_Viewer_AddPointLists>>(AddDynamicPointLists); 
     event_Set2DMode             = make_unique<EventHandler<Event_Set2DMode>>(Set2DModeEvent);
     //event_UpdateCamera = make_unique<EventHandler<Event_SettingsUpdated>>(UpdateCameraEvent);
@@ -601,10 +607,10 @@ void Viewer::Update(Settings& settings, float dt)
     
     // add shape and offset path
     if(m_DynamicLineLists) {
-        m_DynamicLines.AddDynamicVertexListAsLines(m_DynamicLineLists, zeroPos);
+        m_DynamicLines.AddColouredVertexListAsLines(m_DynamicLineLists, zeroPos);
     }    
     if(m_DynamicPointLists) {
-        m_DynamicPoints.AddDynamicVertexListAsPoints(m_DynamicPointLists, zeroPos);
+        m_DynamicPoints.AddColouredVertexListAsPoints(m_DynamicPointLists, zeroPos);
     }
     // Draw coord system axis
     m_DynamicLines.AddAxes(axisSize, zeroPos);

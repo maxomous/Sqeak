@@ -109,9 +109,22 @@ sketcher/CMakeFiles/Sketcher.dir/sketch.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Sketcher.dir/sketch.cpp.s"
 	cd /home/pi/Desktop/Projects/Sqeak/build-dir/sketcher && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch.cpp -o CMakeFiles/Sketcher.dir/sketch.cpp.s
 
+sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.o: sketcher/CMakeFiles/Sketcher.dir/flags.make
+sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.o"
+	cd /home/pi/Desktop/Projects/Sqeak/build-dir/sketcher && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sketcher.dir/sketch_common.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.cpp
+
+sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Sketcher.dir/sketch_common.cpp.i"
+	cd /home/pi/Desktop/Projects/Sqeak/build-dir/sketcher && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.cpp > CMakeFiles/Sketcher.dir/sketch_common.cpp.i
+
+sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Sketcher.dir/sketch_common.cpp.s"
+	cd /home/pi/Desktop/Projects/Sqeak/build-dir/sketcher && /usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.cpp -o CMakeFiles/Sketcher.dir/sketch_common.cpp.s
+
 sketcher/CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o: sketcher/CMakeFiles/Sketcher.dir/flags.make
 sketcher/CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building CXX object sketcher/CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building CXX object sketcher/CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o"
 	cd /home/pi/Desktop/Projects/Sqeak/build-dir/sketcher && /usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.cpp
 
 sketcher/CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.i: cmake_force
@@ -128,6 +141,7 @@ Sketcher_OBJECTS = \
 "CMakeFiles/Sketcher.dir/elementfactory.cpp.o" \
 "CMakeFiles/Sketcher.dir/elements.cpp.o" \
 "CMakeFiles/Sketcher.dir/sketch.cpp.o" \
+"CMakeFiles/Sketcher.dir/sketch_common.cpp.o" \
 "CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o"
 
 # External object files for target Sketcher
@@ -137,10 +151,11 @@ sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/constraints.cpp.o
 sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/elementfactory.cpp.o
 sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/elements.cpp.o
 sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/sketch.cpp.o
+sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/sketch_common.cpp.o
 sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o
 sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/build.make
 sketcher/libSketcher.a: sketcher/CMakeFiles/Sketcher.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Linking CXX static library libSketcher.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking CXX static library libSketcher.a"
 	cd /home/pi/Desktop/Projects/Sqeak/build-dir/sketcher && $(CMAKE_COMMAND) -P CMakeFiles/Sketcher.dir/cmake_clean_target.cmake
 	cd /home/pi/Desktop/Projects/Sqeak/build-dir/sketcher && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Sketcher.dir/link.txt --verbose=$(VERBOSE)
 
