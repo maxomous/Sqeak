@@ -22,38 +22,38 @@ public:
     
     int OpenVector(std::vector<std::string>& gcodes);
     int OpenFile(const std::string& filePath);
-    std::vector<glm::vec3>& GetVertices()   { return m_Vertices; }
-    std::vector<glm::vec3>& GetColours()    { return m_Colours; }
+    std::vector<Vec3>& GetVertices()   { return m_Vertices; }
+    std::vector<Vec3>& GetColours()    { return m_Colours; }
 private:
     Settings& m_Settings;
 
-    std::vector<glm::vec3> m_Vertices;
-    std::vector<glm::vec3> m_Colours;
+    std::vector<Vec3> m_Vertices;
+    std::vector<Vec3> m_Colours;
     
-    glm::vec3 m_Colour; 
+    Vec3 m_Colour; 
     // modal values
-    glm::vec3 m_MPos;
-    glm::vec3 m_WPos;
+    Vec3 m_MPos;
+    Vec3 m_WPos;
     float m_G_Val = 0.0f;               // value to execute at end of block (Motion Commands Only, 1 only
     Plane m_Plane = Plane::XY; 
     MotionType m_MotionType = MotionType::Absolute;
     CoordSystem m_MotionCoordSys = CoordSystem::Local; // for non-modal G53 command
     
-    glm::vec3 m_WCO; // sum of these 3:
-    glm::vec3 m_CoordSystem;
-    glm::vec3 m_G92Offset;
-    glm::vec3 m_ToolLengthOffset;
+    Vec3 m_WCO; // sum of these 3:
+    Vec3 m_CoordSystem;
+    Vec3 m_G92Offset;
+    Vec3 m_ToolLengthOffset;
     
     // letter values
-    glm::vec3 m_XYZ;
+    Vec3 m_XYZ;
     XYZSetFlag m_XYZ_Set;
-    glm::vec3 m_IJK;
+    Vec3 m_IJK;
     float m_R;
     
     bool m_Execute;     // true when XYZ, F or IJK changed - used when g code is ommited, canned cycles 
     
     // Add a vertex to the vertex array
-    void AddVertex(glm::vec3 p, CoordSystem coordSys = CoordSystem::Local);
+    void AddVertex(Vec3 p, CoordSystem coordSys = CoordSystem::Local);
 
     void Reset();
     
@@ -69,7 +69,7 @@ private:
 
     void UpdateWCO();
     // Get the Absolute position of p if incremental
-    glm::vec3 GetAbsoluteWPos(glm::vec3 p);
+    Vec3 GetAbsoluteWPos(Vec3 p);
     // G43.1
     void SetToolLength(bool update = true);
     // G92
@@ -83,9 +83,9 @@ private:
     // G2/G3
     void MotionArc(MaxLib::Geom::Direction dir); 
     // returns point relative to selected plane (set convertDirection to -1 to reverse)
-    glm::vec3 PointRelativeToPlane(glm::vec3 p, Plane plane, int convertDirection = 1);
+    Vec3 PointRelativeToPlane(Vec3 p, Plane plane, int convertDirection = 1);
     // reverse of above
-    glm::vec3 ReversePointRelativeToPlane(glm::vec3 p, Plane plane);
+    Vec3 ReversePointRelativeToPlane(Vec3 p, Plane plane);
     // set current colour for path
     void SetPathColour(float gValue);
 };

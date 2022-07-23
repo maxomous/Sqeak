@@ -26,9 +26,8 @@ class Sketcher;
 
 /*
     LATEST:
-    * circle doesnt seem to render as a polygon (in select loop, top is split)
-
-
+        ADD FIX CONSTRAINT
+        * Tangent is causes excess lag and not working anyway
 
 
 
@@ -123,11 +122,13 @@ struct RenderData
         Data unselected;
         Data selected;
         Data hovered;
+        Data failed;
         
         void Clear() {
             unselected.Clear();
             selected.Clear();
             hovered.Clear();
+            failed.Clear();
         }
     };
     
@@ -352,9 +353,12 @@ public:
     bool DrawImGui_Elements(ElementID& deleteElement);
     bool DrawImGui_Constraints(ConstraintID& deleteConstraint);
 
+    void SetSelectCommand() { m_Command_ImGui = 1; }
 private:
     bool m_IsActive = false;
     
+    int m_Command_ImGui = 0;
+        
     ElementFactory m_Factory;
     SketchEvents m_Events;  
     SketchRenderer m_Renderer;

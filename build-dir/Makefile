@@ -188,6 +188,19 @@ libslvs/fast:
 	$(MAKE) -f sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build.make sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build
 .PHONY : libslvs/fast
 
+#=============================================================================
+# Target rules for targets named GRBL
+
+# Build rule for target.
+GRBL: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 GRBL
+.PHONY : GRBL
+
+# fast build rule for target.
+GRBL/fast:
+	$(MAKE) -f grbl/CMakeFiles/GRBL.dir/build.make grbl/CMakeFiles/GRBL.dir/build
+.PHONY : GRBL/fast
+
 common.o: common.cpp.o
 
 .PHONY : common.o
@@ -242,33 +255,6 @@ dev/joystick.cpp.s:
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/dev/joystick.cpp.s
 .PHONY : dev/joystick.cpp.s
 
-gclist.o: gclist.cpp.o
-
-.PHONY : gclist.o
-
-# target to build an object file
-gclist.cpp.o:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gclist.cpp.o
-.PHONY : gclist.cpp.o
-
-gclist.i: gclist.cpp.i
-
-.PHONY : gclist.i
-
-# target to preprocess a source file
-gclist.cpp.i:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gclist.cpp.i
-.PHONY : gclist.cpp.i
-
-gclist.s: gclist.cpp.s
-
-.PHONY : gclist.s
-
-# target to generate assembly for a file
-gclist.cpp.s:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gclist.cpp.s
-.PHONY : gclist.cpp.s
-
 gcreader.o: gcreader.cpp.o
 
 .PHONY : gcreader.o
@@ -295,60 +281,6 @@ gcreader.s: gcreader.cpp.s
 gcreader.cpp.s:
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gcreader.cpp.s
 .PHONY : gcreader.cpp.s
-
-grbl.o: grbl.cpp.o
-
-.PHONY : grbl.o
-
-# target to build an object file
-grbl.cpp.o:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/grbl.cpp.o
-.PHONY : grbl.cpp.o
-
-grbl.i: grbl.cpp.i
-
-.PHONY : grbl.i
-
-# target to preprocess a source file
-grbl.cpp.i:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/grbl.cpp.i
-.PHONY : grbl.cpp.i
-
-grbl.s: grbl.cpp.s
-
-.PHONY : grbl.s
-
-# target to generate assembly for a file
-grbl.cpp.s:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/grbl.cpp.s
-.PHONY : grbl.cpp.s
-
-grblcodes.o: grblcodes.cpp.o
-
-.PHONY : grblcodes.o
-
-# target to build an object file
-grblcodes.cpp.o:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/grblcodes.cpp.o
-.PHONY : grblcodes.cpp.o
-
-grblcodes.i: grblcodes.cpp.i
-
-.PHONY : grblcodes.i
-
-# target to preprocess a source file
-grblcodes.cpp.i:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/grblcodes.cpp.i
-.PHONY : grblcodes.cpp.i
-
-grblcodes.s: grblcodes.cpp.s
-
-.PHONY : grblcodes.s
-
-# target to generate assembly for a file
-grblcodes.cpp.s:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/grblcodes.cpp.s
-.PHONY : grblcodes.cpp.s
 
 gui/filebrowser.o: gui/filebrowser.cpp.o
 
@@ -566,33 +498,6 @@ main.cpp.s:
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/main.cpp.s
 .PHONY : main.cpp.s
 
-serial.o: serial.cpp.o
-
-.PHONY : serial.o
-
-# target to build an object file
-serial.cpp.o:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/serial.cpp.o
-.PHONY : serial.cpp.o
-
-serial.i: serial.cpp.i
-
-.PHONY : serial.i
-
-# target to preprocess a source file
-serial.cpp.i:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/serial.cpp.i
-.PHONY : serial.cpp.i
-
-serial.s: serial.cpp.s
-
-.PHONY : serial.s
-
-# target to generate assembly for a file
-serial.cpp.s:
-	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/serial.cpp.s
-.PHONY : serial.cpp.s
-
 settings.o: settings.cpp.o
 
 .PHONY : settings.o
@@ -715,24 +620,16 @@ help:
 	@echo "... Sketcher"
 	@echo "... ConstraintSolver"
 	@echo "... libslvs"
+	@echo "... GRBL"
 	@echo "... common.o"
 	@echo "... common.i"
 	@echo "... common.s"
 	@echo "... dev/joystick.o"
 	@echo "... dev/joystick.i"
 	@echo "... dev/joystick.s"
-	@echo "... gclist.o"
-	@echo "... gclist.i"
-	@echo "... gclist.s"
 	@echo "... gcreader.o"
 	@echo "... gcreader.i"
 	@echo "... gcreader.s"
-	@echo "... grbl.o"
-	@echo "... grbl.i"
-	@echo "... grbl.s"
-	@echo "... grblcodes.o"
-	@echo "... grblcodes.i"
-	@echo "... grblcodes.s"
 	@echo "... gui/filebrowser.o"
 	@echo "... gui/filebrowser.i"
 	@echo "... gui/filebrowser.s"
@@ -757,9 +654,6 @@ help:
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
-	@echo "... serial.o"
-	@echo "... serial.i"
-	@echo "... serial.s"
 	@echo "... settings.o"
 	@echo "... settings.i"
 	@echo "... settings.s"

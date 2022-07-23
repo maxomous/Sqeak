@@ -12,6 +12,7 @@ set(CMAKE_MAKEFILE_DEPENDS
   "/home/pi/Desktop/Projects/Sqeak/src/CMakeLists.txt"
   "/home/pi/Desktop/Projects/Sqeak/src/glcore/CMakeLists.txt"
   "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/CMakeLists.txt"
+  "/home/pi/Desktop/Projects/Sqeak/src/grbl/CMakeLists.txt"
   "/home/pi/Desktop/Projects/Sqeak/src/sketcher/CMakeLists.txt"
   "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/CMakeLists.txt"
   "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/CMakeLists.txt"
@@ -60,6 +61,7 @@ set(CMAKE_MAKEFILE_PRODUCTS
   "sketcher/CMakeFiles/CMakeDirectoryInformation.cmake"
   "sketcher/deps/constraintsolver/CMakeFiles/CMakeDirectoryInformation.cmake"
   "sketcher/deps/constraintsolver/libslvs/CMakeFiles/CMakeDirectoryInformation.cmake"
+  "grbl/CMakeFiles/CMakeDirectoryInformation.cmake"
   )
 
 # Dependency information for all targets:
@@ -70,4 +72,5 @@ set(CMAKE_DEPEND_INFO_FILES
   "sketcher/CMakeFiles/Sketcher.dir/DependInfo.cmake"
   "sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/DependInfo.cmake"
   "sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/DependInfo.cmake"
+  "grbl/CMakeFiles/GRBL.dir/DependInfo.cmake"
   )

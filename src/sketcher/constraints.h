@@ -80,6 +80,7 @@ protected:
     SketchItem m_Ref_2;
 };
 
+
 // Coincident: Point To Point
 
 class Coincident_PointToPoint : public Constraint_Template_TwoItems
@@ -131,7 +132,7 @@ class Distance_PointToPoint : public Constraint_Template_TwoItems
 {
 public:                                                                                                                             
     Distance_PointToPoint(ElementFactory* parent, SketchItem p0, SketchItem p1, double distance)       : Constraint_Template_TwoItems(parent, p0, p1), m_Distance(distance) {}
-    Distance_PointToPoint(ElementFactory* parent, SketchItem line, double distance)                           : Constraint_Template_TwoItems(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }), m_Distance(distance) {}
+    Distance_PointToPoint(ElementFactory* parent, SketchItem line, double distance)                    : Distance_PointToPoint(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }, distance) {}
     // Adds constraint to solver        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 private:
@@ -152,18 +153,18 @@ private:
     double m_Distance;
 };
 
+// Midpoint
 
-// Radius
-    
-class AddRadius_Arc : public Constraint_Template_OneItem
-{
-public:
-    AddRadius_Arc(ElementFactory* parent, SketchItem arc, double radius)                             : Constraint_Template_OneItem(parent, arc), m_Radius(radius) {}
+class AddMidPoint_PointToLine : public Constraint_Template_TwoItems         
+{           
+public:         
+    AddMidPoint_PointToLine(ElementFactory* parent, SketchItem point, SketchItem line)                    : Constraint_Template_TwoItems(parent, point, line) {}
     // Adds constraint to solver                
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-private:            
-    double m_Radius;         
-};          
+};
+    
+
+// Radius
             
 class AddRadius_Circle : public Constraint_Template_OneItem         
 {           
@@ -174,7 +175,16 @@ public:
 private:
     double m_Radius;
 };
-
+    
+class AddRadius_Arc : public Constraint_Template_OneItem
+{
+public:
+    AddRadius_Arc(ElementFactory* parent, SketchItem arc, double radius)                             : Constraint_Template_OneItem(parent, arc), m_Radius(radius) {}
+    // Adds constraint to solver                
+    void AddToSolver(Solver::ConstraintSolver& solver) override;
+private:            
+    double m_Radius;         
+};          
 
 // Angle
 
@@ -188,22 +198,27 @@ private:
     double m_Angle;
 };
 
+
 // Vertical
        
-class Vertical : public Constraint_Template_OneItem     
+class Vertical : public Constraint_Template_TwoItems     
 {       
 public:     
-    Vertical(ElementFactory* parent, SketchItem line)                                              : Constraint_Template_OneItem(parent, line) {}
+    Vertical(ElementFactory* parent, SketchItem p0, SketchItem p1)       : Constraint_Template_TwoItems(parent, p0, p1) {}
+    Vertical(ElementFactory* parent, SketchItem line)                    : Vertical(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }) {}
+
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
 
 // Horizontal
 
-class Horizontal : public Constraint_Template_OneItem     
+class Horizontal : public Constraint_Template_TwoItems
 {       
 public:     
-    Horizontal(ElementFactory* parent, SketchItem line)                                            : Constraint_Template_OneItem(parent, line) {}
+    Horizontal(ElementFactory* parent, SketchItem p0, SketchItem p1)       : Constraint_Template_TwoItems(parent, p0, p1) {}
+    Horizontal(ElementFactory* parent, SketchItem line)                    : Horizontal(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }) {}
+
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -229,6 +244,7 @@ public:
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
 
+    
 
 // Tangent
 
@@ -260,21 +276,20 @@ public:
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
 
-
 // Equal Radius
-
-class EqualRadius_Arc_Arc : public Constraint_Template_TwoItems
-{
-public:
-    EqualRadius_Arc_Arc(ElementFactory* parent, SketchItem arc1, SketchItem arc2)                   : Constraint_Template_TwoItems(parent, arc1, arc2) {}
-    // Adds constraint to solver            
-    void AddToSolver(Solver::ConstraintSolver& solver) override;
-};
 
 class EqualRadius_Arc_Circle : public Constraint_Template_TwoItems
 {
 public:
     EqualRadius_Arc_Circle(ElementFactory* parent, SketchItem arc,SketchItem circle)             : Constraint_Template_TwoItems(parent, arc, circle) {}
+    // Adds constraint to solver            
+    void AddToSolver(Solver::ConstraintSolver& solver) override;
+};
+
+class EqualRadius_Arc_Arc : public Constraint_Template_TwoItems
+{
+public:
+    EqualRadius_Arc_Arc(ElementFactory* parent, SketchItem arc1, SketchItem arc2)                   : Constraint_Template_TwoItems(parent, arc1, arc2) {}
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };

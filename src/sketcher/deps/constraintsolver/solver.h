@@ -365,56 +365,35 @@ IGNORE:
 
 
     // Add dragged point
-    Constraint Add_Dragged(Axis& axis, const Point& point) 
-    {
-        return MakeConstraint(axis, SLVS_C_WHERE_DRAGGED, 0.0, point.entity, 0, 0, 0);
-    }
-    Constraint Add_Dragged(const Point& point)    { return Add_Dragged(defaultAxis, point); }
+    Constraint Add_Dragged(Axis& axis, const Point& point)  { return MakeConstraint(axis, SLVS_C_WHERE_DRAGGED, 0.0, point.entity, 0, 0, 0); }
+    // default axis
+    Constraint Add_Dragged(const Point& point)              { return Add_Dragged(defaultAxis, point); }
     
 
     // Coincident Point to Point*
     //    Points ptA and ptB are coincident (i.e., exactly on top of each other).
-    Constraint Add_Coincident_PointToPoint(Axis& axis, const Point& pointA, const Point& pointB) 
-    {
-        return MakeConstraint(axis, SLVS_C_POINTS_COINCIDENT, 0.0, pointA.entity, pointB.entity, 0, 0);
-    }
+    Constraint Add_Coincident_PointToPoint(Axis& axis, const Point& pointA, const Point& pointB)    { return MakeConstraint(axis, SLVS_C_POINTS_COINCIDENT, 0.0, pointA.entity, pointB.entity, 0, 0); }
     
     // Coincident Point to Line*
     //    The point ptA lies on the line entityA.
     //
     //    Note that this constraint removes one degree of freedom when projected
     //    in to the plane, but two degrees of freedom in 3d.
-    Constraint Add_Coincident_PointToLine(Axis& axis, const Point& point, const Line& line)
-    {
-        return MakeConstraint(axis, SLVS_C_PT_ON_LINE, 0.0, point.entity, 0, line.entity, 0);
-    }
+    Constraint Add_Coincident_PointToLine(Axis& axis, const Point& point, const Line& line)         { return MakeConstraint(axis, SLVS_C_PT_ON_LINE, 0.0, point.entity, 0, line.entity, 0); }
     
     // Coincident Point to Arc
     //    The point ptA lies on the right cylinder obtained by extruding circle
     //    or arc entityA normal to its plane.
     // TODO: Check if point on arc works?
-    Constraint Add_Coincident_PointToArc(Axis& axis, const Point& point, const Arc& arc)
-    {
-        return MakeConstraint(axis, SLVS_C_PT_ON_CIRCLE, 0.0, point.entity, 0, arc.entity, 0);
-    }
+    Constraint Add_Coincident_PointToArc(Axis& axis, const Point& point, const Arc& arc)            { return MakeConstraint(axis, SLVS_C_PT_ON_CIRCLE, 0.0, point.entity, 0, arc.entity, 0); }
     // Coincident Point to Circle
-    Constraint Add_Coincident_PointToCircle(Axis& axis, const Point& point, const Circle& circle)
-    {
-        return MakeConstraint(axis, SLVS_C_PT_ON_CIRCLE, 0.0, point.entity, 0, circle.entity, 0);
-    }
+    Constraint Add_Coincident_PointToCircle(Axis& axis, const Point& point, const Circle& circle)   { return MakeConstraint(axis, SLVS_C_PT_ON_CIRCLE, 0.0, point.entity, 0, circle.entity, 0); }
     
     
     // Distance Point to Point*
     //    The distance between points ptA and ptB is equal to valA. This is an
     //    unsigned distance, so valA must always be positive.
-    Constraint Add_Distance_PointToPoint(Axis& axis, const Point& pointA, const Point& pointB, double value) 
-    {
-        return MakeConstraint(axis, SLVS_C_PT_PT_DISTANCE, value, pointA.entity, pointB.entity, 0, 0);
-    }
-    Constraint Add_Distance_PointToPoint(Axis& axis, const Line& line, double value) 
-    {
-        return MakeConstraint(axis, SLVS_C_PT_PT_DISTANCE, value, line.p0.entity, line.p1.entity, 0, 0);
-    }
+    Constraint Add_Distance_PointToPoint(Axis& axis, const Point& pointA, const Point& pointB, double value)    { return MakeConstraint(axis, SLVS_C_PT_PT_DISTANCE, value, pointA.entity, pointB.entity, 0, 0); }
     
     // Distance Point to Line*
     //    The distance from point ptA to line segment entityA is equal to valA.
@@ -424,28 +403,16 @@ IGNORE:
     //    vs. below the line.
     //
     //    If the constraint applies in 3d, then valA must always be positive.
-    Constraint Add_Distance_PointToLine(Axis& axis, const Point& point, const Line& line, double value) 
-    {
-        return MakeConstraint(axis, SLVS_C_PT_LINE_DISTANCE, value, point.entity, 0, line.entity, 0);
-    }
+    Constraint Add_Distance_PointToLine(Axis& axis, const Point& point, const Line& line, double value)         { return MakeConstraint(axis, SLVS_C_PT_LINE_DISTANCE, value, point.entity, 0, line.entity, 0); }
     
     // Midpoint of Line*
     //    The point ptA lies at the midpoint of the line entityA.
-    Constraint Add_MidPoint(Axis& axis, const Point& point, const Line& line) 
-    {
-        return MakeConstraint(axis, SLVS_C_AT_MIDPOINT, 0.0, point.entity, 0, line.entity, 0);
-    }
+    Constraint Add_MidPoint(Axis& axis, const Point& point, const Line& line)               { return MakeConstraint(axis, SLVS_C_AT_MIDPOINT, 0.0, point.entity, 0, line.entity, 0); }
     
     // Radius
     //    The diameter of circle or arc entityA is equal to valA.
-    Constraint Add_Radius(Axis& axis, const Circle& circle, double radius) 
-    {
-        return MakeConstraint(axis, SLVS_C_DIAMETER, radius*2, 0, 0, circle.entity, 0);
-    }
-    Constraint Add_Radius(Axis& axis, const Arc& arc, double radius) 
-    {
-        return MakeConstraint(axis, SLVS_C_DIAMETER, radius*2, 0, 0, arc.entity, 0);
-    }
+    Constraint Add_Radius(Axis& axis, const Circle& circle, double radius)                  { return MakeConstraint(axis, SLVS_C_DIAMETER, radius*2, 0, 0, circle.entity, 0); }
+    Constraint Add_Radius(Axis& axis, const Arc& arc, double radius)                        { return MakeConstraint(axis, SLVS_C_DIAMETER, radius*2, 0, 0, arc.entity, 0); }
  
     // Angle*
     //    The angle between lines entityA and entityB is equal to valA, where
@@ -461,59 +428,33 @@ IGNORE:
     //    If other is true, then the constraint is instead that
     //
     //        (A dot B)/(|A||B|) = -cos(valA)
-    Constraint Add_Angle(Axis& axis, const Line& line1, const Line& line2, double value) 
-    {
-        return MakeConstraint(axis, SLVS_C_ANGLE, value, 0, 0, line1.entity, line2.entity);
-    }
+    Constraint Add_Angle(Axis& axis, const Line& line1, const Line& line2, double value)    { return MakeConstraint(axis, SLVS_C_ANGLE, value, 0, 0, line1.entity, line2.entity); }
 
     // Vertical** / Horizontal
     //    The line connecting points ptA and ptB is horizontal or vertical. Or,
     //    the line segment entityA is horizontal or vertical. If points are
     //    specified then the line segment should be left zero, and if a line
     //    is specified then the points should be left zero.
-    Constraint Add_Vertical(Axis& axis, const Line& line) 
-    {
-        return MakeConstraint(axis, SLVS_C_VERTICAL, 0.0, 0, 0, line.entity, 0);
-    }
-    Constraint Add_Vertical(Axis& axis, const Point& pointA, const Point& pointB) 
-    {
-        return MakeConstraint(axis, SLVS_C_VERTICAL, 0.0, pointA.entity, pointB.entity, 0, 0);
-        
-    }
-    Constraint Add_Horizontal(Axis& axis, const Line& line) 
-    {
-        return MakeConstraint(axis, SLVS_C_HORIZONTAL, 0.0, 0, 0, line.entity, 0);
-    }
-    Constraint Add_Horizontal(Axis& axis, const Point& pointA, const Point& pointB) 
-    {
-        return MakeConstraint(axis, SLVS_C_HORIZONTAL, 0.0, pointA.entity, pointB.entity, 0, 0);
-    }
+    Constraint Add_Vertical(Axis& axis, const Point& pointA, const Point& pointB)           { return MakeConstraint(axis, SLVS_C_VERTICAL, 0.0, pointA.entity, pointB.entity, 0, 0); }
+    
+    Constraint Add_Horizontal(Axis& axis, const Point& pointA, const Point& pointB)         { return MakeConstraint(axis, SLVS_C_HORIZONTAL, 0.0, pointA.entity, pointB.entity, 0, 0); }
     
     // Parallel*
     //    Lines entityA and entityB are parallel.
     //    Note: that this constraint removes one degree of freedom when projected
     //     in to the plane, but two degrees of freedom in 3d.
-    Constraint Add_Parallel(Axis& axis, const Line& line1, const Line& line2) 
-    {
-        return MakeConstraint(axis, SLVS_C_PARALLEL, 0.0, 0, 0, line1.entity, line2.entity);
-    }
+    Constraint Add_Parallel(Axis& axis, const Line& line1, const Line& line2)               { return MakeConstraint(axis, SLVS_C_PARALLEL, 0.0, 0, 0, line1.entity, line2.entity); }
     
     // Perpendicular*
     //    Identical to SLVS_C_ANGLE with valA = 90 degrees.
-    Constraint Add_Perpendicular(Axis& axis, const Line& line1, const Line& line2) 
-    {
-        return MakeConstraint(axis, SLVS_C_PERPENDICULAR, 0.0, 0, 0, line1.entity, line2.entity);
-    }
+    Constraint Add_Perpendicular(Axis& axis, const Line& line1, const Line& line2)          { return MakeConstraint(axis, SLVS_C_PERPENDICULAR, 0.0, 0, 0, line1.entity, line2.entity); }
        
        
     // Tangent - Arc to Line**
     //    The arc entityA is tangent to the line entityB. If other is false,
     //    then the arc is tangent at its beginning (point[1]). If other is true,
     //    then the arc is tangent at its end (point[2]).
-    Constraint Add_Tangent(Axis& axis, const Arc& arc, const Line& line) 
-    {
-        return MakeConstraint(axis, SLVS_C_ARC_LINE_TANGENT, 0.0, 0, 0, arc.entity, line.entity);
-    }
+    Constraint Add_Tangent(Axis& axis, const Arc& arc, const Line& line)                    { return MakeConstraint(axis, SLVS_C_ARC_LINE_TANGENT, 0.0, 0, 0, arc.entity, line.entity); }
     
     // Tangent - Curve to Curve**
     //    The two entities entityA and entityB are tangent. These entities can
@@ -526,50 +467,34 @@ IGNORE:
     //
     //    For cubics, point[0] is the beginning, and point[3] is the end. For
     //    arcs, point[1] is the beginning, and point[2] is the end.
-    Constraint Add_Tangent(Axis& axis, const Arc& arc1, const Arc& arc2) 
-    {
-        return MakeConstraint(axis, SLVS_C_CURVE_CURVE_TANGENT, 0.0, 0, 0, arc1.entity, arc2.entity);
-    }
+    Constraint Add_Tangent(Axis& axis, const Arc& arc1, const Arc& arc2)                    { return MakeConstraint(axis, SLVS_C_CURVE_CURVE_TANGENT, 0.0, 0, 0, arc1.entity, arc2.entity); }
     // TODO: Check  circle + arc  &  circle + circle
     
            
     // Equal Length*
     //  `The lines entityA and entityB have equal length.
-    Constraint Add_EqualLength(Axis& axis, const Line& line1, const Line& line2) 
-    {
-        return MakeConstraint(axis, SLVS_C_EQUAL_LENGTH_LINES, 0.0, 0, 0, line1.entity, line2.entity);
-    }
+    Constraint Add_EqualLength(Axis& axis, const Line& line1, const Line& line2)            { return MakeConstraint(axis, SLVS_C_EQUAL_LENGTH_LINES, 0.0, 0, 0, line1.entity, line2.entity); }
     
     // Equal Radius
     //    The circles or arcs entityA and entityB have equal radius.
-    Constraint Add_EqualRadius(Axis& axis, const Arc& arc, const Circle& circle) 
-    {
-        return MakeConstraint(axis, SLVS_C_EQUAL_RADIUS, 0.0, 0, 0, arc.entity, circle.entity);
-    }
-    Constraint Add_EqualRadius(Axis& axis, const Arc& arc1, const Arc& arc2) 
-    {
-        return MakeConstraint(axis, SLVS_C_EQUAL_RADIUS, 0.0, 0, 0, arc1.entity, arc2.entity);
-    }
-    Constraint Add_EqualRadius(Axis& axis, const Circle& circle1, const Circle& circle2) 
-    {
-        return MakeConstraint(axis, SLVS_C_EQUAL_RADIUS, 0.0, 0, 0, circle1.entity, circle2.entity);
-    }
+    Constraint Add_EqualRadius(Axis& axis, const Arc& arc, const Circle& circle)            { return MakeConstraint(axis, SLVS_C_EQUAL_RADIUS, 0.0, 0, 0, arc.entity, circle.entity); }
+    Constraint Add_EqualRadius(Axis& axis, const Arc& arc1, const Arc& arc2)                { return MakeConstraint(axis, SLVS_C_EQUAL_RADIUS, 0.0, 0, 0, arc1.entity, arc2.entity); }
+    Constraint Add_EqualRadius(Axis& axis, const Circle& circle1, const Circle& circle2)    { return MakeConstraint(axis, SLVS_C_EQUAL_RADIUS, 0.0, 0, 0, circle1.entity, circle2.entity); }
 
-    // Constraints with Default Axis 
+
+
+    // Default Axis 
     Constraint Add_Coincident_PointToPoint(const Point& pointA, const Point& pointB)                { return Add_Coincident_PointToPoint(defaultAxis, pointA, pointB); }
     Constraint Add_Coincident_PointToLine(const Point& point, const Line& line)                     { return Add_Coincident_PointToLine(defaultAxis, point, line); }
     Constraint Add_Coincident_PointToArc(const Point& point, const Arc& arc)                        { return Add_Coincident_PointToArc(defaultAxis, point, arc); }
     Constraint Add_Coincident_PointToCircle(const Point& point, const Circle& circle)               { return Add_Coincident_PointToCircle(defaultAxis, point, circle); }
     Constraint Add_Distance_PointToPoint(const Point& pointA, const Point& pointB, double value)    { return Add_Distance_PointToPoint(defaultAxis, pointA, pointB, value); }
-    Constraint Add_Distance_PointToPoint(const Line& line, double value)                            { return Add_Distance_PointToPoint(defaultAxis, line, value); }
     Constraint Add_Distance_PointToLine(const Point& point, const Line& line, double value)         { return Add_Distance_PointToLine(defaultAxis, point, line, value); }
     Constraint Add_MidPoint(const Point& point, const Line& line)                                   { return Add_MidPoint(defaultAxis, point, line); }
     Constraint Add_Radius(const Circle& circle, double radius)                                      { return Add_Radius(defaultAxis, circle, radius); }
     Constraint Add_Radius(const Arc& arc, double radius)                                            { return Add_Radius(defaultAxis, arc, radius); }
     Constraint Add_Angle(const Line& line1, const Line& line2, double value)                        { return Add_Angle(defaultAxis, line1, line2, value); }
-    Constraint Add_Vertical(const Line& line)                                                       { return Add_Vertical(defaultAxis, line); }
     Constraint Add_Vertical(const Point& pointA, const Point& pointB)                               { return Add_Vertical(defaultAxis, pointA, pointB); }
-    Constraint Add_Horizontal(const Line& line)                                                     { return Add_Horizontal(defaultAxis, line); }
     Constraint Add_Horizontal(const Point& pointA, const Point& pointB)                             { return Add_Horizontal(defaultAxis, pointA, pointB); }
     Constraint Add_Parallel(const Line& line1, const Line& line2)                                   { return Add_Parallel(defaultAxis, line1, line2); }    
     Constraint Add_Perpendicular(const Line& line1, const Line& line2)                              { return Add_Perpendicular(defaultAxis, line1, line2); }

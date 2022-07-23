@@ -174,6 +174,55 @@ public:
     
     
     
+    
+    
+    // This should be updated whenever selected is modified
+    void UpdateSelectionList() 
+    {
+        // Clear old data
+        m_SelectedPoints.clear();
+        m_SelectedElements.clear();
+        // find all the selected points
+        ForEachItemPoint([&](Item_Point& item) {
+            if(item.IsSelected()) { m_SelectedPoints.push_back(item.Reference()); }
+        });
+        // find all the selected elements
+        ForEachItemElement([&](Item_Element& item) {
+            // ignore points as elements (they are handled as points)
+            if(item.Type() == SketchItem::Type::Point) { return; }
+            if(item.IsSelected()) { m_SelectedElements.push_back(item.Reference()); }
+        });
+    }
+    
+    const std::vector<SketchItem>& GetSelectedPoints()  { return m_SelectedPoints; }
+    const std::vector<SketchItem>& GetSelectedElements() { return m_SelectedElements; }
+    
+    // Make an array of the selected points / elements
+    std::vector<SketchItem> m_SelectedPoints;
+    std::vector<SketchItem> m_SelectedElements;
+    
+    
+    
+    void ClearFailedElements() 
+    {
+        ForEachItem([](Item& item) {
+            item.SetFailed(false);
+        });
+    }
+    // Finds points within a tolerance to position p and sets their selected flag to true
+    void UpdateFailedElements() 
+    {
+        ForEachConstraint([&](Sketch::Constraint* constraint) {
+            // if the constraint has failed
+            if(constraint->Failed()) {
+                // set all of its elements failed flags true also
+                constraint->ForEachElement([&](Sketch::SketchItem& item) {
+                    GetItemBySketchItem(item).SetFailed(true);
+                });                
+            }
+        });    
+    }  
+    
     // A Point's item_element and item_point have their selected and hovered flags tied together 
     
     // Clears all hovered flags
@@ -184,13 +233,6 @@ public:
         });
     }
 
-    void ClearSelected() 
-    {
-        ForEachItem([](Item& item) {
-            item.SetSelected(false);
-        });
-    }
-  
     // Finds points within a tolerance to position p and sets their hovered flag to true
     bool SetHoveredByPosition(const Vec2& p, double tolerance) 
     {
@@ -199,75 +241,25 @@ public:
         });        
     }
     
+    void ClearSelected() 
+    {
+        ForEachItem([](Item& item) {
+            item.SetSelected(false);
+        });
+        UpdateSelectionList();
+    }
+
     // Finds points within a tolerance to position p and sets their selected flag to true
     bool SetSelectedByPosition(const Vec2& p, double tolerance) 
     {
-        return EditItemByPosition(p, tolerance, [](Sketch::Item& item) {
+        bool hasSelection = EditItemByPosition(p, tolerance, [](Sketch::Item& item) {
             item.SetSelected(true);
         });
-    }    
-private:    
-    // Finds points within a tolerance to position p and calls callback function, passing the item as a parameter
-    // Points are prioritised over elements
-    // Callback on a Point element will be ignored and handled within the ItemPoint instead to prevent testing position twice
-    // Returns success
-    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb)
-    {     
-        Sketch::SketchItem closestItem;
-        double closestDistance = tolerance;
-        
-        // Check each point on each element to see whether it falls within tolerance
-        ForEachItemPoint([&](Sketch::Item_Point& item) {
-            // Adds point to pointsFound if point falls within tolerance
-            double distance = Hypot(item.p - p);
-            if(distance < closestDistance) {
-                closestItem = item.Reference();
-                closestDistance = distance;
-            }
-        });
-        
-        // prioritise point if one is within tolerance and set closest to selected
-        if(closestItem.type != Sketch::SketchItem::Type::Unset) {
-            // add point to selection
-            cb(GetItemBySketchItem(closestItem));
-            // A point is a special case where we also set its element
-            if(closestItem.type == Sketch::SketchItem::Type::Point) {
-                cb(GetElementByID<Point>(closestItem.element)->Item_P());
-            }
-            return true;
-        } 
-        
-        // Check each element to see whether it falls within tolerance
-        bool isElementFound = false;
-        // draw a tolerence ring around point, to check if intersect
-        LineString p_with_tol = RenderCircle(p, tolerance);
-         
-        ForEachElement([&](Sketch::Element* element) {
-            // The first element found is the one which is set to selected
-            // So skip until end if element was already found
-            if(isElementFound) { return; } 
-            
-            LineString l;
-            if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, this is handled above
-            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
-            else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
-            
-            assert(!l.empty() && "Linestring is empty");
-            // Check if point and element intersect 
-            Geos geos;
-            if(auto success = geos.Intersect(p_with_tol, l)) {
-                if(*success) {
-                    cb(element->Item_Elem());
-                    isElementFound = true;
-                }
-            }    
-        }); 
-        return isElementFound;
-    }
+        UpdateSelectionList();
+        return hasSelection;
+    }  
     
-public:
+    
     // Finds points within a tolerance to position p
     void AddSelectionBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside)
     {        
@@ -308,7 +300,7 @@ public:
             } 
             
         }); 
-        
+        UpdateSelectionList();
     }
     // Deletes all items in selcetion
     void DeleteSelection() 
@@ -325,6 +317,7 @@ public:
         for(ElementID element : elementsToDelete) {
             RemoveElement(element);            
         }
+        UpdateSelectionList();
     }
 /*  
     // Finds points within a tolerance to position p
@@ -491,9 +484,71 @@ private:
         assert(0 && "Element could not be casted");
         return nullptr; // will never reach
     }
+      
     // Temporarily modifies the dragged point's solver parameters to 
     // the new dragged position, and fixes it there by changing its group
     void SetDraggedPoint(Solver::ConstraintSolver& solver, Item_Point& draggedPoint, const Vec2& pDif);
+     
+    
+    // Finds points within a tolerance to position p and calls callback function, passing the item as a parameter
+    // Points are prioritised over elements
+    // Callback on a Point element will be ignored and handled within the ItemPoint instead to prevent testing position twice
+    // Returns success
+    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb)
+    {     
+        Sketch::SketchItem closestItem;
+        double closestDistance = tolerance;
+        
+        // Check each point on each element to see whether it falls within tolerance
+        ForEachItemPoint([&](Sketch::Item_Point& item) {
+            // Adds point to pointsFound if point falls within tolerance
+            double distance = Hypot(item.p - p);
+            if(distance < closestDistance) {
+                closestItem = item.Reference();
+                closestDistance = distance;
+            }
+        });
+        
+        // prioritise point if one is within tolerance and set closest to selected
+        if(closestItem.type != Sketch::SketchItem::Type::Unset) {
+            // add point to selection
+            cb(GetItemBySketchItem(closestItem));
+            // A point is a special case where we also set its element
+            if(closestItem.type == Sketch::SketchItem::Type::Point) {
+                cb(GetElementByID<Point>(closestItem.element)->Item_P());
+            }
+            return true;
+        } 
+        
+        // Check each element to see whether it falls within tolerance
+        bool isElementFound = false;
+        // draw a tolerence ring around point, to check if intersect
+        LineString p_with_tol = RenderCircle(p, tolerance);
+         
+        ForEachElement([&](Sketch::Element* element) {
+            // The first element found is the one which is set to selected
+            // So skip until end if element was already found
+            if(isElementFound) { return; } 
+            
+            LineString l;
+            if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, this is handled above
+            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
+            else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
+            
+            assert(!l.empty() && "Linestring is empty");
+            // Check if point and element intersect 
+            Geos geos;
+            if(auto success = geos.Intersect(p_with_tol, l)) {
+                if(*success) {
+                    cb(element->Item_Elem());
+                    isElementFound = true;
+                }
+            }    
+        }); 
+        return isElementFound;
+    }
     
     // Clear the Solver Data from Elements / Constraints
     void ResetSolverElements();

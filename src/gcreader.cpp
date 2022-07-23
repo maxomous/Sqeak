@@ -12,9 +12,9 @@ GCodeReader::GCodeReader(Settings& settings)
 }
 
 // adds vertices in machine coords
-void GCodeReader::AddVertex(glm::vec3 p, CoordSystem coordSys)
+void GCodeReader::AddVertex(Vec3 p, CoordSystem coordSys)
 {
-    glm::vec3 vertex = (coordSys == CoordSystem::Machine) ? p : p + m_WCO;
+    Vec3 vertex = (coordSys == CoordSystem::Machine) ? p : p + m_WCO;
     // prevent duplicate vertices
     if(!m_Vertices.empty()) {
         if(vertex == m_Vertices.back()) 
@@ -158,10 +158,10 @@ int GCodeReader::InputGCodeBlock(string& inputString)
         
     // reset values
     float m_G_Val_NonModal    = 0.0f;
-    m_IJK               = glm::vec3();
+    m_IJK               = Vec3();
     m_R                 = 0;
     m_XYZ_Set           = XYZSetFlag::None;
-    m_XYZ = (m_MotionType == MotionType::Incremental) ? glm::vec3(0.0f, 0.0f, 0.0f) : m_WPos;
+    m_XYZ = (m_MotionType == MotionType::Incremental) ? Vec3(0.0f, 0.0f, 0.0f) : m_WPos;
     m_MotionCoordSys = CoordSystem::Local;
     
     istringstream stream(inputString);
@@ -379,7 +379,7 @@ void GCodeReader::UpdateWCO()
     m_WPos = m_MPos - m_WCO;
 }
     
-glm::vec3 GCodeReader::GetAbsoluteWPos(glm::vec3 p)
+Vec3 GCodeReader::GetAbsoluteWPos(Vec3 p)
 {
     if(m_MotionType == MotionType::Incremental) 
         return p + m_WPos;
@@ -414,8 +414,8 @@ void GCodeReader::SetG92Offset(bool update)
         m_G92Offset = { 0.0f, 0.0f, 0.0f };
     } 
     else {
-        glm::vec3 offset = { 0.0f, 0.0f, 0.0f };
-        glm::vec3 currentPosPreOffset = m_WPos - m_G92Offset;
+        Vec3 offset = { 0.0f, 0.0f, 0.0f };
+        Vec3 currentPosPreOffset = m_WPos - m_G92Offset;
         
         if(m_XYZ_Set & XYZSetFlag::X) {
             offset.x = currentPosPreOffset.x - m_XYZ.x;
@@ -455,13 +455,13 @@ void GCodeReader::ReturnToHome(int homePos) {
     size_t index = (homePos == 28) ? 0 : 1;
     
     if(m_XYZ_Set == XYZSetFlag::None) {
-        glm::vec3 p = coords.homeCoords[index];
+        Vec3 p = coords.homeCoords[index];
         AddVertex(p, CoordSystem::Machine);
     }
     else {
-        glm::vec3 pFirst = m_WPos;
-        glm::vec3 pSecond = m_WPos;
-        glm::vec3 p_XYZ = GetAbsoluteWPos(m_XYZ);
+        Vec3 pFirst = m_WPos;
+        Vec3 pSecond = m_WPos;
+        Vec3 p_XYZ = GetAbsoluteWPos(m_XYZ);
         
         if(m_XYZ_Set & XYZSetFlag::X) {
             pFirst.x = p_XYZ.x;
@@ -486,7 +486,7 @@ G00 / G01
 *----------------------------------------------------------------------------*/
 void GCodeReader::MotionLinear()
 {
-    glm::vec3 p_XYZ = GetAbsoluteWPos(m_XYZ);
+    Vec3 p_XYZ = GetAbsoluteWPos(m_XYZ);
     AddVertex(p_XYZ);
 }
 
@@ -511,16 +511,16 @@ void GCodeReader::MotionArc(MaxLib::Geom::Direction dir)
 {
     using namespace MaxLib;
     // get start & end coords relative to the selected plane 
-    glm::vec3 xyz_Start   = PointRelativeToPlane(m_WPos, m_Plane);
-    glm::vec3 xyz_End     = PointRelativeToPlane(GetAbsoluteWPos(m_XYZ), m_Plane);
+    Vec3 xyz_Start   = PointRelativeToPlane(m_WPos, m_Plane);
+    Vec3 xyz_End     = PointRelativeToPlane(GetAbsoluteWPos(m_XYZ), m_Plane);
     
-    glm::vec2 xy_Start = { xyz_Start.x, xyz_Start.y }; 
-    glm::vec2 xy_End   = { xyz_End.x, xyz_End.y };
+    Vec2 xy_Start = { xyz_Start.x, xyz_Start.y }; 
+    Vec2 xy_End   = { xyz_End.x, xyz_End.y };
     
     // flip direction if XZ Plane
     int direction = (m_Plane == Plane::XZ) ? -dir : dir;
      
-    glm::vec2 xy_Centre;
+    Vec2 xy_Centre;
     float r;
     
     if(m_R) { // r
@@ -534,12 +534,12 @@ void GCodeReader::MotionArc(MaxLib::Geom::Direction dir)
         // ijk is always incremental (G90/G91 doesnt matter) 
         xy_Centre = PointRelativeToPlane(m_WPos + m_IJK, m_Plane);
         // calculate r
-        glm::vec2 dif = xy_End - xy_Centre;
+        Vec2 dif = xy_End - xy_Centre;
         r = hypotf(dif.x, dif.y);
     }
     
-    glm::vec2 v_Start = xy_Start - xy_Centre;
-    glm::vec2 v_End = xy_End - xy_Centre;
+    Vec2 v_Start = xy_Start - xy_Centre;
+    Vec2 v_End = xy_End - xy_Centre;
     
     double th_Start  = atan2(v_Start.x, v_Start.y);
     double th_End    = atan2(v_End.x, v_End.y);
@@ -551,13 +551,13 @@ void GCodeReader::MotionArc(MaxLib::Geom::Direction dir)
     int nIncrements = floorf(fabsf((th_End - th_Start) / th_Incr));
     float zIncrement = (xyz_End.z - xyz_Start.z) / nIncrements;
     
-    glm::vec3 p;
+    Vec3 p;
     for (int n = 0; n < nIncrements; n++) {
         float th = th_Start + n * th_Incr;
         p.x = xy_Centre.x + r * sin(th);
         p.y = xy_Centre.y + r * cos(th);
         p.z = xyz_Start.z + n * zIncrement;
-        glm::vec3 v = PointRelativeToPlane(p, m_Plane, -1);
+        Vec3 v = PointRelativeToPlane(p, m_Plane, -1);
         AddVertex(v);
     }
     
@@ -566,7 +566,7 @@ void GCodeReader::MotionArc(MaxLib::Geom::Direction dir)
 
  
 //convert point relative to plane selected
-glm::vec3 GCodeReader::PointRelativeToPlane(glm::vec3 p, Plane plane, int convertDirection)
+Vec3 GCodeReader::PointRelativeToPlane(Vec3 p, Plane plane, int convertDirection)
 {    
 	if (plane == Plane::XY) {
         return { p.x, p.y, p.z };
@@ -584,22 +584,23 @@ glm::vec3 GCodeReader::PointRelativeToPlane(glm::vec3 p, Plane plane, int conver
 }
 void GCodeReader::SetPathColour(float gValue) 
 {   
-    glm::vec3 p0 = m_WPos;
-    glm::vec3 p1 = GetAbsoluteWPos(m_XYZ);
-    
+    Vec3 p0 = m_WPos;
+    Vec3 p1 = GetAbsoluteWPos(m_XYZ);
+    glm::vec3 colour;
     // rapid
     if(gValue == 0.0f) {
-        m_Colour = m_Settings.p.viewer.toolpath.Colour_Rapid;
+        colour = m_Settings.p.viewer.toolpath.Colour_Rapid;
     } // z feed 
     else if (gValue == 1.0f && (p0.x == p1.x && p0.y == p1.y)) {
-        m_Colour = m_Settings.p.viewer.toolpath.Colour_FeedZ;
+        colour = m_Settings.p.viewer.toolpath.Colour_FeedZ;
     } // feed 
     else if (gValue == 1.0f || gValue == 2.0f || gValue == 3.0f) {
-        m_Colour = m_Settings.p.viewer.toolpath.Colour_Feed;
+        colour = m_Settings.p.viewer.toolpath.Colour_Feed;
     } // home 
     else if (gValue == 28.0f || gValue == 30.0f) {
-        m_Colour = m_Settings.p.viewer.toolpath.Colour_Home;
+        colour = m_Settings.p.viewer.toolpath.Colour_Home;
     }
+    m_Colour = { colour.x, colour.y, colour.z };
 }
 
 } // end namespace Sqeak

@@ -46,12 +46,12 @@ struct Event_MouseScroll
 };
 
 // EventDispatcher singleton
-template<typename T_Data>
+template<typename T>
 class Event
 {
 public:
     // returns unique id of handler
-    static uint RegisterHandler(const std::function<void(T_Data data)>& eventHandler)
+    static uint RegisterHandler(const std::function<void(T data)>& eventHandler)
     {
         get().m_EventHandlers.push_back(eventHandler);
         return get().m_EventHandlers.size() - 1;
@@ -61,14 +61,14 @@ public:
         get().m_EventHandlers.erase(get().m_EventHandlers.begin() + id);
     } 
     
-    static void Dispatch(T_Data newEvent) 
+    static void Dispatch(T newEvent) 
     {        
-        for(const std::function<void(T_Data)>& eventHandler : get().m_EventHandlers) {
+        for(const std::function<void(T)>& eventHandler : get().m_EventHandlers) {
             eventHandler(newEvent);
         }
     }
 private:
-    std::vector<std::function<void(T_Data)>> m_EventHandlers;
+    std::vector<std::function<void(T)>> m_EventHandlers;
     
     static Event& get() 
     {
@@ -81,15 +81,15 @@ private:
     Event& operator= (const Event&) = delete;
 };
 
-template<typename T_Data>
+template<typename T>
 class EventHandler
 {
 public:
-    EventHandler(const std::function<void(T_Data data)>& eventHandler) {
-        m_ID = Event<T_Data>::RegisterHandler(eventHandler);
+    EventHandler(const std::function<void(T data)>& eventHandler) {
+        m_ID = Event<T>::RegisterHandler(eventHandler);
     }
     ~EventHandler() {
-        Event<T_Data>::UnregisterHandler(m_ID);
+        Event<T>::UnregisterHandler(m_ID);
     }
 private:
     uint m_ID;
@@ -204,10 +204,10 @@ public:
 		m_PreviousTime = m_CurrentTime;
         m_CurrentTime = glfwGetTime();
     }
-    float dt() { return m_CurrentTime - m_PreviousTime; }
+    double dt() { return m_CurrentTime - m_PreviousTime; }
 private:
-    float m_CurrentTime = 0.0f;
-    float m_PreviousTime = 0.0f;
+    double m_CurrentTime = 0.0f;
+    double m_PreviousTime = 0.0f;
 };
 
 class GLSystem

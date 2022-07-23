@@ -56,12 +56,14 @@ CMAKE_BINARY_DIR = /home/pi/Desktop/Projects/Sqeak/build-dir
 all: CMakeFiles/Sqeak.dir/all
 all: glcore/all
 all: sketcher/all
+all: grbl/all
 
 .PHONY : all
 
 # The main recursive "preinstall" target.
 preinstall: glcore/preinstall
 preinstall: sketcher/preinstall
+preinstall: grbl/preinstall
 
 .PHONY : preinstall
 
@@ -69,6 +71,7 @@ preinstall: sketcher/preinstall
 clean: CMakeFiles/Sqeak.dir/clean
 clean: glcore/clean
 clean: sketcher/clean
+clean: grbl/clean
 
 .PHONY : clean
 
@@ -109,6 +112,24 @@ glcore/deps/imgui/preinstall:
 glcore/deps/imgui/clean: glcore/deps/imgui/CMakeFiles/ImGui.dir/clean
 
 .PHONY : glcore/deps/imgui/clean
+
+#=============================================================================
+# Directory level rules for directory grbl
+
+# Recursive "all" directory target.
+grbl/all: grbl/CMakeFiles/GRBL.dir/all
+
+.PHONY : grbl/all
+
+# Recursive "preinstall" directory target.
+grbl/preinstall:
+
+.PHONY : grbl/preinstall
+
+# Recursive "clean" directory target.
+grbl/clean: grbl/CMakeFiles/GRBL.dir/clean
+
+.PHONY : grbl/clean
 
 #=============================================================================
 # Directory level rules for directory sketcher
@@ -172,19 +193,20 @@ sketcher/deps/constraintsolver/libslvs/clean: sketcher/deps/constraintsolver/lib
 # Target rules for target CMakeFiles/Sqeak.dir
 
 # All Build rule for target.
-CMakeFiles/Sqeak.dir/all: glcore/CMakeFiles/GLCore.dir/all
-CMakeFiles/Sqeak.dir/all: sketcher/CMakeFiles/Sketcher.dir/all
 CMakeFiles/Sqeak.dir/all: sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/all
 CMakeFiles/Sqeak.dir/all: sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all
+CMakeFiles/Sqeak.dir/all: grbl/CMakeFiles/GRBL.dir/all
+CMakeFiles/Sqeak.dir/all: glcore/CMakeFiles/GLCore.dir/all
 CMakeFiles/Sqeak.dir/all: glcore/deps/imgui/CMakeFiles/ImGui.dir/all
+CMakeFiles/Sqeak.dir/all: sketcher/CMakeFiles/Sketcher.dir/all
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/depend
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50 "Built target Sqeak"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51 "Built target Sqeak"
 .PHONY : CMakeFiles/Sqeak.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/Sqeak.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles 59
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles 60
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/Sqeak.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles 0
 .PHONY : CMakeFiles/Sqeak.dir/rule
@@ -233,7 +255,7 @@ glcore/CMakeFiles/GLCore.dir/clean:
 glcore/deps/imgui/CMakeFiles/ImGui.dir/all:
 	$(MAKE) -f glcore/deps/imgui/CMakeFiles/ImGui.dir/build.make glcore/deps/imgui/CMakeFiles/ImGui.dir/depend
 	$(MAKE) -f glcore/deps/imgui/CMakeFiles/ImGui.dir/build.make glcore/deps/imgui/CMakeFiles/ImGui.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=14,15,16,17,18,19,20,21,22,23 "Built target ImGui"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=19,20,21,22,23,24,25,26,27,28 "Built target ImGui"
 .PHONY : glcore/deps/imgui/CMakeFiles/ImGui.dir/all
 
 # Build rule for subdir invocation for target.
@@ -261,7 +283,7 @@ sketcher/CMakeFiles/Sketcher.dir/all: sketcher/deps/constraintsolver/CMakeFiles/
 sketcher/CMakeFiles/Sketcher.dir/all: sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all
 	$(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/depend
 	$(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=24,25,26,27,28,29,30 "Built target Sketcher"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=29,30,31,32,33,34,35 "Built target Sketcher"
 .PHONY : sketcher/CMakeFiles/Sketcher.dir/all
 
 # Build rule for subdir invocation for target.
@@ -315,7 +337,7 @@ sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/clean:
 sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all:
 	$(MAKE) -f sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build.make sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/depend
 	$(MAKE) -f sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build.make sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=51,52,53,54,55,56,57,58,59 "Built target libslvs"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=52,53,54,55,56,57,58,59,60 "Built target libslvs"
 .PHONY : sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all
 
 # Build rule for subdir invocation for target.
@@ -334,6 +356,33 @@ libslvs: sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/rule
 sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/clean:
 	$(MAKE) -f sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build.make sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/clean
 .PHONY : sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/clean
+
+#=============================================================================
+# Target rules for target grbl/CMakeFiles/GRBL.dir
+
+# All Build rule for target.
+grbl/CMakeFiles/GRBL.dir/all:
+	$(MAKE) -f grbl/CMakeFiles/GRBL.dir/build.make grbl/CMakeFiles/GRBL.dir/depend
+	$(MAKE) -f grbl/CMakeFiles/GRBL.dir/build.make grbl/CMakeFiles/GRBL.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=14,15,16,17,18 "Built target GRBL"
+.PHONY : grbl/CMakeFiles/GRBL.dir/all
+
+# Build rule for subdir invocation for target.
+grbl/CMakeFiles/GRBL.dir/rule: cmake_check_build_system
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles 5
+	$(MAKE) -f CMakeFiles/Makefile2 grbl/CMakeFiles/GRBL.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles 0
+.PHONY : grbl/CMakeFiles/GRBL.dir/rule
+
+# Convenience name for target.
+GRBL: grbl/CMakeFiles/GRBL.dir/rule
+
+.PHONY : GRBL
+
+# clean rule for target.
+grbl/CMakeFiles/GRBL.dir/clean:
+	$(MAKE) -f grbl/CMakeFiles/GRBL.dir/build.make grbl/CMakeFiles/GRBL.dir/clean
+.PHONY : grbl/CMakeFiles/GRBL.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

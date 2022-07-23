@@ -140,12 +140,12 @@ public:
     void Resize(int maxVertices, int maxIndices);
     void ClearVertices();
     void AddVertex(const glm::vec3& position, const glm::vec3& colour, bool isOutline = false);
-    void AddCursor(Settings& settings, glm::vec2 pos);
+    void AddCursor(Settings& settings, const glm::vec2& pos);
     void AddGrid(Settings& settings);
-    void AddAxes(float size, glm::vec3 origin);
+    void AddAxes(float size, const glm::vec3& origin);
 
-    void AddShapeOutline(const Shape& shape, glm::vec3 colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }); 
-    void AddShape(const Shape& shape, glm::vec3 colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }, bool isOutline = false);
+    void AddShapeOutline(const Shape& shape, const glm::vec3& colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }); 
+    void AddShape(const Shape& shape, const glm::vec3& colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }, bool isOutline = false);
 
     void AddColouredVertexListAsLines(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
     void AddColouredVertexListAsPoints(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
@@ -182,7 +182,7 @@ public:
     float ScaleToPx(float size) { return size * (m_Camera.GetZoom() / Window::GetHeight()); } 
     
     void SetCursor(bool isValid, glm::vec2 worldCoords);
-    void SetPath(std::vector<glm::vec3>& vertices, std::vector<glm::vec3>& colours);
+    void SetPath(size_t size, std::function<glm::vec3(size_t)> cb_position, std::function<glm::vec3(size_t)> cb_colour);
     void Clear();    
     
     void Update(Settings& settings, float dt);

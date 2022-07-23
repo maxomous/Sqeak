@@ -3,6 +3,10 @@ using namespace std;
 using namespace MaxLib;
 using namespace MaxLib::String;
 using namespace MaxLib::Geom;
+
+// some unique bit
+const int DEBUG_SKETCH_REFERENCES = Log::NextDebugBit();
+      
       
 namespace Sqeak { 
     
@@ -469,7 +473,11 @@ void SketchOld::DrawImGui(Settings& settings)
         {
             // set to open
             if(!ImGui::GetIO().WantCaptureMouse && IsActive()) {
-                if(trigger(settings.p.sketch.cursor.popup.shouldOpen)) { popup_CursorRightClick.Open(); }
+            
+                if(settings.p.sketch.cursor.popup.shouldOpen) {        
+                    settings.p.sketch.cursor.popup.shouldOpen = false;
+                    popup_CursorRightClick.Open();
+                }
             }
             // draw cursor popup
             popup_CursorRightClick.Draw([&]() {

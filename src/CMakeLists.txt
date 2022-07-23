@@ -70,27 +70,23 @@ add_executable(${PROJECT_NAME} ${SRC_FILES}) # add_library / add_executable
 ## Include Library from cmakefile
 add_subdirectory(glcore)
 add_subdirectory(sketcher)
+add_subdirectory(grbl)
 
 ## Include Library from source
 #target_include_directories()
 #add_library() or similar in other cmakefile
 
 
-# WiringPi
-find_library(WIRING_PI_LIBRARIES NAMES wiringPi)
-# pThreads
-find_package (Threads)
 # Geos
 find_library(GEOS_LIBRARIES NAMES geos_c)
 
-
+# link libraries
 target_link_libraries(${PROJECT_NAME}
     MaxLib
-    ${WIRING_PI_LIBRARIES}
-    ${CMAKE_THREAD_LIBS_INIT}
     ${GEOS_LIBRARIES}
     GLCore
     Sketcher
+    GRBL
 )
 
 

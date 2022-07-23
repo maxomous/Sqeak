@@ -17,18 +17,37 @@ namespace Sqeak {
 #define MAX_CUSTOM_GCODES 12 // should be divisible by 3
 #define MAX_HISTORY 100
  
+#define MAX_CONSOLE_SIZE 1000
 
 //******************************************************************************//
 //**********************************FRAMES**************************************//
 
 
-
 struct Console 
 {     
     Console() {
-        Event<Event_ConsoleScrollToBottom>::RegisterHandler([this](Event_ConsoleScrollToBottom data) {
+      /*  Event<Event_ConsoleScrollToBottom>::RegisterHandler([this](Event_ConsoleScrollToBottom data) {
             (void)data;
             m_AutoScroll = true;
+        });
+        */
+        // Log Handler for console
+        Log::RegisterHandler([&](const char* date, Log::LogLevel level, const std::string& message) {
+            (void)date;
+            // make string
+            std::string str = Log::LevelPrefix(level) + message;
+            if(m_ConsoleLog.size() > MAX_CONSOLE_SIZE) {
+                m_ConsoleLog.pop_front();
+            }
+            // print to console
+            m_ConsoleLog.emplace_back(str);
+            // move cursor to bottom
+            m_AutoScroll = true;
+            
+            // Print to message popup (warning or higher)
+            if (level >= Log::LogLevel::LevelWarning) {
+                Event<Event_PopupMessage>::Dispatch({ str });
+            }
         });
     }
 
@@ -47,7 +66,7 @@ struct Console
             ImGui::SameLine();
 
             if (ImGui::Button("Clear Log")) {
-                Log::ClearConsoleLog();
+                m_ConsoleLog.clear();
             }
             window.End();
         }
@@ -60,11 +79,10 @@ struct Console
         ImGui::BeginChild("Log", ImVec2(0, -h), false,  ImGuiWindowFlags_AlwaysHorizontalScrollbar);
         // Clip only visible lines
         ImGuiListClipper clipper;
-        clipper.Begin(Log::GetConsoleLogSize());
+        clipper.Begin(m_ConsoleLog.size());
         while (clipper.Step()) {
-            for (int line_no = clipper.DisplayStart;
-                line_no < clipper.DisplayEnd; line_no++) {
-                ImGui::TextUnformatted(Log::GetConsoleLog(line_no).c_str());
+            for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++) {
+                ImGui::TextUnformatted(m_ConsoleLog[line_no].c_str());
             }
         }
         clipper.End();
@@ -192,16 +210,20 @@ private:
     // input textbox history
     vector<string> m_History;
     int m_HistoryPos = 0;
+    
+    std::deque<std::string> m_ConsoleLog;
+        
 };
 
 
 struct Commands {
     
     Commands() {
-        Event<Event_ConsoleScrollToBottom>::RegisterHandler([this](Event_ConsoleScrollToBottom data) {
+        // TODO Autoscroll needs to be set to true
+       /* Event<Event_ConsoleScrollToBottom>::RegisterHandler([this](Event_ConsoleScrollToBottom data) {
             (void)data;
             m_AutoScroll = true;
-        });
+        });*/
     }
 
     void Draw(GRBL &grbl, Settings& settings) 
@@ -241,7 +263,7 @@ struct Commands {
 
                 ImGuiListClipper clipper;
                 // this sets the size
-                clipper.Begin(grbl.getGCListSize());
+                clipper.Begin(grbl.getGCodeListSize());
 
                 while (clipper.Step()) {
                     for (int row_n = clipper.DisplayStart;
@@ -249,8 +271,8 @@ struct Commands {
                         ImGui::TableNextRow();
                         ImGui::TableNextColumn();
 
-                        // GCItem_t gcItem = grbl.gcList.GetItem(row_n);
-                        const GCItem& gcItem = grbl.getGCItem(row_n);
+                        // GCodeItem_t gcItem = grbl.gcList.GetItem(row_n);
+                        const GCodeItem& gcItem = grbl.getGCodeItem(row_n);
 
                         ImGui::TextUnformatted(gcItem.str.c_str());
                         ImGui::TableNextColumn();
@@ -453,37 +475,37 @@ struct JogController {
                 2) {
                 if (ImGui::IsKeyPressed(KEY_LEFT) &&
                     ImGui::IsKeyPressed(KEY_UP)) {
-                    grbl.sendJog(glm::vec3(-jogLongDistance, jogLongDistance, 0),
+                    grbl.sendJog(Vec3(-jogLongDistance, jogLongDistance, 0),
                                  feedRate);
                     currently_Jogging = true;
                 } else if (ImGui::IsKeyPressed(KEY_UP) &&
                            ImGui::IsKeyPressed(KEY_RIGHT)) {
-                    grbl.sendJog(glm::vec3(jogLongDistance, jogLongDistance, 0),
+                    grbl.sendJog(Vec3(jogLongDistance, jogLongDistance, 0),
                                  feedRate);
                     currently_Jogging = true;
                 } else if (ImGui::IsKeyPressed(KEY_RIGHT) &&
                            ImGui::IsKeyPressed(KEY_DOWN)) {
-                    grbl.sendJog(glm::vec3(jogLongDistance, -jogLongDistance, 0),
+                    grbl.sendJog(Vec3(jogLongDistance, -jogLongDistance, 0),
                                  feedRate);
                     currently_Jogging = true;
                 } else if (ImGui::IsKeyPressed(KEY_DOWN) &&
                            ImGui::IsKeyPressed(KEY_LEFT)) {
-                    grbl.sendJog(glm::vec3(-jogLongDistance, -jogLongDistance, 0),
+                    grbl.sendJog(Vec3(-jogLongDistance, -jogLongDistance, 0),
                                  feedRate);
                     currently_Jogging = true;
                 }
 
                 else if (ImGui::IsKeyPressed(KEY_LEFT)) {
-                    grbl.sendJog(glm::vec3(-jogLongDistance, 0, 0), feedRate);
+                    grbl.sendJog(Vec3(-jogLongDistance, 0, 0), feedRate);
                     currently_Jogging = true;
                 } else if (ImGui::IsKeyPressed(KEY_RIGHT)) {
-                    grbl.sendJog(glm::vec3(jogLongDistance, 0, 0), feedRate);
+                    grbl.sendJog(Vec3(jogLongDistance, 0, 0), feedRate);
                     currently_Jogging = true;
                 } else if (ImGui::IsKeyPressed(KEY_UP)) {
-                    grbl.sendJog(glm::vec3(0, jogLongDistance, 0), feedRate);
+                    grbl.sendJog(Vec3(0, jogLongDistance, 0), feedRate);
                     currently_Jogging = true;
                 } else if (ImGui::IsKeyPressed(KEY_DOWN)) {
-                    grbl.sendJog(glm::vec3(0, -jogLongDistance, 0), feedRate);
+                    grbl.sendJog(Vec3(0, -jogLongDistance, 0), feedRate);
                     currently_Jogging = true;
                 }
             }
@@ -573,7 +595,7 @@ struct JogController {
                 if(ImGui::TableSetColumnIndex(1)) {
                     if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp, "JogY+")) {
                         if (!currently_Jogging)
-                            grbl.sendJog(glm::vec3(0, jogDistance, 0), feedRate);
+                            grbl.sendJog(Vec3(0, jogDistance, 0), feedRate);
                     }
                 }
                 
@@ -581,7 +603,7 @@ struct JogController {
                 if(ImGui::TableSetColumnIndex(4)) {
                     if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp, "JogZ+")) {
                         if (!currently_Jogging)
-                            grbl.sendJog(glm::vec3(0, 0, jogDistance), feedRate);
+                            grbl.sendJog(Vec3(0, 0, jogDistance), feedRate);
                     }
                 } 
             // next row
@@ -591,7 +613,7 @@ struct JogController {
                 if(ImGui::TableSetColumnIndex(0)) {
                     if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowLeft, "JogX-")) {
                         if (!currently_Jogging)
-                            grbl.sendJog(glm::vec3(-jogDistance, 0, 0), feedRate);
+                            grbl.sendJog(Vec3(-jogDistance, 0, 0), feedRate);
                     }
                 }
                 // "X Y" text
@@ -603,7 +625,7 @@ struct JogController {
                 if(ImGui::TableSetColumnIndex(2)) {
                     if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowRight, "JogX+")) {
                         if (!currently_Jogging)
-                            grbl.sendJog(glm::vec3(jogDistance, 0, 0), feedRate);
+                            grbl.sendJog(Vec3(jogDistance, 0, 0), feedRate);
                     }
                 }
                 // "Z" text
@@ -619,14 +641,14 @@ struct JogController {
                 if(ImGui::TableSetColumnIndex(1)) {
                     if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown, "JogY-")) {
                         if (!currently_Jogging)
-                            grbl.sendJog(glm::vec3(0, -jogDistance, 0), feedRate);
+                            grbl.sendJog(Vec3(0, -jogDistance, 0), feedRate);
                     }
                 }
                 // Z-
                 if(ImGui::TableSetColumnIndex(4)) {
                     if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown, "JogZ-")) {
                         if (!currently_Jogging)
-                            grbl.sendJog(glm::vec3(0, 0, -jogDistance), feedRate);
+                            grbl.sendJog(Vec3(0, 0, -jogDistance), feedRate);
                     }
                 }
             
@@ -1997,7 +2019,7 @@ struct Debug {
         showName(name);
         ImGui::Text("%f", val);
     };
-    auto addEntry(const char *name, glm::vec3 val) {
+    auto addEntry(const char *name, Vec3 val) {
         showName(name);
         ImGui::Text("(%f, %f, %f)", val.x, val.y, val.z);
     };
@@ -2084,13 +2106,12 @@ struct Debug {
             addEntry("OpenGl Version", (char *)glGetString(GL_VERSION));
             addEntry("Frame Rate", "%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
 
-            static bool debugGCListBuild = false;
+            static bool debugGCodeListBuild = false;
             static bool debugCharacterCounting = false;
-            static bool debugGCList = false;
+            static bool debugGCodeList = false;
             static bool debugSerial = false;
             static bool debugThreadBlocking = false;
             static bool debugGCReader = false;
-            static bool debugSketchRefs = false;
             bool needUpdate = false;
 
             static bool showDebugMenu = false;
@@ -2098,23 +2119,22 @@ struct Debug {
             if(showDebugMenu) {
                 ImGui::TextUnformatted("Debug");
                 ImGui::Indent();
-                needUpdate |= ImGui::Checkbox("GCode List Build", &(debugGCListBuild));
+                needUpdate |= ImGui::Checkbox("GCode List Build", &(debugGCodeListBuild));
                 needUpdate |= ImGui::Checkbox("Character Counting", &(debugCharacterCounting));
-                needUpdate |= ImGui::Checkbox("GCode List", &(debugGCList));
+                needUpdate |= ImGui::Checkbox("GCode List", &(debugGCodeList));
                 needUpdate |= ImGui::Checkbox("Serial", &(debugSerial));
                 needUpdate |= ImGui::Checkbox("Thread Blocking", &(debugThreadBlocking));
                 needUpdate |= ImGui::Checkbox("GCode Reader (For 3D Viewer)", &(debugGCReader));
-                needUpdate |= ImGui::Checkbox("Sketch References", &(debugSketchRefs));
                 ImGui::Unindent();
             
                 if (needUpdate) { 
                     int flags = DEBUG_NONE;
 
-                    if (debugGCListBuild)
+                    if (debugGCodeListBuild)
                         flags |= DEBUG_GCLIST_BUILD;
                     if (debugCharacterCounting)
                         flags |= DEBUG_CHAR_COUNTING;
-                    if (debugGCList)
+                    if (debugGCodeList)
                         flags |= DEBUG_GCLIST;
                     if (debugSerial)
                         flags |= DEBUG_SERIAL;
@@ -2122,8 +2142,6 @@ struct Debug {
                         flags |= DEBUG_THREAD_BLOCKING;
                     if (debugGCReader)
                         flags |= DEBUG_GCREADER;
-                    if (debugSketchRefs)
-                        flags |= DEBUG_SKETCH_REFERENCES;
 
                     Log::SetDebugFlags(flags);
                 }

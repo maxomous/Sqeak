@@ -6,6 +6,9 @@ using namespace std;
 
 namespace Sqeak { 
     
+inline glm::vec2 glmVec2(const Vec2& v) { return { v.x, v.y }; }
+inline glm::vec3 glmVec3(const Vec3& v) { return { v.x, v.y, v.z }; }
+    
   
 void Shape::AddVertex(const glm::vec3& vertex) 
 { 
@@ -292,7 +295,7 @@ void DynamicBuffer::AddVertex(const glm::vec3& position, const glm::vec3& colour
 
 
 
-void DynamicBuffer::AddCursor(Settings& settings, glm::vec2 pos)
+void DynamicBuffer::AddCursor(Settings& settings, const glm::vec2& pos)
 {    
     ParametersList::Sketch::Cursor& cursor = settings.p.sketch.cursor;
     float cursorSize = cursor.Size_Scaled / 2.0f;
@@ -309,7 +312,7 @@ void DynamicBuffer::AddGrid(Settings& settings)
     if(grid.Spacing <= 0)
         return;
     glm::vec2 gridOrientation = glm::vec2(Geom::Sign(grid.Size.x), Geom::Sign(grid.Size.y));
-    glm::vec3 offset = settings.grblVals.ActiveCoordSys() + grid.Position;
+    glm::vec3 offset = glmVec3(settings.grblVals.ActiveCoordSys()) + grid.Position;
     
     for (float i = 0.0f; i <= abs(grid.Size.x); i += grid.Spacing) {
         AddVertex(offset + glm::vec3(gridOrientation.x * i, 0.0f, 0.0f), grid.Colour);
@@ -321,7 +324,7 @@ void DynamicBuffer::AddGrid(Settings& settings)
     }
 }
 
-void DynamicBuffer::AddAxes(float size, glm::vec3 origin)
+void DynamicBuffer::AddAxes(float size, const glm::vec3& origin)
 {
     // draw axis
     AddVertex(origin + glm::vec3(0.0f,      0.0f,       0.0f),  { 1.0f, 0.0f, 0.0f });
@@ -332,12 +335,12 @@ void DynamicBuffer::AddAxes(float size, glm::vec3 origin)
     AddVertex(origin + glm::vec3(0.0f,      0.0f,       size),  { 0.0f, 0.0f, 1.0f });
 } 
 
-void DynamicBuffer::AddShapeOutline(const Shape& shape, glm::vec3 colour, const glm::vec3& translate, const glm::vec3& scale, const glm::vec2& rotate) 
+void DynamicBuffer::AddShapeOutline(const Shape& shape, const glm::vec3& colour, const glm::vec3& translate, const glm::vec3& scale, const glm::vec2& rotate) 
 {
     AddShape(shape, colour, translate, scale, rotate, true);
 }        
 
-void DynamicBuffer::AddShape(const Shape& shape, glm::vec3 colour, const glm::vec3& translate, const glm::vec3& scale, const glm::vec2& rotate, bool isOutline) 
+void DynamicBuffer::AddShape(const Shape& shape, const glm::vec3& colour, const glm::vec3& translate, const glm::vec3& scale, const glm::vec2& rotate, bool isOutline) 
 {
     for(size_t i = 0; i < shape.Size(); i++) {
         glm::vec3 v = glm::Transform(shape[i], translate, scale, rotate);
@@ -513,20 +516,23 @@ glm::vec3 Viewer::GetWorldPosition(glm::vec2 px)
     return m_Camera.GetWorldPosition(px);
 }
 
-void Viewer::SetPath(std::vector<glm::vec3>& positions, std::vector<glm::vec3>& colours)
+void Viewer::SetPath(size_t size, std::function<glm::vec3(size_t)> cb_Position, std::function<glm::vec3(size_t)> cb_Colour)
+//void Viewer::SetPath(std::vector<glm::vec3>& cb_Positions, std::vector<glm::vec3>& cb_Colours)
 { 
     // determine number of vertices to draw (e.g. 3 points is 2 lines, so 4 vertices)
     size_t nVertices = 0;
-    if(positions.size() > 1) 
-        nVertices = (positions.size()-1) * 2;
+    if(size > 1) 
+        nVertices = (size-1) * 2;
         
     // make vertices
     vector<Vertex> vertices;
     vertices.reserve(nVertices);
     // add as lines
-    for (size_t i = 0; i < positions.size() - 1; i++) {
-        vertices.emplace_back( positions[i], colours[i+1] );
-        vertices.emplace_back( positions[i+1], colours[i+1] );
+    for (size_t i = 0; i < size- 1; i++) {
+        //vertices.emplace_back( cb_Positions[i], cb_Colours[i+1] );
+        //vertices.emplace_back( cb_Positions[i+1], cb_Colours[i+1] );
+        vertices.emplace_back(cb_Position(i), cb_Colour(i+1));
+        vertices.emplace_back(cb_Position(i+1), cb_Colour(i+1));
     }
     // make indices 
     std::vector<uint> indices;
@@ -591,11 +597,12 @@ void Viewer::Update(Settings& settings, float dt)
     (void)dt;
     GRBLVals& grblVals = settings.grblVals;
     float axisSize = settings.p.viewer.axis.Size;
-    const glm::vec3& zeroPos = grblVals.ActiveCoordSys();
+    const glm::vec3& zeroPos = glmVec3(grblVals.ActiveCoordSys());
+    const glm::vec3& MPos = glmVec3(grblVals.status.MPos);
     
     // Add axis letters
     Draw2DAxesLabels(zeroPos, axisSize);
-    Draw2DText("H", grblVals.coords.homeCoords[0]);
+    Draw2DText("H", glmVec3(grblVals.coords.homeCoords[0]));
     // Reset buffer
     m_DynamicPoints.ClearVertices();
     m_DynamicLines.ClearVertices();
@@ -625,17 +632,17 @@ void Viewer::Update(Settings& settings, float dt)
 // Draw Current Position
 // Draw Outlines
     // tool 
-    m_DynamicBodies.AddShapeOutline(m_Shape_Tool_Wireframe,         settings.p.viewer.spindle.colours.toolOutline,  grblVals.status.MPos, scaleTool);
+    m_DynamicBodies.AddShapeOutline(m_Shape_Tool_Wireframe,         settings.p.viewer.spindle.colours.toolOutline,  MPos, scaleTool);
     // tool holder (above tool)
     if(settings.p.viewer.spindle.visibility) {
-        m_DynamicBodies.AddShapeOutline(m_Shape_ToolHolder_Wireframe, settings.p.viewer.spindle.colours.toolHolderOutline, grblVals.status.MPos + glm::vec3(0.0f, 0.0f, scaleTool.z));
+        m_DynamicBodies.AddShapeOutline(m_Shape_ToolHolder_Wireframe, settings.p.viewer.spindle.colours.toolHolderOutline, MPos + glm::vec3(0.0f, 0.0f, scaleTool.z));
     }
 // Draw Faces
     // tool
-    m_DynamicBodies.AddShape(m_Shape_Tool,       settings.p.viewer.spindle.colours.tool,         grblVals.status.MPos, scaleTool);
+    m_DynamicBodies.AddShape(m_Shape_Tool,       settings.p.viewer.spindle.colours.tool,         MPos, scaleTool);
     // tool holder (above tool)
     if(settings.p.viewer.spindle.visibility) {
-        m_DynamicBodies.AddShape(m_Shape_ToolHolder, settings.p.viewer.spindle.colours.toolHolder, grblVals.status.MPos + glm::vec3(0.0f, 0.0f, scaleTool.z));
+        m_DynamicBodies.AddShape(m_Shape_ToolHolder, settings.p.viewer.spindle.colours.toolHolder, MPos + glm::vec3(0.0f, 0.0f, scaleTool.z));
     }
     
     m_DynamicLines.Update();
@@ -763,6 +770,7 @@ void Viewer::ImGuiRender(Settings& settings)
     ImGui::TextUnformatted("Grid"); ImGui::Indent();    
         ImGui::SliderFloat3("Position", &settings.p.viewer.grid.Position[0], -3000.0f, 3000.0f);
         ImGui::SameLine();
+        // TODO make it direct to vec3
         ImGuiCustomModules::HereButton(settings.grblVals, settings.p.viewer.grid.Position);
         ImGui::SliderFloat2("Size", &settings.p.viewer.grid.Size[0], -3000.0f, 3000.0f);
         ImGui::SliderFloat("Spacing", &settings.p.viewer.grid.Spacing, 0.0f, 1000.0f);

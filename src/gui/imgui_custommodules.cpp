@@ -55,10 +55,10 @@ bool ImGuiCustomModules::HereButton(GRBLVals& grblVals, glm::vec3& p)
     bool isClicked = false;
     ImGui::SameLine();
     // use pointer as unique id
-    ImGui::PushID(&p[0]);
+    ImGui::PushID(&(p.x));
         if(ImGui::SmallButton("Here")) {
             isClicked = true;
-            p = grblVals.status.WPos;
+            p = { grblVals.status.WPos.x, grblVals.status.WPos.y, grblVals.status.WPos.z };
         }
     ImGui::PopID();
     return isClicked;

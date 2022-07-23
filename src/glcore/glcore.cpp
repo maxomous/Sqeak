@@ -25,7 +25,7 @@ bool glErrors(const char* function, const char* file, int line)
 			case GL_CONTEXT_LOST:					error="GL_CONTEXT_LOST";				break;
 			case GL_TABLE_TOO_LARGE:				error="GL_TABLE_TOO_LARGE";				break;
 		}
-		cerr << "{OpenGL Error] (" << err << "): GL_" << error.c_str() << "\n" << function << " " << file << ":" << line << endl;
+		cerr << "[OpenGL Error] (" << err << "): GL_" << error.c_str() << "\n" << function << " " << file << ":" << line << endl;
 	}
 	return noErrors;
 }

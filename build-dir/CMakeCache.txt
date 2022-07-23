@@ -223,6 +223,15 @@ GLEW_STATIC_LIBRARY_DEBUG:FILEPATH=GLEW_STATIC_LIBRARY_DEBUG-NOTFOUND
 GLEW_STATIC_LIBRARY_RELEASE:FILEPATH=GLEW_STATIC_LIBRARY_RELEASE-NOTFOUND
 
 //Value Computed by CMake
+GRBL_BINARY_DIR:STATIC=/home/pi/Desktop/Projects/Sqeak/build-dir/grbl
+
+//Dependencies for the target
+GRBL_LIB_DEPENDS:STATIC=general;MaxLib;general;/usr/lib/libwiringPi.so;general;-lpthread;
+
+//Value Computed by CMake
+GRBL_SOURCE_DIR:STATIC=/home/pi/Desktop/Projects/Sqeak/src/grbl
+
+//Value Computed by CMake
 ImGui_BINARY_DIR:STATIC=/home/pi/Desktop/Projects/Sqeak/build-dir/glcore/deps/imgui
 
 //Dependencies for the target
@@ -376,7 +385,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=6
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=7
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

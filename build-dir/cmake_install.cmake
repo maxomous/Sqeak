@@ -41,6 +41,7 @@ if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/pi/Desktop/Projects/Sqeak/build-dir/glcore/cmake_install.cmake")
   include("/home/pi/Desktop/Projects/Sqeak/build-dir/sketcher/cmake_install.cmake")
+  include("/home/pi/Desktop/Projects/Sqeak/build-dir/grbl/cmake_install.cmake")
 
 endif()
 

@@ -138,23 +138,24 @@ private:
         const Sketch::RenderData& renderData = sketcher.Renderer().GetRenderData();
         
         CopyData(renderData.elements.unselected,        settings.p.sketch.point.colour,     settings.p.sketch.line.colour);
-        CopyData(renderData.elements.selected,          { 1.0f, 0.0f, 0.0f },               { 1.0f, 0.0f, 0.0f });
+        CopyData(renderData.elements.failed,            { 1.0f, 0.0f, 0.0f },               { 1.0f, 0.0f, 0.0f });
         CopyData(renderData.elements.hovered,           { 0.568f, 0.019f, 0.940f },         { 0.6f, 0.8f, 0.8f });
+        CopyData(renderData.elements.selected,          { 1.0f, 1.0f, 1.0f },               { 1.0f, 1.0f, 1.0f });
                 
         CopyData(renderData.constraints.unselected,     { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
-        CopyData(renderData.constraints.selected,       { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
+        CopyData(renderData.constraints.failed,         { 1.0f, 0.0f, 0.0f },               { 1.0f, 0.0f, 0.0f });
         CopyData(renderData.constraints.hovered,        { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
-            
+        CopyData(renderData.constraints.selected,       { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
+        
         CopyData(renderData.preview,                    settings.p.sketch.point.colour,     settings.p.sketch.line.colour);
         const Sketch::RenderData::Data& cursor = renderData.cursor;
         // Change colour of selection box if left of click position
         if(cursor.points.size() == 1) {
             if(cursor.points[0].size() == 4) {
-                glm::vec3 selectionBoxColour = ((cursor.points[0][2].x - cursor.points[0][0].x) < 0) ? glm::vec3(0.1f, 0.3f, 0.8f) : glm::vec3(0.306f, 0.959f, 0.109f);
+                const glm::vec3& selectionBoxColour = ((cursor.points[0][2].x - cursor.points[0][0].x) < 0) ? glm::vec3(0.1f, 0.3f, 0.8f) : glm::vec3(0.306f, 0.959f, 0.109f);
                 CopyData(cursor,                     { 1.0f, 1.0f, 0.0f },               selectionBoxColour);
             }
         }
-        
     }
     
     void ClearViewer()
@@ -243,14 +244,29 @@ int gui(GRBL& grbl, Settings& settings)
     Event<Event_Update3DModelFromFile>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromFile data) {
         updateGRBL();
         gcReader.OpenFile(data.filename);
-        viewer.SetPath(gcReader.GetVertices(), gcReader.GetColours());
+        std::vector<Vec3>& vertices = gcReader.GetVertices();
+        std::vector<Vec3>& colours = gcReader.GetColours();
+        assert(vertices.size() == colours.size());
+        
+        viewer.SetPath(vertices.size(), [&vertices](size_t i) { 
+            return glm::vec3(vertices[i].x, vertices[i].y, vertices[i].z); 
+        }, [&colours](size_t i) { 
+            return glm::vec3(colours[i].x, colours[i].y, colours[i].z); 
+        });
     });
     
     Event<Event_Update3DModelFromVector>::RegisterHandler([&updateGRBL, &gcReader, &viewer](Event_Update3DModelFromVector data) {
         if(data.gcodes.size() > 0) {
             updateGRBL();
             gcReader.OpenVector(data.gcodes);
-            viewer.SetPath(gcReader.GetVertices(), gcReader.GetColours());
+            std::vector<Vec3>& vertices = gcReader.GetVertices();
+            std::vector<Vec3>& colours = gcReader.GetColours();
+            assert(vertices.size() == colours.size());
+            viewer.SetPath(vertices.size(), [&](size_t i) { 
+                return glm::vec3({ vertices[i].x, vertices[i].y, vertices[i].z }); 
+            }, [&](size_t i) { 
+                return glm::vec3({ colours[i].x, colours[i].y, colours[i].z }); 
+            });
         } else {
             viewer.Clear();
         }
@@ -316,14 +332,16 @@ int gui(GRBL& grbl, Settings& settings)
             return;
         }
         glm::vec2 screenCoords = Window::InvertYCoord({ data.PosX, data.PosY }) + glm::vec2(0.0f, 1.0f);
-        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - settings.grblVals.status.WCO;
+        Vec3 WCO = settings.grblVals.status.WCO;
+        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - glm::vec3({ WCO.x, WCO.y, WCO.z });
 
         // update 2d cursor positions
         cursor.Position_Raw = glm::vec2(returnCoords);
         // snap cursor or snap to raw point
         std::optional<Vec2> closestPoint = sketcher.RawPoint_GetClosest({ returnCoords.x, returnCoords.y }, cursor.SelectionTolerance_Scaled);
         cursor.Position_Snapped = (closestPoint) ? glm::vec2({ (*closestPoint).x, (*closestPoint).y }) : cursor.SnapCursor({ returnCoords.x, returnCoords.y });
-        cursor.Position_WorldCoords = *(cursor.Position_Snapped) + glm::vec2(settings.grblVals.ActiveCoordSys());
+        Vec3 coordSys = settings.grblVals.ActiveCoordSys();
+        cursor.Position_WorldCoords = *(cursor.Position_Snapped) + glm::vec2({ coordSys.x, coordSys.y });
 
         // issue event to sketch
         InputEvent inputEvent;  

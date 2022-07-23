@@ -1,6 +1,7 @@
 #include "common.h" 
 using namespace std;
 using namespace MaxLib;
+using namespace MaxLib::Geom;
 
 namespace Sqeak { 
 // *************************************************************************************************************
@@ -447,12 +448,12 @@ void Settings::SetSettingFromString(Setting& setting, size_t paramIndex, std::st
         *(*dataLocation) = str;
     } 
     else if(auto dataLocation = std::get_if<glm::vec2*>(&refToData)) {
-        glm::vec2 p = stoVec2(dataString);
-        *(*dataLocation) = p;
+        Vec2 p = StringToVec2(dataString);
+        *(*dataLocation) = { p.x, p.y };
     } 
     else if(auto dataLocation = std::get_if<glm::vec3*>(&refToData)) {
-        glm::vec3 p = stoVec3(dataString);
-        *(*dataLocation) = p;
+        Vec3 p = StringToVec3(dataString);
+        *(*dataLocation) = { p.x, p.y, p.z };
     } 
     else {
         Log::Error("Unknown type in settings file Name = ", setting.name);

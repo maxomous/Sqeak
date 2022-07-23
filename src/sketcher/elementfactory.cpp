@@ -85,7 +85,7 @@ Sketch::ElementID ElementFactory::AddCircle(const Vec2& pC, double radius) {
 // Returns: success
 bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
 {
-        
+    
     Solver::ConstraintSolver solver;
 
     // Clear the Solver Data from Elements / Constraints
@@ -138,6 +138,7 @@ bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
     // Success
     if(result.success == Solver::Success::Okay)
     {
+        std::cout << "Solver Succeeded" << std::endl;
         for(auto& element : m_Elements) {
             element->UseSolverValues(solver);
         }
@@ -178,6 +179,8 @@ bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
             // Mark as failed
             failedConstraint->SetFailed(true);*/
         }
+        // update failed elements
+        UpdateFailedElements();
     }
     
     // Clear the Solver Data from Elements / Constraints
@@ -193,6 +196,8 @@ void ElementFactory::ResetSolverFailedConstraints() {
     for(auto& constraint : m_Constraints) {
         constraint->ResetFailed();
     }
+    // clear the failed elements
+    ClearFailedElements();
 }
 
 

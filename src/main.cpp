@@ -138,6 +138,7 @@ $132=350.000 (mm) : Z-axis maximum travel
 TODO: 
 
     Not scrolling down console
+    autoscroll  doesnt look like its being set (in either log or commands)
     Limit switch / probe etc orange things not updating
     Quicker reset?
 
@@ -174,7 +175,7 @@ TODO:
 * 
      No way to have condition variable for serial recieve
         * Workaround: Use a timer
-      How best to read items for clipper (reading Log::GetConsoleLog & getGCItem)
+      How best to read items for clipper (reading Log::GetConsoleLog & getGCodeItem)
          * Workaround: Use a mutex for size, and then another mutex for each element of data
     do we need to delete(free) things in geos if it fails part way through?
 

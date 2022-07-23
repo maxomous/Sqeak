@@ -15,32 +15,30 @@ using namespace MaxLib::Geom;
 class Element;
 
 
-// a selectable 
-class Selectable
-{    
-public:     
-    bool IsHovered() const { return m_IsHovered; }
-    bool IsSelected() const { return m_IsSelected; }
-
-private:    
-    void SetHovered(bool isHovered) { m_IsHovered = isHovered; }
-    void SetSelected(bool isSelected) { m_IsSelected = isSelected; }
-
-    bool m_IsHovered = false;
-    bool m_IsSelected = false;
-    
-    friend class ElementFactory;
-}; 
 
 // Contains functions and variables specific to the item
-class Item : public Selectable
+class Item
 {
 public:     
     Item(Element* parent) : m_Parent(parent) {}
     
+    bool IsHovered() const { return m_IsHovered; }
+    bool IsSelected() const { return m_IsSelected; }
+    bool IsFailed() const { return m_IsFailed; }
+    
 protected:
     Element* m_Parent;
-        
+
+private:    
+    void SetHovered(bool value)  { m_IsHovered = value; }
+    void SetSelected(bool value) { m_IsSelected = value; }
+    void SetFailed(bool value)   { m_IsFailed = value; }
+
+    bool m_IsHovered = false;
+    bool m_IsSelected = false;
+    bool m_IsFailed = false;
+    
+    friend class ElementFactory;    
 };
 
 
