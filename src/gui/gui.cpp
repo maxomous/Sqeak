@@ -62,8 +62,24 @@ void imgui_Settings(Settings& settings)
     s.img_Sketch_Draw.Init(File::ThisDir("img/img_sketch_draw.png").c_str());
     s.img_Sketch_Measure.Init(File::ThisDir("img/img_sketch_measure.png").c_str());
     s.img_Sketch_Select.Init(File::ThisDir("img/img_sketch_select.png").c_str());
+    s.img_Sketch_SelectLoop.Init(File::ThisDir("img/img_sketch_selectloop.png").c_str());
+    s.img_Sketch_Point.Init(File::ThisDir("img/img_sketch_point.png").c_str());
     s.img_Sketch_Line.Init(File::ThisDir("img/img_sketch_line.png").c_str());
     s.img_Sketch_Arc.Init(File::ThisDir("img/img_sketch_arc.png").c_str());
+    s.img_Sketch_Circle.Init(File::ThisDir("img/img_sketch_circle.png").c_str());
+    
+    
+    // sketch constraints
+    s.img_Sketch_Constraint_Coincident.Init(File::ThisDir("img/img_sketch_constraint_coincident.png").c_str());
+    s.img_Sketch_Constraint_Midpoint.Init(File::ThisDir("img/img_sketch_constraint_midpoint.png").c_str());
+    s.img_Sketch_Constraint_Vertical.Init(File::ThisDir("img/img_sketch_constraint_vertical.png").c_str());
+    s.img_Sketch_Constraint_Horizontal.Init(File::ThisDir("img/img_sketch_constraint_horizontal.png").c_str());
+    s.img_Sketch_Constraint_Parallel.Init(File::ThisDir("img/img_sketch_constraint_parallel.png").c_str());
+    s.img_Sketch_Constraint_Perpendicular.Init(File::ThisDir("img/img_sketch_constraint_perpendicular.png").c_str());
+    s.img_Sketch_Constraint_Tangent.Init(File::ThisDir("img/img_sketch_constraint_tangent.png").c_str());
+    s.img_Sketch_Constraint_Equal.Init(File::ThisDir("img/img_sketch_constraint_equal.png").c_str());
+
+    
     
     ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
 }
@@ -72,6 +88,24 @@ void imgui_Settings(Settings& settings)
 class Updater
 {
 public:
+
+    struct RenderImage
+    {
+        RenderImage(ImageTexture t, const ImVec2& p) : texture(t), position(p) {}
+        RenderImage(ImageTexture t, const Vec2& p) : RenderImage(t, ImVec2(p.x, p.y)) {}
+        ImageTexture texture;
+        ImVec2 position; 
+    };
+
+    struct RenderText
+    {
+        RenderText(std::string str, const ImVec2& p) : value(str), position(p) {}
+        RenderText(std::string str, const Vec2& p) : RenderText(str, ImVec2(p.x, p.y)) {}
+        std::string value;
+        ImVec2 position; 
+    };
+
+
 
     void HandleUpdateFlag(Settings& settings, Sketch::Sketcher& sketcher) 
     {
@@ -93,9 +127,16 @@ public:
         settings.ResetUpdateFlag();
     }
     
+    const std::vector<RenderImage>& Images() const { return m_Images; }
+    const std::vector<RenderText>& Texts() const { return m_Texts; }
+    
 private:
+
+    // TODO: These should all go directly to viewer instead
     std::vector<DynamicBuffer::ColouredVertexList> m_ViewerLineLists;
     std::vector<DynamicBuffer::ColouredVertexList> m_ViewerPointLists;
+    std::vector<RenderImage> m_Images;
+    std::vector<RenderText> m_Texts;
     
     
     void UpdateViewer(Settings& settings, Sketch::Sketcher& sketcher)
@@ -103,7 +144,9 @@ private:
         // make a list of points / lines which is sent to viewer
         m_ViewerPointLists.clear();
         m_ViewerLineLists.clear();
-
+        m_Images.clear();
+        m_Texts.clear();
+        
         RenderSketcher(settings, sketcher);
         
         // dispatch points / lines
@@ -111,7 +154,7 @@ private:
         Event<Event_Viewer_AddLineLists>::Dispatch( { &m_ViewerLineLists } );
     }
     
-
+    // TODO: This should instead put all values directly on viewer
         
     void RenderSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
     {    
@@ -123,17 +166,52 @@ private:
                 
                 DynamicBuffer::ColouredVertexList vertices(colour);
                 
+                geometry.size();
+                
                 for(const Vec2& p : geometry) {
                     vertices.position.emplace_back(p.x, p.y, 0.0f);
                 }
-                list.push_back(std::move(vertices));     
+                list.emplace_back(std::move(vertices));     
             }
+        };
+        
+        
+        auto CopyImages = [&](const vector<Sketch::RenderData::Image>& images) {
+            // Copy all of the images with position to m_Images
+            // TODO: This should go directly to viewer
+            for(const Sketch::RenderData::Image& image : images) 
+            {
+                GUISettings& s = settings.guiSettings;
+                if(image.type == Sketch::RenderData::Image::Type::Coincident)   { m_Images.emplace_back(s.img_Sketch_Constraint_Coincident, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Midpoint)     { m_Images.emplace_back(s.img_Sketch_Constraint_Midpoint, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Vertical)     { m_Images.emplace_back(s.img_Sketch_Constraint_Vertical, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Horizontal)   { m_Images.emplace_back(s.img_Sketch_Constraint_Horizontal, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Parallel)     { m_Images.emplace_back(s.img_Sketch_Constraint_Parallel, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Perpendicular){ m_Images.emplace_back(s.img_Sketch_Constraint_Perpendicular, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Tangent)      { m_Images.emplace_back(s.img_Sketch_Constraint_Tangent, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Equal)        { m_Images.emplace_back(s.img_Sketch_Constraint_Equal, image.position); }
+            }
+     
+        };
+        
+        auto CopyTexts = [&](const vector<Sketch::RenderData::Text>& texts) {
+            // Copy all of the texts with position to m_Texts
+            // TODO: This should go directly to viewer
+            for(const Sketch::RenderData::Text& text : texts) {
+                m_Texts.emplace_back(text.value, text.position);
+            }
+     
         };
         
         auto CopyData = [&](const Sketch::RenderData::Data& data, const glm::vec3& colourPoints, const glm::vec3& colourLines) {
             CopyVertices(m_ViewerPointLists, data.points, colourPoints);
             CopyVertices(m_ViewerLineLists, data.linestrings, colourLines);
+            CopyImages(data.images);
+            CopyTexts(data.texts);
         };
+        
+        
+        
         
         const Sketch::RenderData& renderData = sketcher.Renderer().GetRenderData();
         
@@ -141,19 +219,20 @@ private:
         CopyData(renderData.elements.failed,            { 1.0f, 0.0f, 0.0f },               { 1.0f, 0.0f, 0.0f });
         CopyData(renderData.elements.hovered,           { 0.568f, 0.019f, 0.940f },         { 0.6f, 0.8f, 0.8f });
         CopyData(renderData.elements.selected,          { 1.0f, 1.0f, 1.0f },               { 1.0f, 1.0f, 1.0f });
-                
-        CopyData(renderData.constraints.unselected,     { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
+        
+        CopyData(renderData.constraints.unselected,     settings.p.sketch.point.colour,     settings.p.sketch.line.colour);
         CopyData(renderData.constraints.failed,         { 1.0f, 0.0f, 0.0f },               { 1.0f, 0.0f, 0.0f });
-        CopyData(renderData.constraints.hovered,        { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
-        CopyData(renderData.constraints.selected,       { 0.0f, 0.0f, 0.0f },               { 0.0f, 0.0f, 0.0f });
+        CopyData(renderData.constraints.hovered,        { 0.568f, 0.019f, 0.940f },         { 0.6f, 0.8f, 0.8f });
+        CopyData(renderData.constraints.selected,       { 1.0f, 1.0f, 1.0f },               { 1.0f, 1.0f, 1.0f });
         
         CopyData(renderData.preview,                    settings.p.sketch.point.colour,     settings.p.sketch.line.colour);
         const Sketch::RenderData::Data& cursor = renderData.cursor;
         // Change colour of selection box if left of click position
         if(cursor.points.size() == 1) {
             if(cursor.points[0].size() == 4) {
+                // change colour depending on whether selection box is to left or right
                 const glm::vec3& selectionBoxColour = ((cursor.points[0][2].x - cursor.points[0][0].x) < 0) ? glm::vec3(0.1f, 0.3f, 0.8f) : glm::vec3(0.306f, 0.959f, 0.109f);
-                CopyData(cursor,                     { 1.0f, 1.0f, 0.0f },               selectionBoxColour);
+                CopyVertices(m_ViewerLineLists, cursor.linestrings, selectionBoxColour);
             }
         }
     }
@@ -233,6 +312,58 @@ int gui(GRBL& grbl, Settings& settings)
     Frames frames(settings);
     Updater updater;
         
+    
+    // TODO: these should be owned by viewer, combine with viewer.Draw2DText();
+    auto ScreenToWorldCoords = [&](glm::vec2 p) {
+
+        glm::vec2 screenCoords = Window::InvertYCoord(p) + glm::vec2(0.0f, 1.0f); // TODO DO WE NEED TO OFFSET ???
+        Vec3 WCO = settings.grblVals.status.WCO;
+        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - glm::vec3({ WCO.x, WCO.y, WCO.z });
+        return returnCoords;        
+    };
+    
+    auto WorldToScreenCoords = [&](glm::vec2 p) -> std::optional<glm::vec2> {
+
+        Vec3 WCO = settings.grblVals.status.WCO;
+        pair<bool, glm::vec2> screenCoords = viewer.GetScreenCoords(glm::vec3({ p.x, p.y, 0.0f }) + glm::vec3({ WCO.x, WCO.y, WCO.z }));
+        return (screenCoords.first) ? std::optional<glm::vec2>{ screenCoords.second } : std::nullopt;
+    };
+
+
+    
+
+    auto RenderImguiDrawList = [&]() {
+            
+        ImVec2 offset = { 0.0f, -20.0f };
+        ImVec2 size = { 20.0f, 20.0f };
+        ImVec2 halfSize = size / 2.0f;
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        // add each image to imgui draw list
+        for(const Updater::RenderImage& image : updater.Images()) {
+            // convert world coords to screen coords
+            if(std::optional<glm::vec2> screenCoords = WorldToScreenCoords({ image.position.x, image.position.y })) {
+                // invert y
+                glm::vec2 p = Window::InvertYCoord(*screenCoords);
+                // centre image about position
+                ImVec2 position = ImVec2{ p.x, p.y } - halfSize + offset;
+                // add to ImGui draw list
+                drawList->AddImage((void*)(intptr_t)image.texture.textureID, position, position + size);
+            }            
+        } 
+        
+        Vec3 WCO = settings.grblVals.status.WCO;
+        // add each text to imgui draw list
+        for(const Updater::RenderText& text : updater.Texts()) 
+        {
+            viewer.Draw2DText(text.value.c_str(), {  WCO.x + text.position.x, WCO.y + text.position.y, WCO.z + 0.0f });
+        } 
+
+    };
+    
+    
+        
+
     auto updateGRBL = [&grbl]() {
          // update status (this is probably already done from status thread)
         grbl.sendRT(GRBL_RT_STATUS_QUERY);
@@ -321,7 +452,7 @@ int gui(GRBL& grbl, Settings& settings)
         }
     });
             
-    Event<Event_MouseMove>::RegisterHandler([&settings, &viewer, &sketcher, &sketcherNew](Event_MouseMove data) {
+    Event<Event_MouseMove>::RegisterHandler([&](Event_MouseMove data) {
         
         auto& cursor = settings.p.sketch.cursor;
          // ignore if a ImGui window is hovered over or sketch is not active
@@ -331,9 +462,7 @@ int gui(GRBL& grbl, Settings& settings)
             cursor.Position_WorldCoords = {};
             return;
         }
-        glm::vec2 screenCoords = Window::InvertYCoord({ data.PosX, data.PosY }) + glm::vec2(0.0f, 1.0f);
-        Vec3 WCO = settings.grblVals.status.WCO;
-        glm::vec3 returnCoords = viewer.GetWorldPosition(screenCoords) - glm::vec3({ WCO.x, WCO.y, WCO.z });
+        glm::vec3 returnCoords = ScreenToWorldCoords({ data.PosX, data.PosY });
 
         // update 2d cursor positions
         cursor.Position_Raw = glm::vec2(returnCoords);
@@ -356,6 +485,8 @@ int gui(GRBL& grbl, Settings& settings)
             }            
         }
     });
+    
+    
     
     auto ScaleMouseData = [](Settings& settings, Viewer& viewer) {
         // scale the cursor size
@@ -394,7 +525,9 @@ int gui(GRBL& grbl, Settings& settings)
     
     Event<Event_Set2DMode>::Dispatch( { true } );
     
-    
+        
+
+
     
     // Loop until the user closes the window
     while (!glfwWindowShouldClose(glsys.GetWindow()))
@@ -426,7 +559,7 @@ int gui(GRBL& grbl, Settings& settings)
             // draw imgui frames
             frames.Draw(grbl, settings, viewer, sketcher, sketcherNew, timer.dt());
             
-            
+            RenderImguiDrawList();
     
             
             

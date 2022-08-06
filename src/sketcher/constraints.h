@@ -33,7 +33,7 @@ public:
     virtual void AddToSolver(Solver::ConstraintSolver& solver) = 0;
     
     // Passes each element to Callback Function
-    virtual void ForEachElement(std::function<void(SketchItem&)> cb) = 0;
+    virtual void ForEachItem(std::function<void(SketchItem&)> cb) = 0;
     
     void ClearSolverData();
                             
@@ -61,7 +61,8 @@ class Constraint_Template_OneItem : public Constraint
 public:
     Constraint_Template_OneItem(ElementFactory* parent, SketchItem item) : m_Parent(parent), m_Ref(item) {}
     // Passes each element to Callback Function
-    void ForEachElement(std::function<void(SketchItem&)> cb)                          { cb(m_Ref); }
+    void ForEachItem(std::function<void(SketchItem&)> cb)                          { cb(m_Ref); }
+    SketchItem Ref() { return m_Ref; };
 protected:
     ElementFactory* m_Parent;
     SketchItem m_Ref;
@@ -73,7 +74,9 @@ class Constraint_Template_TwoItems : public Constraint
 public:
     Constraint_Template_TwoItems(ElementFactory* parent, SketchItem item1, SketchItem item2) : m_Parent(parent), m_Ref_1(item1), m_Ref_2(item2) {}
     // Passes each element to Callback Function
-    void ForEachElement(std::function<void(SketchItem&)> cb)                          { cb(m_Ref_1); cb(m_Ref_2); }
+    void ForEachItem(std::function<void(SketchItem&)> cb)                          { cb(m_Ref_1); cb(m_Ref_2); }
+    SketchItem Ref_1() { return m_Ref_1; };
+    SketchItem Ref_2() { return m_Ref_2; };
 protected:
     ElementFactory* m_Parent;
     SketchItem m_Ref_1;
@@ -125,18 +128,17 @@ public:
 };
 
 
-
 // Distance Point to Point
 
 class Distance_PointToPoint : public Constraint_Template_TwoItems
 {
 public:                                                                                                                             
-    Distance_PointToPoint(ElementFactory* parent, SketchItem p0, SketchItem p1, double distance)       : Constraint_Template_TwoItems(parent, p0, p1), m_Distance(distance) {}
-    Distance_PointToPoint(ElementFactory* parent, SketchItem line, double distance)                    : Distance_PointToPoint(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }, distance) {}
+    Distance_PointToPoint(ElementFactory* parent, SketchItem p0, SketchItem p1, double d)       : Constraint_Template_TwoItems(parent, p0, p1), distance(d) {}
+    Distance_PointToPoint(ElementFactory* parent, SketchItem line, double d)                    : Distance_PointToPoint(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }, d) {}
     // Adds constraint to solver        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-private:
-    double m_Distance;
+    
+    double distance;
 };
 
 
@@ -146,11 +148,11 @@ private:
 class Distance_PointToLine : public Constraint_Template_TwoItems
 {
 public:
-    Distance_PointToLine(ElementFactory* parent, SketchItem point, SketchItem line, double distance)       : Constraint_Template_TwoItems(parent, point, line), m_Distance(distance) {}
+    Distance_PointToLine(ElementFactory* parent, SketchItem point, SketchItem line, double d)       : Constraint_Template_TwoItems(parent, point, line), distance(d) {}
     // Adds constraint to solver        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-private:
-    double m_Distance;
+    
+    double distance;
 };
 
 // Midpoint
@@ -169,21 +171,21 @@ public:
 class AddRadius_Circle : public Constraint_Template_OneItem         
 {           
 public:         
-    AddRadius_Circle(ElementFactory* parent, SketchItem circle, double radius)                    : Constraint_Template_OneItem(parent, circle), m_Radius(radius) {}
+    AddRadius_Circle(ElementFactory* parent, SketchItem circle, double r)                    : Constraint_Template_OneItem(parent, circle), radius(r) {}
     // Adds constraint to solver                
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-private:
-    double m_Radius;
+    
+    double radius;
 };
     
 class AddRadius_Arc : public Constraint_Template_OneItem
 {
 public:
-    AddRadius_Arc(ElementFactory* parent, SketchItem arc, double radius)                             : Constraint_Template_OneItem(parent, arc), m_Radius(radius) {}
+    AddRadius_Arc(ElementFactory* parent, SketchItem arc, double r)                             : Constraint_Template_OneItem(parent, arc), radius(r) {}
     // Adds constraint to solver                
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-private:            
-    double m_Radius;         
+    
+    double radius;
 };          
 
 // Angle
@@ -191,11 +193,11 @@ private:
 class Angle_LineToLine : public Constraint_Template_TwoItems
 {
 public:
-    Angle_LineToLine(ElementFactory* parent, SketchItem line1, SketchItem line2, double angle)    : Constraint_Template_TwoItems(parent, line1, line2), m_Angle(angle) {}
+    Angle_LineToLine(ElementFactory* parent, SketchItem line1, SketchItem line2, double th)    : Constraint_Template_TwoItems(parent, line1, line2), angle(th) {}
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
-private:
-    double m_Angle;
+    
+    double angle;
 };
 
 
@@ -251,9 +253,11 @@ public:
 class Tangent_Arc_Line : public Constraint_Template_TwoItems
 {
 public:
-    Tangent_Arc_Line(ElementFactory* parent, SketchItem arc, SketchItem line)                      : Constraint_Template_TwoItems(parent, arc, line) {}
+    Tangent_Arc_Line(ElementFactory* parent, SketchItem arc, SketchItem line, int tangentPt)        : Constraint_Template_TwoItems(parent, arc, line), tangentPoint(tangentPt) {}
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
+    
+    int tangentPoint; // p0 (0) or p1 (1)
 };
 
 class Tangent_Arc_Arc : public Constraint_Template_TwoItems

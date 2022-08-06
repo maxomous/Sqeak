@@ -181,6 +181,10 @@ public:
     glm::vec3 GetWorldPosition(glm::vec2 px);
     float ScaleToPx(float size) { return size * (m_Camera.GetZoom() / Window::GetHeight()); } 
     
+    std::pair<bool, glm::vec2> GetScreenCoords(glm::vec3 position) { return m_Camera.GetScreenCoords(position); }
+    
+    void Draw2DText(const char* label, glm::vec3 position);
+    
     void SetCursor(bool isValid, glm::vec2 worldCoords);
     void SetPath(size_t size, std::function<glm::vec3(size_t)> cb_position, std::function<glm::vec3(size_t)> cb_colour);
     void Clear();    
@@ -188,7 +192,7 @@ public:
     void Update(Settings& settings, float dt);
     void Render(Settings& settings);
     void ImGuiRender(Settings& settings);
-       
+    
 private:
     bool m_Initialised = false;
     bool m_Show = true;
@@ -244,7 +248,6 @@ private:
     float m_LineWidth_Bodies = 1.0f;
     int m_DepthFunction = 3;
     
-    void Draw2DText(const char* label, glm::vec3 position);
     void Draw2DAxesLabels(glm::vec3 position, float axisLength);
     
     void ClearDynamicVertices();

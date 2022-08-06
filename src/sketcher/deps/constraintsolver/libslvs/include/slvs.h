@@ -137,7 +137,7 @@ typedef struct {
 
     int                 other;
     int                 other2;
-} Slvs_Constraint;
+} Slvs_Constraint; 
 
 
 typedef struct {
@@ -386,7 +386,9 @@ static inline Slvs_Constraint Slvs_MakeConstraint(Slvs_hConstraint h,
                                                   Slvs_hEntity ptA,
                                                   Slvs_hEntity ptB,
                                                   Slvs_hEntity entityA,
-                                                  Slvs_hEntity entityB)
+                                                  Slvs_hEntity entityB,
+                                                  int other1 = 0,
+                                                  int other2 = 0)
 {
     Slvs_Constraint r;
     memset(&r, 0, sizeof(r));
@@ -399,6 +401,8 @@ static inline Slvs_Constraint Slvs_MakeConstraint(Slvs_hConstraint h,
     r.ptB = ptB;
     r.entityA = entityA;
     r.entityB = entityB;
+    r.other = other1;
+    r.other2 = other2;
     return r;
 }
 

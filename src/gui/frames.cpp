@@ -779,7 +779,7 @@ struct Toolbar {
 
 
     
-    void Draw(GRBL &grbl, Settings& settings, sketch::SketchOld& sketcher, FileBrowser* fileBrowser) 
+    void Draw(GRBL &grbl, Settings& settings, sketch::SketchOld& sketcher, Sketch::Sketcher& sketcherNew, FileBrowser* fileBrowser) 
     {        
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         float padding = settings.guiSettings.dockPadding;
@@ -824,7 +824,7 @@ struct Toolbar {
         
         ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollX;
         
-        int nColumns = (sketcher.IsActive()) ? 8 : 5;
+        int nColumns = (sketcher.IsActive()) ? 9 : 6;
         
         if (ImGui::BeginTable("Toolbar",  nColumns, flags, ImVec2(0.0f, settings.guiSettings.toolbarTableHeight))) 
         {   
@@ -844,6 +844,11 @@ struct Toolbar {
                         ImGui::TableSetupColumn("Functions");
                         ImGui::TableSetupColumn(std::string(sketcher.ActiveFunction_Name() + " Commands").c_str());
                     }
+                    
+                    
+                    ImGui::TableSetupColumn("Sketch New");
+                    
+                    
                     ImGui::TableSetupColumn("##Spacer", ImGuiTableColumnFlags_WidthStretch);
                     ImGui::TableSetupColumn("Jog");
                     
@@ -870,9 +875,9 @@ struct Toolbar {
                                 // tools
                                 if(column == 3) { openPopup_Tools = EditButton("Tools"); }
                                 // jog
-                                if(column == 7) { openPopup_JogSettings = EditButton("Jog"); }
+                                if(column == 8) { openPopup_JogSettings = EditButton("Jog"); }
                             } else {
-                                if(column == 4) { openPopup_JogSettings = EditButton("Jog"); }
+                                if(column == 5) { openPopup_JogSettings = EditButton("Jog"); }
                             }                            
                             ImGui::BeginDisabled(); // always disabled to prevent mouse interaction
                             
@@ -968,6 +973,51 @@ struct Toolbar {
                         ImGui::EndGroup();
                     }    
                 }                
+                
+                // Sketch New
+                if(ImGui::TableNextColumn()) {
+                    ImGui::BeginGroup();
+                    
+              
+                        // sketcherNew.Events().SetCommandType(SketchEvents::CommandType::None);
+                        typedef Sketch::SketchEvents::CommandType CommandType;
+                        
+                        // Select Button
+                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select", settings.guiSettings.img_Sketch_Select, sketcherNew.Events().GetCommandType() == CommandType::Select)) { 
+                             sketcherNew.Events().SetCommandType(CommandType::Select);
+                        }
+                        ImGui::SameLine();
+                        // Select Loop Button
+                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select Loop", settings.guiSettings.img_Sketch_SelectLoop, sketcherNew.Events().GetCommandType() == CommandType::SelectLoop)) { 
+                             sketcherNew.Events().SetCommandType(CommandType::SelectLoop);
+                        }
+                        ImGui::SameLine();
+                        // Add Point Button
+                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Point", settings.guiSettings.img_Sketch_Point, sketcherNew.Events().GetCommandType() == CommandType::Add_Point)) { 
+                             sketcherNew.Events().SetCommandType(CommandType::Add_Point);
+                        }
+                        ImGui::SameLine();
+                        // Add Line Button
+                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Line", settings.guiSettings.img_Sketch_Line, sketcherNew.Events().GetCommandType() == CommandType::Add_Line)) { 
+                             sketcherNew.Events().SetCommandType(CommandType::Add_Line);
+                        }
+                        ImGui::SameLine();
+                        // Add Arc Button
+                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Arc", settings.guiSettings.img_Sketch_Arc, sketcherNew.Events().GetCommandType() == CommandType::Add_Arc)) { 
+                             sketcherNew.Events().SetCommandType(CommandType::Add_Arc);
+                        }
+                        ImGui::SameLine();
+                        // Add Circle Button
+                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Circle", settings.guiSettings.img_Sketch_Circle, sketcherNew.Events().GetCommandType() == CommandType::Add_Circle)) { 
+                             sketcherNew.Events().SetCommandType(CommandType::Add_Circle);
+                        }
+                        
+               
+                    
+                    
+                    ImGui::EndGroup();
+                }
+                
                 // Spacer
                 if(ImGui::TableNextColumn()) {
                 }              
@@ -2470,9 +2520,6 @@ void Frames::DrawDockSpace(Settings& settings)
       
       
       
-      
-      
-      
 void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::SketchOld& sketcher, Sketch::Sketcher& sketcherNew, float dt)
 {
     
@@ -2490,7 +2537,6 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
         
         
         
-        
         static PopupMessages popupMessages;
         static Toolbar toolbar;
         static Debug debug;
@@ -2501,7 +2547,7 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
         
         // Enable always
         popupMessages.Draw(settings, dt);
-        toolbar.Draw(grbl, settings, sketcher, fileBrowser.get());
+        toolbar.Draw(grbl, settings, sketcher, sketcherNew, fileBrowser.get());
         
         // Disable all widgets when not connected to grbl  
         ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);

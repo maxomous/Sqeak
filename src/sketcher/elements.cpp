@@ -73,10 +73,12 @@ Arc::Arc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction
     : Element(SketchItem::Type::Arc), m_Direction(direction),
     
     m_Item_P0(this, SketchItem::Type::Arc_P0, p0, [&](Element* element) -> Solver::Point2D&  { 
-        return (m_Direction == Direction::CW) ? element->SolverElement<Solver::Arc>()->p0 : element->SolverElement<Solver::Arc>()->p1; 
+        return element->SolverElement<Solver::Arc>()->p0; 
+        //return (m_Direction == Direction::CW) ? element->SolverElement<Solver::Arc>()->p0 : element->SolverElement<Solver::Arc>()->p1; 
     }),
     m_Item_P1(this, SketchItem::Type::Arc_P1, p1, [&](Element* element) -> Solver::Point2D&  {
-        return (m_Direction == Direction::CW) ? element->SolverElement<Solver::Arc>()->p1 : element->SolverElement<Solver::Arc>()->p0; 
+        return element->SolverElement<Solver::Arc>()->p1; 
+        //return (m_Direction == Direction::CW) ? element->SolverElement<Solver::Arc>()->p1 : element->SolverElement<Solver::Arc>()->p0; 
     }),
     m_Item_PC(this, SketchItem::Type::Arc_PC, pC, [](Element* element) -> Solver::Point2D&  {
         return element->SolverElement<Solver::Arc>()->pC; 
@@ -90,9 +92,10 @@ const MaxLib::Geom::Direction& Arc::Direction() const {
 
 void Arc::AddToSolver(Solver::ConstraintSolver& solver) {
 
-    const Vec2& p0 = (m_Direction == Direction::CW) ? P0() : P1();
-    const Vec2& p1 = (m_Direction == Direction::CW) ? P1() : P0();
-    m_SolverElement = std::make_unique<Solver::Arc>(solver.CreateArc(PC().x, PC().y, p0.x, p0.y, p1.x, p1.y));
+    //const Vec2& p0 = (m_Direction == Direction::CW) ? P0() : P1();
+    //const Vec2& p1 = (m_Direction == Direction::CW) ? P1() : P0();
+    //m_SolverElement = std::make_unique<Solver::Arc>(solver.CreateArc(PC().x, PC().y, p0.x, p0.y, p1.x, p1.y));
+    m_SolverElement = std::make_unique<Solver::Arc>(solver.CreateArc((m_Direction == MaxLib::Geom::Direction::CW), PC().x, PC().y, P0().x, P0().y, P1().x, P1().y));
 }
 
 

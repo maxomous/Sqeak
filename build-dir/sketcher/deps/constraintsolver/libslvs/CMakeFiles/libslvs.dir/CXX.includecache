@@ -12,19 +12,7 @@ include/SolveSpaceSystem.h
 assert.h
 -
 
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/constrainteq.cpp
-solvespace.h
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/solvespace.h
-
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/dsc.h
-solvespace.h
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/solvespace.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/entity.cpp
-solvespace.h
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/solvespace.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/expr.cpp
 solvespace.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/solvespace.h
 
@@ -53,12 +41,6 @@ include/slvs.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include/slvs.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/platform/platform.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/platform/unixutil.cpp
-execinfo.h
--
-solvespace.h
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/platform/solvespace.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/polygon.h
 
@@ -137,14 +119,4 @@ ttf.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/ttf.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/srf/surface.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/system.cpp
-solvespace.h
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/solvespace.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/util.cpp
-solvespace.h
-/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/solvespace.h
-cmath
--
 

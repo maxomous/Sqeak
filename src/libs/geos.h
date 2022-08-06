@@ -1,12 +1,14 @@
 
 #pragma once
 
-#include <geos_c.h>  
-#include <vector>
 #include <stdio.h>
 #include <stdarg.h>
+#include <vector>
 #include <optional>
-#include <algorithm>	
+#include <functional>
+#include <algorithm>
+	
+#include <geos_c.h>  
 #include <MaxLib.h>	
 
 // delete this, for debugging only
@@ -35,8 +37,6 @@ public:
     ~Geos();
     // returns centroid of a polygon
     std::optional<MaxLib::Geom::Vec2> Centroid(const MaxLib::Geom::LineString& points);
-    // Returns true if Line is inside polygon or line is touching boundary but is inside polygon
-    std::optional<bool> LineIsInsidePolygon(const MaxLib::Geom::Vec2& p0, const MaxLib::Geom::Vec2& p1, const MaxLib::Geom::LineString& polygon);
     
     // converts a vector<Vec2> to a Geos Point, LineString or Polygon, defined by the number of points it contains
     GEOSGeometry* GeosPointLineStringOrPolygon(const MaxLib::Geom::LineString& points) {
@@ -44,62 +44,78 @@ public:
         if(points.size() == 0) { return {}; }
         // input is point
         if(points.size() == 1) { return GEOSGeom_createPointFromXY(points[0].x, points[0].y); }
-        // return polygon if loop, linestring if not
-        if(points.front() == points.back()) {
-            return GeosPolygon(points); 
-        } else {
-            return GeosLineString(points);    
-        }
-    }
-    // input can be a point, linestring or polygon (a polygon's start and end points must be identical)
-    std::optional<bool> Intersect(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) {
-        
-        GEOSGeometry* geom_A = GeosPointLineStringOrPolygon(geomA);
-        if(!geom_A) return {};
-        GEOSGeometry* geom_B = GeosPointLineStringOrPolygon(geomB);
-        if(!geom_B) return {};
-        
-        char result = GEOSIntersects(geom_A, geom_B);
-        if(result == 2) { return {}; } // error
-        
-        GEOSGeom_destroy(geom_A);
-        GEOSGeom_destroy(geom_B);
-        return result;
+        // return polygon if loop
+        if(points.front() == points.back()) { return GeosPolygon(points); }
+        // return linestring
+        return GeosLineString(points);
     }
     
-    // returns true if polygon conatians geom
-    // geom can be either a point, linestring or polygon (a polygon's start and end points must be identical)
-    std::optional<bool> Contains(const MaxLib::Geom::LineString& polygon, const MaxLib::Geom::LineString& geom) {
-        
-        GEOSGeometry* geom_A = GeosPolygon(polygon);
-        if(!geom_A) return {};
-        GEOSGeometry* geom_B = GeosPointLineStringOrPolygon(geom);
-        if(!geom_B) return {};
-        
-        char result = GEOSContains(geom_A, geom_B);
-        //GEOSCovers??
-        if(result == 2) { return {}; } // return 2 on exception
-        
-        GEOSGeom_destroy(geom_A);
-        GEOSGeom_destroy(geom_B);
-        return result;
+ 
+    // For spatial operator definitions, see: (http://docs.safe.com/fme/html/FME_Desktop_Documentation/FME_Transformers/Transformers/spatialrelations.htm#DE9IM_Matrix)
+    
+    // True if no point of either geometry touchess or is within the other.
+    std::optional<bool> Disjoint(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSDisjoint(geom_A, geom_B); });
     }
- //   
- //   // ALL: returns 1 on true, 0 on false, 2 on exception
- //
- //   // True if no point of either geometry touchess or is within the other.
- //   extern char GEOS_DLL GEOSDisjoint(const GEOSGeometry* g1, const GEOSGeometry* g2);
- //
- //   // True if geometries share boundaries at one or more points, but do not have interior overlaps.
- //   extern char GEOS_DLL GEOSTouches(const GEOSGeometry* g1, const GEOSGeometry* g2);
- //
- //   // True if geometries are not disjoint.
- //   extern char GEOS_DLL GEOSIntersects(const GEOSGeometry* g1, const GEOSGeometry* g2);
- //
- //   // True if geometries interiors interact but their boundares do not. Most useful for finding line crosses cases.
- //   extern char GEOS_DLL GEOSCrosses(const GEOSGeometry* g1, const GEOSGeometry* g2);
- //
 
+    // True if geometries share boundaries at one or more points, but do not have interior overlaps.
+    std::optional<bool> Touches(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSTouches(geom_A, geom_B); });
+    }
+
+    // True if geometries are not disjoint.
+    std::optional<bool> Intersects(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSIntersects(geom_A, geom_B); });
+    }
+
+    // True if geometries interiors interact but their boundares do not. Most useful for finding line crosses cases.
+    std::optional<bool> Crosses(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSCrosses(geom_A, geom_B); });
+    }
+
+    // True if geometry g1 is completely within g2, and not touching the boundary of g2.
+    std::optional<bool> Within(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSWithin(geom_A, geom_B); });
+    }
+
+    // True if geometry g2 is completely within g1.
+    std::optional<bool> Contains(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSContains(geom_A, geom_B); });
+    }
+
+    // True if geometries share interiors but are neither within nor contained   
+    std::optional<bool> Overlaps(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSOverlaps(geom_A, geom_B); });
+    }
+
+    // True if geometries cover the same space on the place.
+    std::optional<bool> Equals(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSEquals(geom_A, geom_B); });
+    }
+
+    // True if geometry g1 is completely within g2, including possibly touching the boundary of g2.
+    std::optional<bool> Covers(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B){ return GEOSCovers(geom_A, geom_B); });
+    }
+    
+    // True if geometry g2 is completely within g1, including possibly touching the boundary of g1.
+    std::optional<bool> CoveredBy(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB) 
+    {
+        return BooleanOperation(geomA, geomB, [](GEOSGeometry* geom_A, GEOSGeometry* geom_B) {return GEOSCoveredBy(geom_A, geom_B);
+        });
+    }
+    
+    
+    
     
     
     struct PolygonisedData
@@ -276,7 +292,7 @@ private:
             for(size_t i = 0; i < OffsetLines[n].size()-1; i++) // -1 because first and last point are the same
             {
                 MaxLib::Geom::Vec2& p1 = OffsetLines[n][i];
-                if(LineIsInsidePolygon(p0, p1, l)) {
+                if(Within({ p0, p1 }, l)) {
                     newIndex = i;
                     break;
                 }
@@ -323,6 +339,23 @@ private:
     std::vector<MaxLib::Geom::LineString>    GeosGetLineStrings(const GEOSGeometry* geometry);
     // Converts GEOS geometry collection to std::vector<Geom::LineString>
     std::vector<MaxLib::Geom::LineString>    GeosGetPolygons(const GEOSGeometry* geometry);
+
+    // Generic boolean operation with callback
+    std::optional<bool> BooleanOperation(const MaxLib::Geom::LineString& geomA, const MaxLib::Geom::LineString& geomB, std::function<char(GEOSGeometry*, GEOSGeometry*)> cb) {
+        
+        GEOSGeometry* geom_A = GeosPointLineStringOrPolygon(geomA);
+        if(!geom_A) return {};
+        GEOSGeometry* geom_B = GeosPointLineStringOrPolygon(geomB);
+        if(!geom_B) return {};
+        
+        char result = cb(geom_A, geom_B);
+        if(result == 2) { return {}; } // error
+        
+        GEOSGeom_destroy(geom_A);
+        GEOSGeom_destroy(geom_B);
+        return result;
+    }
+    
 
     static void   MsgHandler(const char* fmt, ...);
 };

@@ -525,7 +525,7 @@ void GCodeReader::MotionArc(MaxLib::Geom::Direction dir)
     
     if(m_R) { // r
         // calculate centre from the radius, start & end points
-        Vec2 centre = Geom::ArcCentreFromRadius({ xy_Start.x, xy_Start.y }, { xy_End.x, xy_End.y }, m_R, (Geom::Direction)direction);
+        Vec2 centre = Geom::ArcCentre({ xy_Start.x, xy_Start.y }, { xy_End.x, xy_End.y }, m_R, (Geom::Direction)direction);
         xy_Centre = { centre.x, centre.y };
         // -r is the second (larger) version of the arc
         r = fabsf(m_R);

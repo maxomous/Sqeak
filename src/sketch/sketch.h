@@ -403,7 +403,7 @@ public:
     {
         Vec2 p0       = { m_Ref_P0->rawPoint->Vec2().x, m_Ref_P0->rawPoint->Vec2().y };
         Vec2 p1       = { m_Ref_P1->rawPoint->Vec2().x, m_Ref_P1->rawPoint->Vec2().y };
-        Vec2 pCentre = ArcCentreFromRadius(p0, p1, m_Radius, (MaxLib::Geom::Direction)m_Direction);
+        Vec2 pCentre = ArcCentre(p0, p1, m_Radius, (MaxLib::Geom::Direction)m_Direction);
         m_Ref_Centre->rawPoint->Vec2() = { pCentre.x, pCentre.y };
     }
     

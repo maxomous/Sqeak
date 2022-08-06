@@ -983,7 +983,7 @@ void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchL
     if(lineLoop.IsEmpty()) { LineLoop_SetStartPoint(lineLoop, p1);  return; } 
     // calculate centre from radius, then pass on
     RawPoint* p0 = LineLoop_LastPoint(lineLoopID); 
-    Geom::Vec2 centre = Geom::ArcCentreFromRadius(Geom::Vec2(p0->X(), p0->Y()), Geom::Vec2(p1.x, p1.y), radius, (Geom::Direction)direction);
+    Geom::Vec2 centre = Geom::ArcCentre(Geom::Vec2(p0->X(), p0->Y()), Geom::Vec2(p1.x, p1.y), radius, (Geom::Direction)direction);
     LineLoop_AddArc(sketchLineLoop, p1, direction, Vec2(centre.x, centre.y));
 } 
 // returns 0 on success 
@@ -1151,7 +1151,7 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
                 pathParams.retract = GCodeBuilder::RetractType::Full;
             } else {
                 // do we need to retract z for each depth of pocket
-                if(geos.LineIsInsidePolygon(path[i].front(), path[i].back(), enclosingPath[i])) {
+                if(geos.Within({ path[i].front(), path[i].back() }, enclosingPath[i])) {
                     pathParams.retract = GCodeBuilder::RetractType::Partial;
                 } else {
                     pathParams.retract = GCodeBuilder::RetractType::Full;

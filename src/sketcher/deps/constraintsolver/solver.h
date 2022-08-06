@@ -181,12 +181,12 @@ public:
     Point2D pC;
     Point2D p0;
     Point2D p1;
-
+    bool isCW;
 private:
     // Only Constraints can construct this
     // The arc runs counter-clockwise from its beginning to its end (with
     // the workplane's normal pointing towards the viewer)
-    Arc(ConstraintSolver* parent, Group group, Axis& axis, double xC, double yC, double x0, double y0, double x1, double y1);
+    Arc(ConstraintSolver* parent, Group group, Axis& axis, bool isClockwise, double xC, double yC, double x0, double y0, double x1, double y1);
     friend class ConstraintSolver;
 };
     
@@ -250,8 +250,8 @@ public:
     Line    CreateLine(Axis& axis, double x0, double y0, double x1, double y1)                      { return { this, Group::Free, axis, x0, y0, x1, y1 }; }
     Line    CreateLine(double x0, double y0, double x1, double y1)                                  { return CreateLine(defaultAxis, x0, y0, x1, y1); }
 
-    Arc     CreateArc(Axis& axis, double xC, double yC, double x0, double y0, double x1, double y1) { return { this, Group::Free, axis, xC, yC, x0, y0, x1, y1 }; }
-    Arc     CreateArc(double xC, double yC, double x0, double y0, double x1, double y1)             { return CreateArc(defaultAxis, xC, yC, x0, y0, x1, y1); }
+    Arc     CreateArc(Axis& axis, bool isClockwise, double xC, double yC, double x0, double y0, double x1, double y1) { return { this, Group::Free, axis, isClockwise, xC, yC, x0, y0, x1, y1 }; }
+    Arc     CreateArc(bool isClockwise, double xC, double yC, double x0, double y0, double x1, double y1)             { return CreateArc(defaultAxis, isClockwise, xC, yC, x0, y0, x1, y1); }
 
     Circle  CreateCircle(Axis& axis, double xC, double yC, double r)                                { return { this, Group::Free, axis, xC, yC, r }; }
     Circle  CreateCircle(double xC, double yC, double r)                                            { return CreateCircle(defaultAxis, xC, yC, r); }
@@ -454,7 +454,11 @@ IGNORE:
     //    The arc entityA is tangent to the line entityB. If other is false,
     //    then the arc is tangent at its beginning (point[1]). If other is true,
     //    then the arc is tangent at its end (point[2]).
-    Constraint Add_Tangent(Axis& axis, const Arc& arc, const Line& line)                    { return MakeConstraint(axis, SLVS_C_ARC_LINE_TANGENT, 0.0, 0, 0, arc.entity, line.entity); }
+    
+    
+    Constraint Add_Tangent(Axis& axis, const Arc& arc, const Line& line, int arc_point) { 
+        return MakeConstraint(axis, SLVS_C_ARC_LINE_TANGENT, 0.0, 0, 0, arc.entity, line.entity, arc_point); 
+    }
     
     // Tangent - Curve to Curve**
     //    The two entities entityA and entityB are tangent. These entities can
@@ -464,9 +468,17 @@ IGNORE:
     //
     //        if false: the entity is tangent at its beginning
     //        if true:  the entity is tangent at its end
-    //
+    // 
     //    For cubics, point[0] is the beginning, and point[3] is the end. For
     //    arcs, point[1] is the beginning, and point[2] is the end.
+    
+    /* TODO: 
+        The flags  other and other2 indicate which endpoint of the curve is tangent,
+        for entityA and entityB respectively:
+
+            if false: the entity is tangent at its beginning
+            if true:  the entity is tangent at its end
+    */
     Constraint Add_Tangent(Axis& axis, const Arc& arc1, const Arc& arc2)                    { return MakeConstraint(axis, SLVS_C_CURVE_CURVE_TANGENT, 0.0, 0, 0, arc1.entity, arc2.entity); }
     // TODO: Check  circle + arc  &  circle + circle
     
@@ -498,7 +510,7 @@ IGNORE:
     Constraint Add_Horizontal(const Point& pointA, const Point& pointB)                             { return Add_Horizontal(defaultAxis, pointA, pointB); }
     Constraint Add_Parallel(const Line& line1, const Line& line2)                                   { return Add_Parallel(defaultAxis, line1, line2); }    
     Constraint Add_Perpendicular(const Line& line1, const Line& line2)                              { return Add_Perpendicular(defaultAxis, line1, line2); }
-    Constraint Add_Tangent(const Arc& arc, const Line& line)                                        { return Add_Tangent(defaultAxis, arc, line); }
+    Constraint Add_Tangent(const Arc& arc, const Line& line, int arc_point)                         { return Add_Tangent(defaultAxis, arc, line, arc_point); }
     Constraint Add_Tangent(const Arc& arc1, const Arc& arc2)                                        { return Add_Tangent(defaultAxis, arc1, arc2); }
     Constraint Add_EqualLength(const Line& line1, const Line& line2)                                { return Add_EqualLength(defaultAxis, line1, line2); }
     Constraint Add_EqualRadius(const Arc& arc, const Circle& circle)                                { return Add_EqualRadius(defaultAxis, arc, circle); }
@@ -554,13 +566,30 @@ IGNORE:
         return { GetResult(point.paramX), GetResult(point.paramY) };
     }
     
-    void ModifyParamValue(const Slvs_hParam parameter, double newValue) {
+    void ModifyParamValue(Slvs_hParam parameter, double newValue) {
         assert(parameter > 0 && parameter < m_Capacity_Param);
         sys.param[parameter - 1].val = newValue;
     }
     
-    void ModifyParamGroup(const Slvs_hParam parameter, Group group) {
+    void ModifyParamGroup(Slvs_hParam parameter, Group group) {
+        if(parameter < 1 || (size_t)parameter > m_Capacity_Param) { assert(0 && "Parameter value invalid"); }
         sys.param[parameter - 1].group = (Slvs_hGroup)group;
+    }
+    
+    void ModifyEntityGroup(Slvs_hEntity entity, Group group) {
+        if(entity < 1 || (size_t)entity > m_Capacity_Entity) { assert(0 && "Entity value invalid"); }
+        sys.entity[entity - 1].group = (Slvs_hGroup)group;
+    }
+    
+    // Returns true if parameter's group is free
+    bool IsParamGroupFree(Slvs_hParam parameter) {
+        if(parameter < 1 || (size_t)parameter > m_Capacity_Param) { assert(0 && "Parameter value invalid"); }
+        return (sys.param[parameter < 1].group == (Slvs_hGroup)Group::Free);
+    }
+    // Returns true if entity's group is free
+    bool IsEntityGroupFree(Slvs_hEntity entity) {
+        if(entity < 1 || (size_t)entity > m_Capacity_Entity) { assert(0 && "Entity value invalid"); }
+        return (sys.entity[entity - 1].group == (Slvs_hGroup)Group::Free);
     }
     
 private:
@@ -618,7 +647,7 @@ private:
         return id;
     }
                                                       
-    Slvs_hConstraint MakeConstraint(Axis& axis, int type, double value, Slvs_hEntity pointA, Slvs_hEntity pointB, Slvs_hEntity entityA, Slvs_hEntity entityB) 
+    Slvs_hConstraint MakeConstraint(Axis& axis, int type, double value, Slvs_hEntity pointA, Slvs_hEntity pointB, Slvs_hEntity entityA, Slvs_hEntity entityB, int other1 = 0, int other2 = 0) 
     {
         // Check array capacity
         while(sys.constraints >= (int)m_Capacity_Constraint) {
@@ -632,7 +661,7 @@ private:
             sys.faileds = newCapacity;
         }
         Slvs_hConstraint id = sys.constraints + 1;
-        sys.constraint[sys.constraints++] = Slvs_MakeConstraint(id, (Slvs_hGroup)Group::Free, type, axis.plane.entity, value, pointA, pointB, entityA, entityB);
+        sys.constraint[sys.constraints++] = Slvs_MakeConstraint(id, (Slvs_hGroup)Group::Free, type, axis.plane.entity, value, pointA, pointB, entityA, entityB, other1, other2);
         return id;
     }
 

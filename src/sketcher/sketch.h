@@ -26,10 +26,14 @@ class Sketcher;
 
 /*
     LATEST:
+    //  TODO: for each point which has moved, only update any constraints / items on those constraints
+
         ADD FIX CONSTRAINT
         * Tangent is causes excess lag and not working anyway
 
-
+    TODO: Cant select line element if both points stuck at same point
+    TODO: Tangent_Arc_Arc
+    TODO: m_Factory->AddConstraint<Coincident_PointToPoint>(p0, p1); when creating points
 
 
     // TODO:    - SketchItem to become ItemRef
@@ -100,20 +104,33 @@ TODO: RenderLine, Arc etc. should be on renderer, not elementfactory
         factory.DoSomething(memberID) 
 
  */
-  
-
-    
+ 
 // A container of all the renderable data in sketcher
 struct RenderData
 {
+    struct Image
+    {
+        enum class Type { Coincident, Midpoint, Vertical, Horizontal, Parallel, Perpendicular, Tangent, Equal }; // Distance, Angle not included
+        Type type;
+        Vec2 position;
+    };
+    struct Text
+    {
+        std::string value;
+        Vec2 position;
+    };
     struct Data  // equiv. to a vector<LineString>
     {
         vector<Geometry> points;
         vector<Geometry> linestrings;
+        vector<Image> images;
+        vector<Text> texts;
         
         void Clear() { 
             points.clear(); 
             linestrings.clear(); 
+            images.clear(); 
+            texts.clear(); 
         } 
     };
         
@@ -188,21 +205,27 @@ private:
     // Finds geometry within a tolerance to position p and sets their hovered flag to true
     // l is a polygon which 
     bool FindIntersects(const Vec2& p, double tolerance, std::function<void(SelectableGeometry&)> cb);
-}; 
+};
 
 // A flag used when building render data to only render the required item
 enum class UpdateFlag { 
-    None            = 0x00,  
-    Cursor          = 0x01, // handles dragged selection box
-    Selection       = 0x02, // handles selected & hovered
-    Elements        = 0x04, // handles change to elements, also polygonises elements 
-    Preview         = 0x08, // handles element preview whilst creating an element
-    Constraints     = 0x10, // handles constraints
+    None                               = 0x0,  
+    Cursor                             = 0x1, // handles dragged selection box
+    Selection                          = 0x2, // handles selected & hovered
+    Elements                           = 0x4, // handles change to elements, also polygonises elements 
+    Preview                            = 0x8, // handles element preview whilst creating an element
+    Constraints                        = 0x10, // handles constraints
     
-    System          = 0b10000000, // resets render system flags
-    FullNoSystem    = 0b01111111, // updates all but doesnt reset system flags
-    Full            = 0b11111111  // updates all above
+    ClearInputData                     = 0x20, // clears input data
+    DontSetInputDataToLastElement      = 0x40, // will prevent seting input data so that it includes the previous elements' end point
+    ClearSelection                     = 0x80, // clears selection data
+    
+    
+    Full                               = 0xFF, // updates all above
+    Full_DontClearSelection            = Full & ~ClearSelection,  // updates all but doesnt clear selection data
+    Full_SetInputDataToLastElement     = Full & ~DontSetInputDataToLastElement // updates all but sets input data so that it includes the previous elements' end point
 };
+
 inline UpdateFlag operator|(UpdateFlag a, UpdateFlag b) { return static_cast<UpdateFlag>(static_cast<int>(a) | static_cast<int>(b)); }
 inline bool operator&(UpdateFlag a, UpdateFlag b) { return static_cast<bool>(static_cast<int>(a) & static_cast<int>(b)); }
 
@@ -298,13 +321,15 @@ public:
 
     
 private:
-    double m_SelectionTolerance = 10.0;
     
     Sketcher* m_Parent = nullptr;
     CommandType m_CommandType = CommandType::None;
-    std::vector<Vec2> m_InputData;
-    Direction m_InputDirection = Direction::CW;
     
+    std::vector<Vec2> m_InputData; // holds a list of points which the user has selected ready for creating a new element
+    Direction m_InputDirection = Direction::CW;
+    SketchItem m_PreviousElement;
+    
+                    
     Vec2 m_CursorPos;
     Vec2 m_CursorClickedPos;
     bool m_IsDragSelectionBox = false; 
@@ -339,10 +364,12 @@ public:
     
     bool Update() 
     {
+        // Update render data if flag is set
         bool updateRequired = m_Renderer.UpdateRenderData();
         return updateRequired;
     }
             
+    
     
     // Attempts to solve constraints. 
     // movedPoint can be set for moving a point
@@ -350,8 +377,11 @@ public:
     
     
     void DrawImGui();
-    bool DrawImGui_Elements(ElementID& deleteElement);
-    bool DrawImGui_Constraints(ConstraintID& deleteConstraint);
+    void DrawImGui_Elements(ElementID& deleteElement);
+    void DrawImGui_Constraints(ConstraintID& deleteConstraint);
+    void DrawImGui_ElementInputValues();
+    void DrawImGui_Settings();
+
 
     void SetSelectCommand() { m_Command_ImGui = 1; }
 private:
@@ -362,6 +392,7 @@ private:
     ElementFactory m_Factory;
     SketchEvents m_Events;  
     SketchRenderer m_Renderer;
+    
 };
      
 

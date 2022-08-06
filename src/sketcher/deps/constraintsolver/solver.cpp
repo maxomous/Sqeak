@@ -73,11 +73,12 @@ Line::Line(ConstraintSolver* parent, Group group, Axis& axis, double x0, double 
     });
 }
 
-Arc::Arc(ConstraintSolver* parent, Group group, Axis& axis, double xC, double yC, double x0, double y0, double x1, double y1)
-    : pC(parent, group, axis, xC, yC), p0(parent, group, axis, x0, y0), p1(parent, group, axis, x1, y1)
+Arc::Arc(ConstraintSolver* parent, Group group, Axis& axis, bool isClockwise, double xC, double yC, double x0, double y0, double x1, double y1)
+    : pC(parent, group, axis, xC, yC), p0(parent, group, axis, x0, y0), p1(parent, group, axis, x1, y1), isCW(isClockwise)
 {            
     entity = parent->MakeEntity([&](Slvs_hEntity id) {
-        return Slvs_MakeArcOfCircle(id, group, axis.plane.entity, axis.normal.entity, pC.entity, p0.entity, p1.entity);
+        if(isCW) { return Slvs_MakeArcOfCircle(id, group, axis.plane.entity, axis.normal.entity, pC.entity, p1.entity, p0.entity); }
+        else     { return Slvs_MakeArcOfCircle(id, group, axis.plane.entity, axis.normal.entity, pC.entity, p0.entity, p1.entity); }
     });
 }
 

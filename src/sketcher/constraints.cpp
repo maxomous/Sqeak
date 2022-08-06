@@ -42,29 +42,33 @@ void Constraint::ForTheseElements(std::function<void(SketchItem&)> cb, std::vect
 void Constraint::ResetFailed() { 
     m_IsFailed = false; 
 }
- 
- 
 
-void Coincident_PointToPoint::AddToSolver(Solver::ConstraintSolver& solver)     { m_SolverConstraint = solver.Add_Coincident_PointToPoint(m_Parent->GetPoint(m_Ref_1), m_Parent->GetPoint(m_Ref_2)); }
-void Coincident_PointToLine::AddToSolver(Solver::ConstraintSolver& solver)      { m_SolverConstraint = solver.Add_Coincident_PointToLine(m_Parent->GetPoint(m_Ref_1), m_Parent->GetLine(m_Ref_2)); }
-void Coincident_PointToArc::AddToSolver(Solver::ConstraintSolver& solver)       { m_SolverConstraint = solver.Add_Coincident_PointToArc(m_Parent->GetPoint(m_Ref_1), m_Parent->GetArc(m_Ref_2)); }
-void Coincident_PointToCircle::AddToSolver(Solver::ConstraintSolver& solver)    { m_SolverConstraint = solver.Add_Coincident_PointToCircle(m_Parent->GetPoint(m_Ref_1), m_Parent->GetCircle(m_Ref_2)); }
-void Distance_PointToPoint::AddToSolver(Solver::ConstraintSolver& solver)       { m_SolverConstraint = solver.Add_Distance_PointToPoint(m_Parent->GetPoint(m_Ref_1), m_Parent->GetPoint(m_Ref_2), m_Distance); }
-void Distance_PointToLine::AddToSolver(Solver::ConstraintSolver& solver)        { m_SolverConstraint = solver.Add_Distance_PointToLine(m_Parent->GetPoint(m_Ref_1), m_Parent->GetLine(m_Ref_2), m_Distance); }
-void AddMidPoint_PointToLine::AddToSolver(Solver::ConstraintSolver& solver)     { m_SolverConstraint = solver.Add_MidPoint(m_Parent->GetPoint(m_Ref_1), m_Parent->GetLine(m_Ref_2)); }
-void AddRadius_Circle::AddToSolver(Solver::ConstraintSolver& solver)            { m_SolverConstraint = solver.Add_Radius(m_Parent->GetCircle(m_Ref), m_Radius); }
-void AddRadius_Arc::AddToSolver(Solver::ConstraintSolver& solver)               { m_SolverConstraint = solver.Add_Radius(m_Parent->GetArc(m_Ref), m_Radius); }
-void Angle_LineToLine::AddToSolver(Solver::ConstraintSolver& solver)            { m_SolverConstraint = solver.Add_Angle(m_Parent->GetLine(m_Ref_1), m_Parent->GetLine(m_Ref_2), m_Angle); }
-void Vertical::AddToSolver(Solver::ConstraintSolver& solver)                    { m_SolverConstraint = solver.Add_Vertical(m_Parent->GetPoint(m_Ref_1), m_Parent->GetPoint(m_Ref_2)); }
-void Horizontal::AddToSolver(Solver::ConstraintSolver& solver)                  { m_SolverConstraint = solver.Add_Horizontal(m_Parent->GetPoint(m_Ref_1), m_Parent->GetPoint(m_Ref_2)); }
-void Parallel::AddToSolver(Solver::ConstraintSolver& solver)                    { m_SolverConstraint = solver.Add_Parallel(m_Parent->GetLine(m_Ref_1), m_Parent->GetLine(m_Ref_2)); }        
-void Perpendicular::AddToSolver(Solver::ConstraintSolver& solver)               { m_SolverConstraint = solver.Add_Perpendicular(m_Parent->GetLine(m_Ref_1), m_Parent->GetLine(m_Ref_2)); }          
-void Tangent_Arc_Line::AddToSolver(Solver::ConstraintSolver& solver)            { m_SolverConstraint = solver.Add_Tangent(m_Parent->GetArc(m_Ref_1), m_Parent->GetLine(m_Ref_2)); }
-void Tangent_Arc_Arc::AddToSolver(Solver::ConstraintSolver& solver)             { m_SolverConstraint = solver.Add_Tangent(m_Parent->GetArc(m_Ref_1), m_Parent->GetArc(m_Ref_2)); }
-void EqualLength::AddToSolver(Solver::ConstraintSolver& solver)                 { m_SolverConstraint = solver.Add_EqualLength(m_Parent->GetLine(m_Ref_1), m_Parent->GetLine(m_Ref_2)); }         
-void EqualRadius_Arc_Arc::AddToSolver(Solver::ConstraintSolver& solver)         { m_SolverConstraint = solver.Add_EqualRadius(m_Parent->GetArc(m_Ref_1), m_Parent->GetArc(m_Ref_2)); }          
-void EqualRadius_Arc_Circle::AddToSolver(Solver::ConstraintSolver& solver)      { m_SolverConstraint = solver.Add_EqualRadius(m_Parent->GetArc(m_Ref_1), m_Parent->GetCircle(m_Ref_2)); }
-void EqualRadius_Circle_Circle::AddToSolver(Solver::ConstraintSolver& solver)   { m_SolverConstraint = solver.Add_EqualRadius(m_Parent->GetCircle(m_Ref_1), m_Parent->GetCircle(m_Ref_2)); }
+
+void Coincident_PointToPoint::AddToSolver(Solver::ConstraintSolver& solver)     { m_SolverConstraint = solver.Add_Coincident_PointToPoint(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverPoint(m_Ref_2)); }
+void Coincident_PointToLine::AddToSolver(Solver::ConstraintSolver& solver)      { m_SolverConstraint = solver.Add_Coincident_PointToLine(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverLine(m_Ref_2)); }
+void Coincident_PointToArc::AddToSolver(Solver::ConstraintSolver& solver)       { m_SolverConstraint = solver.Add_Coincident_PointToArc(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverArc(m_Ref_2)); }
+void Coincident_PointToCircle::AddToSolver(Solver::ConstraintSolver& solver)    { m_SolverConstraint = solver.Add_Coincident_PointToCircle(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverCircle(m_Ref_2)); }
+void Distance_PointToPoint::AddToSolver(Solver::ConstraintSolver& solver)       { m_SolverConstraint = solver.Add_Distance_PointToPoint(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverPoint(m_Ref_2), distance); }
+void Distance_PointToLine::AddToSolver(Solver::ConstraintSolver& solver)        { m_SolverConstraint = solver.Add_Distance_PointToLine(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverLine(m_Ref_2), distance); }
+void AddMidPoint_PointToLine::AddToSolver(Solver::ConstraintSolver& solver)     { m_SolverConstraint = solver.Add_MidPoint(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverLine(m_Ref_2)); }
+void AddRadius_Circle::AddToSolver(Solver::ConstraintSolver& solver)            { m_SolverConstraint = solver.Add_Radius(m_Parent->GetSolverCircle(m_Ref), radius); }
+void AddRadius_Arc::AddToSolver(Solver::ConstraintSolver& solver)               { m_SolverConstraint = solver.Add_Radius(m_Parent->GetSolverArc(m_Ref), radius); }
+void Angle_LineToLine::AddToSolver(Solver::ConstraintSolver& solver)            { m_SolverConstraint = solver.Add_Angle(m_Parent->GetSolverLine(m_Ref_1), m_Parent->GetSolverLine(m_Ref_2), angle); }
+void Vertical::AddToSolver(Solver::ConstraintSolver& solver)                    { m_SolverConstraint = solver.Add_Vertical(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverPoint(m_Ref_2)); }
+void Horizontal::AddToSolver(Solver::ConstraintSolver& solver)                  { m_SolverConstraint = solver.Add_Horizontal(m_Parent->GetSolverPoint(m_Ref_1), m_Parent->GetSolverPoint(m_Ref_2)); }
+void Parallel::AddToSolver(Solver::ConstraintSolver& solver)                    { m_SolverConstraint = solver.Add_Parallel(m_Parent->GetSolverLine(m_Ref_1), m_Parent->GetSolverLine(m_Ref_2)); }        
+void Perpendicular::AddToSolver(Solver::ConstraintSolver& solver)               { m_SolverConstraint = solver.Add_Perpendicular(m_Parent->GetSolverLine(m_Ref_1), m_Parent->GetSolverLine(m_Ref_2)); }          
+void Tangent_Arc_Line::AddToSolver(Solver::ConstraintSolver& solver)            { 
+    const Solver::Arc& arc = m_Parent->GetSolverArc(m_Ref_1);
+    // flip tangent point if one or the other
+    bool flipTangentPoint = (arc.isCW ^ tangentPoint);
+    m_SolverConstraint = solver.Add_Tangent(arc, m_Parent->GetSolverLine(m_Ref_2), flipTangentPoint); 
+}
+void Tangent_Arc_Arc::AddToSolver(Solver::ConstraintSolver& solver)             { m_SolverConstraint = solver.Add_Tangent(m_Parent->GetSolverArc(m_Ref_1), m_Parent->GetSolverArc(m_Ref_2)); }
+void EqualLength::AddToSolver(Solver::ConstraintSolver& solver)                 { m_SolverConstraint = solver.Add_EqualLength(m_Parent->GetSolverLine(m_Ref_1), m_Parent->GetSolverLine(m_Ref_2)); }         
+void EqualRadius_Arc_Arc::AddToSolver(Solver::ConstraintSolver& solver)         { m_SolverConstraint = solver.Add_EqualRadius(m_Parent->GetSolverArc(m_Ref_1), m_Parent->GetSolverArc(m_Ref_2)); }          
+void EqualRadius_Arc_Circle::AddToSolver(Solver::ConstraintSolver& solver)      { m_SolverConstraint = solver.Add_EqualRadius(m_Parent->GetSolverArc(m_Ref_1), m_Parent->GetSolverCircle(m_Ref_2)); }
+void EqualRadius_Circle_Circle::AddToSolver(Solver::ConstraintSolver& solver)   { m_SolverConstraint = solver.Add_EqualRadius(m_Parent->GetSolverCircle(m_Ref_1), m_Parent->GetSolverCircle(m_Ref_2)); }
 
  
 } // end namespace Sketch

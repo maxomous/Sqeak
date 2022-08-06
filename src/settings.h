@@ -271,8 +271,23 @@ struct GUISettings
     ImageTexture img_Sketch_Draw;
     ImageTexture img_Sketch_Measure;
     ImageTexture img_Sketch_Select;
+    ImageTexture img_Sketch_SelectLoop;
+    ImageTexture img_Sketch_Point;
     ImageTexture img_Sketch_Line;
     ImageTexture img_Sketch_Arc;
+    ImageTexture img_Sketch_Circle;
+    
+    // sketch constraints
+    ImageTexture img_Sketch_Constraint_Coincident;
+    ImageTexture img_Sketch_Constraint_Midpoint;
+    ImageTexture img_Sketch_Constraint_Vertical;
+    ImageTexture img_Sketch_Constraint_Horizontal;
+    ImageTexture img_Sketch_Constraint_Parallel;
+    ImageTexture img_Sketch_Constraint_Perpendicular;
+    ImageTexture img_Sketch_Constraint_Tangent;
+    ImageTexture img_Sketch_Constraint_Equal;
+
+    
 };
 
 // for setting static variables

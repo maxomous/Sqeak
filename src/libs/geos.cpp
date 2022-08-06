@@ -93,27 +93,6 @@ std::optional<Vec2> Geos::Centroid(const LineString& points)
     return {{ x, y }}; 
 } 
   
-// Returns true if Line is inside polygon 
-// Will also return true if line is touching boundary but is inside polygon
-std::optional<bool> Geos::LineIsInsidePolygon(const Vec2& p0, const Vec2& p1, const LineString& polygon) 
-{   
-    // turn into geometry
-    LineString lineString;
-    lineString.push_back(p0); 
-    lineString.push_back(p1);
-    GEOSGeometry* line = GeosLineString(lineString);
-    if(!line) return {};
-    
-    GEOSGeometry* poly = GeosPolygon(polygon);
-    if(!poly) return {};
-    
-    int result = GEOSWithin(line, poly);
-    if(result < 0 || result > 1) return {};
-    // successful result
-    return result;
-}
-  
-
 GEOSGeometry* Geos::GeosLinearRing(const LineString& points)   
 {  // error checks
     // make sure there are at least 3 points in vector

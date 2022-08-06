@@ -6,18 +6,8 @@ namespace Sketch {
 
 // Get SketchItem functions
 
-Solver::Point2D& ElementFactory::GetPoint(SketchItem item) 
+Solver::Point2D& ElementFactory::GetSolverPoint(SketchItem item) 
 {
-   //Element* element = GetElementByID<Element>(item.element);
-   /* 
-    if(item.type == SketchItem::Type::Point)           { return *dynamic_cast<Point*>(element)->SolverElement<Solver::Point2D>(); }
-    else if(item.type == SketchItem::Type::Line_P0)    { return dynamic_cast<Line*>(element)->SolverElement<Solver::Line>()->p0; } 
-    else if(item.type == SketchItem::Type::Line_P1)    { return dynamic_cast<Line*>(element)->SolverElement<Solver::Line>()->p1; } 
-    else if(item.type == SketchItem::Type::Arc_P0)     { return dynamic_cast<Arc*>(element)->SolverElement<Solver::Arc>()->p0; } 
-    else if(item.type == SketchItem::Type::Arc_P1)     { return dynamic_cast<Arc*>(element)->SolverElement<Solver::Arc>()->p1; } 
-    else if(item.type == SketchItem::Type::Arc_PC)     { return dynamic_cast<Arc*>(element)->SolverElement<Solver::Arc>()->pC; } 
-    else if(item.type == SketchItem::Type::Circle_PC)  { return dynamic_cast<Circle*>(element)->SolverElement<Solver::Circle>()->pC; } 
-*/
 
     if(item.type == SketchItem::Type::Point)           { return *GetElementByID<Sketch::Point>(item.element)->SolverElement<Solver::Point2D>(); }
     else if(item.type == SketchItem::Type::Line_P0)    { return GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>()->p0; } 
@@ -31,51 +21,68 @@ Solver::Point2D& ElementFactory::GetPoint(SketchItem item)
     else if(item.type == SketchItem::Type::Arc)     { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->pC; } 
     else if(item.type == SketchItem::Type::Circle)  { return GetElementByID<Sketch::Circle>(item.element)->SolverElement<Solver::Circle>()->pC; } 
 
-
     // Should never reach
     assert(0 && "Type unknown");
 }
 
-Solver::Line& ElementFactory::GetLine(SketchItem item)
+Solver::Line& ElementFactory::GetSolverLine(SketchItem item)
 {    
     if(item.type == SketchItem::Type::Line)      { return *GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>(); }  
     // Should never reach
     assert(0 && "Type is not a Line");
 }
 
-Solver::Arc& ElementFactory::GetArc(SketchItem item)
+Solver::Arc& ElementFactory::GetSolverArc(SketchItem item)
 {
     if(item.type == SketchItem::Type::Arc)       { return *GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>(); } 
     // Should never reach
     assert(0 && "Type is not a Arc");
 }
 
-Solver::Circle& ElementFactory::GetCircle(SketchItem item) 
+Solver::Circle& ElementFactory::GetSolverCircle(SketchItem item) 
 {
     if(item.type == SketchItem::Type::Circle)    { return *GetElementByID<Sketch::Circle>(item.element)->SolverElement<Solver::Circle>(); } 
     // Should never reach
     assert(0 && "Type is not a Circle");
 }
 
+
+Slvs_hEntity ElementFactory::GetSolverEntity(SketchItem item) 
+{
+
+    if(item.type == SketchItem::Type::Point)            { return GetElementByID<Sketch::Point>(item.element)->SolverElement<Solver::Point2D>()->entity; }
+    else if(item.type == SketchItem::Type::Line_P0)     { return GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>()->p0.entity; } 
+    else if(item.type == SketchItem::Type::Line_P1)     { return GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>()->p1.entity; } 
+    else if(item.type == SketchItem::Type::Arc_P0)      { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->p0.entity; } 
+    else if(item.type == SketchItem::Type::Arc_P1)      { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->p1.entity; } 
+    else if(item.type == SketchItem::Type::Arc_PC)      { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->pC.entity; } 
+    else if(item.type == SketchItem::Type::Circle_PC)   { return GetElementByID<Sketch::Circle>(item.element)->SolverElement<Solver::Circle>()->pC.entity; } 
+    
+    else if(item.type == SketchItem::Type::Line)        { return GetElementByID<Sketch::Line>(item.element)->SolverElement<Solver::Line>()->entity; }  
+    else if(item.type == SketchItem::Type::Arc)         { return GetElementByID<Sketch::Arc>(item.element)->SolverElement<Solver::Arc>()->entity; } 
+    else if(item.type == SketchItem::Type::Circle)      { return GetElementByID<Sketch::Circle>(item.element)->SolverElement<Solver::Circle>()->entity; } 
+    // Should never reach
+    assert(0 && "SketchType is not recognised");
+}
+
   
   
     
-Sketch::ElementID ElementFactory::AddPoint(const Vec2& p) {
-    return AddElement<Sketch::Point>(p)->ID();
+SketchItem ElementFactory::AddPoint(const Vec2& p) {
+    return AddElement<Sketch::Point>(p)->Item_Elem().Reference();
 }
 
-Sketch::ElementID ElementFactory::AddLine(const Vec2& p0, const Vec2& p1) {
-    return AddElement<Sketch::Line>(p0, p1)->ID();
+SketchItem ElementFactory::AddLine(const Vec2& p0, const Vec2& p1) {
+    return AddElement<Sketch::Line>(p0, p1)->Item_Elem().Reference();
 }
 
-Sketch::ElementID ElementFactory::AddArc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction) {
-    return AddElement<Sketch::Arc>(p0, p1, pC, direction)->ID();
+SketchItem ElementFactory::AddArc(const Vec2& p0, const Vec2& p1, const Vec2& pC, MaxLib::Geom::Direction direction) {
+    return AddElement<Sketch::Arc>(p0, p1, pC, direction)->Item_Elem().Reference();
 }
 
-Sketch::ElementID ElementFactory::AddCircle(const Vec2& pC, double radius) {
-    return AddElement<Sketch::Circle>(pC, radius)->ID();
+SketchItem ElementFactory::AddCircle(const Vec2& pC, double radius) {
+    return AddElement<Sketch::Circle>(pC, radius)->Item_Elem().Reference();
 }
-
 
 
 
@@ -99,38 +106,109 @@ bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
         element->AddToSolver(solver);
     }
     
+    // Mark those which should be fixed
+    
     if(pDif) 
     {        
+        // for any elements selected, drag all of it's points
         ForEachItemPoint([&](Item_Point& item) 
-        {
-            if(!item.IsSelected()) { return; }
-            // Fix dragged point(s) to their new dragged position            
+        {  // overwrite position of selected item and set it to be fixed
             SetDraggedPoint(solver, item, *pDif);   
-            
+        }, [&](Sketch::Element* element) { return element->Item_Elem().IsSelected(); }); // if condition callback (element is selected) is met
+        
+        // for any points selected, drag all of them
+        ForEachItemPoint([&](Item_Point& item) 
+        {   // overwrite position of selected item and set it to be fixed
+            if(item.IsSelected()) { SetDraggedPoint(solver, item, *pDif); }
         });
-        /* 
-        ForEachItemElement([&](Item_Element& item) {
-            if(item.IsSelected()) {
-                draggedItems.push_back(item.Reference());
-            }
-        });
-        */
     }
+    
+    // is group free???
+    ForEachItemPoint([&](Item_Point& item) 
+    {   
+        std::cout << "item of element: " << item.Reference().element << " is of type: " << item.Reference().Name() 
+        << " of solver entity: " << GetSolverEntity(item.Reference())
+        << " is " << solver.IsEntityGroupFree(GetSolverEntity(item.Reference())) << std::endl;
+    });
+    
+    
     // Add Constraints
     for(auto& constraint : m_Constraints) { 
-        constraint->AddToSolver(solver);            
-//      // if all of a constraint's items are selected, dont add the constraint to the solver
-//      bool allItemsSelected = true;
-//      constraint->ForEachElement([&](SketchItem& item) {
-//          // item found which isnt in selection
-//          if(!GetItemBySketchItem(item).IsSelected()) { 
-//              allItemsSelected = false; 
-//          }
-//      });
-//      if(!allItemsSelected) {
-//          constraint->AddToSolver(solver);            
-//      }
+        
+    // NOT WORKING
+      // Dont add constraint if all items are fixed
+        bool hasFreeItem = false;
+        // Go through each item in constraint
+        constraint->ForEachItem([&](SketchItem& item) {
+            // check if item is free
+            hasFreeItem |= solver.IsEntityGroupFree(GetSolverEntity(item));
+           // hasFreeItem |= (all of the points in element);
+           // for each item point in item...
+
+        });
+        // Add to solver
+        if(hasFreeItem) {
+          constraint->AddToSolver(solver);            
+        } else {
+            std::cout << "Constraint is fixed, ignoring: " << constraint->ID() << std::endl;
+        }
     }
+       
+       /*
+       
+    if 2 items share a point,   ... not quite
+       
+       
+    Constraint
+        -> element(s);
+            ->point(s);
+        -> point(s);
+       
+       */
+       
+       
+       
+       
+       
+  /*  
+    
+    OLD: 
+    
+        // Returns true if entity's group is free
+        auto IsGroupFree = [&](Slvs_hEntity entity) {
+            // ensure valid id
+            if(entity < 1 || (size_t)entity > m_Capacity_Constraint) { return false; }
+            // return if group is free
+            return sys.entity[entity - 1].group == (Slvs_hGroup)Group::Free;
+        };
+        // If all of the constriant's items are fixed, fix the constraint also
+        for(size_t i = 0; i < (size_t)sys.constraints; i++)
+        {
+            bool hasItemsFree = false;
+            
+            hasItemsFree |= IsGroupFree(sys.constraint[i].ptA);
+            hasItemsFree |= IsGroupFree(sys.constraint[i].ptB);
+            hasItemsFree |= IsGroupFree(sys.constraint[i].entityA);
+            hasItemsFree |= IsGroupFree(sys.constraint[i].entityB);
+            hasItemsFree |= IsGroupFree(sys.constraint[i].entityC);
+            hasItemsFree |= IsGroupFree(sys.constraint[i].entityD);
+            
+            // fix constraint too
+            if(!hasItemsFree) {
+                ModifyConstraintGroup((Slvs_hConstraint)(i + 1), Group::Fixed);
+            }
+        }
+        */
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     // Solve
     Solver::SolverResult result = solver.Solve();
@@ -206,13 +284,16 @@ void ElementFactory::ResetSolverFailedConstraints() {
 void ElementFactory::SetDraggedPoint(Solver::ConstraintSolver& solver, Item_Point& draggedPoint, const Vec2& pDif) 
 {   
     
-    Solver::Point2D& p = GetPoint(draggedPoint.Reference());  
+    Solver::Point2D& p = GetSolverPoint(draggedPoint.Reference());  
     
     Vec2 draggedPosition = draggedPoint.p + pDif;
+    
+    std::cout << "Dragging point: " << p.entity << " from " << draggedPoint.p << "   pdif = " << pDif << std::endl;
     // Update the parameters for the new dragged position
     solver.ModifyParamValue(p.paramX, draggedPosition.x);
     solver.ModifyParamValue(p.paramY, draggedPosition.y);
     // Move the point into the fixed group (this was done as a fix because SetDraggedPoint would only make it close to the correct position)
+    solver.ModifyEntityGroup(p.entity, Solver::Group::Fixed);
     solver.ModifyParamGroup(p.paramX, Solver::Group::Fixed);
     solver.ModifyParamGroup(p.paramY, Solver::Group::Fixed);
 
