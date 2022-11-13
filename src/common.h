@@ -56,6 +56,7 @@ struct InputEvent {
 
 #include "grbl/grbl.h"
 
+#include "sketch/toolsettings.h"
 #include "settings.h"
 
 #include "gcreader.h"
@@ -66,7 +67,6 @@ struct InputEvent {
 #include "gui/filebrowser.h"
 #include "gui/viewer.h"
 #include "sketch/gcodebuilder.h"
-#include "sketch/toolsettings.h"
 #include "sketch/sketch.h"
 
 #include "sketcher/sketch.h"

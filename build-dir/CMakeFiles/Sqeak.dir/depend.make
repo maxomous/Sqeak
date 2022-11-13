@@ -527,9 +527,6 @@ CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sk
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch.h
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.h
 
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imconfig.h
@@ -550,27 +547,6 @@ CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/renderer.h
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/shader.h
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/texture.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/gclist.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl_common.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/grblcodes.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/serial.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/frames.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/gui.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/settings.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.cpp
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include/slvs.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch.h
-CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.h
 

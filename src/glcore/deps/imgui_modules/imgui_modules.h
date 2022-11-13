@@ -40,11 +40,15 @@ namespace ImGuiModules
         
         void Open();
         // returns true on close (next frame)
-        bool Draw(std::function<void()> cb_ImGuiWidgets);
+        bool Draw(std::function<void()> cb_ImGuiWidgets, ImGuiWindowFlags flags = 0);
+        // returns true on close (next frame)
+        bool DrawModal(std::function<void()> cb_ImGuiWidgets, ImGuiWindowFlags flags = 0);
         
     private:
         std::string m_Name;
         bool m_IsOpen = false;
+        // returns true on close (next frame)
+        bool Draw(std::function<void()> cb_ImGuiWidgets, bool isPopupVisible);
     };
 
 
@@ -69,7 +73,8 @@ namespace ImGuiModules
     void TextCentredHorizontally(const char* fmt, ...);
     void TextCentredHorizontallyInTable(const char* fmt, ...);
     bool WasLastItemRightClicked();
-    
+ 
+        
     
     
     bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font);

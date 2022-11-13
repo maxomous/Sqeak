@@ -27,7 +27,7 @@ class Sketcher;
 /*
     LATEST:
     //  TODO: for each point which has moved, only update any constraints / items on those constraints
-
+        dont allow duplicate constraints
         ADD FIX CONSTRAINT
         * Tangent is causes excess lag and not working anyway
 
@@ -369,7 +369,7 @@ public:
         return updateRequired;
     }
             
-    
+     
     
     // Attempts to solve constraints. 
     // movedPoint can be set for moving a point

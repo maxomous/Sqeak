@@ -749,21 +749,367 @@ struct JogController {
 
 };
 
+
+
+
+// For when a toolbar item is always enabled
+const bool ALWAYS_ENABLED       = true; 
+const bool EDIT_BUTTON_ENABLED  = true;
+const bool EDIT_BUTTON_DISABLED     = false; 
+
+class ToolbarItem 
+{
+public:
+    // Only one callback can be added and should be used for either the edit button or with a custom button
+    ToolbarItem(const std::string& name, bool isAlwaysEnabled = false, std::function<void()> cbDraw = []() {}, bool hasEditButton = EDIT_BUTTON_DISABLED, std::function<void()> cbDrawPopup = nullptr, ImGuiTableColumnFlags flags = 0) 
+      : m_Name(name), 
+        m_IsAlwaysEnabled(isAlwaysEnabled), 
+        cb_Draw(cbDraw), 
+        m_HasEditButton(hasEditButton), 
+        cb_DrawPopup(cbDrawPopup), 
+        m_Popup(std::string("Popup ") + name), 
+        m_TableColumnFlags(flags)
+    {}
+    
+    void DrawSetupColumn() {
+        // Ensure the item is visible
+        if(!m_IsVisible) { return; }
+        ImGui::TableSetupColumn(m_Name.c_str(), m_TableColumnFlags);
+    }
+    
+    void Draw(Settings& settings) 
+    {
+        // Ensure the item is visible
+        if(!m_IsVisible) { return; }
+        // Enable widgets if always enabled
+        if(m_IsAlwaysEnabled) { ImGuiCustomModules::EndDisable_IfDisconnected(settings.grblVals); }
+            // Draw Edit Button, if clicked, open popup
+            cb_Draw();
+        // Disable widgets if always enabled
+        if(m_IsAlwaysEnabled) { ImGuiCustomModules::BeginDisable_IfDisconnected(settings.grblVals); }
+    }
+    bool DrawEdit(Settings& settings) 
+    {
+        // Ensure the item is visible and check if there is an edit callback
+        if(!m_IsVisible || !m_HasEditButton) { return false; }
+        // Enable widgets if always enabled
+        if(m_IsAlwaysEnabled) { ImGuiCustomModules::EndDisable_IfDisconnected(settings.grblVals); }
+            // Draw Edit Button, if clicked, open popup
+            bool isClicked = DrawEditButton(settings); 
+        // Disable widgets if always enabled
+        if(m_IsAlwaysEnabled) { ImGuiCustomModules::BeginDisable_IfDisconnected(settings.grblVals); }
+        // returns true then edit button is clicked
+        return isClicked;
+    }
+    // Must be called after everything else
+    bool DrawPopup(Settings& settings) 
+    {
+        // Ensure the item is visible and check if there is an edit callback
+        if(!m_IsVisible || !cb_DrawPopup) { return false; }
+        // trigger open popup if edit button was pressed
+        if(m_OpenPopup) { 
+            m_Popup.Open(); 
+            m_OpenPopup = false;
+        }
+        // Enable widgets if always enabled
+        if(m_IsAlwaysEnabled) { ImGuiCustomModules::EndDisable_IfDisconnected(settings.grblVals); }   
+            // draw popup widgets (given by callback) 
+            // returns true on close (next frame)
+            bool wasClosed = m_Popup.Draw([&]() {
+                cb_DrawPopup();
+            });
+        // Disable widgets if always enabled
+        if(m_IsAlwaysEnabled) { ImGuiCustomModules::BeginDisable_IfDisconnected(settings.grblVals); }
+        return wasClosed;
+    }
+    // to manually call open popup when no edit button
+    // if CallbackType is EditButtonWithCallback, the edit button will open the popup
+    void OpenPopup() { m_OpenPopup = true; }
+    void SetVisible(bool value) { m_IsVisible = value; }
+    bool IsVisible() { return m_IsVisible; }
+    
+    std::string m_Name;
+    bool m_IsAlwaysEnabled = false;
+    
+private:
+    bool m_IsVisible = false;
+    bool m_OpenPopup = false;
+    std::function<void()> cb_Draw;
+    bool m_HasEditButton = false;
+    std::function<void()> cb_DrawPopup;
+    ImGuiModules::ImGuiPopup m_Popup;
+    ImGuiTableColumnFlags m_TableColumnFlags;
+    
+    bool DrawEditButton(Settings& settings) {
+        // align right: ImGui::GetContentRegionAvail().x - width
+        ImGui::SameLine(ImGui::CalcTextSize(m_Name.c_str()).x + 5.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        //ImGui::SameLine(13.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+            bool isClicked = ImGuiCustomModules::EditButton(settings, m_Name.c_str()); // name as id
+        ImGui::PopStyleVar();
+        return isClicked;
+    }
+    
+};
+
+      
+
+
+    // Always center this window when appearing
+    //ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+    //ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+
+
+       
+       
+       
+                            
+                            
+
 struct Toolbar {
         
-    //enum ToolbarCommand { None, OpenFile, Function };
-    enum class Export         { False, Pending, True };
-          
+        
+    
+
+
+    //  TOP LEVEL
+    //   -> Draw
+    //      DRAWING LEVEL
+    //       ->New/Open/Save Drawing
+    //       ->New Sketch
+    //          SKETCH LEVEL
+    //           ->Select 
+    //           ->Point
+    //           ->Line
+    //           ->Arc
+    //           ->Circle
+    //       ->Tool / Material
+    //       ->Cut Path
+    //          FUNCTION LEVEL
+    //       ->Drill
+    //          FUNCTION LEVEL
+    //  -> Run
+    //      RUN LEVEL
+    //      -> Connect
+    //      -> Open
+    //      -> Set X0 Y0 Z0, reset, home etc.
+    //      -> Custom GCodes
+    //      -> Overrides(collapsable)
+    //      -> Jog(collapsable)
+    
+
+    // Defines which widgets to show
+    enum class CurrentLevel { TopLevel, Run, Drawing, Sketch, Function };
+    
+    
+    
+    // states what Toolbar level we are in
+    CurrentLevel m_CurrentLevel = CurrentLevel::TopLevel; 
+    bool levelUpdateRequired = true;
+    
+
+    // The toolbar items
+    Vector_Ptrs<ToolbarItem> toolbarItems;
+    // Indexes for toolbar items
+    struct ToolbarIndex {
+        size_t Back, Draw, Run, OpenFile, Connect, Tools, Spacer, Jog, Sketch, SketchTools;
+    } toolbarIndex;
+    
+    bool openPopup_FileBrowser = false;
+    
+    // Gets count of the visible toolbar items
+    size_t VisibleToolbarItemCount() {
+        size_t counter = 0;
+        for(size_t i = 0; i < toolbarItems.Size(); i++) {
+            if(toolbarItems[i].IsVisible()) {
+                counter++;
+            }
+        }
+        return counter;
+    }
+    
+    // jog controller + keyboard input
+    JogController jogController;
+    
+    // For timing the file
     Timer timer;
 
+    // these are stored because otherwise references are lost in lambdas
+    Settings* m_Settings;
+    Sketch::Sketcher* m_Sketcher; 
+    FileBrowser* m_FileBrowser;
 
-    Toolbar() 
+    Toolbar(GRBL& grbl, Settings* settings, Sketch::Sketcher* sketcherNew, FileBrowser* fileBrowser) 
+        : m_Settings(settings), m_Sketcher(sketcherNew), m_FileBrowser(fileBrowser)
     {
         Event<Event_ResetFileTimer>::RegisterHandler([&](Event_ResetFileTimer data) {
             (void)data;
             timer.Reset();
         });
         
+        
+        // Back Button
+        toolbarIndex.Back = toolbarItems.Addi("Back##Column", ALWAYS_ENABLED, [&]() {
+            // Draw ImGui Widgets
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Back##ToolbarButton", m_Settings->guiSettings.img_ArrowLeft, false)) {  
+                // Move up a level
+                if(m_CurrentLevel == CurrentLevel::TopLevel)        { } // do nothing
+                else if(m_CurrentLevel == CurrentLevel::Run)        { SetToolbarLevel(CurrentLevel::TopLevel); }
+                else if(m_CurrentLevel == CurrentLevel::Drawing)    { SetToolbarLevel(CurrentLevel::TopLevel); }
+                else if(m_CurrentLevel == CurrentLevel::Sketch)     { SetToolbarLevel(CurrentLevel::Drawing); }
+                else if(m_CurrentLevel == CurrentLevel::Function)   { SetToolbarLevel(CurrentLevel::Sketch); }
+                else { Log::Critical("Current toolbar level unknown"); }
+                 // Update viewer
+                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+            }
+        });
+        
+// Top LEVEL
+        
+        
+        // Run Button
+        toolbarIndex.Run = toolbarItems.Addi("Run##Column", ALWAYS_ENABLED, [&]() {
+            // Draw ImGui Widgets
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Run##ToolbarButton", m_Settings->guiSettings.img_ArrowRight, false)) {  
+                // Set Toolbar level
+                SetToolbarLevel(CurrentLevel::Run);
+                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+            }
+        });
+
+        // Draw Button
+        toolbarIndex.Draw = toolbarItems.Addi("Draw##Column", ALWAYS_ENABLED, [&]() {
+            // Draw ImGui Widgets
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Draw##ToolbarButton", m_Settings->guiSettings.img_Sketch_Draw, false)) { 
+                // Set Toolbar level
+                SetToolbarLevel(CurrentLevel::Drawing);
+                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+            }
+        });
+        
+// Run LEVEL
+        
+        // Open File Button
+        toolbarIndex.OpenFile = toolbarItems.Addi("Open File", false, [&]() {
+            // Draw ImGui Widgets
+            if(DrawOpenFile(*m_Settings, m_FileBrowser)) {
+                // open popup when draw open file clicked
+                toolbarItems[toolbarIndex.OpenFile].OpenPopup();
+                //sketcher.Deactivate(); 
+                m_Settings->SetUpdateFlag(ViewerUpdate::Clear);   
+            }
+        }, EDIT_BUTTON_DISABLED, [&]() { 
+            // just draw the widgets for the filebrowser as we are handling the popup ourselves
+            // if an error occurs of a file is selected, manually close popup
+            if(m_FileBrowser->DrawWidgets()) {
+                ImGui::CloseCurrentPopup();
+            }
+        });
+
+
+        
+        // Connect Button
+        toolbarIndex.Connect = toolbarItems.Addi("Connect", ALWAYS_ENABLED, [&]() {
+            // Draw ImGui Widgets
+            DrawConnect(grbl, *m_Settings);
+        }, EDIT_BUTTON_ENABLED, [&]() { 
+            // Draw edit popup
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::InputText("Device", &m_Settings->p.system.serialDevice);
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::InputText("Baudrate", &m_Settings->p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
+        });
+
+        // Tools
+        toolbarIndex.Tools = toolbarItems.Addi("Tools", ALWAYS_ENABLED, [&]() {
+            // Draw ImGui Widgets
+            if(m_Settings->p.toolSettings.DrawTool()) {
+                m_Settings->SetUpdateFlag(ViewerUpdate::Full);
+            }
+            // Draw Material
+            if(m_Settings->p.toolSettings.DrawMaterial()) {
+                m_Settings->SetUpdateFlag(ViewerUpdate::Full);
+            }
+        }, EDIT_BUTTON_ENABLED, [&]() { 
+            // Draw edit popup
+            if(m_Settings->p.toolSettings.DrawPopup()) {
+                ImGui::CloseCurrentPopup(); 
+            }
+        });
+        
+             
+        // Spacer
+        toolbarIndex.Spacer = toolbarItems.Addi("##Spacer", false, [&]() {}, EDIT_BUTTON_DISABLED, nullptr, ImGuiTableColumnFlags_WidthStretch);
+          
+        
+        // Jog
+        toolbarIndex.Jog = toolbarItems.Addi("Jog", false, [&]() {
+            // Draw ImGui Widgets
+            jogController.DrawJogController(grbl, *m_Settings);
+        }, EDIT_BUTTON_ENABLED, [&]() { 
+            // Draw edit popup
+            jogController.DrawJogSetting(m_Settings->grblVals);
+        });
+        
+      
+// Drawing LEVEL  
+
+        // New Sketch Button
+        toolbarIndex.Sketch = toolbarItems.Addi("Sketch##Column", ALWAYS_ENABLED, [&]() {
+            // Draw ImGui Widgets
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Sketch##ToolbarButton", m_Settings->guiSettings.img_Sketch, false)) { 
+                // Set Toolbar level
+                SetToolbarLevel(CurrentLevel::Sketch);
+                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+            }
+        });
+
+// Sketch LEVEL  
+        // SketchTools
+        toolbarIndex.SketchTools = toolbarItems.Addi("SketchTools", ALWAYS_ENABLED, [&]() {
+            // Draw ImGui Widgets
+            typedef Sketch::SketchEvents::CommandType CommandType;
+                            
+            // Select Button
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Select##ToolbarButton", m_Settings->guiSettings.img_Sketch_Select, m_Sketcher->Events().GetCommandType() == CommandType::Select)) { 
+                 m_Sketcher->Events().SetCommandType(CommandType::Select);
+            }
+            ImGui::SameLine();
+            // Select Loop Button
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Select Loop##ToolbarButton", m_Settings->guiSettings.img_Sketch_SelectLoop, m_Sketcher->Events().GetCommandType() == CommandType::SelectLoop)) { 
+                 m_Sketcher->Events().SetCommandType(CommandType::SelectLoop);
+            }
+            ImGui::SameLine();
+            // Add Point Button
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Point##ToolbarButton", m_Settings->guiSettings.img_Sketch_Point, m_Sketcher->Events().GetCommandType() == CommandType::Add_Point)) { 
+                 m_Sketcher->Events().SetCommandType(CommandType::Add_Point);
+                 std::cout << "after: " << std::endl;
+            }
+            ImGui::SameLine();
+            // Add Line Button
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Line##ToolbarButton", m_Settings->guiSettings.img_Sketch_Line, m_Sketcher->Events().GetCommandType() == CommandType::Add_Line)) { 
+                 m_Sketcher->Events().SetCommandType(CommandType::Add_Line);
+            }
+            ImGui::SameLine();
+            // Add Arc Button
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Arc##ToolbarButton", m_Settings->guiSettings.img_Sketch_Arc, m_Sketcher->Events().GetCommandType() == CommandType::Add_Arc)) { 
+                 m_Sketcher->Events().SetCommandType(CommandType::Add_Arc);
+            }
+            ImGui::SameLine();
+            // Add Circle Button
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Circle##ToolbarButton", m_Settings->guiSettings.img_Sketch_Circle, m_Sketcher->Events().GetCommandType() == CommandType::Add_Circle)) { 
+                 m_Sketcher->Events().SetCommandType(CommandType::Add_Circle);
+            }
+        });
+        
+
+// Function LEVEL  
+        // ...
+        
+        
+        // initialise toolbar level (show top level items)
+        SetToolbarLevel(CurrentLevel::TopLevel);
+        UpdateLevel();
     }
      
     
@@ -774,264 +1120,199 @@ struct Toolbar {
     //    ImVec2 p0 = ImGui::GetCursorScreenPos() + ImVec2(spacerWidth / 2.0f, GImGui->Style.ItemSpacing.y / 2.0f);
     //    ImVec2 p1 = p0 + ImVec2(1.0f /*thickness*/, 2.0f*ImGui::GetFrameHeight() /*length*/);
     //    ImGui::GetWindowDrawList()->AddRectFilled(p0, p1, ImGui::GetColorU32(ImGuiCol_Separator));
-    //};
+    //
+    
+    
+    //  TOP LEVEL
+    //   -> Draw
+    //      DRAWING LEVEL
+    //       ->New/Open/Save Drawing
+    //       ->New Sketch
+    //          SKETCH LEVEL
+    //           ->Select 
+    //           ->Point
+    //           ->Line
+    //           ->Arc
+    //           ->Circle
+    //       ->Tool / Material
+    //       ->Cut Path
+    //          FUNCTION LEVEL
+    //       ->Drill
+    //          FUNCTION LEVEL
+    //  -> Run
+    //      RUN LEVEL
+    //      -> Connect
+    //      -> Open
+    //      -> Set X0 Y0 Z0, reset, home etc.
+    //      -> Custom GCodes
+    //      -> Overrides(collapsable)
+    //      -> Jog(collapsable)
+    
+    
+    void SetToolbarLevel(CurrentLevel level) {
+        
+        m_CurrentLevel = level;
+        levelUpdateRequired = true;
+    }
+private:
+    // updates based on current level set
+    void UpdateLevel() {
+        
+        if(!levelUpdateRequired) { return; }
+        levelUpdateRequired = false;
+        // Set all items invisible
+        for(size_t i = 0; i < toolbarItems.Size(); i++) {
+            toolbarItems[i].SetVisible(false);
+        }
+        
+        // Set item visible 
+        auto SetItemVisible = [&](size_t index) {
+            toolbarItems[index].SetVisible(true); 
+        };
+        
+        // Level Specific settings
+        if(m_CurrentLevel == CurrentLevel::TopLevel) {
+            // Set visiable toolbar items
+            SetItemVisible(toolbarIndex.Run);
+            SetItemVisible(toolbarIndex.Draw);
+        }
+        
+        if(m_CurrentLevel == CurrentLevel::Run) {
+            // Set visible toolbar items
+            SetItemVisible(toolbarIndex.Back);
+            SetItemVisible(toolbarIndex.Connect);
+            SetItemVisible(toolbarIndex.OpenFile);
+            SetItemVisible(toolbarIndex.Spacer);
+            SetItemVisible(toolbarIndex.Jog);
+        }
+        
+        if(m_CurrentLevel == CurrentLevel::Drawing) {
+            // Set visiable toolbar items
+            SetItemVisible(toolbarIndex.Back);
+            // SetItemVisible(Drawing (New/Open/Save))  ***MAYBE THIS SHOULD BE A DROPDOWN? 
+            SetItemVisible(toolbarIndex.Tools);
+            SetItemVisible(toolbarIndex.Sketch);
+            //SetItemVisible(toolbarIndex.Function);
+        } 
+        
+        if(m_CurrentLevel == CurrentLevel::Sketch) {
+            // Set visiable toolbar items
+            SetItemVisible(toolbarIndex.Back);
+            SetItemVisible(toolbarIndex.SketchTools);
+            // Set 2D Mode
+            Event<Event_Set2DMode>::Dispatch( { true } );
+            m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::Select);
+        } else {
+            // Unset 2D Mode
+            Event<Event_Set2DMode>::Dispatch( { false } );
+            m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::None);
+        }
+
+        /*
+        if(level == CurrentLevel::Function) {
+            // Set visible toolbar items
+            SetItemVisible(toolbarIndex.FunctionX);
+        } else {
+            //
+        }
+        */
+        
+        // Clear the open file
+        //fileBrowser->ClearCurrentFile();
+    }
+        
+public:
     
 
+      
 
     
-    void Draw(GRBL &grbl, Settings& settings, sketch::SketchOld& sketcher, Sketch::Sketcher& sketcherNew, FileBrowser* fileBrowser) 
-    {        
+    void Draw(GRBL &grbl, Settings& settings, sketch::SketchOld& sketcher, Sketch::Sketcher* sketcherNew, FileBrowser* fileBrowser) 
+    {                
         const ImGuiViewport* viewport = ImGui::GetMainViewport();
         float padding = settings.guiSettings.dockPadding;
-        
+        // Set window size and position
         ImGui::SetNextWindowPos(viewport->WorkPos + ImVec2(padding, padding));
         ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - 2.0f * padding, settings.guiSettings.toolbarHeight));
-        
+        // flags for window
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
         | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-                    
+        // Create Toolbar Window
         if (!ImGui::Begin("Toolbar", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
             ImGui::End();
             return;
         }
-        ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
+        ImGuiCustomModules::BeginDisable_IfDisconnected(settings.grblVals);
         ImGuiCustomModules::ImGuiWindow::PushWidgetStyle(settings);
         
-        static ToolSettings toolSettings;
-        static JogController jogController;
-            
-        //static ToolbarCommand toolbarCommand = ToolbarCommand::None;
-        bool openPopup_ConnectSettings  = false;
-        bool openPopup_FileBrowser      = false;
-        bool openPopup_Tools            = false;
-        bool openPopup_JogSettings      = false;
-        
-        
-        auto EditButton = [&](const char* name) {
-            bool isClicked = false;
-            // align right: ImGui::GetContentRegionAvail().x - width
-            ImGui::SameLine(ImGui::CalcTextSize(name).x + 5.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            
-            //ImGui::SameLine(13.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-                isClicked = ImGuiCustomModules::EditButton(settings, name); // name as id
-            ImGui::PopStyleVar();
-            return isClicked;
-        };
-        
+        // Format the table
         ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(settings.guiSettings.toolbarSpacer / 2.0f, 2.0f));
         ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, settings.guiSettings.toolbarTableScrollbarSize);
-        
+        // flags for table
         ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollX;
         
-        int nColumns = (sketcher.IsActive()) ? 9 : 6;
         
-        if (ImGui::BeginTable("Toolbar",  nColumns, flags, ImVec2(0.0f, settings.guiSettings.toolbarTableHeight))) 
+        // Draw Toolbar Table
+        if (ImGui::BeginTable("Toolbar",  VisibleToolbarItemCount(), flags, ImVec2(0.0f, settings.guiSettings.toolbarTableHeight))) 
         {   
+            // Setup Table columns
+            for(size_t i = 0; i < toolbarItems.Size(); i++) {
+                // only draw if visible
+                if(toolbarItems[i].IsVisible()) {
+                    toolbarItems[i].DrawSetupColumn();
+                }
+            }
             
-            
-            ImGui::BeginDisabled(); // always disabled to prevent mouse interaction
-            ImGui::PushFont(settings.guiSettings.font_small);
+            // Set up Header Row with Edit buttons 
+            // Instead of calling TableHeadersRow() we'll submit custom headers ourselves so that we can add an Edit Button
+            ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+            // always disabled to prevent mouse interaction
+            ImGui::BeginDisabled(); 
+                // Style the header & edit button
+                ImGui::PushFont(settings.guiSettings.font_small);
                 ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
                 ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
-            
-                    // setup columns
-                    ImGui::TableSetupColumn("Connect");
-                    ImGui::TableSetupColumn("Open File");
-                    ImGui::TableSetupColumn("Sketch");
-                    if(sketcher.IsActive()) {
-                        ImGui::TableSetupColumn("Tools");
-                        ImGui::TableSetupColumn("Functions");
-                        ImGui::TableSetupColumn(std::string(sketcher.ActiveFunction_Name() + " Commands").c_str());
-                    }
                     
-                    
-                    ImGui::TableSetupColumn("Sketch New");
-                    
-                    
-                    ImGui::TableSetupColumn("##Spacer", ImGuiTableColumnFlags_WidthStretch);
-                    ImGui::TableSetupColumn("Jog");
-                    
-                    
-                    // Instead of calling TableHeadersRow() we'll submit custom headers ourselves
-                    ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
-                    for (int column = 0; column < nColumns; column++)
+                    size_t counter = 0;
+                    // Draw Table Headers (with Edit Button)
+                    for(size_t i = 0; i < toolbarItems.Size(); i++) 
                     {
-                        ImGui::TableSetColumnIndex(column);
-                        const char* column_name = ImGui::TableGetColumnName(column); // Retrieve name passed to TableSetupColumn()
-                        ImGui::PushID(column);
-                             
-                            ImGui::TableHeader(column_name);
-                            
-                            ImGui::EndDisabled();
-                            // connect
-                            if(column == 0) { 
-                                ImGuiCustomModules::EndDisableWidgets(settings.grblVals); // always enabled
-                                    openPopup_ConnectSettings = EditButton("Connect"); 
-                                ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
-                            }
-                            
-                            if(sketcher.IsActive()) {
-                                // tools
-                                if(column == 3) { openPopup_Tools = EditButton("Tools"); }
-                                // jog
-                                if(column == 8) { openPopup_JogSettings = EditButton("Jog"); }
-                            } else {
-                                if(column == 5) { openPopup_JogSettings = EditButton("Jog"); }
-                            }                            
-                            ImGui::BeginDisabled(); // always disabled to prevent mouse interaction
-                            
-                            
-                        ImGui::PopID();
+                        // only draw if visible
+                        if(toolbarItems[i].IsVisible()) {
+                            // Set Column Index
+                            ImGui::TableSetColumnIndex(counter++);
+                            ImGui::TableHeader(toolbarItems[i].m_Name.c_str());
+                            ImGui::PushID(i);
+                               // ImGui::EndDisabled();
+                               // draw the edit button
+                                if(toolbarItems[i].DrawEdit(settings)) {
+                                    toolbarItems[i].OpenPopup();
+                                }
+                               // ImGui::BeginDisabled(); // always disabled to prevent mouse interaction
+                            ImGui::PopID();
+                        }
                     }
-                    
-                    
-                    
-                    
+                
                 ImGui::PopStyleColor(2);
-            ImGui::PopFont();           
+                ImGui::PopFont();           
             ImGui::EndDisabled();
-
             
-            /*
-            // Draw titles
-            ImGui::TableNextRow(ImGuiTableRowFlags_None, settings.guiSettings.button[ButtonType::Edit].ImageSize.y + 5.0f);
-                
-            // always enabled
-            ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
-            if(ImGui::TableNextColumn()) { openPopup_ConnectSettings    =  ImGuiCustomModules::HeadingWithEdit(settings, "Connect"); }
-            ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
-                    
-            if(ImGui::TableNextColumn()) {                                 ImGuiCustomModules::Heading(settings, "Open File"); }
-            if(ImGui::TableNextColumn()) {                                 ImGuiCustomModules::Heading(settings, "Sketch"); }
-            if(sketcher.IsActive()) {
-                if(ImGui::TableNextColumn()) { openPopup_Tools          =  ImGuiCustomModules::HeadingWithEdit(settings, "Tools"); }
-                if(ImGui::TableNextColumn()) {                             ImGuiCustomModules::Heading(settings, "Functions"); }
-                if(ImGui::TableNextColumn()) {                             ImGuiCustomModules::Heading(settings, sketcher.ActiveFunction_Name() + " Commands"); }
-            }
-            if(ImGui::TableNextColumn()) { openPopup_JogSettings        =  ImGuiCustomModules::HeadingWithEdit(settings, "Jog"); }
-            */
             ImGui::TableNextRow();
-             
-                // Connect
-                if(ImGui::TableNextColumn()) {
-                    ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
-                    
-                    ImGui::BeginGroup();
-                        DrawConnect(grbl, settings);
-                    ImGui::EndGroup();
-                    
-                    ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
-                }
-                  
-                // Open File
-                if(ImGui::TableNextColumn()) {
-
-                    ImGui::BeginGroup();
-                        if(DrawOpenFile(settings, fileBrowser)) {
-                            openPopup_FileBrowser = true;
-                            sketcher.Deactivate(); 
-                            settings.SetUpdateFlag(ViewerUpdate::Clear);   
-                        }
-                        
-                    ImGui::EndGroup();
-                }
-                
-                // Enter Sketch mode button
-                if(ImGui::TableNextColumn()) { 
-                    ImGui::BeginGroup();
-                        if(sketcher.DrawImGui_StartSketchOld(settings)) {
-                            fileBrowser->ClearCurrentFile();
-                        }
-                        
-                    ImGui::EndGroup();
-                }    
-                
-                if(sketcher.IsActive()) {
-                    // Tools 
-                    if(ImGui::TableNextColumn()) {
-
+        
+                // Draw toolbar item
+                for(size_t i = 0; i < toolbarItems.Size(); i++) {
+                    // only draw if visible
+                    if(toolbarItems[i].IsVisible()) {
+                        ImGui::TableNextColumn();
                         ImGui::BeginGroup();
-                            // updates viewer if tool or material is changed
-                            if(toolSettings.Draw(settings)) {
-                                settings.SetUpdateFlag(ViewerUpdate::Full);
-                            }
+                            toolbarItems[i].Draw(settings);
                         ImGui::EndGroup();
-                    } 
-                    // Sketch Functions
-                    if(ImGui::TableNextColumn()) {
-
-                        ImGui::BeginGroup();
-                            sketcher.ActiveDrawing_DrawImGui_Functions(settings);
-                        ImGui::EndGroup();
-                    }    
-                     // Sketch - Active function's tools
-                    if(ImGui::TableNextColumn()) {
-
-                        ImGui::BeginGroup();
-                            sketcher.ActiveFunction_DrawImGui_Tools(settings);
-                        ImGui::EndGroup();
-                    }    
-                }                
-                
-                // Sketch New
-                if(ImGui::TableNextColumn()) {
-                    ImGui::BeginGroup();
-                    
-              
-                        // sketcherNew.Events().SetCommandType(SketchEvents::CommandType::None);
-                        typedef Sketch::SketchEvents::CommandType CommandType;
-                        
-                        // Select Button
-                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select", settings.guiSettings.img_Sketch_Select, sketcherNew.Events().GetCommandType() == CommandType::Select)) { 
-                             sketcherNew.Events().SetCommandType(CommandType::Select);
-                        }
-                        ImGui::SameLine();
-                        // Select Loop Button
-                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select Loop", settings.guiSettings.img_Sketch_SelectLoop, sketcherNew.Events().GetCommandType() == CommandType::SelectLoop)) { 
-                             sketcherNew.Events().SetCommandType(CommandType::SelectLoop);
-                        }
-                        ImGui::SameLine();
-                        // Add Point Button
-                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Point", settings.guiSettings.img_Sketch_Point, sketcherNew.Events().GetCommandType() == CommandType::Add_Point)) { 
-                             sketcherNew.Events().SetCommandType(CommandType::Add_Point);
-                        }
-                        ImGui::SameLine();
-                        // Add Line Button
-                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Line", settings.guiSettings.img_Sketch_Line, sketcherNew.Events().GetCommandType() == CommandType::Add_Line)) { 
-                             sketcherNew.Events().SetCommandType(CommandType::Add_Line);
-                        }
-                        ImGui::SameLine();
-                        // Add Arc Button
-                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Arc", settings.guiSettings.img_Sketch_Arc, sketcherNew.Events().GetCommandType() == CommandType::Add_Arc)) { 
-                             sketcherNew.Events().SetCommandType(CommandType::Add_Arc);
-                        }
-                        ImGui::SameLine();
-                        // Add Circle Button
-                        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Circle", settings.guiSettings.img_Sketch_Circle, sketcherNew.Events().GetCommandType() == CommandType::Add_Circle)) { 
-                             sketcherNew.Events().SetCommandType(CommandType::Add_Circle);
-                        }
-                        
-               
-                    
-                    
-                    ImGui::EndGroup();
+                    }
                 }
-                
-                // Spacer
-                if(ImGui::TableNextColumn()) {
-                }              
-                // Jog
-                if(ImGui::TableNextColumn()) {
-                    ImGui::BeginGroup();
-                        jogController.DrawJogController(grbl, settings);
-                    ImGui::EndGroup();
-                }
+                    
             ImGui::EndTable();
         } 
     
-        
-        
         
         /*
         
@@ -1102,10 +1383,12 @@ struct Toolbar {
         }
         
         ImGui::PopStyleVar(2);
+        
+        
+        
+        
+        
         /*
-        
-        
-        
         
         
         
@@ -1125,67 +1408,45 @@ struct Toolbar {
             DrawCurrentFile(settings, fileBrowser);
         ImGui::EndGroup();
 */
-        // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
-        static pair<Export, string> exportFileName = make_pair(Export::False, "");
-        // handle file export
- //       DoesFileNeedExport(settings, functions, functionsexportFileName);
+ 
+
+
+
+           
+      
+
+             
         
-        // show file browser if visible
-        if(openPopup_FileBrowser) { fileBrowser->Open(); }
-        fileBrowser->Draw();
-        
-        // edit tools popup (update viewer if setting is changed)
-        if(openPopup_Tools) { ImGui::OpenPopup("Edit Tools"); }
-        if(toolSettings.DrawPopup_Tools(settings)) {    
-            settings.SetUpdateFlag(ViewerUpdate::Full);
+             
+        // Draw edit button Popups if visible
+        for(size_t i = 0; i < toolbarItems.Size(); i++) {
+            // Draw Popup
+            if(toolbarItems[i].DrawPopup(settings)) {
+                // update if windows was just closed
+                settings.SetUpdateFlag(ViewerUpdate::Full); 
+            }
         }
-         
-        // Connect Settings        
-        static ImGuiModules::ImGuiPopup popup_ConnectSettings("Edit Connect Popup");
-        // open
-        if(openPopup_ConnectSettings) { popup_ConnectSettings.Open(); }        
-        // always enabled
-        ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
-            // draw
-            popup_ConnectSettings.Draw([&]() {
-                ImGui::SetNextItemWidth(80.0f);
-                ImGui::InputText("Device", &settings.p.system.serialDevice);
-                ImGui::SetNextItemWidth(80.0f);
-                ImGui::InputText("Baudrate", &settings.p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
-            });
-        ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
-        
-        
-        // Jog Settings        
-        static ImGuiModules::ImGuiPopup popup_JogSettings("Edit Jog Popup");
-        // open
-        if(openPopup_JogSettings) { popup_JogSettings.Open(); }
-        // draw
-        popup_JogSettings.Draw([&]() {
-            jogController.DrawJogSetting(settings.grblVals);
-        });
-        
         
         
         // end
         ImGuiCustomModules::ImGuiWindow::PopWidgetStyle();
-        ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
+        ImGuiCustomModules::EndDisable_IfDisconnected(settings.grblVals);
         ImGui::End();
         
+        // performs update based on current level set if required
+        UpdateLevel();
     }
     
     void DrawConnect(GRBL &grbl, Settings& settings) 
     {
-        GRBLVals& grblVals = settings.grblVals;
-        
         ImGui::BeginGroup();
-            if (!grblVals.isConnected) {
-                if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Connect", settings.guiSettings.img_Connect, false, ButtonType::Connect)) {  
+            if (!settings.grblVals.isConnected) {
+                if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Connect##ToolbarButton", settings.guiSettings.img_Connect, false, ButtonType::Connect)) {  
                     grbl.connect(settings.p.system.serialDevice, stoi(settings.p.system.serialBaudrate));
                 }
             } 
             else {
-                if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Connected", settings.guiSettings.img_Connect, true, ButtonType::Connect)) { 
+                if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Connected##ToolbarButton", settings.guiSettings.img_Connect, true, ButtonType::Connect)) { 
                     grbl.disconnect();
                 }
             }
@@ -1195,22 +1456,20 @@ struct Toolbar {
 
     
 
-    
+    // returns true if open was pressed
     bool DrawOpenFile(Settings& settings, FileBrowser* fileBrowser)
     {
-        bool openHasBeenPressed = false;
         // make active if file selected
-        if(fileBrowser->CurrentFile() != "") { ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive)); }
-        
-            if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Open", settings.guiSettings.img_Open)) {   
-                if(!settings.grblVals.isFileRunning) {
-                    openHasBeenPressed = true;
-                } else {
-                    Log::Error("A file is running. This must finish before opening another");
-                }
+        std::cout << "tryign to draw filbrowser"  << std::endl;
+        bool isActive = (fileBrowser->CurrentFile() != "");
+        std::cout << "after filebrowser"  << std::endl;
+        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Open##ToolbarButton", settings.guiSettings.img_Open, isActive)) {   
+            if(!settings.grblVals.isFileRunning) {
+                return true;
             }
-        if(fileBrowser->CurrentFile() != "") { ImGui::PopStyleColor(); }
-        return openHasBeenPressed;
+            Log::Error("A file is running. This must finish before opening another");
+        }
+        return false;
     }
     
     void DrawCurrentFile(Settings& settings, FileBrowser* fileBrowser)
@@ -1352,6 +1611,16 @@ struct Toolbar {
     }
     
     /*
+     * 
+     * 
+    enum class Export         { False, Pending, True };
+     * 
+        // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
+        static pair<Export, string> exportFileName = make_pair(Export::False, "");
+        // handle file export
+ //       DoesFileNeedExport(settings, functions, functionsexportFileName);
+             
+             
     void DoesFileNeedExport(Settings& settings, Functions& functions, std::pair<Export, std::string>& exportFileName)
     {   // if file doesn't exist, set flag to export. 
         // If file does exist, show popup to confirm overwrite
@@ -1371,7 +1640,7 @@ struct Toolbar {
             exportFileName = make_pair(Export::False, "");
         }
     }
-          */  
+           
     void DrawPopup_OverwriteFile(std::pair<Export, std::string>& exportFileName)
     {       
         // Always center this window when appearing
@@ -1397,6 +1666,7 @@ struct Toolbar {
             ImGui::EndPopup();
         }
     }
+*/ 
 };
 
 /*
@@ -2518,27 +2788,27 @@ void Frames::DrawDockSpace(Settings& settings)
     
 }    
       
+
       
-      
-void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::SketchOld& sketcher, Sketch::Sketcher& sketcherNew, float dt)
+void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::SketchOld& sketcher, Sketch::Sketcher* sketcherNew, float dt)
 {
     
     // draw ImGui windows
-    DrawDockSpace(settings);
+    DrawDockSpace(*settings);
     // show demo 
     ImGui::ShowDemoWindow(NULL);
     
         // Draw Viewer Imgui Widgets
-        viewer.ImGuiRender(settings);
+        viewer.ImGuiRender(*settings);
         
         // Draw Sketch ImGui
-        sketcherNew.DrawImGui();
+        sketcherNew->DrawImGui();
         //DrawSketcher(settings, sketcherNew);
         
         
-        
+
         static PopupMessages popupMessages;
-        static Toolbar toolbar;
+        static Toolbar toolbar(grbl, settings, sketcherNew, fileBrowser.get());
         static Debug debug;
         static Stats stats;
         static Console console;
@@ -2546,20 +2816,20 @@ void Frames::Draw(GRBL& grbl, Settings& settings, Viewer& viewer, sketch::Sketch
         static Overrides overrides;
         
         // Enable always
-        popupMessages.Draw(settings, dt);
-        toolbar.Draw(grbl, settings, sketcher, sketcherNew, fileBrowser.get());
+        popupMessages.Draw(*settings, dt);
+        toolbar.Draw(grbl, *settings, sketcher, sketcherNew, fileBrowser.get());
         
         // Disable all widgets when not connected to grbl  
-        ImGuiCustomModules::BeginDisableWidgets(settings.grblVals);
+        ImGuiCustomModules::BeginDisable_IfDisconnected(settings->grblVals);
         
-            debug.Draw(grbl, settings);
-            stats.Draw(grbl, settings, dt);
-            console.Draw(grbl, settings);
-            commands.Draw(grbl, settings);
-            overrides.Draw(grbl, settings);
+            debug.Draw(grbl, *settings);
+            stats.Draw(grbl, *settings, dt);
+            console.Draw(grbl, *settings);
+            commands.Draw(grbl, *settings);
+            overrides.Draw(grbl, *settings);
             
         // End disable all widgets when not connected to grbl  
-        ImGuiCustomModules::EndDisableWidgets(settings.grblVals);
+        ImGuiCustomModules::EndDisable_IfDisconnected(settings->grblVals);
 }
 
 } // end namespace Sqeak

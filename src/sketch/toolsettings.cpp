@@ -4,109 +4,115 @@ using namespace std;
 
 namespace Sqeak { 
     
-bool ToolSettings::Draw(Settings& settings) 
-{ 
-    auto& tools = settings.p.tools; 
-  
-    bool isModified = false;
     
-    ImGui::BeginGroup();
-        ImGui::PushItemWidth(settings.guiSettings.toolbarComboBoxWidth);
-            static std::function<std::string(ParametersList::Tools::Tool& item)> cb_GetToolName = [](ParametersList::Tools::Tool& item) { return item.Name; };
-            isModified |= ImGuiModules::ComboBox("Tool", tools.toolList, cb_GetToolName);
-            
-            if(tools.toolList.HasItemSelected()) {
-                static std::function<std::string(ParametersList::Tools::Tool::ToolData& item)> cb_GetMaterialName = [](ParametersList::Tools::Tool::ToolData& item) { return item.material; };
-                isModified |= ImGuiModules::ComboBox("Material", settings.p.tools.toolList.CurrentItem().Data, cb_GetMaterialName);
-            } else {
-                static int dummyCombo = 0;
-                ImGui::Combo("Material", &dummyCombo, "\0");
-            }
-        ImGui::PopItemWidth();
-    ImGui::EndGroup();
-    // calls Export GCode and updates viewer
-    return isModified;
+// Specific Tool methods
+
+bool ToolSettings::Tools::IsToolAndMaterialSelected() 
+{        
+    if(!toolList.HasItemSelected()) {
+        Log::Error("No Tool Selected");
+        return true;
+    }
+    if(!toolList.CurrentItem().Data.HasItemSelected()) {
+        Log::Error("No Material Selected");
+        return true; 
+    }
+    return false;
+}  
+
+Vec3 ToolSettings::Tools::GetToolScale()
+{
+    if(toolList.HasItemSelected()) {
+        return toolList.CurrentItem().Dimensions();
+    } // else get default tool dimensions
+    return Tools::Tool("default").Dimensions();
 }   
 
-bool ToolSettings::DrawPopup_Tools(Settings& settings) 
-{
-    bool isModified = false;
- 
-    // Always center this window when appearing
-    ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 
-    static bool popupOpen = false;
-    if (ImGui::BeginPopupModal("Edit Tools", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-    {
-        popupOpen = true;
-        ImGui::TextUnformatted("Select Tool");
-        ImGui::BeginGroup();
+// General Tool methods
+// Draw Imgui Dropdown
+bool ToolSettings::DrawTool() 
+{     
+    static std::function<std::string(Tools::Tool& item)> cb_GetToolName = [](Tools::Tool& item) { return item.Name; };
+    return ImGuiModules::ComboBox("Tool", tools.toolList, cb_GetToolName);
+}   
+
+bool ToolSettings::DrawMaterial() 
+{     
+    // if no tool selected, draw dummy combo box
+    if(!tools.toolList.HasItemSelected()) {
+        static int dummyCombo = 0;
+        ImGui::Combo("Material", &dummyCombo, "\0");
+        return false;
+    } 
+    // Draw Material 
+    static std::function<std::string(Tools::Tool::ToolData& item)> cb_GetMaterialName = [](Tools::Tool::ToolData& item) { return item.material; };
+    return ImGuiModules::ComboBox("Material", tools.toolList.CurrentItem().Data, cb_GetMaterialName);
+}   
+
+
+bool ToolSettings::DrawPopup() 
+{
+    bool needsClose = false;
+    ImGui::TextUnformatted("Select Tool");
+    ImGui::BeginGroup();
+    
+        ImGui::BeginGroup(); 
+            needsClose |= Draw_SelectTool();
+        ImGui::EndGroup();
         
-            ImGui::BeginGroup(); 
-                if(Draw_SelectTool(settings)) {
-                    ImGui::EndGroup(); ImGui::EndGroup(); ImGui::EndPopup(); return true; // to prevent reading an element which doesnt exist anymore
-                }
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + xSpacer); 
+        
+        ImGui::BeginGroup();
+            if(!needsClose) { Draw_ToolData(); }
+        ImGui::EndGroup();
+        
+    ImGui::EndGroup();
+     
+    // return early if no tool selected
+    if(needsClose) { return true; }
+    
+    if(tools.toolList.HasItemSelected()) 
+    {
+        ImGui::Separator();
+    
+        ImGui::TextUnformatted("Select Material");
+        ImGui::BeginGroup();
+             
+            ImGui::BeginGroup();
+                needsClose |= Draw_SelectMaterial();
             ImGui::EndGroup();
             
             ImGui::SameLine();
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + xSpacer);
-            
+              
             ImGui::BeginGroup();
-                Draw_ToolData(settings);
-            ImGui::EndGroup();
+                if(!needsClose) { Draw_MaterialData(); }
+            ImGui::EndGroup(); 
             
         ImGui::EndGroup();
-         
-        if(settings.p.tools.toolList.HasItemSelected()) 
-        {
-            ImGui::Separator();
-        
-            ImGui::TextUnformatted("Select Material");
-            ImGui::BeginGroup();
-                 
-                ImGui::BeginGroup();
-                    if(Draw_SelectMaterial(settings)) {
-                        ImGui::EndGroup(); ImGui::EndGroup(); ImGui::EndPopup(); return true; // to prevent reading an element which doesnt exist anymore
-                    }
-                ImGui::EndGroup();
-                
-                ImGui::SameLine();
-                ImGui::SetCursorPosX(ImGui::GetCursorPosX() + xSpacer);
-                  
-                ImGui::BeginGroup();
-                    Draw_MaterialData(settings);
-                ImGui::EndGroup(); 
-                
-            ImGui::EndGroup();
-        }
-        
-        ImGui::Separator();
-            
-        ImGui::SetItemDefaultFocus();
-        float buttonWidth = 120.0f;
-        ImGui::SetCursorPosX((ImGui::GetWindowSize().x - buttonWidth) / 2.0f);
-        if (ImGui::Button("OK", ImVec2(buttonWidth, 0))) { 
-            ImGui::CloseCurrentPopup(); 
-        }
-        ImGui::EndPopup();
-    } else { // if popup has just been closed
-        if (popupOpen == true) {
-            isModified = true;
-            popupOpen = false;
-        }
     }
-    return isModified;
+    
+    ImGui::Separator();
+        
+    ImGui::SetItemDefaultFocus();
+    float buttonWidth = 120.0f;
+    ImGui::SetCursorPosX((ImGui::GetWindowSize().x - buttonWidth) / 2.0f);
+    if (ImGui::Button("OK", ImVec2(buttonWidth, 0))) { 
+        needsClose = true;
+    }
+    return needsClose;
 }
 
+// private members
 
       
-int ToolSettings::Draw_SelectTool(Settings& settings)
-{
-    auto& tools = settings.p.tools;  
+int ToolSettings::Draw_SelectTool()
+{ 
     bool isToolSelected = tools.toolList.HasItemSelected();
      
-    static std::function<std::string(ParametersList::Tools::Tool& item)> cb_GetToolName = [](ParametersList::Tools::Tool& item) { return item.Name; };
+    static std::function<std::string(Tools::Tool& item)> cb_GetToolName = [](Tools::Tool& item) { return item.Name; };
     ImGuiModules::ListBox_Reorderable("##Tools", ImVec2(listWidth, listHeight * ImGui::GetTextLineHeightWithSpacing()), tools.toolList, cb_GetToolName);
     
     if(ImGui::Button("+##AddTool")) {
@@ -132,14 +138,13 @@ int ToolSettings::Draw_SelectTool(Settings& settings)
     return 0;
 }
 
-void ToolSettings::Draw_ToolData(Settings& settings)
-{
-    auto& tools = settings.p.tools;  
+void ToolSettings::Draw_ToolData()
+{ 
     bool isToolSelected = tools.toolList.HasItemSelected();
     // if tool selected
     if(isToolSelected) 
     {
-        ParametersList::Tools::Tool& currentTool = settings.p.tools.toolList.CurrentItem();
+        Tools::Tool& currentTool = tools.toolList.CurrentItem();
         ImGui::InputText("Name", &currentTool.Name);
         ImGui::InputFloat("Cutter Diameter", &currentTool.Diameter, 0.1f, 1.0f, "%.2f"); 
         ImGui::InputFloat("Tool Stickout", &currentTool.Length, 0.1f, 1.0f, "%.2f"); 
@@ -147,21 +152,20 @@ void ToolSettings::Draw_ToolData(Settings& settings)
 }
  
 
-int ToolSettings::Draw_SelectMaterial(Settings& settings)
+int ToolSettings::Draw_SelectMaterial()
 {
-    auto& tools = settings.p.tools;  
     bool isToolSelected = tools.toolList.HasItemSelected();
     bool isMaterialSelected = tools.toolList.CurrentItem().Data.HasItemSelected();  
     
     if(isToolSelected) 
     { 
-        ParametersList::Tools::Tool& currentTool = settings.p.tools.toolList.CurrentItem();
+        Tools::Tool& currentTool = tools.toolList.CurrentItem();
             
-        static std::function<std::string(ParametersList::Tools::Tool::ToolData& item)> cb_GetMaterialName = [](ParametersList::Tools::Tool::ToolData& item) { return item.material; };
+        static std::function<std::string(Tools::Tool::ToolData& item)> cb_GetMaterialName = [](Tools::Tool::ToolData& item) { return item.material; };
         ImGuiModules::ListBox_Reorderable("##ToolData", ImVec2(listWidth, listHeight * ImGui::GetTextLineHeightWithSpacing()), currentTool.Data, cb_GetMaterialName);
         
         if(ImGui::Button("+##AddToolData")) { 
-            currentTool.Data.Add(ParametersList::Tools::Tool::ToolData());
+            currentTool.Data.Add(Tools::Tool::ToolData());
             return -1;
         }
         ImGui::SameLine();
@@ -183,14 +187,13 @@ int ToolSettings::Draw_SelectMaterial(Settings& settings)
     return 0;
 }
 
-void ToolSettings::Draw_MaterialData(Settings& settings)
-{
-    auto& tools = settings.p.tools;   
+void ToolSettings::Draw_MaterialData()
+{   
     bool isToolSelected = tools.toolList.HasItemSelected();
     bool isMaterialSelected = tools.toolList.CurrentItem().Data.HasItemSelected();  
 
     if(isToolSelected && isMaterialSelected) {
-        ParametersList::Tools::Tool& currentTool = settings.p.tools.toolList.CurrentItem();
+        Tools::Tool& currentTool = tools.toolList.CurrentItem();
         auto& data = currentTool.Data.CurrentItem();
         
         ImGui::InputText("Material", &data.material); 

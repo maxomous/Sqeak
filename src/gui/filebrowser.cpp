@@ -10,7 +10,9 @@ namespace Sqeak {
 
 #define MAX_DISPLAY_FOLDERS 5 // max no. folders to display
 
-FileBrowser::FileBrowser(std::string* currentDirectory) : m_CurrentDirectory(currentDirectory) {
+FileBrowser::FileBrowser(std::string* currentDirectory) 
+    : m_CurrentDirectory(currentDirectory), m_Popup("FileBrowserPopup")
+{
     // initialise the images
     img_File.Init(File::ThisDir("img/img_file.png").c_str());
     img_Folder.Init(File::ThisDir("img/img_folder.png").c_str());
@@ -20,40 +22,51 @@ FileBrowser::FileBrowser(std::string* currentDirectory) : m_CurrentDirectory(cur
     updateDirAndFiles(*m_CurrentDirectory); 
 }
 
+ 
+
+
 
 void FileBrowser::Open()
 {
-    ImGui::OpenPopup("FileBrowserPopup");
+    m_Popup.Open();
 }
 
-void FileBrowser::Draw()
+void FileBrowser::DrawPopup()
 {
     // Always center the fileviewer window
     ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
     
-    if (ImGui::BeginPopupModal("FileBrowserPopup", NULL, ImGuiWindowFlags_AlwaysAutoResize)) 
-    {
-        ImGui::TextUnformatted("Select the file you wish to open:n");
-        ImGui::Separator();
-        DrawFolders();
-        DrawFiles();
-
-        static std::function<std::string(FileType& item)> callback = [](FileType& item) { return item.display; };
-        if(ImGuiModules::ComboBox("Type", m_FileTypes, callback)) {
-            updateDirAndFiles(*m_CurrentDirectory);
-        }
-        if (ImGui::Button("OK", ImVec2(120, 0))) {
-            openSelectedFile();
-        }
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+    m_Popup.DrawModal([&]() {
+        // close popup on error or file has been selected
+        if(DrawWidgets()) {
             ImGui::CloseCurrentPopup();
         }
-        ImGui::EndPopup();
-    }
+    }, ImGuiWindowFlags_AlwaysAutoResize);
 }
 
+bool FileBrowser::DrawWidgets()
+{
+    bool needsClosing = false;
+    ImGui::TextUnformatted("Select the file you wish to open:n");
+    ImGui::Separator();
+    DrawFolders();
+    needsClosing |= DrawFiles();
 
+    static std::function<std::string(FileType& item)> callback = [](FileType& item) { return item.display; };
+    if(ImGuiModules::ComboBox("Type", m_FileTypes, callback)) {
+        updateDirAndFiles(*m_CurrentDirectory);
+    }
+    if (ImGui::Button("OK", ImVec2(120, 0))) {
+        needsClosing |= openSelectedFile();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+        needsClosing = true;
+    }
+    return needsClosing;
+}
+
+ 
 void FileBrowser::SetCurrentDirectory(const string& directory) 
 {
     // empty array if already full
@@ -115,13 +128,14 @@ int FileBrowser::getSelectedFile(string &filename, int &filetype)
     return -1;
 }
 
-void FileBrowser::openSelectedFile() 
+bool FileBrowser::openSelectedFile() 
 {
+    bool needsClosing = false;
     int filetype; 
     string filename;
 
     if (getSelectedFile(filename, filetype))
-        ImGui::CloseCurrentPopup(); // error, couldn't find it... shouldnt
+        return true; // error, couldn't find it... shouldnt
                                     // reach
 
     if (filetype == File::FileDesc::Type::File) {
@@ -132,10 +146,11 @@ void FileBrowser::openSelectedFile()
         Event_Update3DModelFromFile data = { m_Filepath };
         Event<Event_Update3DModelFromFile>::Dispatch(data); 
         
-        ImGui::CloseCurrentPopup();
+        needsClosing = true;
     } else { // folder
         updateDirAndFiles(File::CombineDirPath(*m_CurrentDirectory, filename));
     }
+    return needsClosing;
 }
 
 void FileBrowser::sortFiles(const ImGuiTableColumnSortSpecs *sort_spec) {
@@ -241,8 +256,9 @@ void FileBrowser::DrawFolders()
         updateDirAndFiles(newDir);
     }
 }
-void FileBrowser::DrawFiles() 
+bool FileBrowser::DrawFiles() 
 {
+    bool err = false;
     static ImGuiTableFlags flags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable | ImGuiTableFlags_Sortable |
         ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_NoBordersInBody | ImGuiTableFlags_ScrollY;
 
@@ -300,7 +316,7 @@ void FileBrowser::DrawFiles()
                         string filename;
 
                         if (getSelectedFile(filename, filetype))
-                            ImGui::CloseCurrentPopup(); // error, couldn't find it... shouldnt reach
+                            err = true; // error, couldn't find it... shouldnt reach
 
                         if (filetype == File::FileDesc::Type::Folder)
                             updateDirAndFiles(File::CombineDirPath(*m_CurrentDirectory, filename));
@@ -315,6 +331,7 @@ void FileBrowser::DrawFiles()
             }
         ImGui::EndTable();
     }
+    return err;
 }
 
 

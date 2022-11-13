@@ -14,7 +14,7 @@ bool ImGuiCustomModules::ImGuiWindow::Begin(Settings& settings, ImGuiWindowFlags
     bool isOpen = ImGuiModules::ImGuiWindow::Begin(flags);
     // Keep inside Viewport
     ImGuiModules::KeepWindowInsideViewport();
-    // Generic styling for widgets
+    // Generic styling for widgets 
     PushWidgetStyle(settings);
     
     return isOpen;
@@ -36,13 +36,13 @@ void ImGuiCustomModules::ImGuiWindow::PopWidgetStyle()
 }
 
 
-void ImGuiCustomModules::BeginDisableWidgets(GRBLVals& grblVals) 
+void ImGuiCustomModules::BeginDisable_IfDisconnected(GRBLVals& grblVals) 
 {
     if (!grblVals.isConnected) {
         ImGui::BeginDisabled();
     }
 }
-void ImGuiCustomModules::EndDisableWidgets(GRBLVals& grblVals) 
+void ImGuiCustomModules::EndDisable_IfDisconnected(GRBLVals& grblVals) 
 {
     if (!grblVals.isConnected) {
         ImGui::EndDisabled();

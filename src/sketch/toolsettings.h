@@ -1,24 +1,67 @@
 #pragma once    
-#include "../common.h"
+#include "../glcore/glcore.h"
+#include <MaxLib.h>
+
+    
 
 namespace Sqeak { 
     
+using namespace MaxLib;
+using namespace MaxLib::Geom;
+using namespace MaxLib::Vector;
+
 class ToolSettings
 {
 public:
-    // returns true if changed
-    bool Draw(Settings& settings);
-    bool DrawPopup_Tools(Settings& settings); 
-    int Draw_SelectTool(Settings& settings);
-    void Draw_ToolData(Settings& settings);
-    int Draw_SelectMaterial(Settings& settings);
-    void Draw_MaterialData(Settings& settings);
-    void Draw_PathCutterParameters(Settings& settings);
+    struct Tools 
+    { 
+        struct Tool 
+        {
+            struct ToolData {
+                std::string material    = "Material";
+                float speed             = 10000.0f;
+                float feedCutting       = 1000.0f;
+                float feedPlunge        = 300.0f;
+                float cutDepth          = 1.0f;
+            };
+            
+            Tool(std::string name = "Tool", float diameter = 6.0f, float length = 20.0f) : Name(name), Diameter(diameter), Length(length) {}
+            
+            Vec3 Dimensions() { return Vec3(Diameter, Diameter, Length); }
+            
+            Vector_SelectablePtrs<ToolData> Data;
+            std::string Name;
+            float Diameter;
+            float Length;    
+        };
+        Vector_SelectablePtrs<Tool> toolList;
+        // check if tool & material is selected
+        bool IsToolAndMaterialSelected();
+        Vec3 GetToolScale();
+        
+    } tools;
+
+    // ImGui Methods (returns true if changed)
+    // Tool dropdown
+    bool DrawTool();
+    // Material dropdown
+    bool DrawMaterial(); 
+    // Popup to allow creating new tools / materials
+    bool DrawPopup(); 
 
 private:
-    float listWidth     = 300.0f;
-    float xSpacer       = 30.0f;
+    // How many (tools or materials) can fit in a list
     int listHeight      = 5; // in items
+    // Width of (tool or materials) list
+    float listWidth     = 300.0f;
+    // Spacer between list & specs
+    float xSpacer       = 30.0f;
+    
+    // ImGui visualisation of tools / materials
+    int Draw_SelectTool();
+    void Draw_ToolData();
+    int Draw_SelectMaterial();
+    void Draw_MaterialData();
 };
 
 } // end namespace Sqeak

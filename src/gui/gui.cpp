@@ -557,8 +557,8 @@ int gui(GRBL& grbl, Settings& settings)
             
             
             // draw imgui frames
-            frames.Draw(grbl, settings, viewer, sketcher, sketcherNew, timer.dt());
-            
+            frames.Draw(grbl, &settings, viewer, sketcher, &sketcherNew, timer.dt());
+            // render imgui
             RenderImguiDrawList();
     
             

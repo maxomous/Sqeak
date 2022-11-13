@@ -4,7 +4,8 @@
 #include "sketch.h"
 
  
- 
+
+
 
         
 namespace Sketch {
@@ -93,7 +94,7 @@ const RenderData& SketchRenderer::GetRenderData() const {
     return m_RenderData; 
 }
  
-
+ 
 
 bool SketchRenderer::UpdateRenderData()
 {
@@ -133,7 +134,7 @@ bool SketchRenderer::UpdateRenderData()
             
             // Add Element to renderdata
             data.linestrings.push_back(std::move(l));
-        }); 
+        }, true); // include origin point
         
     };
         
@@ -258,13 +259,17 @@ bool SketchRenderer::UpdateRenderData()
         // reset preview data
         m_Parent->Events().m_InputData.clear();
         
+        SketchItem& previousElement = m_Parent->Events().m_PreviousElement;
         // setting input data so that it can join to previous element
         if(m_Update & UpdateFlag::DontSetInputDataToLastElement) {
-            m_Parent->Events().m_PreviousElement = {};            
+            previousElement = {};            
         } 
         // Continue element from end of last element (used for lines and arcs)
         else {
-            m_Parent->Events().m_InputData.push_back(m_Parent->Events().m_CursorClickedPos); 
+            if(previousElement.type == SketchItem::Type::Line || previousElement.type == SketchItem::Type::Arc) {
+                Vec2 p1 = m_Parent->Factory().GetPositionBySketchItem(previousElement.P1());
+                m_Parent->Events().m_InputData.push_back(p1); 
+            }
         }
 
     } 
@@ -379,9 +384,9 @@ EqualRadius_Circle_Circle
       const Vec2& p = GetPositionBySketchItem(sketchItem);
   });*/
     
-    
-
-    
+     
+ 
+      
      
     // Update Preview
     if(m_Update & UpdateFlag::Preview) {
@@ -390,7 +395,7 @@ EqualRadius_Circle_Circle
     }
     
     if(m_Update & UpdateFlag::Cursor) { 
-        std::cout << "updating Cursor" << std::endl;
+        std::cout << "updating Cursor" << std::endl; 
 
         RenderData::Data& cursor = m_RenderData.cursor;
         // Clear old selection box data
@@ -440,7 +445,7 @@ void SketchRenderer::UpdatePreview()
     SketchEvents::CommandType command   = m_Parent->Events().m_CommandType;
     const Vec2& p                       = m_Parent->Events().m_CursorPos; 
     std::vector<Vec2>& inputData        = m_Parent->Events().m_InputData;
-    Direction inputDirection            = m_Parent->Events().m_InputDirection;
+    Direction& inputDirection            = m_Parent->Events().m_InputDirection;
     
     // Render Point     
     if(command == SketchEvents::CommandType::Add_Point) {
@@ -449,11 +454,33 @@ void SketchRenderer::UpdatePreview()
     }
     // Render Line
     else if(command == SketchEvents::CommandType::Add_Line) {
-        if(inputData.size() > 0) {
-            points.push_back(inputData[0]);
-            linestring = m_Parent->Factory().RenderLine(p, inputData[0]);
+        
+        
+        if(inputData.size() == 0) {
+            points.push_back(p);        
         }
-        points.push_back(p); 
+        
+        if(inputData.size() == 1) {
+        
+            Vec2 p1 = p;
+            SketchItem previousElement = m_Parent->Events().m_PreviousElement;
+            if(previousElement.type == SketchItem::Type::Arc) {
+                
+                const Vec2& arc_pC = m_Parent->Factory().GetPositionBySketchItem(previousElement.PC());
+                const Vec2& arc_p1 = m_Parent->Factory().GetPositionBySketchItem(previousElement.P1());
+                // calculate the perpendicular distance from cursor to line pC->p1, this will be the length of the tangent line
+                double d = Geom::DistanceBetween(arc_pC, arc_p1, p);
+                // determine which way line should go
+                Direction direction = Geom::LeftOfLine(arc_pC, arc_p1, p) ? Direction::CCW : Direction::CW;
+                // calculate the end point of the line tangent to arc used previously
+                p1 = Geom::ArcTangentLine(arc_pC, arc_p1, direction, d);
+            } 
+            // add points to points buffer            
+            points.push_back(inputData[0]);
+            points.push_back(p1);        
+            // add line to line buffer            
+            linestring = m_Parent->Factory().RenderLine(inputData[0], p1);
+        }
     }
     // Render Arc
     else if(command == SketchEvents::CommandType::Add_Arc) {
@@ -466,13 +493,18 @@ void SketchRenderer::UpdatePreview()
             {
                 // 1 point has already been added
                 if(inputData.size() == 1) {
+                    // p0 of last line
+                    Vec2 l0 = m_Parent->Factory().GetPositionBySketchItem(m_Parent->Events().m_PreviousElement.P0());
                     // calculate centre point such that arc is tangent to previous line
-                    Vec2 pC = Geom::ArcCentreFromTangent(m_Parent->Factory().GetPositionBySketchItem(m_Parent->Events().m_PreviousElement.P0()), inputData[0], p);
-                    // add the render data
-                    points.push_back(inputData[0]); // p0
-                    points.push_back(p);            // p1
-                    points.push_back(pC);           // pC
-                    linestring = m_Parent->Factory().RenderArc(inputData[0], p, pC, inputDirection);    
+                    std::optional<Vec2> pC = Geom::ArcCentreFromTangentLine(l0, inputData[0], p);
+                    // if centre point found, add the render data
+                    if(pC) {                        
+                        points.push_back(inputData[0]); // p0
+                        points.push_back(p);            // p1
+                        points.push_back(*pC);          // pC
+                        inputDirection = Geom::LeftOfLine(l0, inputData[0], p) ? Direction::CCW : Direction::CW;
+                        linestring = m_Parent->Factory().RenderArc(inputData[0], p, *pC, inputDirection);    
+                    }
                 }
             }
             else 
@@ -531,20 +563,19 @@ SketchEvents::CommandType SketchEvents::GetCommandType() const { return m_Comman
 
 void SketchEvents::SetCommandType(CommandType commandType) 
 {
-    CommandType previousCommand = m_CommandType;
     // Set command
     m_CommandType = commandType;
-    
-    // Update render data
-    if(previousCommand == CommandType::Add_Line && m_CommandType == CommandType::Add_Arc) {
+        
+    // Update render data (for arc to line or line to arc, use the previous element's data as a start point)
+    if(m_PreviousElement.type == SketchItem::Type::Line && m_CommandType == CommandType::Add_Arc) {
         m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);        
     }
-   // else if(previousCommand == CommandType::Add_Arc && m_CommandType == CommandType::Add_Line) {
-   //     m_Renderer.SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);        
-   // }
-   else {
+    else if(m_PreviousElement.type == SketchItem::Type::Arc && m_CommandType == CommandType::Add_Line) {
+        m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);        
+    }
+    else {
         m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full);       
-   }
+    }
 }
 
 
@@ -674,26 +705,46 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                 if(m_InputData.size() != 2) { return false; }
                 // make sure points aren't the same
                 if(m_InputData[1] == m_InputData[0]) { m_InputData.pop_back(); return false; }
-                
+                 
                 // allows us to continue element from last element's end points
                 SketchItem previousElement = m_PreviousElement;
                 
-                // create new Line
-                m_PreviousElement = m_Parent->Factory().AddLine(m_InputData[0], m_InputData[1]);
                 
+                Vec2 p1 = m_InputData[1];
+                if(previousElement.type == SketchItem::Type::Arc) {
+                    const Vec2& arc_pC = m_Parent->Factory().GetPositionBySketchItem(previousElement.PC());
+                    const Vec2& arc_p1 = m_Parent->Factory().GetPositionBySketchItem(previousElement.P1());
+                    // calculate the perpendicular distance from cursor to line pC->p1, this will be the length of the tangent line
+                    double d = Geom::DistanceBetween(arc_pC, arc_p1, m_InputData[1]);
+                    // determine which way line should go
+                    Direction direction = Geom::LeftOfLine(arc_pC, arc_p1, m_InputData[1]) ? Direction::CCW : Direction::CW;
+                    // calculate the end point of the line tangent to arc used previously
+                    p1 = Geom::ArcTangentLine(arc_pC, arc_p1, direction, d);
+                } 
+            
+                // create new Line
+                m_PreviousElement = m_Parent->Factory().AddLine(m_InputData[0], p1);
+                 
                 // constraint to beggining of our new line
                 if(previousElement.type == SketchItem::Type::Line) {
                     // add constraint between end of last line to beginning of this line
                     m_Parent->Factory().AddConstraint<Coincident_PointToPoint>(previousElement.P1(), m_PreviousElement.P0());
+                }  
+                // tangent constraint to beggining of our new line
+                else if(previousElement.type == SketchItem::Type::Arc) {
+                    // Constrain the end point of previous line to the start point of the new arc
+                    m_Parent->Factory().AddConstraint<Coincident_PointToPoint>(previousElement.P1(), m_PreviousElement.P0());
+                    // add tangent constraint between the previous line and the beginning of the new arc
+                    m_Parent->Factory().AddConstraint<Tangent_Arc_Line>(previousElement, m_PreviousElement, 1);
                 }
-                
+                 
                 // Update render data
                 m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);
                  
             }
             // Handle Add Arc
             else if(m_CommandType == CommandType::Add_Arc) {
-                
+                // continue tangent to previous line
                 if(m_PreviousElement.type == SketchItem::Type::Line) {
                     
                     // check that input data is the corrent size
@@ -703,12 +754,19 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                     // allows us to continue element from last element's end points
                     SketchItem previousElement = m_PreviousElement;
                     // Calculate centre from point
-                    Vec2 newCentre = Geom::ArcCentreFromTangent(m_Parent->Factory().GetPositionBySketchItem(previousElement.P0()), m_InputData[0], m_InputData[1]);
+                    std::optional<Vec2> newCentre = Geom::ArcCentreFromTangentLine(m_Parent->Factory().GetPositionBySketchItem(previousElement.P0()), m_InputData[0], m_InputData[1]);
+                    // make sure points aren't the same
+                    if(!newCentre) { m_InputData.pop_back(); return false; }                       
                     // Create new Arc
-                    m_PreviousElement = m_Parent->Factory().AddArc(m_InputData[0], m_InputData[1], newCentre, m_Parent->Events().m_InputDirection); 
-                    // add constraint between end of last line to beginning of this line
+                    m_PreviousElement = m_Parent->Factory().AddArc(m_InputData[0], m_InputData[1], *newCentre, m_Parent->Events().m_InputDirection); 
+                    // Constrain the end point of previous line to the start point of the new arc
+                    m_Parent->Factory().AddConstraint<Coincident_PointToPoint>(previousElement.P1(), m_PreviousElement.P0());
+                    // add tangent constraint between the previous line and the beginning of the new arc
                     m_Parent->Factory().AddConstraint<Tangent_Arc_Line>(m_PreviousElement, previousElement, 0);
+                    // Update render data
+                    m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);
                 }  
+                // start new arc
                 else {
                     // check that input data is the corrent size
                     if(m_InputData.size() != 3) { return false; }
@@ -718,9 +776,9 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                     Vec2 newCentre = Geom::ArcCentre(m_InputData[0], m_InputData[1], m_InputData[2]);
                     // Create new Arc
                     m_PreviousElement = m_Parent->Factory().AddArc(m_InputData[0], m_InputData[1], newCentre, m_Parent->Events().m_InputDirection);  
+                    // Update render data
+                    m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full);
                 }
-                // Update render data
-                m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);
             }
             // Handle Add Circle
             else if(m_CommandType == CommandType::Add_Circle) {
@@ -824,10 +882,6 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
     
     return true;
 } 
-
-    
-    
-    
 
 Sketcher::Sketcher() 
     : m_Events(this), m_Renderer(this)
@@ -1144,7 +1198,8 @@ private:
             // Constrain these closest points
             m_Factory->AddConstraint<Coincident_PointToPoint>((closestPoints & 0b10) ? item_arc_p1 : item_arc_p0, (closestPoints & 0b01) ? item_line_p1 : item_line_p0);
             // Add Tangent constraint   
-            m_Factory->AddConstraint<Tangent_Arc_Line>(arc, line, (closestPoints & 0b10));
+            std::cout << "Adding tangent constraint to: P" << (closestPoints & 0b10) << std::endl;
+            m_Factory->AddConstraint<Tangent_Arc_Line>(arc, line, (bool)(closestPoints & 0b10));
             return true;
         }
         return false;
@@ -1314,26 +1369,30 @@ void Sketcher::DrawImGui()
 
 void Sketcher::DrawImGui_Elements(ElementID& deleteElement) 
 {        
+    
+    auto drawFlags = [](Item& item) 
+    {
+        if(item.IsSelected())  { ImGui::SameLine(); ImGui::Text("(Selected)"); }
+        if(item.IsHovered())   { ImGui::SameLine(); ImGui::Text("(Hovered)"); }                        
+        if(item.IsFailed())   { ImGui::SameLine(); ImGui::Text("(Failed)"); }                        
+    };
+        
     // Draw ImGui widgets for a point
     auto drawPointStats = [&](const std::string& name, Item_Point& item) {
-        //ImGui::Text("%s: (%.3f, %.3f)", name.c_str(), item.p.x, item.p.y);
+
         if(InputDouble2(name.c_str(), &item.p)) {
             // select item and solve for the position we just changed
             Factory().SetSelected(item.Reference(), true);
             SolveConstraints({ 0.0, 0.0 });
             m_Renderer.SetUpdateFlag(UpdateFlag::Full);  
         }
-        if(item.IsSelected())  { ImGui::SameLine(); ImGui::Text("(Selected)"); }
-        if(item.IsHovered())   { ImGui::SameLine(); ImGui::Text("(Hovered)"); }                        
-        if(item.IsFailed())   { ImGui::SameLine(); ImGui::Text("(Failed)"); }                        
+        drawFlags(item);
     };
     
     // Draw ImGui Treenode widgets for an element
-    auto drawElementTreeNode = [&deleteElement](const std::string& name, Sketch::Element* element) {
+    auto drawElementTreeNode = [&](const std::string& name, Sketch::Element* element) {
         bool isTreeNodeOpen = ImGui::TreeNode(va_str("%s %d", name.c_str(), element->ID()).c_str());
-        if(element->Item_Elem().IsSelected())  { ImGui::SameLine(); ImGui::Text("(Selected)"); }
-        if(element->Item_Elem().IsHovered())   { ImGui::SameLine(); ImGui::Text("(Hovered)"); }  
-        if(element->Item_Elem().IsFailed())   { ImGui::SameLine(); ImGui::Text("(Failed)"); }  
+        drawFlags(element->Item_Elem());         
         ImGui::SameLine(); 
         if(ImGui::SmallButton(va_str("Delete##Element%d", element->ID()).c_str())) { deleteElement = element->ID(); }
         return isTreeNodeOpen;                      
@@ -1342,7 +1401,20 @@ void Sketcher::DrawImGui_Elements(ElementID& deleteElement)
     
     if (ImGui::CollapsingHeader("Elements"))
     {
+        Sketch::Point& point = m_Factory.OriginElement();
+        
+        // draw origin imgui TODO 
+        bool isTreeNodeOpen = ImGui::TreeNode("Origin");
+        drawFlags(point.Item_Elem());
+        if(isTreeNodeOpen) {
+            Item_Point& item = point.Item_P();
+            ImGui::Text("p: (%.3f, %.3f)", item.p.x, item.p.y);            
+            drawFlags(item);
+            ImGui::TreePop(); ImGui::Separator();
+        }
+        
         m_Factory.ForEachElement([&](Sketch::Element* element) {
+            
             if(auto* point = dynamic_cast<Sketch::Point*>(element)) {
             
                 if(drawElementTreeNode("Point", element)) {
@@ -1472,8 +1544,8 @@ void Sketcher::DrawImGui_Settings()
             SolveConstraints();
             // Update render data
             m_Renderer.SetUpdateFlag(UpdateFlag::Full);
-        }
-        
+        }   
+           
         // Arc Segments
         if (ImGui::InputInt("Arc Segments", &m_Factory.arcSegments)) {
             m_Factory.arcSegments = abs(m_Factory.arcSegments); // it is uint
@@ -1619,8 +1691,10 @@ void Sketcher::DrawImGui_ElementInputValues()
         
         ImGui::BeginDisabled(inputData.size() < 2);
             // Radius
-            if(ImGui::InputDouble("Radius##Arc", &radius)) {
-                // update preview based on radius
+            
+            if(ImGui::InputDouble("Radius##Arc", &radius, 0.0, 0.0, "%.6f", ImGuiInputTextFlags_None/*EnterReturnsTrue*/)) {
+                
+                // update preview cursor based on radius
                 m_Events.m_CursorPos = ArcCentre(inputData[0], inputData[1], radius, m_Events.m_InputDirection);
                 
                 std::cout << "m_Events.m_CursorPos: " << m_Events.m_CursorPos << std::endl;

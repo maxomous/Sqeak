@@ -44,10 +44,23 @@ void ImGuiPopup::Open()
     ImGui::OpenPopup(m_Name.c_str()); 
 }
 
+
 // returns true on close (next frame)
-bool ImGuiPopup::Draw(std::function<void()> cb_ImGuiWidgets) 
+bool ImGuiPopup::Draw(std::function<void()> cb_ImGuiWidgets, ImGuiWindowFlags flags) 
 {
-    if (ImGui::BeginPopup(m_Name.c_str())) {
+    return Draw(cb_ImGuiWidgets, ImGui::BeginPopup(m_Name.c_str(), flags));
+}
+
+// returns true on close (next frame)
+bool ImGuiPopup::DrawModal(std::function<void()> cb_ImGuiWidgets, ImGuiWindowFlags flags) 
+{
+    return Draw(cb_ImGuiWidgets, ImGui::BeginPopupModal(m_Name.c_str(), NULL, flags));
+}
+
+// returns true on close (next frame)
+bool ImGuiPopup::Draw(std::function<void()> cb_ImGuiWidgets, bool isPopupVisible) 
+{
+    if (isPopupVisible) {
         // callback
         cb_ImGuiWidgets();
         ImGui::EndPopup();
@@ -60,7 +73,6 @@ bool ImGuiPopup::Draw(std::function<void()> cb_ImGuiWidgets)
     }
     return false;
 }
-
 
 
 
@@ -146,9 +158,7 @@ void TextCentredHorizontallyInTable(const char* fmt, ...) {
 bool WasLastItemRightClicked() {
     return (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right));
 }
-
-
-
+   
 bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font)
 { 
     ImGui::BeginGroup();

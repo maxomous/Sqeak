@@ -100,17 +100,17 @@ void Settings::AddDynamicSettings()
     d = DynamicSetting(ToolListStr, (void*)p.tools.toolList.DataPtr(), 
         // get size
         [](void* data) { 
-            return (*(const std::vector<ParametersList::Tools::Tool>*)data).size();
+            return (*(const std::vector<Tools::Tool>*)data).size();
         }, 
         // add parameters
         [](Setting& setting, void* data, uint id) { 
-            ParametersList::Tools::Tool& d = (*(std::vector<ParametersList::Tools::Tool>*)data)[id];
+            Tools::Tool& d = (*(std::vector<Tools::Tool>*)data)[id];
             setting.AddParameter("Name",        &d.Name);
             setting.AddParameter("Diameter",    &d.Diameter);
             setting.AddParameter("Length",      &d.Length);
                     
             for (uint i = 0; i < d.Data.Size(); i++) {
-                ParametersList::Tools::Tool::ToolData* toolData = d.Data.ItemPtr(i);
+                Tools::Tool::ToolData* toolData = d.Data.ItemPtr(i);
                 setting.AddParameterWithPrefix("Material",        i, &(toolData->material)); // <1>Material
                 setting.AddParameterWithPrefix("SpindleSpeed",    i, &(toolData->speed));
                 setting.AddParameterWithPrefix("CuttingFeedRate", i, &(toolData->feedCutting));
@@ -121,7 +121,7 @@ void Settings::AddDynamicSettings()
         // check if vector is large enough 
         [&](void* data, std::string& name, uint id, std::string& paramName) { 
             (void)name; (void)id;
-            std::vector<ParametersList::Tools::Tool>& v = (*(std::vector<ParametersList::Tools::Tool>*)data); 
+            std::vector<Tools::Tool>& v = (*(std::vector<Tools::Tool>*)data); 
             
             // vector parameter: <0>SpindleSpeed=10000.000000
             if(paramName.substr(0,1) == std::string("<"))
@@ -134,11 +134,11 @@ void Settings::AddDynamicSettings()
                 }
                 int prefixId                = stoi(paramName.substr(1, b-1));                
                 while(v[id].Data.Size() < (uint)prefixId+1) {
-                    v[id].Data.Add(ParametersList::Tools::Tool::ToolData());
+                    v[id].Data.Add(Tools::Tool::ToolData());
                 } 
             } else { // main parameter Length=20.000000 
                 while(v.size() < id+1) {
-                    v.push_back(ParametersList::Tools::Tool()); 
+                    v.push_back(Tools::Tool()); 
                 }
             } 
         });
@@ -148,28 +148,6 @@ void Settings::AddDynamicSettings()
    
 // ****************************************** END OF USER SETTINGS *********************************************
 // *************************************************************************************************************
-
-bool ParametersList::Tools::IsToolAndMaterialSelected() 
-{        
-    if(!toolList.HasItemSelected()) {
-        Log::Error("No Tool Selected");
-        return true;
-    }
-    if(!toolList.CurrentItem().Data.HasItemSelected()) {
-        Log::Error("No Material Selected");
-        return true; 
-    }
-    return false;
-}  
-glm::vec3 ParametersList::Tools::GetToolScale()
-{
-    if(toolList.HasItemSelected()) {
-        ParametersList::Tools::Tool& tool = toolList.CurrentItem();
-        return glm::vec3(tool.Diameter, tool.Diameter, tool.Length);
-    } // else get default tool dimensions
-    ParametersList::Tools::Tool defaultTool("default tool");
-    return glm::vec3(defaultTool.Diameter, defaultTool.Diameter, defaultTool.Length);
-}   
 
 std::string Setting::GetParamName(size_t i) { 
     return std::string(data[i].first); 

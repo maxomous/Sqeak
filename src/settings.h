@@ -60,33 +60,7 @@ struct ParametersList
         std::string     saveFileDirectory   = MaxLib::File::ThisDir();
     } system;
     
-
-    struct Tools 
-    { 
-        struct Tool 
-        {
-            struct ToolData {
-                std::string material    = "Material";
-                float speed             = 10000.0f;
-                float feedCutting       = 1000.0f;
-                float feedPlunge        = 300.0f;
-                float cutDepth          = 1.0f;
-            };
-            
-            Tool(std::string name = "Tool", float diameter = 6.0f, float length = 20.0f) : Name(name), Diameter(diameter), Length(length) {}
-            
-            Vector_SelectablePtrs<ToolData> Data;
-            std::string Name;
-            float Diameter;
-            float Length;    
-        };
-        Vector_SelectablePtrs<Tool> toolList;
-        // check if tool & material is selected
-        bool IsToolAndMaterialSelected();
-        glm::vec3 GetToolScale();
-        
-    } tools;
-
+   
     struct Viewer3DParameters {
         
         struct General {
@@ -181,6 +155,8 @@ struct ParametersList
         std::string gcode;
     };
     std::vector<CustomGCode> customGCodes;
+    // List of tools and materials. includes imgui methdos
+    ToolSettings toolSettings;
 };
 
 

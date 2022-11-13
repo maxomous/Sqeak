@@ -15,6 +15,10 @@ class ElementFactory
 {
 public:
 
+    ElementFactory() {
+        m_Origin = AddPoint({ 0.0, 0.0 });
+    }
+
     // segments per 90 degrees of arc
     int arcSegments = 32;
     // tolerance to make selection
@@ -91,10 +95,11 @@ public:
     
 
     // TODO: Test these ptrs * with references & instead
-    void ForEachElement(std::function<void(Sketch::Element*)> cb_Element) 
+    void ForEachElement(std::function<void(Sketch::Element*)> cb_Element, bool isOriginIncluded = false) 
     {
         // Call callback for each element
-        for(size_t i = 0; i < m_Elements.Size(); i++) {
+        size_t startIndex = (isOriginIncluded) ? 0 : 1;
+        for(size_t i = startIndex; i < m_Elements.Size(); i++) {
             // Cast so we can get the ptr
             cb_Element(m_Elements.CastItem<Sketch::Element>(i)); 
         }
@@ -108,41 +113,39 @@ public:
         }
     }
     
-    
-
-    void ForEachItemElement(std::function<void(Item_Element&)> cb) {
+           
+    void ForEachItemElement(std::function<void(Item_Element&)> cb, bool isOriginIncluded = false) {
         
         ForEachElement([&](Sketch::Element* element) {
             cb(element->Item_Elem());
-        });
+        }, isOriginIncluded);
     }
 
-    void ForEachItemPoint(std::function<void(Item_Point&)> cb, std::function<bool(Sketch::Element*)> cb_ElementCondition = [](Sketch::Element* element) { (void)element; return true; }) {
+    void ForEachItemPoint(std::function<void(Item_Point&)> cb, bool isOriginIncluded = false, std::function<bool(Sketch::Element*)> cb_ElementCondition = [](Sketch::Element* element) { (void)element; return true; }) {
         
         ForEachElement([&](Sketch::Element* element) {
             // check condition callback
-            if(cb_ElementCondition(element)) 
-            {   // find type of element and call cb for each point
-                if(auto* point = dynamic_cast<Sketch::Point*>(element)) { 
-                    point->ForEachItemPoint(cb); 
-                } else if(auto* line = dynamic_cast<Sketch::Line*>(element)) { 
-                    line->ForEachItemPoint(cb);
-                } else if(auto* arc = dynamic_cast<Sketch::Arc*>(element)) { 
-                    arc->ForEachItemPoint(cb);
-                } else if(auto* circle = dynamic_cast<Sketch::Circle*>(element)) { 
-                    circle->ForEachItemPoint(cb); 
-                } else { // Should never reach
-                    assert(0 && "Could not cast element, type unknown");                
-                }
+            if(!cb_ElementCondition(element)) { return; }
+            // find type of element and call cb for each point
+            if(auto* point = dynamic_cast<Sketch::Point*>(element)) { 
+                point->ForEachItemPoint(cb); 
+            } else if(auto* line = dynamic_cast<Sketch::Line*>(element)) { 
+                line->ForEachItemPoint(cb);
+            } else if(auto* arc = dynamic_cast<Sketch::Arc*>(element)) { 
+                arc->ForEachItemPoint(cb);
+            } else if(auto* circle = dynamic_cast<Sketch::Circle*>(element)) { 
+                circle->ForEachItemPoint(cb); 
+            } else { // Should never reach
+                assert(0 && "Could not cast element, type unknown");                
             }
-            
-        });
+                    
+        }, isOriginIncluded);
     }
 
-    void ForEachItem(std::function<void(Item&)> cb) 
+    void ForEachItem(std::function<void(Item&)> cb, bool isOriginIncluded = false) 
     {
-        ForEachItemElement(cb);
-        ForEachItemPoint(cb);
+        ForEachItemElement(cb, isOriginIncluded);
+        ForEachItemPoint(cb, isOriginIncluded);
     }
 
     
@@ -164,9 +167,21 @@ public:
         else if(item.type == SketchItem::Type::Circle_PC)   { return GetElementByID<Sketch::Circle>(item.element)->PC(); }
         else { assert(0 && "SketchItem Type is not an element point"); }// Should never reach 
     }
-
-    Item& GetItemBySketchItem(SketchItem item) {
+    // returns radius of a circle, will only accept a circle
+    double GetRadiusOfCircleBySketchItem(SketchItem item) 
+    {
+        if(item.type == SketchItem::Type::Circle)           { return GetElementByID<Sketch::Circle>(item.element)->Radius(); }
+        else { assert(0 && "SketchItem Type is not a Circle"); }// Should never reach 
+    }
+    // returns direction of an arc, will only accept an arc
+    Direction GetDirectionOfArcBySketchItem(SketchItem item) 
+    {
+        if(item.type == SketchItem::Type::Arc)              { return GetElementByID<Sketch::Arc>(item.element)->Direction(); }
+        else { assert(0 && "SketchItem Type is not an Arc"); }// Should never reach 
+    }
         
+    Item& GetItemBySketchItem(SketchItem item) 
+    {
         if(item.type == SketchItem::Type::Point)            { return GetElementByID<Sketch::Point>(item.element)->Item_Elem(); }
         else if(item.type == SketchItem::Type::Line)        { return GetElementByID<Sketch::Line>(item.element)->Item_Elem(); }
         else if(item.type == SketchItem::Type::Arc)         { return GetElementByID<Sketch::Arc>(item.element)->Item_Elem(); }
@@ -174,8 +189,8 @@ public:
         else                                                { return GetItemPointBySketchItem(item); }
     }
     
-    Item_Point& GetItemPointBySketchItem(SketchItem item) {
-        
+    Item_Point& GetItemPointBySketchItem(SketchItem item) 
+    {
         if(item.type == SketchItem::Type::Point)            { return GetElementByID<Sketch::Point>(item.element)->Item_P(); }
         else if(item.type == SketchItem::Type::Line_P0)     { return GetElementByID<Sketch::Line>(item.element)->Item_P0(); }
         else if(item.type == SketchItem::Type::Line_P1)     { return GetElementByID<Sketch::Line>(item.element)->Item_P1(); }
@@ -187,6 +202,7 @@ public:
     }
 
        
+        
  //   
  //   selecting 1st point     closest (prioritises closest point, if none, then it will select the first element within tolerence)
  //       
@@ -205,8 +221,6 @@ public:
     
     
     
-    
-    
     // This should be updated whenever selected is modified
     void UpdateSelectionList() 
     {
@@ -216,13 +230,13 @@ public:
         // find all the selected points
         ForEachItemPoint([&](Item_Point& item) {
             if(item.IsSelected()) { m_SelectedPoints.push_back(item.Reference()); }
-        });
+        }, true); // include origin point
         // find all the selected elements
         ForEachItemElement([&](Item_Element& item) {
             // ignore points as elements (they are handled as points)
             if(item.Type() == SketchItem::Type::Point) { return; }
             if(item.IsSelected()) { m_SelectedElements.push_back(item.Reference()); }
-        });
+        }, true);
     }
     
     const std::vector<SketchItem>& GetSelectedPoints()  { return m_SelectedPoints; }
@@ -238,7 +252,7 @@ public:
     {
         ForEachItem([](Item& item) {
             item.SetFailed(false);
-        });
+        }, true); // include origin point
     }
     // Finds points within a tolerance to position p and sets their selected flag to true
     void UpdateFailedElements() 
@@ -261,14 +275,14 @@ public:
     {
         ForEachItem([](Item& item) {
             item.SetHovered(false);
-        });
+        }, true); // include origin point
     }
 
     void ClearSelected() 
     {
         ForEachItem([](Item& item) {
             item.SetSelected(false);
-        });
+        }, true); // include origin point
         UpdateSelectionList();
     }
 
@@ -277,7 +291,7 @@ public:
     {
         return EditItemByPosition(p, selectionTolerance, [](Sketch::Item& item) {
             item.SetHovered(true);
-        });        
+        }, true); // include origin point    
     }
     
     // Finds points within a tolerance to position p and sets their selected flag to true
@@ -285,7 +299,7 @@ public:
     {
         bool hasSelection = EditItemByPosition(p, selectionTolerance, [](Sketch::Item& item) {
             item.SetSelected(!item.IsSelected());
-        });
+        }, true); // include origin point
         UpdateSelectionList();
         return hasSelection;
     }  
@@ -295,76 +309,15 @@ public:
     void AddHoveredBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside) {
         EditItemBetween(p0, p1, includePartiallyInside, [](Sketch::Item& item) {
             item.SetHovered(true);
-        });
+        }, true); // include origin point
     }
     void AddSelectionBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside) {
         EditItemBetween(p0, p1, includePartiallyInside, [](Sketch::Item& item) {
             item.SetSelected(true);
-        });
+        }, true); // include origin point
     }
     
         
-    // Finds points within a tolerance to position p
-    void EditItemBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside, std::function<void(Sketch::Item&)> cb)
-    {        
-        Geos geos;
-        // Make bounding box (minimum in bottom left, max in top right)
-        Vec2 boundary_p0 = { std::min(p0.x, p1.x), std::min(p0.y, p1.y) };
-        Vec2 boundary_p1 = { std::max(p0.x, p1.x), std::max(p0.y, p1.y) };
-        LineString boundingBox = { boundary_p0, { boundary_p0.x, boundary_p1.y }, boundary_p1, { boundary_p1.x, boundary_p0.y }, boundary_p0 };
-                
-        // Check each point on each element to see whether it falls within tolerance
-        ForEachItemPoint([&](Sketch::Item_Point& item) {
-            // Adds point to selected if point falls within bounding box
-            if(boundary_p0 <= item.p && item.p <= boundary_p1) {
-                cb(item);
-                // Points are a specical case where we also set its element flag
-                if(item.Type() == SketchItem::Type::Point) { 
-                    cb(GetElementByID<Point>(item.Reference().element)->Item_Elem());
-                }
-            }
-        });
-        // Check each element to see whether it falls within tolerance
-        ForEachElement([&](Sketch::Element* element) {
-                                    
-            LineString l;
-            if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, handled above
-            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
-            else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
-            
-            assert(!l.empty() && "Linestring is empty");
-            
-            // return value
-            bool success = false;
-            // if dragging box to left, include anything intersecting with it
-            if(includePartiallyInside) {
-                // circles require overlap | contains,  arc / line require intersects, points are not included
-                bool isCircle = l.front() == l.back();
-                if(isCircle) { 
-                    // done like this instead of intersects() becuase when dragging box inside circle, you dont want to select the circle
-                    if(std::optional<bool> s = geos.Overlaps(boundingBox, l)) { success |= *s; }
-                    if(std::optional<bool> s = geos.Contains(boundingBox, l)) { success |= *s; }
-                } 
-                else {
-                    if(std::optional<bool> s = geos.Intersects(boundingBox, l)) { success |= *s; }
-                }
-            } 
-            // if dragging box to right, include only anything contained within
-            else {
-                if(std::optional<bool> s = geos.Contains(boundingBox, l)) { success |= *s; }
-            }
-            
-            // call callback function if item is inside bounding box
-            if(success) {
-                cb(element->Item_Elem());
-            }
-
-                    
-        }); 
-        UpdateSelectionList();
-    }
     // Deletes all items in selcetion
     void DeleteSelection() 
     {
@@ -372,6 +325,7 @@ public:
         std::vector<ElementID> elementsToDelete;
         
         ForEachItemElement([&](Item_Element& item) {
+            // if the item is selected, delete it
             if(item.IsSelected()) {
                 elementsToDelete.push_back(item.Reference().element);
             }
@@ -491,6 +445,7 @@ public:
        
     void RemoveElement(ElementID id) 
     {
+        assert(id != m_Origin.element && "Cannot remove origin");
         // Stores any constraints which need to be deleted
         std::vector<ConstraintID> constraintsToDelete;
         
@@ -529,17 +484,22 @@ public:
     // if dragPoint is set, solver will fix this point to dragPosition
     // Returns: success
     bool UpdateSolver(std::optional<Vec2> pDif = {});
-  
+    
+    SketchItem Origin()       { return m_Origin; }
+    Point& OriginElement()    { return *GetElementByID<Sketch::Point>(m_Origin.element); }
+        
 private:    
     
     Vector_SelectablePtrs<Element> m_Elements;
     Vector_SelectablePtrs<Constraint> m_Constraints; // Constraints holds links to elements
     
+    SketchItem m_Origin;
+    
     template <typename T, typename... Args>
     T* AddElement(Args&&... args) {
         // Add Point to Elements List
         m_Elements.Add<T>(std::forward<Args>(args)...);
-        // Cast last Element item (we just added) back to point
+        // Cast last Element item (we just added) back to Element
         if(T* element = m_Elements.CastItem<T>(m_Elements.Size()-1)) {
             return element;
         }
@@ -548,16 +508,83 @@ private:
         return nullptr; // will never reach
     }
     
+    
+    void ModifySolverPoint(Solver::ConstraintSolver& solver, Solver::Point2D& p, const Vec2& position);
+    void ModifySolverPoint(Solver::ConstraintSolver& solver, Solver::Point2D& p, Solver::Group group);
+
     // Temporarily modifies the dragged point's solver parameters to 
     // the new dragged position, and fixes it there by changing its group
     void SetDraggedPoint(Solver::ConstraintSolver& solver, Item_Point& draggedPoint, const Vec2& pDif);
      
-    
+     
+    // Finds points within a tolerance to position p
+    void EditItemBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside, std::function<void(Sketch::Item&)> cb, bool isOriginIncluded = false)
+    {        
+        Geos geos;
+        // Make bounding box (minimum in bottom left, max in top right)
+        Vec2 boundary_p0 = { std::min(p0.x, p1.x), std::min(p0.y, p1.y) };
+        Vec2 boundary_p1 = { std::max(p0.x, p1.x), std::max(p0.y, p1.y) };
+        LineString boundingBox = { boundary_p0, { boundary_p0.x, boundary_p1.y }, boundary_p1, { boundary_p1.x, boundary_p0.y }, boundary_p0 };
+                
+        // Check each point on each element to see whether it falls within tolerance
+        ForEachItemPoint([&](Sketch::Item_Point& item) {
+            // Adds point to selected if point falls within bounding box
+            if(boundary_p0 <= item.p && item.p <= boundary_p1) {
+                cb(item);
+                // Points are a specical case where we also set its element flag
+                if(item.Type() == SketchItem::Type::Point) { 
+                    cb(GetElementByID<Point>(item.Reference().element)->Item_Elem());
+                }
+            }
+        }, isOriginIncluded);
+        // Check each element to see whether it falls within tolerance
+        ForEachElement([&](Sketch::Element* element) {
+                                    
+            LineString l;
+            if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, handled above
+            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
+            else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
+            
+            assert(!l.empty() && "Linestring is empty");
+            
+            // return value
+            bool success = false;
+            // if dragging box to left, include anything intersecting with it
+            if(includePartiallyInside) {
+                // circles require overlap | contains,  arc / line require intersects, points are not included
+                bool isCircle = l.front() == l.back();
+                if(isCircle) { 
+                    // done like this instead of intersects() becuase when dragging box inside circle, you dont want to select the circle
+                    if(std::optional<bool> s = geos.Overlaps(boundingBox, l)) { success |= *s; }
+                    if(std::optional<bool> s = geos.Contains(boundingBox, l)) { success |= *s; }
+                } 
+                else {
+                    if(std::optional<bool> s = geos.Intersects(boundingBox, l)) { success |= *s; }
+                }
+            } 
+            // if dragging box to right, include only anything contained within
+            else {
+                if(std::optional<bool> s = geos.Contains(boundingBox, l)) { success |= *s; }
+            }
+            
+            // call callback function if item is inside bounding box
+            if(success) {
+                cb(element->Item_Elem());
+            }
+
+                    
+        }, isOriginIncluded); 
+        UpdateSelectionList();
+    }
+
+
     // Finds points within a tolerance to position p and calls callback function, passing the item as a parameter
     // Points are prioritised over elements
     // Callback on a Point element will be ignored and handled within the ItemPoint instead to prevent testing position twice
     // Returns success
-    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb)
+    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb, bool isOriginIncluded = false)
     {     
         Sketch::SketchItem closestItem;
         double closestDistance = tolerance;
@@ -570,7 +597,7 @@ private:
                 closestItem = item.Reference();
                 closestDistance = distance;
             }
-        });
+        }, isOriginIncluded); // include origin
         
         // prioritise point if one is within tolerance and set closest to selected
         if(closestItem.type != Sketch::SketchItem::Type::Unset) {
@@ -611,7 +638,7 @@ private:
                     isElementFound = true;
                 }
             }    
-        }); 
+        }, isOriginIncluded); 
         return isElementFound;
     }
     

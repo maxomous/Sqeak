@@ -16,8 +16,10 @@ public:
     FileBrowser(std::string* currentDirectory);
     // opens the filebrowser (should only be called once)
     void Open();
-    // draws the filebroswer
-    void Draw();
+    // draws the filebroswer popup + widgets
+    void DrawPopup();
+    // draws just the filebroswer widgets
+    bool DrawWidgets();
     // clear tje current file
     void ClearCurrentFile()         { m_CurrentFile = ""; m_Filepath = ""; }
     // returns current file e.g. file.nc
@@ -44,6 +46,7 @@ private:
     int nodeClicked = -1;
     bool m_ResortFiles = false; // used when manually requiring resort
 
+    ImGuiModules::ImGuiPopup m_Popup;
 
     void SetCurrentDirectory(const std::string& dir);
 
@@ -55,13 +58,13 @@ private:
     // returns filename and type of file selected in browser
     int getSelectedFile(std::string& filename, int& filetype);
 
-    void openSelectedFile();
+    bool openSelectedFile();
 
     void sortFiles(const ImGuiTableColumnSortSpecs *sort_spec);
 
     void DrawFolder(int i);
     void DrawFolders();
-    void DrawFiles();
+    bool DrawFiles();
 };
 
 

@@ -314,11 +314,11 @@ void DynamicBuffer::AddGrid(Settings& settings)
     glm::vec2 gridOrientation = glm::vec2(Geom::Sign(grid.Size.x), Geom::Sign(grid.Size.y));
     glm::vec3 offset = glmVec3(settings.grblVals.ActiveCoordSys()) + grid.Position;
     
-    for (float i = 0.0f; i <= abs(grid.Size.x); i += grid.Spacing) {
+    for (float i = 0.0f; i <= fabs(grid.Size.x); i += grid.Spacing) {
         AddVertex(offset + glm::vec3(gridOrientation.x * i, 0.0f, 0.0f), grid.Colour);
         AddVertex(offset + glm::vec3(gridOrientation.x * i, grid.Size.y, 0.0f), grid.Colour);
     }
-    for (float j = 0.0f; j <= abs(grid.Size.y); j += grid.Spacing) {
+    for (float j = 0.0f; j <= fabs(grid.Size.y); j += grid.Spacing) {
         AddVertex(offset + glm::vec3(0.0f, gridOrientation.y * j, 0.0f), grid.Colour);
         AddVertex(offset + glm::vec3(grid.Size.x, gridOrientation.y * j, 0.0f), grid.Colour);
     }
@@ -627,7 +627,7 @@ void Viewer::Update(Settings& settings, float dt)
     }
            
 // -------------Bodies----------------
-    glm::vec3 scaleTool = settings.p.tools.GetToolScale();
+    glm::vec3 scaleTool = glmVec3(settings.p.toolSettings.tools.GetToolScale());
     
 // Draw Current Position
 // Draw Outlines

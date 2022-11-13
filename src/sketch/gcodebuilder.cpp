@@ -57,8 +57,8 @@ void GCodeBuilder::EndCommands() {
 // executes length in one axis and then moves width of cutter in other axis
 void GCodeBuilder::FacingCutXY(Settings& settings, Vec2 p0, Vec2 p1, bool isYFirst) 
 {
-    ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
-    ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();
+    ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
+    ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();
     
     float cutWidth  = tool.Diameter - settings.p.pathCutter.CutOverlap;
     Vec2 pNext = p0; 
@@ -146,7 +146,7 @@ std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(Settings& set
             float tabPosAlongLine = nextTabPos - distanceAtLastPoint;
             
             // if the next tab falls too close to a corner, keep incrementing it until it's posible to produce
-            float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
+            float toolRadius = settings.p.toolSettings.tools.toolList.CurrentItem().Diameter / 2.0f;
             float minDistance = (tabWidth/2.0f) + toolRadius + 1.0f; // +1mm just to be sure
             
             if(tabPosAlongLine < minDistance || distance-tabPosAlongLine < minDistance) {
@@ -187,7 +187,7 @@ void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, 
         float distance = hypotf(pDif.x, pDif.y);
         
         Vec2 normalised = pDif / distance;
-        float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
+        float toolRadius = settings.p.toolSettings.tools.toolList.CurrentItem().Diameter / 2.0f;
         Vec2 tabOffset = normalised * ((tabWidth / 2.0f) +  toolRadius);
         Vec2 tabStart = tabPosition - tabOffset;
         Vec2 tabEnd = tabPosition + tabOffset;
@@ -275,13 +275,9 @@ int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params)
             Add(va_str("G1 X%.3f Y%.3f F%.0f", pNext.x, pNext.y, params.feedCutting));
         }
         // reverse direction at end of linestring
-        if(!params.isLoop) {
-            isMovingForward = !isMovingForward;
-        }
+        if(!params.isLoop) { isMovingForward = !isMovingForward; }
         // if we have reached the final z depth, break out of loop
-        if(zCurrent == params.z1) {
-            break;
-        }
+        if(zCurrent == params.z1) { break; }
         // update z
         zCurrent += zDirection * fabsf(params.cutDepth);
         

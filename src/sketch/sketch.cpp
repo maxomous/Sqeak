@@ -190,11 +190,11 @@ void ElementFactory::RefPointToElement_DrawImGui()
  
 void Function_Draw::DrawImGui_Tools(Settings& settings) 
 {
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select##OLD", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
     ImGui::SameLine();
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Line", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Line##OLD", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
     ImGui::SameLine();
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Arc", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Arc##OLD", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
      
 } 
 
@@ -280,7 +280,7 @@ void A_Drawing::ActiveFunction_DrawImGui_Tools(Settings& settings)
 void A_Drawing::DrawImGui_Functions(Settings& settings)
 {    
     // new function buttons
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Draw", settings.guiSettings.img_Sketch_Draw)) {    
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Draw##OLD", settings.guiSettings.img_Sketch_Draw)) {    
         std::unique_ptr<Function> newFunction = std::make_unique<Function_Draw>(m_ElementFactory, "Draw " + to_string(m_FunctionIDCounter++));
         m_ActiveFunctions.Add(move(newFunction));
         settings.SetUpdateFlag(ViewerUpdate::Full);
@@ -289,7 +289,7 @@ void A_Drawing::DrawImGui_Functions(Settings& settings)
     }
     ImGui::SameLine();
     
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Measure", settings.guiSettings.img_Sketch_Measure)) {    
+    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Measure##OLD", settings.guiSettings.img_Sketch_Measure)) {    
         std::cout << "Measure" << std::endl;
     }
 }   
@@ -384,8 +384,9 @@ bool SketchOld::DrawImGui_StartSketchOld(Settings& settings)
         }
     }
     return false;
-}
+}     
 
+    
 /*
 
         // if the rawpoint has another element attached, use this as it's tangent basis
@@ -1000,7 +1001,7 @@ int Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory,
 std::optional<std::vector<std::string>> Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory)
 {
     // error check
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(settings.p.toolSettings.tools.IsToolAndMaterialSelected())
         return {};
     // export gcode
     if(auto gcodes = move(ExportGCode(settings, elementFactory)))
@@ -1018,7 +1019,7 @@ Function_Draw::Function_Draw(ElementFactory& elementFactory, std::string name) :
 bool Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFactory) 
 {
     // check tool and material is selected
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(settings.p.toolSettings.tools.IsToolAndMaterialSelected())
         return false;
     size_t size = elementFactory.LineLoop_Size(m_LineLoop);
     // start and end point
@@ -1037,7 +1038,7 @@ bool Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFac
         return false;
     }
     // cut depth should have value
-    ParametersList::Tools::Tool::ToolData& toolData = settings.p.tools.toolList.CurrentItem().Data.CurrentItem();
+    ToolSettings::Tools::Tool::ToolData& toolData = settings.p.toolSettings.tools.toolList.CurrentItem().Data.CurrentItem();
     if(toolData.cutDepth <= 0.0f) {
         Log::Error("Cut Depth must be positive");
         return false;
@@ -1050,8 +1051,8 @@ bool Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFac
 std::string Function_Draw::HeaderText(Settings& settings, ElementFactory& elementFactory) 
 {
     Function_Draw_Parameters& p = m_Params;
-    ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
-    ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();    
+    ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
+    ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();    
     
     // write header
     std::ostringstream stream;
@@ -1086,8 +1087,8 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
     if(!IsValidInputs(settings, elementFactory)) {
         return {};  
     }  
-    ParametersList::Tools::Tool& tool = settings.p.tools.toolList.CurrentItem();
-    ParametersList::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
+    ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
+    ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
          
     // initialise 
     GCodeBuilder gcodes;
@@ -1096,7 +1097,7 @@ std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& set
       
     // define offset path parameters:  0 = no compensation, 1 = compensate left / pocket, -1 = compensate right
     int cutSide = GetCutSide((CompensateCutter)m_Params.cutSide);
-    float toolRadius = settings.p.tools.toolList.CurrentItem().Diameter / 2.0f;
+    float toolRadius = settings.p.toolSettings.tools.toolList.CurrentItem().Diameter / 2.0f;
     float offsetDistance = fabsf(toolRadius) + m_Params.finishingPass;
     // define geos parameters
  	GeosBufferParams& geosParameters = settings.p.pathCutter.geosParameters;

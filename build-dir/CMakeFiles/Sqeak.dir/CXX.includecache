@@ -6,10 +6,6 @@
 
 #IncludeRegexTransform: 
 
-/home/pi/Desktop/Projects/Sqeak/src/common.cpp
-common.h
-/home/pi/Desktop/Projects/Sqeak/src/common.h
-
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 algorithm
 -
@@ -45,6 +41,8 @@ dev/joystick.h
 /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
 grbl/grbl.h
 /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl.h
+sketch/toolsettings.h
+/home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.h
 settings.h
 /home/pi/Desktop/Projects/Sqeak/src/settings.h
 gcreader.h
@@ -57,8 +55,6 @@ gui/viewer.h
 /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.h
 sketch/gcodebuilder.h
 /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
-sketch/toolsettings.h
-/home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.h
 sketch/sketch.h
 /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 sketcher/sketch.h
@@ -71,10 +67,6 @@ gui/gui.h
 /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
 MaxLib.h
 -
-
-/home/pi/Desktop/Projects/Sqeak/src/gcreader.cpp
-common.h
-/home/pi/Desktop/Projects/Sqeak/src/common.h
 
 /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 MaxLib.h
@@ -314,10 +306,6 @@ wiringSerial.h
 grbl_common.h
 /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl_common.h
 
-/home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.cpp
-filebrowser.h
-/home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.h
-
 /home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
@@ -330,29 +318,11 @@ frames.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
-/home/pi/Desktop/Projects/Sqeak/src/gui/gui.cpp
-iostream
--
-string
--
-gui.h
-/home/pi/Desktop/Projects/Sqeak/src/gui/gui.h
-
 /home/pi/Desktop/Projects/Sqeak/src/gui/gui.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
-/home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.cpp
-imgui_custommodules.h
 /home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.h
-
-/home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.h
-../common.h
-/home/pi/Desktop/Projects/Sqeak/src/common.h
-
-/home/pi/Desktop/Projects/Sqeak/src/gui/viewer.cpp
-iostream
--
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
@@ -378,31 +348,15 @@ geos_c.h
 MaxLib.h
 -
 
-/home/pi/Desktop/Projects/Sqeak/src/main.cpp
-common.h
-/home/pi/Desktop/Projects/Sqeak/src/common.h
-
-/home/pi/Desktop/Projects/Sqeak/src/settings.cpp
-common.h
-/home/pi/Desktop/Projects/Sqeak/src/common.h
-
 /home/pi/Desktop/Projects/Sqeak/src/settings.h
 common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 initializer_list
 -
 
-/home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.cpp
-gcodebuilder.h
-/home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
-
 /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.cpp
-sketch.h
-/home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 MaxLib.h
@@ -410,15 +364,11 @@ MaxLib.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
-/home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.cpp
-iostream
+/home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.h
+../glcore/glcore.h
+/home/pi/Desktop/Projects/Sqeak/src/glcore/glcore.h
+MaxLib.h
 -
-toolsettings.h
-/home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.h
-../common.h
-/home/pi/Desktop/Projects/Sqeak/src/common.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
 vector

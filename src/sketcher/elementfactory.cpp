@@ -91,7 +91,7 @@ SketchItem ElementFactory::AddCircle(const Vec2& pC, double radius) {
 // On failure, failed Elements are flagged
 // Returns: success
 bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
-{
+{ 
     
     Solver::ConstraintSolver solver;
 
@@ -107,14 +107,13 @@ bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
     }
     
     // Mark those which should be fixed
-    
     if(pDif) 
     {        
         // for any elements selected, drag all of it's points
         ForEachItemPoint([&](Item_Point& item) 
         {  // overwrite position of selected item and set it to be fixed
             SetDraggedPoint(solver, item, *pDif);   
-        }, [&](Sketch::Element* element) { return element->Item_Elem().IsSelected(); }); // if condition callback (element is selected) is met
+        }, false, [&](Sketch::Element* element) { return element->Item_Elem().IsSelected(); }); // if condition callback (element is selected) is met
         
         // for any points selected, drag all of them
         ForEachItemPoint([&](Item_Point& item) 
@@ -123,13 +122,13 @@ bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
         });
     }
     
-    // is group free???
-    ForEachItemPoint([&](Item_Point& item) 
-    {   
-        std::cout << "item of element: " << item.Reference().element << " is of type: " << item.Reference().Name() 
-        << " of solver entity: " << GetSolverEntity(item.Reference())
-        << " is " << solver.IsEntityGroupFree(GetSolverEntity(item.Reference())) << std::endl;
-    });
+   //// is group free???
+   //ForEachItemPoint([&](Item_Point& item) 
+   //{   
+   //    std::cout << "item of element: " << item.Reference().element << " is of type: " << item.Reference().Name() 
+   //    << " of solver entity: " << GetSolverEntity(item.Reference())
+   //    << " is " << solver.IsEntityGroupFree(GetSolverEntity(item.Reference())) << std::endl;
+   //});
     
     
     // Add Constraints
@@ -154,6 +153,10 @@ bool ElementFactory::UpdateSolver(std::optional<Vec2> pDif)
         }
     }
        
+    // Fix origin point
+    Solver::Point2D origin = GetSolverPoint(m_Origin);
+    ModifySolverPoint(solver, origin, Solver::Group::Fixed);
+    
        /*
        
     if 2 items share a point,   ... not quite
@@ -278,6 +281,17 @@ void ElementFactory::ResetSolverFailedConstraints() {
     ClearFailedElements();
 }
 
+void ElementFactory::ModifySolverPoint(Solver::ConstraintSolver& solver, Solver::Point2D& p, const Vec2& position)
+{
+    solver.ModifyParamValue(p.paramX, position.x);
+    solver.ModifyParamValue(p.paramY, position.y);
+}
+void ElementFactory::ModifySolverPoint(Solver::ConstraintSolver& solver, Solver::Point2D& p, Solver::Group group)
+{
+    solver.ModifyEntityGroup(p.entity, group);
+    solver.ModifyParamGroup(p.paramX, group);
+    solver.ModifyParamGroup(p.paramY, group);
+}
 
 // Temporarily modifies the dragged point's solver parameters to 
 // the new dragged position, and fixes it there by changing its group
@@ -290,13 +304,9 @@ void ElementFactory::SetDraggedPoint(Solver::ConstraintSolver& solver, Item_Poin
     
     std::cout << "Dragging point: " << p.entity << " from " << draggedPoint.p << "   pdif = " << pDif << std::endl;
     // Update the parameters for the new dragged position
-    solver.ModifyParamValue(p.paramX, draggedPosition.x);
-    solver.ModifyParamValue(p.paramY, draggedPosition.y);
+    ModifySolverPoint(solver, p, draggedPosition);
     // Move the point into the fixed group (this was done as a fix because SetDraggedPoint would only make it close to the correct position)
-    solver.ModifyEntityGroup(p.entity, Solver::Group::Fixed);
-    solver.ModifyParamGroup(p.paramX, Solver::Group::Fixed);
-    solver.ModifyParamGroup(p.paramY, Solver::Group::Fixed);
-
+    ModifySolverPoint(solver, p, Solver::Group::Fixed);
 
     // Set point to be dragged in solver
 //    solver.SetDraggedPoint(p);

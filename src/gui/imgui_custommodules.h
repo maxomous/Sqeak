@@ -29,14 +29,14 @@ struct ImGuiCustomModules
     {
         if(position) { 
             ImGui::Text("%s: (%g, %g)", label.c_str(), position->x, position->y);
-        } else {
+        } else { 
             ImGui::Text("%s: (N/A)", label.c_str());
         }
     }
 
     // Disable all widgets when not connected to grbl
-    static void BeginDisableWidgets(GRBLVals& grblVals);
-    static void EndDisableWidgets(GRBLVals& grblVals);
+    static void BeginDisable_IfDisconnected(GRBLVals& grblVals);
+    static void EndDisable_IfDisconnected(GRBLVals& grblVals);
     
     static bool HereButton(GRBLVals& grblVals, glm::vec3& p);
     static bool ImageButtonWithText_Function(Settings& settings, std::string name, ImageTexture& image, bool isActive = false, ButtonType buttonType = ButtonType::FunctionButton);
