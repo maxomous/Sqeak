@@ -160,7 +160,7 @@ struct ParametersList
 };
 
 
-enum ButtonType { Primary, Secondary, Connect, New, Edit, FunctionButton, Jog };
+enum ButtonType { Primary, Secondary, Connect, New, Edit, ToolbarButton, Jog };
 enum Colour     { Text, HeaderText };
 
 struct ButtonDimension { 
@@ -187,7 +187,7 @@ struct GUISettings
         button[ButtonType::Connect]         = {{ 73.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
         button[ButtonType::New]             = {{ 28.0f, 28.0f }, { 16.0f, 16.0f }};   // New
         button[ButtonType::Edit]            = {{ 12.0f, 12.0f }, { 12.0f, 12.0f }};   // Edit
-        button[ButtonType::FunctionButton]  = {{ 56.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
+        button[ButtonType::ToolbarButton]  = {{ 56.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
         button[ButtonType::Jog]             = {{ 18.0f, 18.0f }, { 12.0f, 12.0f }};   // Jog
     }
     
@@ -232,6 +232,7 @@ struct GUISettings
 
     // these need to be intialised in imgui_Settings()
     ImageTexture img_Restart;
+    ImageTexture img_Play;
     ImageTexture img_Pause;
     ImageTexture img_Settings;
     ImageTexture img_Edit;

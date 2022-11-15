@@ -323,7 +323,7 @@ void A_Drawing::DrawImGui(Settings& settings)
     }
         
         /*
-        ImVec2& buttonSize = settings.guiSettings.button[ButtonType::FunctionButton].Size;
+        ImVec2& buttonSize = settings.guiSettings.button[ButtonType::ToolbarButton].Size;
         ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
    
       

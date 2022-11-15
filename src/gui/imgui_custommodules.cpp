@@ -36,19 +36,6 @@ void ImGuiCustomModules::ImGuiWindow::PopWidgetStyle()
 }
 
 
-void ImGuiCustomModules::BeginDisable_IfDisconnected(GRBLVals& grblVals) 
-{
-    if (!grblVals.isConnected) {
-        ImGui::BeginDisabled();
-    }
-}
-void ImGuiCustomModules::EndDisable_IfDisconnected(GRBLVals& grblVals) 
-{
-    if (!grblVals.isConnected) {
-        ImGui::EndDisabled();
-    }
-}
-
 
 bool ImGuiCustomModules::HereButton(GRBLVals& grblVals, glm::vec3& p) 
 {

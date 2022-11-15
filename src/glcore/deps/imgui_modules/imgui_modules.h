@@ -9,10 +9,6 @@
 #include "../imgui/imgui_internal.h" // for vector math overrides
 #include "../imgui/imgui_stb_image.h"
 
-// get height of line / frame
-//std::cout << "LineHeight = " << ImGui::GetTextLineHeight() << "LineHeightWithSpacing = " << ImGui::GetTextLineHeightWithSpacing() << std::endl;
-//std::cout << "FrameHeight = " << ImGui::GetFrameHeight() << "FrameHeightWithSpacing = " << ImGui::GetFrameHeightWithSpacing() << std::endl;
-
 // ImVec2 ostream operator
 inline std::ostream& operator<<(std::ostream& os, const ImVec2& p) { os << "(" << p.x << ", " << p.y << ")"; return os; }
 
@@ -51,11 +47,13 @@ namespace ImGuiModules
         bool Draw(std::function<void()> cb_ImGuiWidgets, bool isPopupVisible);
     };
 
-
     
     void KeepWindowInsideViewport();
     // Converts hex colours e.g. 0xBFE0E0 to ImVec4
     ImVec4 ConvertColourHexToVec4(ImU32 hexCol);
+    // probes the current ImGui widget and prints info to terminal 
+    void ProbeWidget();
+    
      // Moves the cursor from current position
     void MoveCursorPosX(float x);
     void MoveCursorPosY(float y);

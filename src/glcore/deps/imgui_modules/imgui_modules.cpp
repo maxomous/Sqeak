@@ -101,6 +101,13 @@ ImVec4 ConvertColourHexToVec4(ImU32 hexCol) {
     float s = 1.0f / 255.0f;
     return ImVec4(((hexCol >> 16) & 0xFF) * s, ((hexCol >> 8) & 0xFF) * s, ((hexCol >> 0) & 0xFF) * s, 1.0f);
 }
+
+void ProbeWidget() {
+    // get height of line / frame
+    std::cout << "LineHeight = " << ImGui::GetTextLineHeight() << " (With Spacing) = " << ImGui::GetTextLineHeightWithSpacing() << std::endl;
+    std::cout << "FrameHeight = " << ImGui::GetFrameHeight() << " (With Spacing) = " << ImGui::GetFrameHeightWithSpacing() << std::endl;
+}
+
  // Moves the cursor from current position
 void MoveCursorPosX(float x) {
     ImGui::SetCursorPosX(ImGui::GetCursorPosX() + x);

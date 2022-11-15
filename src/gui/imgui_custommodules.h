@@ -33,13 +33,9 @@ struct ImGuiCustomModules
             ImGui::Text("%s: (N/A)", label.c_str());
         }
     }
-
-    // Disable all widgets when not connected to grbl
-    static void BeginDisable_IfDisconnected(GRBLVals& grblVals);
-    static void EndDisable_IfDisconnected(GRBLVals& grblVals);
     
     static bool HereButton(GRBLVals& grblVals, glm::vec3& p);
-    static bool ImageButtonWithText_Function(Settings& settings, std::string name, ImageTexture& image, bool isActive = false, ButtonType buttonType = ButtonType::FunctionButton);
+    static bool ImageButtonWithText_Function(Settings& settings, std::string name, ImageTexture& image, bool isActive = false, ButtonType buttonType = ButtonType::ToolbarButton);
     // text heading
     static void Heading(Settings& settings, const std::string& text, float centreAboutWidth = 0.0f);
     static void HeadingInTable(Settings& settings, const std::string& text); 

@@ -47,6 +47,7 @@ void imgui_Settings(Settings& settings)
         
     // Images
     s.img_Restart.Init(File::ThisDir("img/img_restart.png").c_str());
+    s.img_Play.Init(File::ThisDir("img/img_play.png").c_str());
     s.img_Pause.Init(File::ThisDir("img/img_pause.png").c_str());
     s.img_Settings.Init(File::ThisDir("img/img_settings.png").c_str());
     s.img_Edit.Init(File::ThisDir("img/img_edit.png").c_str());
