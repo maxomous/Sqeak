@@ -750,21 +750,23 @@ struct JogController {
 };
 
 
-
+// for making button invisible
+const bool BUTTON_IS_INVISIBLE  = true;
 
 // For when a toolbar item is always enabled
-const bool DISABLED_NEVER               = true; 
-const bool DISABLED_WHEN_DISCONNECTED   = false; 
-const bool EDIT_BUTTON_ENABLED          = true;
-const bool EDIT_BUTTON_DISABLED         = false; 
+const bool EDIT_BUTTON_ENABLED  = true;
+const bool EDIT_BUTTON_DISABLED = false; 
 
+
+// All methods handle their opwn disabling (i.e. if grbl is diconnected)
 class ToolbarItem 
 {
 public:
+    enum class DisabledFlag { WhenDisconnected, Always, Never};
     // Only one callback can be added and should be used for either the edit button or with a custom button
-    ToolbarItem(const std::string& name, bool isAlwaysEnabled = false, std::function<void()> cbDraw = []() {}, bool hasEditButton = EDIT_BUTTON_DISABLED, std::function<void()> cbDrawPopup = nullptr, ImGuiTableColumnFlags flags = 0) 
+    ToolbarItem(const std::string& name, DisabledFlag disabledFlag = DisabledFlag::WhenDisconnected, std::function<void()> cbDraw = []() {}, bool hasEditButton = EDIT_BUTTON_DISABLED, std::function<void()> cbDrawPopup = nullptr, ImGuiTableColumnFlags flags = 0) 
       : m_Name(name), 
-        m_IsAlwaysEnabled(isAlwaysEnabled), 
+        m_DisabledFlag(disabledFlag), 
         cb_Draw(cbDraw), 
         m_HasEditButton(hasEditButton), 
         cb_DrawPopup(cbDrawPopup), 
@@ -778,34 +780,28 @@ public:
         ImGui::TableSetupColumn(m_Name.c_str(), m_TableColumnFlags);
     }
     
+    
+    
     void Draw(Settings* settings) 
     { 
         // Ensure the item is visible
         if(!m_IsVisible) { return; }
-        // Save the connected state as this could change
-        // when we are disconnected, Imgui::Begin/End disbled are called and we need to cancel them if always enabled
-        bool needsEnable = !settings->grblVals.isConnected && m_IsAlwaysEnabled;
-        // Enable widgets if always enabled
-        if(needsEnable) { ImGui::EndDisabled(); }
-            // Draw Edit Button, if clicked, open popup
+        
+        DisableIfRequired(settings, [&]() {
             cb_Draw();
-        // Disable widgets if always enabled
-        if(needsEnable) { ImGui::BeginDisabled(); }
+            return false;
+        });
     }
     bool DrawEdit(Settings* settings) 
     {
         // Ensure the item is visible and check if there is an edit callback
         if(!m_IsVisible || !m_HasEditButton) { return false; }
-        // Save the connected state as this could change
-        bool needsEnable = !settings->grblVals.isConnected && m_IsAlwaysEnabled;
-        // Enable widgets if always enabled
-        if(needsEnable) { ImGui::EndDisabled(); }
-            // Draw Edit Button, if clicked, open popup
-            bool isClicked = DrawEditButton(settings); 
-        // Disable widgets if always enabled
-        if(needsEnable) { ImGui::BeginDisabled(); }
+        
         // returns true then edit button is clicked
-        return isClicked;
+        return DisableIfRequired(settings, [&]() {
+            // Draw Edit Button, if clicked, open popup
+            return DrawEditButton(settings); 
+        });
     }
     // Must be called after everything else
     bool DrawPopup(Settings* settings) 
@@ -817,18 +813,15 @@ public:
             m_Popup.Open(); 
             m_OpenPopup = false;
         }
-        // Save the connected state as this could change
-        bool needsEnable = !settings->grblVals.isConnected && m_IsAlwaysEnabled;
-        // Enable widgets if always enabled
-        if(needsEnable) { ImGui::EndDisabled(); } 
+        
+        // returns true on close (next frame)
+        return DisableIfRequired(settings, [&]() {
             // draw popup widgets (given by callback) 
-            // returns true on close (next frame)
-            bool wasClosed = m_Popup.Draw([&]() {
+            return m_Popup.Draw([&]() {
                 cb_DrawPopup();
+                return false;
             });
-        // Disable widgets if always enabled
-        if(needsEnable) { ImGui::BeginDisabled(); }
-        return wasClosed;
+        });
     }
     // to manually call open popup when no edit button
     // if CallbackType is EditButtonWithCallback, the edit button will open the popup
@@ -837,7 +830,7 @@ public:
     bool IsVisible() { return m_IsVisible; }
     
     std::string m_Name;
-    bool m_IsAlwaysEnabled = false;
+    DisabledFlag m_DisabledFlag;
     
 private:
     bool m_IsVisible = false;
@@ -858,6 +851,22 @@ private:
         return isClicked;
     }
     
+    bool DisableIfRequired(Settings* settings, std::function<bool()> cb)
+    {
+        bool isDisabled;
+        if(m_DisabledFlag == DisabledFlag::Always)                  { isDisabled = true; }
+        else if(m_DisabledFlag == DisabledFlag::Never)              { isDisabled = false; }
+        else if(m_DisabledFlag == DisabledFlag::WhenDisconnected)   { isDisabled = !settings->grblVals.isConnected; }
+        else { Log::Critical("Unknown disabled flag"); }
+        
+        // Disable widgets if needed
+        if(isDisabled) { ImGui::BeginDisabled(); }
+            // Draw Edit Button, if clicked, open popup
+            bool isClicked = cb();
+        // Enable widgets if needed
+        if(isDisabled) { ImGui::EndDisabled(); }
+        return isClicked;
+    }
 };
 
       
@@ -920,7 +929,7 @@ struct Toolbar {
     Vector_Ptrs<ToolbarItem> toolbarItems;
     // Indexes for toolbar items
     struct ToolbarIndex {
-        size_t Back, Draw, Run, Connect, OpenFile, Tools, Spacer, Jog, Sketch, SketchTools;
+        size_t Back, Header_TopLevel, Header_Run, Header_Draw, Header_Sketch, Run, Draw, Connect, OpenFile, Tools, Spacer, Jog, Sketch, SketchTools, SketchConstraints;
     } toolbarIndex;
     
     bool openPopup_FileBrowser = false;
@@ -947,6 +956,9 @@ struct Toolbar {
     Sketch::Sketcher* m_Sketcher; 
     FileBrowser* m_FileBrowser;
 
+    // shorthand
+    typedef ToolbarItem::DisabledFlag DisabledFlag;
+
     Toolbar(GRBL& grbl, Settings* settings, Sketch::Sketcher* sketcherNew, FileBrowser* fileBrowser) 
         : m_Settings(settings), m_Sketcher(sketcherNew), m_FileBrowser(fileBrowser)
     {
@@ -954,15 +966,58 @@ struct Toolbar {
             (void)data;
             timer.Reset();
         });
+      
+// Current LEVEL Header (simplifed greyed out out button)
+     
+        // Toolbar Header Item
+        // draws text and an image by drawing an image button with text and turning off button background colour
+        auto DrawHeaderButton = [](Settings* settings, const std::string& name, ImageTexture& image) {
+            // Make button graphics invisible (make same colour as background)
+            ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f, 0.0f, 0.0f, 0.0f });
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.0f, 0.0f, 0.0f, 0.0f });
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.0f, 0.0f, 0.0f, 0.0f });
+                // set image y position
+                float imageOffset = 0;
+                // Draw ImGui Widgets
+                if(ImGuiCustomModules::ImageButtonWithText_Function(*settings, name, image, true, ButtonType::ToolbarHeader, imageOffset, settings->guiSettings.functionButtonTextOffset, settings->guiSettings.font_small)) {
+                    // Do nothing
+                }
+            ImGui::PopStyleColor(3);
+        };
+            
+        // Top Level Header
+        toolbarIndex.Header_TopLevel = toolbarItems.Addi("##TopLevelHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton(m_Settings, "Sqeak##TopLevelHeaderToolbarButton", m_Settings->guiSettings.img_Icon);
+        });
+        // Run Header
+        toolbarIndex.Header_Run = toolbarItems.Addi("##RunHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton(m_Settings, "Run##RunHeaderToolbarButton", m_Settings->guiSettings.img_Play);
+        });
+        // Draw Header
+        toolbarIndex.Header_Draw = toolbarItems.Addi("##DrawHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton(m_Settings, "Draw##DrawHeaderToolbarButton", m_Settings->guiSettings.img_Sketch_Draw);
+        });
+        // Sketch Header
+        toolbarIndex.Header_Sketch = toolbarItems.Addi("##SketchHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton(m_Settings, "Sketch##SketchHeaderToolbarButton", m_Settings->guiSettings.img_Sketch);
+        });
         
-        // Back Button
-        toolbarIndex.Back = toolbarItems.Addi("Back##Column", DISABLED_NEVER, [&]() {
+          
+// Back Button
+        toolbarIndex.Back = toolbarItems.Addi("Back##Column", DisabledFlag::Never, [&]() {
             // we disable the back button in the top level (save this value as it may change)
             bool isDisabled = (m_CurrentLevel == CurrentLevel::TopLevel);
             // Disable back button in the top level
             if(isDisabled) { ImGui::BeginDisabled(); } 
+            // get button and image size
+            ImVec2& frameSize = m_Settings->guiSettings.button[(size_t)ButtonType::ToolbarButton].Size;
+            ImVec2& buttonSize = m_Settings->guiSettings.button[(size_t)ButtonType::ToolbarBack].Size;
+            ImVec2& buttonImgSize = m_Settings->guiSettings.button[(size_t)ButtonType::ToolbarBack].ImageSize;
+            
+            ImGuiModules::CentreItemVerticallyAboutItem(frameSize.y, buttonSize.y);
             // Draw ImGui Widgets
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Back##ToolbarButton", m_Settings->guiSettings.img_ArrowLeft, false)) {  
+          //  if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Back##ToolbarButton", m_Settings->guiSettings.img_ArrowLeft, false, ButtonType::ToolbarBack)) {  
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, m_Settings->guiSettings.img_ArrowLeft)) {
                 // Move up a level
                 if(m_CurrentLevel == CurrentLevel::TopLevel)        { } // do nothing
                 else if(m_CurrentLevel == CurrentLevel::Run)        { SetToolbarLevel(CurrentLevel::TopLevel); }
@@ -980,9 +1035,9 @@ struct Toolbar {
         
         
         // Run Button
-        toolbarIndex.Run = toolbarItems.Addi("Run##Column", DISABLED_NEVER, [&]() {
+        toolbarIndex.Run = toolbarItems.Addi("Run##Column", DisabledFlag::Never, [&]() {
             // Draw ImGui Widgets
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Run##ToolbarButton", m_Settings->guiSettings.img_Play, false)) {  
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Run##ToolbarButton", m_Settings->guiSettings.img_Play, false, ButtonType::ToolbarButtonPrimary)) {  
                 // Set Toolbar level
                 SetToolbarLevel(CurrentLevel::Run);
                 m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
@@ -990,9 +1045,9 @@ struct Toolbar {
         });
 
         // Draw Button
-        toolbarIndex.Draw = toolbarItems.Addi("Draw##Column", DISABLED_NEVER, [&]() {
+        toolbarIndex.Draw = toolbarItems.Addi("Draw##Column", DisabledFlag::Never, [&]() {
             // Draw ImGui Widgets
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Draw##ToolbarButton", m_Settings->guiSettings.img_Sketch_Draw, false)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Draw##ToolbarButton", m_Settings->guiSettings.img_Sketch_Draw, false, ButtonType::ToolbarButtonPrimary)) { 
                 // Set Toolbar level
                 SetToolbarLevel(CurrentLevel::Drawing);
                 m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
@@ -1002,7 +1057,7 @@ struct Toolbar {
 // Run LEVEL
         
         // Connect Button
-        toolbarIndex.Connect = toolbarItems.Addi("Connect", DISABLED_NEVER, [&]() {
+        toolbarIndex.Connect = toolbarItems.Addi("Connect", DisabledFlag::Never, [&]() {
             // Draw ImGui Widgets
             DrawConnect(grbl);
             
@@ -1015,7 +1070,7 @@ struct Toolbar {
         });
         
         // Open File Button
-        toolbarIndex.OpenFile = toolbarItems.Addi("Open File", DISABLED_WHEN_DISCONNECTED, [&]() {
+        toolbarIndex.OpenFile = toolbarItems.Addi("Open File", DisabledFlag::WhenDisconnected, [&]() {
             // Draw ImGui Widgets
             if(DrawOpenFile()) {
                 // open popup when draw open file clicked
@@ -1032,17 +1087,23 @@ struct Toolbar {
         });
 
         // Tools
-        toolbarIndex.Tools = toolbarItems.Addi("Tools", DISABLED_NEVER, [&]() {
+        toolbarIndex.Tools = toolbarItems.Addi("Tools", DisabledFlag::Never, [&]() {
             // centre the 2 dropdown boxes about the main buttons
-            ImGuiModules::CentreItemVerticallyAboutItem(m_Settings->guiSettings.toolbarItemHeight, ImGui::GetFrameHeight() * 2.0f);
-            // Draw ImGui Widgets
-            if(m_Settings->p.toolSettings.DrawTool()) {
-                m_Settings->SetUpdateFlag(ViewerUpdate::Full);
-            }
-            // Draw Material
-            if(m_Settings->p.toolSettings.DrawMaterial()) {
-                m_Settings->SetUpdateFlag(ViewerUpdate::Full);
-            }
+            ImGui::BeginGroup();
+            
+                //ImGuiModules::MoveCursorPosY((itemHeight - thisItemHeight) / 2.0f);
+                ImGuiModules::CentreItemVerticallyAboutItem(m_Settings->guiSettings.button[ButtonType::ToolbarButton].Size.y, ImGui::GetFrameHeight() * 2.0f + ImGui::GetStyle().ItemSpacing.y);
+                // Draw ImGui Widgets
+                ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarWidgetWidth);
+                if(m_Settings->p.toolSettings.DrawTool()) {
+                    m_Settings->SetUpdateFlag(ViewerUpdate::Full);
+                }
+                // Draw Material
+                ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarWidgetWidth);
+                if(m_Settings->p.toolSettings.DrawMaterial()) {
+                    m_Settings->SetUpdateFlag(ViewerUpdate::Full);
+                }
+            ImGui::EndGroup();
         }, EDIT_BUTTON_ENABLED, [&]() { 
             // Draw edit popup
             if(m_Settings->p.toolSettings.DrawPopup()) {
@@ -1050,13 +1111,12 @@ struct Toolbar {
             }
         });
         
-             
         // Spacer
-        toolbarIndex.Spacer = toolbarItems.Addi("##Spacer", DISABLED_WHEN_DISCONNECTED, [&]() {}, EDIT_BUTTON_DISABLED, nullptr, ImGuiTableColumnFlags_WidthStretch);
+        toolbarIndex.Spacer = toolbarItems.Addi("##Spacer", DisabledFlag::WhenDisconnected, [&]() {}, EDIT_BUTTON_DISABLED, nullptr, ImGuiTableColumnFlags_WidthStretch);
           
         
         // Jog
-        toolbarIndex.Jog = toolbarItems.Addi("Jog", DISABLED_WHEN_DISCONNECTED, [&]() {
+        toolbarIndex.Jog = toolbarItems.Addi("Jog", DisabledFlag::WhenDisconnected, [&]() {
             // Draw ImGui Widgets
             jogController.DrawJogController(grbl, *m_Settings);
         }, EDIT_BUTTON_ENABLED, [&]() { 
@@ -1068,9 +1128,9 @@ struct Toolbar {
 // Drawing LEVEL  
 
         // New Sketch Button
-        toolbarIndex.Sketch = toolbarItems.Addi("Sketch##Column", DISABLED_NEVER, [&]() {
+        toolbarIndex.Sketch = toolbarItems.Addi("Sketch##Column", DisabledFlag::Never, [&]() {
             // Draw ImGui Widgets
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Sketch##ToolbarButton", m_Settings->guiSettings.img_Sketch, false)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "New Sketch##ToolbarButton", m_Settings->guiSettings.img_Sketch, false)) { 
                 // Set Toolbar level
                 SetToolbarLevel(CurrentLevel::Sketch);
                 m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
@@ -1079,42 +1139,96 @@ struct Toolbar {
 
 // Sketch LEVEL  
         // SketchTools
-        toolbarIndex.SketchTools = toolbarItems.Addi("SketchTools", DISABLED_NEVER, [&]() {
+        toolbarIndex.SketchTools = toolbarItems.Addi("Sketch Tools", DisabledFlag::Never, [&]() {
             // Draw ImGui Widgets
             typedef Sketch::SketchEvents::CommandType CommandType;
                             
             // Select Button
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Select##ToolbarButton", m_Settings->guiSettings.img_Sketch_Select, m_Sketcher->Events().GetCommandType() == CommandType::Select)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Select##ToolbarButton", m_Settings->guiSettings.img_Sketch_Select, m_Sketcher->Events().GetCommandType() == CommandType::Select, ButtonType::ToolbarSketchButton)) { 
                  m_Sketcher->Events().SetCommandType(CommandType::Select);
             }
             ImGui::SameLine();
             // Select Loop Button
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Select Loop##ToolbarButton", m_Settings->guiSettings.img_Sketch_SelectLoop, m_Sketcher->Events().GetCommandType() == CommandType::SelectLoop)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Select Loop##ToolbarButton", m_Settings->guiSettings.img_Sketch_SelectLoop, m_Sketcher->Events().GetCommandType() == CommandType::SelectLoop, ButtonType::ToolbarSketchButton)) { 
                  m_Sketcher->Events().SetCommandType(CommandType::SelectLoop);
             }
             ImGui::SameLine();
             // Add Point Button
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Point##ToolbarButton", m_Settings->guiSettings.img_Sketch_Point, m_Sketcher->Events().GetCommandType() == CommandType::Add_Point)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Point##ToolbarButton", m_Settings->guiSettings.img_Sketch_Point, m_Sketcher->Events().GetCommandType() == CommandType::Add_Point, ButtonType::ToolbarSketchButton)) { 
                  m_Sketcher->Events().SetCommandType(CommandType::Add_Point);
-                 std::cout << "after: " << std::endl;
             }
             ImGui::SameLine();
             // Add Line Button
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Line##ToolbarButton", m_Settings->guiSettings.img_Sketch_Line, m_Sketcher->Events().GetCommandType() == CommandType::Add_Line)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Line##ToolbarButton", m_Settings->guiSettings.img_Sketch_Line, m_Sketcher->Events().GetCommandType() == CommandType::Add_Line, ButtonType::ToolbarSketchButton)) { 
                  m_Sketcher->Events().SetCommandType(CommandType::Add_Line);
             }
             ImGui::SameLine();
             // Add Arc Button
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Arc##ToolbarButton", m_Settings->guiSettings.img_Sketch_Arc, m_Sketcher->Events().GetCommandType() == CommandType::Add_Arc)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Arc##ToolbarButton", m_Settings->guiSettings.img_Sketch_Arc, m_Sketcher->Events().GetCommandType() == CommandType::Add_Arc, ButtonType::ToolbarSketchButton)) { 
                  m_Sketcher->Events().SetCommandType(CommandType::Add_Arc);
             }
             ImGui::SameLine();
             // Add Circle Button
-            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Circle##ToolbarButton", m_Settings->guiSettings.img_Sketch_Circle, m_Sketcher->Events().GetCommandType() == CommandType::Add_Circle)) { 
+            if(ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, "Circle##ToolbarButton", m_Settings->guiSettings.img_Sketch_Circle, m_Sketcher->Events().GetCommandType() == CommandType::Add_Circle, ButtonType::ToolbarSketchButton)) { 
                  m_Sketcher->Events().SetCommandType(CommandType::Add_Circle);
             }
         });
         
+        toolbarIndex.SketchConstraints = toolbarItems.Addi("Constraints", DisabledFlag::Never, [&]() {
+            
+            // define all button specs
+            ImVec2& buttonSize = m_Settings->guiSettings.button[(size_t)ButtonType::ToolbarConstraintButton].Size;
+            ImVec2& buttonImgSize = m_Settings->guiSettings.button[(size_t)ButtonType::ToolbarConstraintButton].ImageSize;
+            ImVec2& frameSize = m_Settings->guiSettings.button[(size_t)ButtonType::ToolbarButton].Size;
+            
+            float imageOffset = 4.0f; //m_Settings->guiSettings.functionButtonImageOffset;
+            float textOffset = 42.0f; //m_Settings->guiSettings.functionButtonTextOffset;
+            ImFont* font = m_Settings->guiSettings.font_small;
+            
+            typedef Sketch::RenderData::Image::Type Type;
+            
+            // Draws an image button for a constraint
+            auto cb_ImageButton = [&](const std::string& name, Type imageType) {
+                
+                ImageTexture* image;
+                if(imageType == Type::Coincident)        { image = &m_Settings->guiSettings.img_Sketch_Constraint_Coincident; } 
+                else if(imageType == Type::Midpoint)     { image = &m_Settings->guiSettings.img_Sketch_Constraint_Midpoint; }
+                else if(imageType == Type::Vertical)     { image = &m_Settings->guiSettings.img_Sketch_Constraint_Vertical; }
+                else if(imageType == Type::Horizontal)   { image = &m_Settings->guiSettings.img_Sketch_Constraint_Horizontal; }
+                else if(imageType == Type::Parallel)     { image = &m_Settings->guiSettings.img_Sketch_Constraint_Parallel; }
+                else if(imageType == Type::Perpendicular){ image = &m_Settings->guiSettings.img_Sketch_Constraint_Perpendicular; }
+                else if(imageType == Type::Tangent)      { image = &m_Settings->guiSettings.img_Sketch_Constraint_Tangent; }
+                else if(imageType == Type::Equal)        { image = &m_Settings->guiSettings.img_Sketch_Constraint_Equal; }
+                else if(imageType == Type::Distance)     { image = &m_Settings->guiSettings.img_Sketch_Constraint_Distance; }
+                else if(imageType == Type::Radius)       { image = &m_Settings->guiSettings.img_Sketch_Constraint_Radius; }
+                else if(imageType == Type::Angle)        { image = &m_Settings->guiSettings.img_Sketch_Constraint_Angle; }
+                else { Log::Critical("Unknown image type"); }
+                 
+                return ImGuiModules::ImageButtonWithText(name, buttonSize, *image, buttonImgSize, imageOffset, textOffset, font);
+                //return ImGuiCustomModules::ImageButtonWithText_Function(*m_Settings, name, m_Settings->guiSettings.img_Sketch_Measure, false, ButtonType::ToolbarConstraintButton);
+            };
+            
+            // Draws an inputbox for a constraint (distance, radius, angle etc.)
+            auto cb_InputValue = [&](double* value) {
+                
+                ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarWidgetWidth);
+                // TODO: this should be dynamic from ToolbarConstraintButton
+                ImGuiModules::CentreItemVerticallyAboutItem(frameSize.y);
+                ImGui::InputDouble(std::string("##" + std::to_string((int)value)).c_str(), value, 0.0, 0.0, "%g"); // use value ptr as ID
+            };
+            
+            
+            // Centre contraint buttons about main toolbar buttons
+            ImGuiModules::CentreItemVerticallyAboutItem(frameSize.y, buttonSize.y);
+            
+            // Add Constraint Buttons
+            ImGui::BeginGroup();
+                // TODO: Order of selection needs to be preserved - if circle then arc, circle should jump onto arc... atm it's just default order
+                m_Sketcher->Draw_ConstraintButtons(cb_ImageButton, cb_InputValue);
+            ImGui::EndGroup();
+        });
+ 
+  
 
 // Function LEVEL  
         // ...
@@ -1187,6 +1301,7 @@ private:
         if(m_CurrentLevel == CurrentLevel::TopLevel) {
             // Set visiable toolbar items
             SetItemVisible(toolbarIndex.Back);
+            SetItemVisible(toolbarIndex.Header_TopLevel);
             SetItemVisible(toolbarIndex.Run);
             SetItemVisible(toolbarIndex.Draw);
         }
@@ -1194,6 +1309,7 @@ private:
         if(m_CurrentLevel == CurrentLevel::Run) {
             // Set visible toolbar items
             SetItemVisible(toolbarIndex.Back);
+            SetItemVisible(toolbarIndex.Header_Run); // as header
             SetItemVisible(toolbarIndex.Connect);
             SetItemVisible(toolbarIndex.OpenFile);
             SetItemVisible(toolbarIndex.Spacer);
@@ -1203,6 +1319,7 @@ private:
         if(m_CurrentLevel == CurrentLevel::Drawing) {
             // Set visiable toolbar items
             SetItemVisible(toolbarIndex.Back);
+            SetItemVisible(toolbarIndex.Header_Draw); // as header
             // SetItemVisible(Drawing (New/Open/Save))  ***MAYBE THIS SHOULD BE A DROPDOWN? 
             SetItemVisible(toolbarIndex.Tools);
             SetItemVisible(toolbarIndex.Sketch);
@@ -1212,7 +1329,9 @@ private:
         if(m_CurrentLevel == CurrentLevel::Sketch) {
             // Set visiable toolbar items
             SetItemVisible(toolbarIndex.Back);
+            SetItemVisible(toolbarIndex.Header_Sketch); // as header
             SetItemVisible(toolbarIndex.SketchTools);
+            SetItemVisible(toolbarIndex.SketchConstraints);
             // Set 2D Mode
             Event<Event_Set2DMode>::Dispatch( { true } );
             m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::Select);
@@ -1261,20 +1380,18 @@ public:
         ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, m_Settings->guiSettings.toolbarTableScrollbarSize);
         // flags for table
         ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollX;
-        
-        // Save the state as this could change midway
-        bool isDisconnected = !m_Settings->grblVals.isConnected;
-        
+                
+        // Table handles it's own ImGui::BeginDisabled()
         // Draw Toolbar Table
         if (ImGui::BeginTable("Toolbar",  VisibleToolbarItemCount(), flags, ImVec2(0.0f, m_Settings->guiSettings.toolbarTableHeight))) 
-        {   
-            // Start disable within table scope
-            if(isDisconnected) { ImGui::BeginDisabled(); }
-        
+        {           
             // Style the header & edit button
             ImGui::PushFont(m_Settings->guiSettings.font_small);
             ImGui::PushStyleColor(ImGuiCol_Text, m_Settings->guiSettings.colour[Colour::HeaderText]);
-            ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, ImGui::GetColorU32(ImGuiCol_WindowBg));
+            // Set the background colour of the heading row to invisible
+            ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, { 0.0f, 0.0f, 0.0f, 0.0f });
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, { 0.0f, 0.0f, 0.0f, 0.0f });
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, { 0.0f, 0.0f, 0.0f, 0.0f });
                         
                 // Setup Table columns (will only add visible columns)
                 for(size_t i = 0; i < toolbarItems.Size(); i++) {
@@ -1307,7 +1424,7 @@ public:
                     }
                 }
                 
-            ImGui::PopStyleColor(2);
+            ImGui::PopStyleColor(4);
             ImGui::PopFont();      
             
             // Draw toolbar items (Widgets etc)
@@ -1322,41 +1439,40 @@ public:
                     ImGui::EndGroup();
                 }
             }
-                    
-            // End disable within table scope
-            if(isDisconnected) { ImGui::EndDisabled(); }
             
             ImGui::EndTable();
         } 
 
+        // Save the state as this could change midway
+        bool isDisconnected = !m_Settings->grblVals.isConnected;
         // Start disable again in function scope
         if(isDisconnected) { ImGui::BeginDisabled(); }
-        
-             
-        ImGui::Separator();
-        
-        flags = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_ScrollX;
-        
-        if (ImGui::BeginTable("ControlButtons", 3, flags))
-        {
-            ImGui::TableNextRow();
-            // Run, Cancel, Pause & Restart
-            ImGui::TableNextColumn();
-            DrawPlayButtons(grbl, sketcherOld);
-            // Current file name
-            ImGui::TableNextColumn();
-            DrawCurrentFile();
-            // Time elapsed
-            ImGui::TableNextColumn();
-            if(m_Settings->grblVals.isFileRunning) 
-                DrawTimeElapsed(); 
             
-            ImGui::EndTable();
-        }
+            ImGui::Separator();
+            
+            flags = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_ScrollX;
+            
+            if (ImGui::BeginTable("ControlButtons", 3, flags))
+            {
+                ImGui::TableNextRow();
+                // Run, Cancel, Pause & Restart
+                ImGui::TableNextColumn();
+                DrawPlayButtons(grbl, sketcherOld);
+                // Current file name
+                ImGui::TableNextColumn();
+                DrawCurrentFile();
+                // Time elapsed
+                ImGui::TableNextColumn();
+                if(m_Settings->grblVals.isFileRunning) 
+                    DrawTimeElapsed(); 
+                
+                ImGui::EndTable();
+            }
+            
+            ImGui::PopStyleVar(2);
         
-        ImGui::PopStyleVar(2);
-        
-        
+        // end disable all widgets
+        if(isDisconnected) { ImGui::EndDisabled(); }
         
         
         
@@ -1386,6 +1502,7 @@ public:
 
            
         
+        // popups handle their own ImGui::BeginDisabled()
             
         // Draw edit button Popups if visible
         for(size_t i = 0; i < toolbarItems.Size(); i++) {
@@ -1398,8 +1515,6 @@ public:
         
         
       
-        // end disable all widgets
-        if(isDisconnected) { ImGui::EndDisabled(); }
              
         // end
         ImGuiCustomModules::ImGuiWindow::PopWidgetStyle();
@@ -2370,8 +2485,7 @@ struct Debug {
             ImGui::SliderFloat("Toolbar Table Scrollbar Size", &settings.guiSettings.toolbarTableScrollbarSize, 0.0f, 50.0f);
             ImGui::SliderFloat("Toolbar Spacer", &settings.guiSettings.toolbarSpacer, 0.0f, 100.0f);
             ImGui::SliderFloat("Toolbar Item Height", &settings.guiSettings.toolbarItemHeight, 0.0f, 100.0f);
-            ImGui::SliderFloat("Toolbar ComboBox Width", &settings.guiSettings.toolbarComboBoxWidth, 0.0f, 500.0f);
-            ImGui::SliderFloat("Input Box Width", &settings.guiSettings.inputBoxWidth, 0.0f, 500.0f);
+            ImGui::SliderFloat("Toolbar Widget Width", &settings.guiSettings.toolbarWidgetWidth, 0.0f, 500.0f);
             
             ImGui::SliderFloat("Widget Width", &settings.guiSettings.widgetWidth, 0.0f, 500.0f);
  

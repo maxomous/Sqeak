@@ -33,6 +33,10 @@ sketcher/CMakeFiles/Sketcher.dir/elements.cpp.o
 sketcher/CMakeFiles/Sketcher.dir/sketch.cpp.o
  /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imconfig.h
  /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui.h
+ /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_internal.h
+ /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_stb_image.h
+ /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imstb_textedit.h
+ /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui_modules/imgui_modules.h
  /home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
  /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
  /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include/slvs.h

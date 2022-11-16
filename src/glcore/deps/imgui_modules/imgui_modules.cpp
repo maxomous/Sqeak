@@ -166,25 +166,29 @@ bool WasLastItemRightClicked() {
     return (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right));
 }
    
-bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font)
+bool ImageButtonWithText(const std::string& name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font, bool isActive, bool isInvisible)
 { 
+   
     ImGui::BeginGroup();
         // get initial cursor position
         ImVec2 p0 = ImGui::GetCursorPos();
         // set small font for text on button
-        ImGui::PushFont(font);
+        if(isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+        ImGui::PushFont(font); 
+        
             // make text at bottom of button (values need to be normalised between 0-1)
             float yNormalised = textYOffset / (buttonSize.y - 2.0f*ImGui::GetStyle().FramePadding.y);
             ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, yNormalised });
                 // draw button
-                bool isClicked = ImGui::Button(name.c_str(), buttonSize);
+                bool isClicked = (isInvisible) ? ImGui::InvisibleButton(name.c_str(), buttonSize) : ImGui::Button(name.c_str(), buttonSize);
             ImGui::PopStyleVar();
+            
         ImGui::PopFont();
+        if(isActive) ImGui::PopStyleColor();
         // get cursor end position 
         ImVec2 p1 = ImGui::GetCursorPos();
-        
         // position of image
-        ImVec2 imagePosition = { (buttonSize.x / 2.0f) - (buttonImgSize.x / 2.0f),    imageYOffset + ImGui::GetStyle().FramePadding.y}; // *** * 2  ??
+        ImVec2 imagePosition = { (buttonSize.x / 2.0f) - (buttonImgSize.x / 2.0f),    imageYOffset + ImGui::GetStyle().FramePadding.y};
         // set cursor for image
         ImGui::SetCursorPos(p0 + imagePosition);
         // draw image
@@ -194,6 +198,7 @@ bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& butt
         ImGui::SetCursorPos(p1);
     
     ImGui::EndGroup();
+    
     return isClicked;
 }
 

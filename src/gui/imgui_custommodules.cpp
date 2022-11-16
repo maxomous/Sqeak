@@ -50,15 +50,21 @@ bool ImGuiCustomModules::HereButton(GRBLVals& grblVals, glm::vec3& p)
     ImGui::PopID();
     return isClicked;
 }
-bool ImGuiCustomModules::ImageButtonWithText_Function(Settings& settings, std::string name,ImageTexture& image, bool isActive, ButtonType buttonType) 
+
+// standard toolbar button
+bool ImGuiCustomModules::ImageButtonWithText_Function(Settings& settings, const std::string& name, ImageTexture& image, bool isActive, ButtonType buttonType, bool isInvisible) 
+{    
+    return ImageButtonWithText_Function(settings, name, image, isActive, buttonType, settings.guiSettings.functionButtonImageOffset, settings.guiSettings.functionButtonTextOffset, settings.guiSettings.font_small, isInvisible);
+}
+
+bool ImGuiCustomModules::ImageButtonWithText_Function(Settings& settings, const std::string& name, ImageTexture& image, bool isActive, ButtonType buttonType, float imageOffset, float textOffset, ImFont* font, bool isInvisible) 
 {
     ImVec2& buttonSize = settings.guiSettings.button[(size_t)buttonType].Size;
     ImVec2& buttonImgSize = settings.guiSettings.button[(size_t)buttonType].ImageSize;
-    if(isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
-    bool clicked = ImGuiModules::ImageButtonWithText(name, buttonSize, image, buttonImgSize, settings.guiSettings.functionButtonImageOffset, settings.guiSettings.functionButtonTextOffset, settings.guiSettings.font_small);
-    if(isActive) ImGui::PopStyleColor();
-    return clicked;
+    return ImGuiModules::ImageButtonWithText(name, buttonSize, image, buttonImgSize, imageOffset, textOffset, font, isActive, isInvisible);
+
 }
+
 
 void ImGuiCustomModules::Heading(Settings& settings, const std::string& text, float centreAboutWidth) 
 {        

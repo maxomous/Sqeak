@@ -1,6 +1,6 @@
 
 #include <iostream>
-#include "../glcore/deps/imgui/imgui.h"
+#include "../glcore/deps/imgui_modules/imgui_modules.h" // also ibncludes imgui
 #include "sketch.h"
 
  
@@ -883,6 +883,295 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
     return true;
 } 
 
+ 
+
+ bool ConstraintButtons::DrawImGui(std::function<bool(const std::string&, RenderData::Image::Type)> cb_ImageButton, std::function<void(double*)> cb_InputValue) 
+{
+    
+    const std::vector<SketchItem>& points = m_Factory->GetSelectedPoints();
+    const std::vector<SketchItem>& elements = m_Factory->GetSelectedElements();
+    
+    // return ealry if nothing selected
+    if(points.empty() && elements.empty()) { return false; }
+                    
+    bool isConstraintAdded = false;
+    
+    // 0 elements selected
+    if(elements.empty()) 
+    {
+        // 1 points selected
+        if(points.size() == 1) {
+            // Fix point constraint
+        }
+        // 2 points selected
+        else if(points.size() == 2) {
+            // Add Coincident constraint between 2 points
+            if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) {
+                m_Factory->AddConstraint<Coincident_PointToPoint>(points[0], points[1]);
+            }
+                
+            ImGui::SameLine();
+            // Add Horizontal constraint between 2 points
+            if(cb_ImageButton("Horizontal", RenderData::Image::Type::Horizontal)) {
+                m_Factory->AddConstraint<Horizontal>(points[0], points[1]);
+            }
+                
+            ImGui::SameLine();
+            // Add Vertical constraint between 2 points
+            if(cb_ImageButton("Vertical", RenderData::Image::Type::Vertical)) {
+                m_Factory->AddConstraint<Vertical>(points[0], points[1]);
+            }
+                
+            ImGui::SameLine();
+            // Add Distance constraint between 2 points
+            if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {
+                m_Factory->AddConstraint<Distance_PointToPoint>(points[0], points[1], m_Distance);
+            }
+            ImGui::SameLine();
+            // Draw inputbox
+            cb_InputValue(&m_Distance);
+        }
+    } 
+    // 1 element selected
+    else if(elements.size() == 1) {
+        
+        // 0 points and 1 element selected
+        if(points.size() == 0) 
+        {
+            if(elements[0].type == SketchItem::Type::Line) {
+                
+                // Add Horizontal constraint of Line
+                if(cb_ImageButton("Horizontal", RenderData::Image::Type::Horizontal)) {
+                    m_Factory->AddConstraint<Horizontal>(elements[0]);
+                }
+                    
+                ImGui::SameLine();
+                // Add Vertical constraint of Line
+                if(cb_ImageButton("Vertical", RenderData::Image::Type::Vertical)) {
+                    m_Factory->AddConstraint<Vertical>(elements[0]);
+                    isConstraintAdded = true;
+                }
+                    
+                ImGui::SameLine();
+                // Add Distance constraint of Line    
+                if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {   
+                    m_Factory->AddConstraint<Distance_PointToPoint>(elements[0], m_Distance);
+                    isConstraintAdded = true;
+                }
+                ImGui::SameLine();
+                // Draw inputbox
+                cb_InputValue(&m_Distance);
+                
+            }
+            else if(elements[0].type == SketchItem::Type::Arc) {
+                // Add Radius constraint of Arc                
+                if(cb_ImageButton("Radius", RenderData::Image::Type::Radius)) {
+                    m_Factory->AddConstraint<AddRadius_Arc>(elements[0], m_Radius);
+                    isConstraintAdded = true;
+                }
+                ImGui::SameLine();
+                // Draw inputbox
+                cb_InputValue(&m_Radius);
+            }
+            else if(elements[0].type == SketchItem::Type::Circle) {
+                // Add Radius constraint of Circle                 
+                if(cb_ImageButton("Radius", RenderData::Image::Type::Radius)) {  
+                    m_Factory->AddConstraint<AddRadius_Circle>(elements[0], m_Radius);
+                    isConstraintAdded = true;
+                }
+                ImGui::SameLine();
+                // Draw inputbox
+                cb_InputValue(&m_Radius);
+            }
+        }
+        // 1 point and 1 element selected
+        else if(points.size() == 1) 
+        {
+            if(elements[0].type == SketchItem::Type::Line) {
+                // Add Coincident constraint between Point and Line 
+                if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) {                   
+                    m_Factory->AddConstraint<Coincident_PointToLine>(points[0], elements[0]);
+                    isConstraintAdded = true;
+                }
+                
+                ImGui::SameLine();
+                // Add Midpoint constraint between Point and Line              
+                if(cb_ImageButton("Midpoint", RenderData::Image::Type::Midpoint)) {      
+                    m_Factory->AddConstraint<AddMidPoint_PointToLine>(points[0], elements[0]);
+                    isConstraintAdded = true;
+                }
+                    
+                ImGui::SameLine();
+                // Add Distance constraint between Point and Line         
+                if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {
+                    m_Factory->AddConstraint<Distance_PointToLine>(points[0], elements[0], m_Distance);
+                    isConstraintAdded = true;
+                }
+                    
+                ImGui::SameLine();
+                // Draw inputbox
+                cb_InputValue(&m_Distance);
+                
+            }
+            else if(elements[0].type == SketchItem::Type::Arc) {
+                // Add Coincident constraint between Point and Arc  
+                if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) { 
+                    m_Factory->AddConstraint<Coincident_PointToArc>(points[0], elements[0]);
+                    isConstraintAdded = true;
+                }
+            }
+            else if(elements[0].type == SketchItem::Type::Circle) {
+                // Add Coincident constraint between Point and Circle  
+                if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) { 
+                    m_Factory->AddConstraint<Coincident_PointToCircle>(points[0], elements[0]);
+                    isConstraintAdded = true;
+                }
+            }
+        }
+    } 
+    // 2 element selected
+    else if(elements.size() == 2) {
+        
+        // 0 points and 2 elements selected
+        if(points.size() == 0) 
+        {
+            // Line and Line selected
+            if(elements[0].type == SketchItem::Type::Line && elements[1].type == SketchItem::Type::Line) {
+                // Add Midpoint constraint            
+                if(cb_ImageButton("Perpendicular", RenderData::Image::Type::Perpendicular)) { 
+                    m_Factory->AddConstraint<Perpendicular>(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                } 
+                
+                ImGui::SameLine();
+                // Add Parallel constraint
+                if(cb_ImageButton("Parallel", RenderData::Image::Type::Parallel)) { 
+                    m_Factory->AddConstraint<Parallel>(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                } 
+                
+                ImGui::SameLine();
+                // Add Equal Length constraint  
+                if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {              
+                    m_Factory->AddConstraint<EqualLength>(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                } 
+                    
+                ImGui::SameLine();
+                // Add Angle constraint       
+                if(cb_ImageButton("Angle", RenderData::Image::Type::Angle)) {   
+                    m_Factory->AddConstraint<Angle_LineToLine>(elements[0], elements[1], m_Angle);
+                    isConstraintAdded = true;
+                } 
+                    
+                ImGui::SameLine();
+                // Draw inputbox
+                cb_InputValue(&m_Angle);
+                
+            }
+            // Arc and Arc selected
+            else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Arc) {
+                // Add Equal radius constraint               
+                if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {   
+                    m_Factory->AddConstraint<EqualRadius_Arc_Arc>(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                }  
+                
+                ImGui::SameLine();
+                // Add Tangent constraint               
+                if(cb_ImageButton("Tangent", RenderData::Image::Type::Tangent)) {   
+                    m_Factory->AddConstraint<Tangent_Arc_Arc>(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                }  
+            }
+            // Circle and Circle selected
+            else if(elements[0].type == SketchItem::Type::Circle && elements[1].type == SketchItem::Type::Circle) {
+                // Add Equal radius constraint               
+                if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {   
+                    m_Factory->AddConstraint<EqualRadius_Circle_Circle>(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                }  
+            }
+            
+            // Arc and Line selected
+            else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Line) {
+                // Add Tangent constraint               
+                if(cb_ImageButton("Tangent", RenderData::Image::Type::Tangent)) {  
+                    ConstraintButton_Tangent_ArcLine(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                }   
+            }
+            // Line and Arc selected (reverse order)
+            else if(elements[0].type == SketchItem::Type::Line && elements[1].type == SketchItem::Type::Arc) {
+                // Add Tangent constraint                  
+                if(cb_ImageButton("Tangent", RenderData::Image::Type::Tangent)) {  
+                    ConstraintButton_Tangent_ArcLine(elements[1], elements[0]);
+                    isConstraintAdded = true;
+                }  
+            }
+            
+            // Arc and Circle selected
+            else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Circle) {
+                // Add Equal Radius constraint                
+                if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {  
+                    m_Factory->AddConstraint<EqualRadius_Arc_Circle>(elements[0], elements[1]);
+                    isConstraintAdded = true;
+                }  
+            }
+            // Circle and Arc selected (reverse order)
+            else if(elements[0].type == SketchItem::Type::Circle && elements[1].type == SketchItem::Type::Arc) {
+                // Add Equal Radius constraint                  
+                if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {  
+                    m_Factory->AddConstraint<EqualRadius_Arc_Circle>(elements[1], elements[0]);
+                    isConstraintAdded = true;
+                }   
+            }
+        }
+    }
+
+    
+    return isConstraintAdded;
+} 
+    // Add constraint between 1 or 2 points, returns true if new constraint was added
+void ConstraintButtons::ConstraintButton_Tangent_ArcLine(SketchItem arc, SketchItem line) 
+{
+    SketchItem item_arc_p0  = { SketchItem::Type::Arc_P0, arc.element };
+    SketchItem item_arc_p1  = { SketchItem::Type::Arc_P1, arc.element };
+    SketchItem item_line_p0 = { SketchItem::Type::Line_P0, line.element };
+    SketchItem item_line_p1 = { SketchItem::Type::Line_P1, line.element };
+    
+     
+    // get p0 & p1 from arc and line
+    const Vec2& arc_p0  = m_Factory->GetItemPointBySketchItem(item_arc_p0).p;
+    const Vec2& arc_p1  = m_Factory->GetItemPointBySketchItem(item_arc_p1).p;
+    const Vec2& line_p0 = m_Factory->GetItemPointBySketchItem(item_line_p0).p;
+    const Vec2& line_p1 = m_Factory->GetItemPointBySketchItem(item_line_p1).p;
+    
+    // Check which points are closest together (default to arc p0 to line p0)
+    double shortestDistance = Hypot(line_p0 - arc_p0);
+    // flags determine which point 
+    int closestPoints = 0b00;
+    
+    auto checkIfCloser = [&shortestDistance, &closestPoints](const Vec2& arc_p, const Vec2& line_p, int closestPointsFlag) {
+        double distance = Hypot(line_p - arc_p);
+        if(distance < shortestDistance) {
+            shortestDistance = distance;
+            closestPoints = closestPointsFlag;
+        } 
+    };
+    checkIfCloser(arc_p1, line_p0, 0b10);
+    checkIfCloser(arc_p1, line_p1, 0b11);
+    checkIfCloser(arc_p0, line_p1, 0b01); 
+                
+    // Constrain these closest points
+    m_Factory->AddConstraint<Coincident_PointToPoint>((closestPoints & 0b10) ? item_arc_p1 : item_arc_p0, (closestPoints & 0b01) ? item_line_p1 : item_line_p0);
+    // Add Tangent constraint   
+    //std::cout << "Adding tangent constraint to: P" << (closestPoints & 0b10) << std::endl;
+    m_Factory->AddConstraint<Tangent_Arc_Line>(arc, line, (bool)(closestPoints & 0b10));
+}
+
+
+
 Sketcher::Sketcher() 
     : m_Events(this), m_Renderer(this)
 {
@@ -905,17 +1194,6 @@ Sketcher::Sketcher()
         f.AddConstraint<Distance_PointToPoint>(l2, 400.0);
         f.AddConstraint<Distance_PointToPoint>(l3, 550.0);        
      
-}
-
-
-
-void Sketcher::SolveConstraints(Vec2 pDif) 
-{      
-    // Update Solver set dragged point and its position
-    bool success = m_Factory.UpdateSolver(pDif);
-    if(!success) {
-        Log::Error("Unable to solve constraints");
-    }
 }
 
 
@@ -949,264 +1227,30 @@ bool InputDouble2(std::string label, Vec2* v, double step = 0.0, double step_fas
 }
 
 
+void Sketcher::SolveConstraints(Vec2 pDif) 
+{      
+    // Update Solver set dragged point and its position
+    bool success = m_Factory.UpdateSolver(pDif);
+    if(!success) {
+        Log::Error("Unable to solve constraints");
+    }
+}
 
-class ConstraintButtons
+
+
+       
+void Sketcher::Draw_ConstraintButtons(std::function<bool(const std::string&, RenderData::Image::Type)> cb_ImageButton, std::function<void(double*)> cb_InputValue)
 {
-public:
-    ConstraintButtons(ElementFactory* factory) : m_Factory(factory) {}
-    
-    // Draw ImGui buttons for constraints
-    bool DrawImGui() 
-    {
-        const std::vector<SketchItem>& points = m_Factory->GetSelectedPoints();
-        const std::vector<SketchItem>& elements = m_Factory->GetSelectedElements();
-        
-        // return ealry if nothing selected
-        if(points.empty() && elements.empty()) { return false; }
-                        
-        bool isConstraintAdded = false;
-        
-        // 0 elements selected
-        if(elements.empty()) 
-        {
-            // 1 points selected
-            if(points.size() == 1) {
-                // Fix point constraint
-            }
-            // 2 points selected
-            else if(points.size() == 2) {
-                ImGui::Text("Add Constraint");
-                // Add Distance constraint between 2 points
-                isConstraintAdded |= ConstraintButton_WithInput<Distance_PointToPoint>("Distance", &m_Distance, points[0], points[1]);
-                // Add Coincident constraint between 2 points
-                isConstraintAdded |= ConstraintButton<Coincident_PointToPoint>("Coincident", points[0], points[1]);
-                // Add Vertical constraint between 2 points
-                isConstraintAdded |= ConstraintButton<Vertical>("Vertical", points[0], points[1]);
-                // Add Horizontal constraint between 2 points
-                isConstraintAdded |= ConstraintButton<Horizontal>("Horizontal", points[0], points[1]);
-            }
-        } 
-        // 1 element selected
-        else if(elements.size() == 1) {
-            
-            // 0 points and 1 element selected
-            if(points.size() == 0) 
-            {
-                if(elements[0].type == SketchItem::Type::Line) {
-                    ImGui::Text("Add Constraint");
-                    // Add Distance constraint of Line       
-                    isConstraintAdded |= ConstraintButton_WithInput<Distance_PointToPoint>("Distance", &m_Distance, elements[0]);
-                    // Add Vertical constraint of Line
-                    isConstraintAdded |= ConstraintButton<Vertical>("Vertical", elements[0]);
-                    // Add Horizontal constraint of Line
-                    isConstraintAdded |= ConstraintButton<Horizontal>("Horizontal", elements[0]);
-                }
-                else if(elements[0].type == SketchItem::Type::Arc) {
-                    ImGui::Text("Add Constraint");
-                    // Add Radius constraint of Arc                
-                    isConstraintAdded |= ConstraintButton_WithInput<AddRadius_Arc>("Radius", &m_Radius, elements[0]);
-                }
-                else if(elements[0].type == SketchItem::Type::Circle) {
-                    ImGui::Text("Add Constraint");
-                    // Add Radius constraint of Circle                   
-                    isConstraintAdded |= ConstraintButton_WithInput<AddRadius_Circle>("Radius", &m_Radius, elements[0]);
-                }
-            }
-            // 1 point and 1 element selected
-            else if(points.size() == 1) 
-            {
-                if(elements[0].type == SketchItem::Type::Line) {
-                    ImGui::Text("Add Constraint");
-                    // Add Distance constraint between Point and Line         
-                    isConstraintAdded |= ConstraintButton_WithInput<Distance_PointToLine>("Distance", &m_Distance, points[0], elements[0]);
-                    // Add Coincident constraint between Point and Line                    
-                    isConstraintAdded |= ConstraintButton<Coincident_PointToLine>("Coincident", points[0], elements[0]);
-                    // Add Midpoint constraint between Point and Line                    
-                    isConstraintAdded |= ConstraintButton<AddMidPoint_PointToLine>("Midpoint", points[0], elements[0]);
-                }
-                else if(elements[0].type == SketchItem::Type::Arc) {
-                    ImGui::Text("Add Constraint");
-                    // Add Coincident constraint between Point and Arc  
-                    isConstraintAdded |= ConstraintButton<Coincident_PointToArc>("Coincident", points[0], elements[0]);
-                }
-                else if(elements[0].type == SketchItem::Type::Circle) {
-                    ImGui::Text("Add Constraint");
-                    // Add Coincident constraint between Point and Circke  
-                    isConstraintAdded |= ConstraintButton<Coincident_PointToCircle>("Coincident", points[0], elements[0]);
-                }
-            }
-        } 
-        // 2 element selected
-        else if(elements.size() == 2) {
-            
-            // 0 points and 2 elements selected
-            if(points.size() == 0) 
-            {
-                // Line and Line selected
-                if(elements[0].type == SketchItem::Type::Line && elements[1].type == SketchItem::Type::Line) {
-                    ImGui::Text("Add Constraint");
-                    // Add Angle constraint         
-                    isConstraintAdded |= ConstraintButton_WithInput<Angle_LineToLine>("Angle", &m_Angle, elements[0], elements[1]);
-                    // Add Parallel constraint
-                    isConstraintAdded |= ConstraintButton<Parallel>("Parallel", elements[0], elements[1]);
-                    // Add Midpoint constraint            
-                    isConstraintAdded |= ConstraintButton<Perpendicular>("Perpendicular", elements[0], elements[1]);
-                    // Add Equal Length constraint               
-                    isConstraintAdded |= ConstraintButton<EqualLength>("Equal", elements[0], elements[1]);
-                }
-                // Arc and Arc selected
-                else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Arc) {
-                    ImGui::Text("Add Constraint");
-                    // Add Equal radius constraint               
-                    isConstraintAdded |= ConstraintButton<EqualRadius_Arc_Arc>("Equal", elements[0], elements[1]);
-                    // Add Tangent constraint               
-                    isConstraintAdded |= ConstraintButton<Tangent_Arc_Arc>("Tangent", elements[0], elements[1]);
-                }
-                // Circle and Circle selected
-                else if(elements[0].type == SketchItem::Type::Circle && elements[1].type == SketchItem::Type::Circle) {
-                    ImGui::Text("Add Constraint");
-                    // Add Equal radius constraint               
-                    isConstraintAdded |= ConstraintButton<EqualRadius_Circle_Circle>("Equal", elements[0], elements[1]);
-                }
-                
-                // Arc and Line selected
-                else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Line) {
-                    ImGui::Text("Add Constraint");
-                    // Add Tangent constraint               
-                    isConstraintAdded |= ConstraintButton_Tangent_ArcLine("Tangent", elements[0], elements[1]);
-                }
-                // Line and Arc selected (reverse order)
-                else if(elements[0].type == SketchItem::Type::Line && elements[1].type == SketchItem::Type::Arc) {
-                    ImGui::Text("Add Constraint");
-                    // Add Tangent constraint                  
-                    isConstraintAdded |= ConstraintButton_Tangent_ArcLine("Tangent", elements[1], elements[0]);
-                }
-                
-                // Arc and Circle selected
-                else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Circle) {
-                    ImGui::Text("Add Constraint");
-                    // Add Equal Radius constraint                
-                    isConstraintAdded |= ConstraintButton<EqualRadius_Arc_Circle>("Equal", elements[0], elements[1]);
-                }
-                // Circle and Arc selected (reverse order)
-                else if(elements[0].type == SketchItem::Type::Circle && elements[1].type == SketchItem::Type::Arc) {
-                    ImGui::Text("Add Constraint");
-                    // Add Equal Radius constraint                  
-                    isConstraintAdded |= ConstraintButton<EqualRadius_Arc_Circle>("Equal", elements[1], elements[0]);
-                }
-            }
-        }
-        ImGui::Separator();
-        return isConstraintAdded;
+   // Draw Constraints Buttons
+    if(m_ConstraintButtons.DrawImGui(cb_ImageButton, cb_InputValue)) {
+        // We need to clear the selected items, otherwise when we update, it will fix all selected items to their current position
+        m_Factory.ClearSelected();
+        SolveConstraints();
+        m_Renderer.SetUpdateFlag(UpdateFlag::Full);     
     } 
-    
-private:
-    ElementFactory* m_Factory;
-    double m_Distance = 100.0;
-    double m_Radius = 100.0;
-    double m_Angle = 90.0;
-    
-    // Add constraint between 1 or 2 points, returns true if new constraint was added
-    template<typename T>
-    bool ConstraintButton(const std::string& label, SketchItem p0) 
-    {
-        if(ImGui::Button(label.c_str())) {
-            // Add Constraint
-            m_Factory->AddConstraint<T>(p0);
-            return true;
-        }
-        return false;
-    }
-    // Add constraint between 1 or 2 points, returns true if new constraint was added
-    template<typename T>
-    bool ConstraintButton(const std::string& label, SketchItem p0, SketchItem p1) 
-    {
-        if(ImGui::Button(label.c_str())) {
-            // Add Constraint
-            m_Factory->AddConstraint<T>(p0, p1);
-            return true;
-        }
-        return false;
-    }
-    // Add constraint between 1 or 2 points and a value, returns true if new constraint was added
-    template<typename T>
-    bool ConstraintButton_WithInput(const std::string& label, double* value, SketchItem p0) 
-    {
-        bool isConstraintAdded = false;
-        // Add Distance constraint between 2 points
-        if(ImGui::Button(label.c_str())) {
-            // Add Constraint
-            m_Factory->AddConstraint<T>(p0, *value);
-            // Set flag true
-            isConstraintAdded = true;
-        }
-        ImGui::SameLine();
-        ImGui::InputDouble(std::string("##" + label).c_str(), value); // use name as ID
-        return isConstraintAdded;
-    }
-    // Add constraint between 1 or 2 points and a value, returns true if new constraint was added
-    template<typename T>
-    bool ConstraintButton_WithInput(const std::string& label, double* value, SketchItem p0, SketchItem p1) 
-    {
-        bool isConstraintAdded = false;
-        // Add Distance constraint between 2 points
-        if(ImGui::Button(label.c_str())) {
-            // Add Constraint
-            m_Factory->AddConstraint<T>(p0, p1, *value);
-            // Set flag true
-            isConstraintAdded = true;
-        }
-        ImGui::SameLine();
-        ImGui::InputDouble(std::string("##" + label).c_str(), value); // use name as ID
-        return isConstraintAdded;
-    }
-        // Add constraint between 1 or 2 points, returns true if new constraint was added
-    bool ConstraintButton_Tangent_ArcLine(const std::string& label, SketchItem arc, SketchItem line) 
-    {
-         
-        // Draw ImGui Button
-        if(ImGui::Button(label.c_str())) 
-        {
-            SketchItem item_arc_p0  = { SketchItem::Type::Arc_P0, arc.element };
-            SketchItem item_arc_p1  = { SketchItem::Type::Arc_P1, arc.element };
-            SketchItem item_line_p0 = { SketchItem::Type::Line_P0, line.element };
-            SketchItem item_line_p1 = { SketchItem::Type::Line_P1, line.element };
-            
-             
-            // get p0 & p1 from arc and line
-            const Vec2& arc_p0  = m_Factory->GetItemPointBySketchItem(item_arc_p0).p;
-            const Vec2& arc_p1  = m_Factory->GetItemPointBySketchItem(item_arc_p1).p;
-            const Vec2& line_p0 = m_Factory->GetItemPointBySketchItem(item_line_p0).p;
-            const Vec2& line_p1 = m_Factory->GetItemPointBySketchItem(item_line_p1).p;
-            
-            // Check which points are closest together (default to arc p0 to line p0)
-            double shortestDistance = Hypot(line_p0 - arc_p0);
-            // flags determine which point 
-            int closestPoints = 0b00;
-            
-            auto checkIfCloser = [&shortestDistance, &closestPoints](const Vec2& arc_p, const Vec2& line_p, int closestPointsFlag) {
-                double distance = Hypot(line_p - arc_p);
-                if(distance < shortestDistance) {
-                    shortestDistance = distance;
-                    closestPoints = closestPointsFlag;
-                } 
-            };
-            checkIfCloser(arc_p1, line_p0, 0b10);
-            checkIfCloser(arc_p1, line_p1, 0b11);
-            checkIfCloser(arc_p0, line_p1, 0b01); 
-                        
-            // Constrain these closest points
-            m_Factory->AddConstraint<Coincident_PointToPoint>((closestPoints & 0b10) ? item_arc_p1 : item_arc_p0, (closestPoints & 0b01) ? item_line_p1 : item_line_p0);
-            // Add Tangent constraint   
-            std::cout << "Adding tangent constraint to: P" << (closestPoints & 0b10) << std::endl;
-            m_Factory->AddConstraint<Tangent_Arc_Line>(arc, line, (bool)(closestPoints & 0b10));
-            return true;
-        }
-        return false;
-    }
-};
-
-
+}  
+        
+        
 //TODO:
 //    on inputdouble enter, add the point (inputData.push_back(m_Events.m_CursorPos))
 //    may be helpful? IsItemDeactivatedAfterEdit
@@ -1287,24 +1331,7 @@ void Sketcher::DrawImGui()
         // User input values for when creating elements
         DrawImGui_ElementInputValues();
         
-        
-        // Add Constraint Buttons
-        
-        // TODO: Order of selection needs to be preserved - if circle then arc, circle should jump onto arc... atm it's just default order
-
-        
-        static ConstraintButtons constraintButtons(&m_Factory);
-        // Draw Constraints Buttons
-        if(constraintButtons.DrawImGui()) {
-            // We need to clear the selected items, otherwise when we update, it will fix all selected items to their current position
-            m_Factory.ClearSelected();
-            SolveConstraints();
-            m_Renderer.SetUpdateFlag(UpdateFlag::Full);     
-        }
-        
     
-        
-
 
     }
     ImGui::End(); 

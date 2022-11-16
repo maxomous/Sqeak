@@ -75,7 +75,7 @@ namespace ImGuiModules
         
     
     
-    bool ImageButtonWithText(std::string name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font);
+    bool ImageButtonWithText(const std::string& name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font, bool isActive = false, bool isInvisible = false);
 
 
 

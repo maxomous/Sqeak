@@ -105,12 +105,15 @@ TODO: RenderLine, Arc etc. should be on renderer, not elementfactory
 
  */
  
+
+ 
+ 
 // A container of all the renderable data in sketcher
 struct RenderData
 {
     struct Image
     {
-        enum class Type { Coincident, Midpoint, Vertical, Horizontal, Parallel, Perpendicular, Tangent, Equal }; // Distance, Angle not included
+        enum class Type { Coincident, Midpoint, Vertical, Horizontal, Parallel, Perpendicular, Tangent, Equal, Distance, Radius, Angle };
         Type type;
         Vec2 position;
     };
@@ -352,6 +355,24 @@ private:
 };
 
 
+class ConstraintButtons
+{
+public:
+    ConstraintButtons(ElementFactory* factory) : m_Factory(factory) {}
+    
+    // Draw ImGui buttons for constraints
+    bool DrawImGui(std::function<bool(const std::string&, RenderData::Image::Type)> cb_ImageButton, std::function<void(double*)> cb_InputValue);
+private:
+    ElementFactory* m_Factory;
+    double m_Distance = 100.0;
+    double m_Radius = 100.0;
+    double m_Angle = 90.0;
+    
+        // Add constraint between 1 or 2 points, returns true if new constraint was added
+    void ConstraintButton_Tangent_ArcLine(SketchItem arc, SketchItem line);
+};
+
+
 
 class Sketcher
 {
@@ -376,6 +397,9 @@ public:
     void SolveConstraints(Vec2 pDif = Vec2()); 
     
     
+
+
+    void Draw_ConstraintButtons(std::function<bool(const std::string&, RenderData::Image::Type)> cb_ImageButton, std::function<void(double*)> cb_InputValue);
     void DrawImGui();
     void DrawImGui_Elements(ElementID& deleteElement);
     void DrawImGui_Constraints(ConstraintID& deleteConstraint);
@@ -393,6 +417,7 @@ private:
     SketchEvents m_Events;  
     SketchRenderer m_Renderer;
     
+    ConstraintButtons m_ConstraintButtons = ConstraintButtons(&m_Factory);
 };
      
 

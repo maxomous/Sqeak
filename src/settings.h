@@ -160,7 +160,7 @@ struct ParametersList
 };
 
 
-enum ButtonType { Primary, Secondary, Connect, New, Edit, ToolbarButton, Jog };
+enum ButtonType { Primary, Secondary, Connect, New, Edit, ToolbarButtonPrimary, ToolbarButton, ToolbarSketchButton, ToolbarConstraintButton, ToolbarHeader, ToolbarBack, Jog };
 enum Colour     { Text, HeaderText };
 
 struct ButtonDimension { 
@@ -182,17 +182,22 @@ struct GUISettings
     */
     GUISettings()
     {
-        button[ButtonType::Primary]         = {{ 90.0f, 36.0f }, { 16.0f, 16.0f }};   // Primary
-        button[ButtonType::Secondary]       = {{ 60.0f, 31.0f }, { 16.0f, 16.0f }};   // Secondary
-        button[ButtonType::Connect]         = {{ 73.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
-        button[ButtonType::New]             = {{ 28.0f, 28.0f }, { 16.0f, 16.0f }};   // New
-        button[ButtonType::Edit]            = {{ 12.0f, 12.0f }, { 12.0f, 12.0f }};   // Edit
-        button[ButtonType::ToolbarButton]  = {{ 56.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
-        button[ButtonType::Jog]             = {{ 18.0f, 18.0f }, { 12.0f, 12.0f }};   // Jog
+        button[ButtonType::Primary]                 = {{ 90.0f, 36.0f }, { 16.0f, 16.0f }};   // Primary
+        button[ButtonType::Secondary]               = {{ 60.0f, 31.0f }, { 16.0f, 16.0f }};   // Secondary
+        button[ButtonType::Connect]                 = {{ 73.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
+        button[ButtonType::New]                     = {{ 28.0f, 28.0f }, { 16.0f, 16.0f }};   // New
+        button[ButtonType::Edit]                    = {{ 12.0f, 12.0f }, { 12.0f, 12.0f }};   // Edit
+        button[ButtonType::ToolbarButtonPrimary]    = {{ 80.0f, 63.0f }, { 24.0f, 24.0f }};   // toolbar main item
+        button[ButtonType::ToolbarButton]           = {{ 56.0f, 63.0f }, { 24.0f, 24.0f }};   // toolbar general item
+        button[ButtonType::ToolbarSketchButton]     = {{ 46.0f, 63.0f }, { 24.0f, 24.0f }};   // toolbar sketch item
+        button[ButtonType::ToolbarConstraintButton] = {{ 70.0f, 50.0f }, { 24.0f, 24.0f }};   // toolbar constraint item
+        button[ButtonType::ToolbarHeader]           = {{ 88.0f, 63.0f }, { 28.0f, 28.0f }};   // toolbar header item
+        button[ButtonType::ToolbarBack]             = {{ 47.0f, 46.0f }, { 24.0f, 24.0f }};   // toolbar back button
+        button[ButtonType::Jog]                     = {{ 18.0f, 18.0f }, { 12.0f, 12.0f }};   // Jog
     }
     
     
-    ButtonDimension button[7];       //      Button Size,      Image Size
+    ButtonDimension button[12];       //      Button Size,      Image Size
     float functionButtonTextOffset  = 52.0f;
     float functionButtonImageOffset = 8.0f;
 
@@ -202,15 +207,12 @@ struct GUISettings
     float toolbarTableScrollbarSize =   12.0f;
     float toolbarSpacer             =   22.0f;
     float toolbarItemHeight         =   65.0f;
-    float toolbarComboBoxWidth      =   150.0f;
+    float toolbarWidgetWidth        =   80.0f;
     
     ImVec2 FramePosition_UnderToolbar();
     //ImVec2 FramePosition_BottomOfScreen() { return { dockPadding, ImGui::GetMainViewport()->WorkSize.y - windowSize.y - dockPadding }; } //under toolbar
         
-
-    float inputBoxWidth             =   140.0f;
-        
-    float widgetWidth               =   180.0f;
+    float widgetWidth               =   180.0f; // general widget width
         
     float popupPosition_alpha       =   0.6f;
     float popupPosition_offsetPos   =   12.0f;
@@ -231,6 +233,7 @@ struct GUISettings
     ImFont* font_large;
 
     // these need to be intialised in imgui_Settings()
+    ImageTexture img_Icon;
     ImageTexture img_Restart;
     ImageTexture img_Play;
     ImageTexture img_Pause;
@@ -263,6 +266,9 @@ struct GUISettings
     ImageTexture img_Sketch_Constraint_Perpendicular;
     ImageTexture img_Sketch_Constraint_Tangent;
     ImageTexture img_Sketch_Constraint_Equal;
+    ImageTexture img_Sketch_Constraint_Distance;
+    ImageTexture img_Sketch_Constraint_Radius;
+    ImageTexture img_Sketch_Constraint_Angle;
 
     
 };

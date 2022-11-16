@@ -46,6 +46,7 @@ void imgui_Settings(Settings& settings)
         cout << "Error: Could not find font: Geomanist 24" << endl;
         
     // Images
+    s.img_Icon.Init(File::ThisDir("img/img_icon.png").c_str());
     s.img_Restart.Init(File::ThisDir("img/img_restart.png").c_str());
     s.img_Play.Init(File::ThisDir("img/img_play.png").c_str());
     s.img_Pause.Init(File::ThisDir("img/img_pause.png").c_str());
@@ -79,6 +80,9 @@ void imgui_Settings(Settings& settings)
     s.img_Sketch_Constraint_Perpendicular.Init(File::ThisDir("img/img_sketch_constraint_perpendicular.png").c_str());
     s.img_Sketch_Constraint_Tangent.Init(File::ThisDir("img/img_sketch_constraint_tangent.png").c_str());
     s.img_Sketch_Constraint_Equal.Init(File::ThisDir("img/img_sketch_constraint_equal.png").c_str());
+    s.img_Sketch_Constraint_Distance.Init(File::ThisDir("img/img_sketch_constraint_distance.png").c_str());
+    s.img_Sketch_Constraint_Radius.Init(File::ThisDir("img/img_sketch_constraint_radius.png").c_str());
+    s.img_Sketch_Constraint_Angle.Init(File::ThisDir("img/img_sketch_constraint_angle.png").c_str());
 
     
     
@@ -191,6 +195,9 @@ private:
                 if(image.type == Sketch::RenderData::Image::Type::Perpendicular){ m_Images.emplace_back(s.img_Sketch_Constraint_Perpendicular, image.position); }
                 if(image.type == Sketch::RenderData::Image::Type::Tangent)      { m_Images.emplace_back(s.img_Sketch_Constraint_Tangent, image.position); }
                 if(image.type == Sketch::RenderData::Image::Type::Equal)        { m_Images.emplace_back(s.img_Sketch_Constraint_Equal, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Distance)     { m_Images.emplace_back(s.img_Sketch_Constraint_Distance, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Radius)       { m_Images.emplace_back(s.img_Sketch_Constraint_Radius, image.position); }
+                if(image.type == Sketch::RenderData::Image::Type::Angle)        { m_Images.emplace_back(s.img_Sketch_Constraint_Angle, image.position); }
             }
      
         };
