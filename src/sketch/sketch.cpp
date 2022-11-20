@@ -190,11 +190,11 @@ void ElementFactory::RefPointToElement_DrawImGui()
  
 void Function_Draw::DrawImGui_Tools(Settings& settings) 
 {
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Select##OLD", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
-    ImGui::SameLine();
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Line##OLD", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
-    ImGui::SameLine();
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Arc##OLD", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
+   // if(ImGuiModules::ImageButtonWithText_Function(settings, "Select##OLD", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
+   // ImGui::SameLine();
+   // if(ImGuiModules::ImageButtonWithText_Function(settings, "Line##OLD", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
+   // ImGui::SameLine();
+   // if(ImGuiModules::ImageButtonWithText_Function(settings, "Arc##OLD", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
      
 } 
 
@@ -280,18 +280,18 @@ void A_Drawing::ActiveFunction_DrawImGui_Tools(Settings& settings)
 void A_Drawing::DrawImGui_Functions(Settings& settings)
 {    
     // new function buttons
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Draw##OLD", settings.guiSettings.img_Sketch_Draw)) {    
-        std::unique_ptr<Function> newFunction = std::make_unique<Function_Draw>(m_ElementFactory, "Draw " + to_string(m_FunctionIDCounter++));
-        m_ActiveFunctions.Add(move(newFunction));
-        settings.SetUpdateFlag(ViewerUpdate::Full);
-        // to open tree node
-        m_IsActiveFunctionChanged = true;
-    }
-    ImGui::SameLine();
-    
-    if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "Measure##OLD", settings.guiSettings.img_Sketch_Measure)) {    
-        std::cout << "Measure" << std::endl;
-    }
+  // if(ImGuiModules::ImageButtonWithText_Function(settings, "Draw##OLD", settings.guiSettings.img_Sketch_Draw)) {    
+  //     std::unique_ptr<Function> newFunction = std::make_unique<Function_Draw>(m_ElementFactory, "Draw " + to_string(m_FunctionIDCounter++));
+  //     m_ActiveFunctions.Add(move(newFunction));
+  //     settings.SetUpdateFlag(ViewerUpdate::Full);
+  //     // to open tree node
+  //     m_IsActiveFunctionChanged = true;
+  // }
+  // ImGui::SameLine();
+  // 
+  // if(ImGuiModules::ImageButtonWithText_Function(settings, "Measure##OLD", settings.guiSettings.img_Sketch_Measure)) {    
+  //     std::cout << "Measure" << std::endl;
+  // }
 }   
 
 void A_Drawing::DrawImGui(Settings& settings)
@@ -323,7 +323,7 @@ void A_Drawing::DrawImGui(Settings& settings)
     }
         
         /*
-        ImVec2& buttonSize = settings.guiSettings.button[ButtonType::ToolbarButton].Size;
+        ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Toolbar_Button].Size;
         ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
    
       
@@ -372,16 +372,16 @@ bool SketchOld::DrawImGui_StartSketchOld(Settings& settings)
 {
     if(!IsActive()) {
         
-        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch)) {  
-            Activate();
-            settings.SetUpdateFlag(ViewerUpdate::Full);
-            return true;
-        }
-    } else {    
-        // sketch is active
-        if(ImGuiCustomModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch, true)) {  
-            Deactivate();
-        }
+  //      if(ImGuiModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch)) {  
+  //          Activate();
+  //          settings.SetUpdateFlag(ViewerUpdate::Full);
+  //          return true;
+  //      }
+  //  } else {    
+  //      // sketch is active
+  //      if(ImGuiModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch, true)) {  
+  //          Deactivate();
+  //      }
     }
     return false;
 }     
@@ -1241,9 +1241,7 @@ void SketchOld::ActiveFunction_Export(Settings& settings)
     if(!m_Drawings.HasItemSelected()) { return; }
     if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
     
-    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Secondary].Size;
-        
-    if(ImGui::Button("Save", buttonSize)) { 
+    if(ImGui::Button("Save")) { 
         if(m_Drawings.CurrentItem().ActiveFunction_ExportGCode(settings, settings.p.system.saveFileDirectory)) {
             Log::Error("Unable to save file");
         }
@@ -1254,9 +1252,7 @@ void SketchOld::ActiveFunction_Delete(Settings& settings)
     if(!m_Drawings.HasItemSelected()) { return; }
     if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
     
-    ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Secondary].Size;
-    
-    if(ImGui::Button("Delete", buttonSize)) { 
+    if(ImGui::Button("Delete")) { 
         m_Drawings.CurrentItem().ActiveFunction_Delete();
         settings.SetUpdateFlag(ViewerUpdate::Full);
     }

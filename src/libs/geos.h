@@ -49,7 +49,7 @@ public:
         // return linestring
         return GeosLineString(points);
     }
-    
+     
  
     // For spatial operator definitions, see: (http://docs.safe.com/fme/html/FME_Desktop_Documentation/FME_Transformers/Transformers/spatialrelations.htm#DE9IM_Matrix)
     

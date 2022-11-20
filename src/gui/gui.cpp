@@ -70,7 +70,6 @@ void imgui_Settings(Settings& settings)
     s.img_Sketch_Arc.Init(File::ThisDir("img/img_sketch_arc.png").c_str());
     s.img_Sketch_Circle.Init(File::ThisDir("img/img_sketch_circle.png").c_str());
     
-    
     // sketch constraints
     s.img_Sketch_Constraint_Coincident.Init(File::ThisDir("img/img_sketch_constraint_coincident.png").c_str());
     s.img_Sketch_Constraint_Midpoint.Init(File::ThisDir("img/img_sketch_constraint_midpoint.png").c_str());
@@ -83,9 +82,15 @@ void imgui_Settings(Settings& settings)
     s.img_Sketch_Constraint_Distance.Init(File::ThisDir("img/img_sketch_constraint_distance.png").c_str());
     s.img_Sketch_Constraint_Radius.Init(File::ThisDir("img/img_sketch_constraint_radius.png").c_str());
     s.img_Sketch_Constraint_Angle.Init(File::ThisDir("img/img_sketch_constraint_angle.png").c_str());
+    
+    // functions
+    s.img_Function_CutPath.Init(File::ThisDir("img/img_function_cutpath.png").c_str());
+    s.img_Function_Drill.Init(File::ThisDir("img/img_function_drill.png").c_str());
 
+    // initialise the buttons with sizes, fonts etc (must be called after these items are already initialised)
+    s.InitialiseImageButtons();
     
-    
+    // Colour Text
     ImGui::GetStyle().Colors[ImGuiCol_Text] = settings.guiSettings.colour[Colour::Text];
 }
 

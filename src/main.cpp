@@ -267,6 +267,13 @@ TODO:
     * 
     * a c file should include its header first thing, that way it is self contained
 
+      Other Realtime commands similar but currently unused:
+        grbl.SendRT(GRBL_RT_SPINDLE_STOP);      maybe this should be sent when disconnected or hit limit or something
+        grbl.SendRT(GRBL_RT_FLOOD_COOLANT);
+        grbl.SendRT(GRBL_RT_MIST_COOLANT);
+    
+    
+    
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01
 

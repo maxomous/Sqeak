@@ -72,11 +72,31 @@ namespace ImGuiModules
     void TextCentredHorizontallyInTable(const char* fmt, ...);
     bool WasLastItemRightClicked();
  
+    // Image button with text parameters. See: ImageButtonWithText()
+    struct ImageButtonStyle
+    {
+        struct Offsets { 
+            ImVec2 text; // offsets the text
+            ImVec2 image;// offsets the image
+        };
         
-    
-    
-    bool ImageButtonWithText(const std::string& name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font, bool isActive = false, bool isInvisible = false);
-
+        ImageButtonStyle(const std::string& Name, const ImVec2& ButtonSize, const ImVec2& ImageSize, ImFont* Font, const ImVec2& TextOffset, const ImVec2& ImageOffset)
+            : name(Name), buttonSize(ButtonSize), imageSize(ImageSize), font(Font), textOffset(TextOffset), imageOffset(ImageOffset) {}
+        ImageButtonStyle(const std::string& Name, const ImVec2& ButtonSize, const ImVec2& ImageSize, ImFont* Font, const Offsets& offsets)
+            : ImageButtonStyle(Name, ButtonSize, ImageSize, Font, offsets.text, offsets.image) {}
+        
+        // Name is only used to identify, it is not text displayed
+        std::string     name; 
+        ImVec2          buttonSize;
+        ImVec2          imageSize;
+        ImFont*         font;
+        // Offsets are between 0 to 1:  Left/Top(0)  Centre (0.5)  Right/Bottom(1)
+        ImVec2          textOffset;
+        ImVec2          imageOffset;
+    };
+    // Image Button with text
+    bool ImageButtonWithText(const std::string& text, ImageTexture& image, const ImVec2& buttonSize, const ImVec2& imageSize, ImFont* font, const ImVec2& textOffset, const ImVec2& imageOffset, bool isActive = false);
+    bool ImageButtonWithText(const std::string& text, ImageTexture& image, ImageButtonStyle* imageButton, bool isActive = false);
 
 
     // Helper to display a little (?) mark which shows a tooltip when hovered.

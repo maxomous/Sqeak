@@ -51,20 +51,8 @@ bool ImGuiCustomModules::HereButton(GRBLVals& grblVals, glm::vec3& p)
     return isClicked;
 }
 
-// standard toolbar button
-bool ImGuiCustomModules::ImageButtonWithText_Function(Settings& settings, const std::string& name, ImageTexture& image, bool isActive, ButtonType buttonType, bool isInvisible) 
-{    
-    return ImageButtonWithText_Function(settings, name, image, isActive, buttonType, settings.guiSettings.functionButtonImageOffset, settings.guiSettings.functionButtonTextOffset, settings.guiSettings.font_small, isInvisible);
-}
-
-bool ImGuiCustomModules::ImageButtonWithText_Function(Settings& settings, const std::string& name, ImageTexture& image, bool isActive, ButtonType buttonType, float imageOffset, float textOffset, ImFont* font, bool isInvisible) 
-{
-    ImVec2& buttonSize = settings.guiSettings.button[(size_t)buttonType].Size;
-    ImVec2& buttonImgSize = settings.guiSettings.button[(size_t)buttonType].ImageSize;
-    return ImGuiModules::ImageButtonWithText(name, buttonSize, image, buttonImgSize, imageOffset, textOffset, font, isActive, isInvisible);
-
-}
-
+        
+    
 
 void ImGuiCustomModules::Heading(Settings& settings, const std::string& text, float centreAboutWidth) 
 {        
@@ -97,11 +85,10 @@ bool ImGuiCustomModules::HeadingWithEdit(Settings& settings, const std::string& 
 
 bool ImGuiCustomModules::EditButton(Settings& settings, const char* id) 
 {
-    ImVec2& buttonImgSize = settings.guiSettings.button[ButtonType::Edit].ImageSize;
-    
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f,0.0f,0.0f,0.0f));
         ImGui::PushID(id);
-            bool clicked = ImGui::ImageButton(settings.guiSettings.img_Edit, buttonImgSize);    
+        
+            bool clicked = ImGuiModules::ImageButtonWithText(string(id) + "##Edit", settings.guiSettings.img_Edit, settings.guiSettings.imageButton_Toolbar_Edit);   
         ImGui::PopID();
     ImGui::PopStyleColor();
     return clicked;

@@ -12,6 +12,13 @@ namespace Sketch {
 typedef int ElementID;
 typedef int ConstraintID;
 
+// A flag used when making a selection of geometry with the cursor
+enum class SelectionFilter { Points = 0x01, Lines = 0x02, Arcs = 0x04, Circles = 0x08, Polygons = 0x10, Basic = (Points | Lines | Arcs | Circles), All = 0xFF };
+// Enables & | operators
+inline SelectionFilter operator|(SelectionFilter a, SelectionFilter b) { return static_cast<SelectionFilter>(static_cast<int>(a) | static_cast<int>(b)); }
+inline bool operator&(SelectionFilter a, SelectionFilter b) { return static_cast<bool>(static_cast<int>(a) & static_cast<int>(b)); }
+
+
 // A point reference allows us to reference a specific point in an element (e.g. p1 of line)
 // This stores a pointer to the element and the type refers to which point
 struct SketchItem

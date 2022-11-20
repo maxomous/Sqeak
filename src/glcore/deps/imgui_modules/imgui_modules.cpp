@@ -165,34 +165,49 @@ void TextCentredHorizontallyInTable(const char* fmt, ...) {
 bool WasLastItemRightClicked() {
     return (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right));
 }
-   
-bool ImageButtonWithText(const std::string& name, ImVec2 buttonSize, ImageTexture& buttonImage, ImVec2 buttonImgSize, float imageYOffset, float textYOffset, ImFont* font, bool isActive, bool isInvisible)
+
+bool ImageButtonWithText(const std::string& text, ImageTexture& image, const ImVec2& buttonSize, const ImVec2& imageSize, ImFont* font, const ImVec2& textOffset, const ImVec2& imageOffset, bool isActive)
 { 
-   
     ImGui::BeginGroup();
         // get initial cursor position
         ImVec2 p0 = ImGui::GetCursorPos();
-        // set small font for text on button
-        if(isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+        // set font for text on button
         ImGui::PushFont(font); 
+        if(isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
         
-            // make text at bottom of button (values need to be normalised between 0-1)
-            float yNormalised = textYOffset / (buttonSize.y - 2.0f*ImGui::GetStyle().FramePadding.y);
-            ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, { 0.5f, yNormalised });
+            // Convert Text offset so that is is moving from 0 < x < 1  where 0 & 1 is text touching frame padding either side 
+            ImVec2 innerFrame = buttonSize - ImGui::GetStyle().FramePadding*2.0f;
+            // calculate text width (ignore everything after ##)
+            ImVec2 textDimensions = ImGui::CalcTextSize(text.c_str(), NULL, true);
+            // amount of movement text travels
+            ImVec2 motionRange = innerFrame - textDimensions;
+            // move 1/2 width of text + offset
+            float halfTextOffset = textDimensions.x / (motionRange.x * 2.0f);
+            ImVec2 offset = textOffset / motionRange;
+            // Centre if offset is 0, left align if offset is +ve, right align isf offset is -ve
+            if(textOffset.x < 0.0f) { halfTextOffset = -halfTextOffset; }
+            else if(textOffset.x == 0.0f) { halfTextOffset = 0.0f; }
+            // Sum the offsets. Final offset where 0 < x < 1 === motion traveled
+            ImVec2 totalOffset = ImVec2(0.5f, 0.5f) + offset + ImVec2(halfTextOffset, 0.0f);
+
+            // Offset text
+            ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, totalOffset); 
                 // draw button
-                bool isClicked = (isInvisible) ? ImGui::InvisibleButton(name.c_str(), buttonSize) : ImGui::Button(name.c_str(), buttonSize);
+                bool isClicked = ImGui::Button(text.c_str(), buttonSize);
             ImGui::PopStyleVar();
             
-        ImGui::PopFont();
         if(isActive) ImGui::PopStyleColor();
-        // get cursor end position 
+        ImGui::PopFont();
+        // get cursor end position  
         ImVec2 p1 = ImGui::GetCursorPos();
-        // position of image
-        ImVec2 imagePosition = { (buttonSize.x / 2.0f) - (buttonImgSize.x / 2.0f),    imageYOffset + ImGui::GetStyle().FramePadding.y};
-        // set cursor for image
-        ImGui::SetCursorPos(p0 + imagePosition);
+        // Offset Image
+        // Move distance of image (imageOffset is 0 to 1, where:  Left 0 (0)  /  Centre 0.5 (outer-inner)/2  /  Right 1 (outer-inner)
+        //ImVec2 moveDistance = (buttonSize - ImGui::GetStyle().FramePadding*2.0f - imageSize) * imageOffset;
+        
+        ImVec2 offetToCentre = (buttonSize-imageSize)/2.0f;
+        ImGui::SetCursorPos(p0 + offetToCentre + imageOffset);
         // draw image
-        ImGui::Image(buttonImage, buttonImgSize);
+        ImGui::Image(image, imageSize);
         
         // reset cursor position to after button
         ImGui::SetCursorPos(p1);
@@ -202,6 +217,10 @@ bool ImageButtonWithText(const std::string& name, ImVec2 buttonSize, ImageTextur
     return isClicked;
 }
 
+bool ImageButtonWithText(const std::string& text, ImageTexture& image, ImageButtonStyle* imageButton, bool isActive)
+{ 
+    return ImageButtonWithText(text, image, imageButton->buttonSize, imageButton->imageSize, imageButton->font, imageButton->textOffset, imageButton->imageOffset, isActive);
+}
 
 // Helper to display a little (?) mark which shows a tooltip when hovered.
 void ToolTip_IfItemHovered(const std::string& text) {

@@ -221,32 +221,6 @@ public:
     
     
     
-    // This should be updated whenever selected is modified
-    void UpdateSelectionList() 
-    {
-        // Clear old data
-        m_SelectedPoints.clear();
-        m_SelectedElements.clear();
-        // find all the selected points
-        ForEachItemPoint([&](Item_Point& item) {
-            if(item.IsSelected()) { m_SelectedPoints.push_back(item.Reference()); }
-        }, true); // include origin point
-        // find all the selected elements
-        ForEachItemElement([&](Item_Element& item) {
-            // ignore points as elements (they are handled as points)
-            if(item.Type() == SketchItem::Type::Point) { return; }
-            if(item.IsSelected()) { m_SelectedElements.push_back(item.Reference()); }
-        }, true);
-    }
-    
-    const std::vector<SketchItem>& GetSelectedPoints()  { return m_SelectedPoints; }
-    const std::vector<SketchItem>& GetSelectedElements() { return m_SelectedElements; }
-    
-    // Make an array of the selected points / elements
-    std::vector<SketchItem> m_SelectedPoints;
-    std::vector<SketchItem> m_SelectedElements;
-    
-    
     
     void ClearFailedElements() 
     {
@@ -283,42 +257,40 @@ public:
         ForEachItem([](Item& item) {
             item.SetSelected(false);
         }, true); // include origin point
-        UpdateSelectionList();
     }
 
     // Finds points within a tolerance to position p and sets their hovered flag to true
-    bool SetHoveredByPosition(const Vec2& p) 
-    {
+    bool SetHoveredByPosition(const Vec2& p, SelectionFilter filter) 
+    { 
         return EditItemByPosition(p, selectionTolerance, [](Sketch::Item& item) {
             item.SetHovered(true);
-        }, true); // include origin point    
+        }, filter, true); // include origin point    
     }
     
     // Finds points within a tolerance to position p and sets their selected flag to true
-    bool SetSelectedByPosition(const Vec2& p) 
+    bool SetSelectedByPosition(const Vec2& p, SelectionFilter filter) 
     {
         bool hasSelection = EditItemByPosition(p, selectionTolerance, [](Sketch::Item& item) {
             item.SetSelected(!item.IsSelected());
-        }, true); // include origin point
-        UpdateSelectionList();
+        }, filter, true); // include origin point
         return hasSelection;
     }  
     
     
     
-    void AddHoveredBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside) {
-        EditItemBetween(p0, p1, includePartiallyInside, [](Sketch::Item& item) {
+    bool AddHoveredBetween(const Vec2& p0, const Vec2& p1, SelectionFilter filter, bool includePartiallyInside) {
+        return EditItemBetween(p0, p1, includePartiallyInside, [](Sketch::Item& item) {
             item.SetHovered(true);
-        }, true); // include origin point
+        }, filter, true); // include origin point
     }
-    void AddSelectionBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside) {
-        EditItemBetween(p0, p1, includePartiallyInside, [](Sketch::Item& item) {
+    bool AddSelectionBetween(const Vec2& p0, const Vec2& p1, SelectionFilter filter, bool includePartiallyInside) {
+        return EditItemBetween(p0, p1, includePartiallyInside, [](Sketch::Item& item) {
             item.SetSelected(true);
-        }, true); // include origin point
+        }, filter, true); // include origin point
     }
     
         
-    // Deletes all items in selcetion
+    // Deletes all items in selection
     void DeleteSelection() 
     {
         // make a list of all the elements to delete
@@ -334,7 +306,6 @@ public:
         for(ElementID element : elementsToDelete) {
             RemoveElement(element);            
         }
-        UpdateSelectionList();
     }
 /*  
     // Finds points within a tolerance to position p
@@ -518,33 +489,40 @@ private:
      
      
     // Finds points within a tolerance to position p
-    void EditItemBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside, std::function<void(Sketch::Item&)> cb, bool isOriginIncluded = false)
+    bool EditItemBetween(const Vec2& p0, const Vec2& p1, bool includePartiallyInside, std::function<void(Sketch::Item&)> cb, SelectionFilter filter, bool isOriginIncluded = false)
     {        
+        // Check each element to see whether it falls within tolerance
+        bool isElementFound = false;
+        
         Geos geos;
         // Make bounding box (minimum in bottom left, max in top right)
         Vec2 boundary_p0 = { std::min(p0.x, p1.x), std::min(p0.y, p1.y) };
         Vec2 boundary_p1 = { std::max(p0.x, p1.x), std::max(p0.y, p1.y) };
         LineString boundingBox = { boundary_p0, { boundary_p0.x, boundary_p1.y }, boundary_p1, { boundary_p1.x, boundary_p0.y }, boundary_p0 };
-                
-        // Check each point on each element to see whether it falls within tolerance
-        ForEachItemPoint([&](Sketch::Item_Point& item) {
-            // Adds point to selected if point falls within bounding box
-            if(boundary_p0 <= item.p && item.p <= boundary_p1) {
-                cb(item);
-                // Points are a specical case where we also set its element flag
-                if(item.Type() == SketchItem::Type::Point) { 
-                    cb(GetElementByID<Point>(item.Reference().element)->Item_Elem());
+        
+        // Only check if points filter is enabled
+        if(filter & SelectionFilter::Points) {
+            // Check each point on each element to see whether it falls within tolerance
+            ForEachItemPoint([&](Sketch::Item_Point& item) {
+                // Adds point to selected if point falls within bounding box
+                if(boundary_p0 <= item.p && item.p <= boundary_p1) {
+                    cb(item);
+                    // Points are a specical case where we also set its element flag
+                    if(item.Type() == SketchItem::Type::Point) { 
+                        cb(GetElementByID<Point>(item.Reference().element)->Item_Elem());
+                    }
+                    isElementFound |= true;    
                 }
-            }
-        }, isOriginIncluded);
+            }, isOriginIncluded);
+        }
         // Check each element to see whether it falls within tolerance
         ForEachElement([&](Sketch::Element* element) {
                                     
             LineString l;
             if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, handled above
-            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
+            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { if(!(filter & SelectionFilter::Lines)) { return; }   l = RenderLine(line->P0(), line->P1()); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { if(!(filter & SelectionFilter::Arcs)) { return; }    l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { if(!(filter & SelectionFilter::Circles)) { return; } l = RenderCircle(circle->PC(), circle->Radius()); }
             else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
             
             assert(!l.empty() && "Linestring is empty");
@@ -572,43 +550,46 @@ private:
             // call callback function if item is inside bounding box
             if(success) {
                 cb(element->Item_Elem());
+                isElementFound |= true;
             }
-
-                    
         }, isOriginIncluded); 
-        UpdateSelectionList();
+        
+        // return whether element was found or not
+        return isElementFound;
     }
-
 
     // Finds points within a tolerance to position p and calls callback function, passing the item as a parameter
     // Points are prioritised over elements
     // Callback on a Point element will be ignored and handled within the ItemPoint instead to prevent testing position twice
     // Returns success
-    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb, bool isOriginIncluded = false)
+    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb, SelectionFilter filter, bool isOriginIncluded = false)
     {     
         Sketch::SketchItem closestItem;
         double closestDistance = tolerance;
         
-        // Check each point on each element to see whether it falls within tolerance
-        ForEachItemPoint([&](Sketch::Item_Point& item) {
-            // Adds point to pointsFound if point falls within tolerance
-            double distance = Hypot(item.p - p);
-            if(distance < closestDistance) {
-                closestItem = item.Reference();
-                closestDistance = distance;
-            }
-        }, isOriginIncluded); // include origin
-        
-        // prioritise point if one is within tolerance and set closest to selected
-        if(closestItem.type != Sketch::SketchItem::Type::Unset) {
-            // add point to selection
-            cb(GetItemBySketchItem(closestItem));
-            // A point is a special case where we also set its element
-            if(closestItem.type == Sketch::SketchItem::Type::Point) {
-                cb(GetElementByID<Point>(closestItem.element)->Item_P());
-            }
-            return true;
-        } 
+        // find points
+        if(filter & SelectionFilter::Points) {
+            // Check each point on each element to see whether it falls within tolerance
+            ForEachItemPoint([&](Sketch::Item_Point& item) {
+                // Adds point to pointsFound if point falls within tolerance
+                double distance = Hypot(item.p - p);
+                if(distance < closestDistance) {
+                    closestItem = item.Reference();
+                    closestDistance = distance;
+                }
+            }, isOriginIncluded); // include origin
+            
+            // prioritise point if one is within tolerance and set closest to selected
+            if(closestItem.type != Sketch::SketchItem::Type::Unset) {
+                // add point to selection
+                cb(GetItemBySketchItem(closestItem));
+                // A point is a special case where we also set its element
+                if(closestItem.type == Sketch::SketchItem::Type::Point) {
+                    cb(GetElementByID<Point>(closestItem.element)->Item_P());
+                }
+                return true;
+            } 
+        }
         
         // Check each element to see whether it falls within tolerance
         bool isElementFound = false;
@@ -622,9 +603,9 @@ private:
             
             LineString l;
             if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, this is handled above
-            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = RenderLine(line->P0(), line->P1()); }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = RenderCircle(circle->PC(), circle->Radius()); }
+            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { if(!(filter & SelectionFilter::Lines)) { return; }   l = RenderLine(line->P0(), line->P1()); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { if(!(filter & SelectionFilter::Arcs)) { return; }    l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { if(!(filter & SelectionFilter::Circles)) { return; } l = RenderCircle(circle->PC(), circle->Radius()); }
             else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
             
             assert(!l.empty() && "Linestring is empty");

@@ -139,17 +139,17 @@ bool SketchRenderer::UpdateRenderData()
     };
         
     
-    auto RenderPolygonisedElements = [&](RenderData::Data& data, std::function<bool(const SelectableGeometry&)> cb_Condition = [](const SelectableGeometry& item){ (void)item; return true; }) { 
+    auto RenderPolygonisedElements = [&](vector<Geometry>& linestrings, std::function<bool(const SelectableGeometry&)> cb_Condition = [](const SelectableGeometry& item){ (void)item; return true; }) { 
                 
         // draw polygonised geometry
         m_Parent->Events().m_PolygonisedGeometry.ForEachGeometry([&](SelectableGeometry& geometry) {
                 // If condition met, add point to buffer
             if(cb_Condition(geometry)) { 
-                data.linestrings.push_back(geometry.Geometry()); 
+                linestrings.push_back(geometry.Geometry()); 
             }
         });
     };
-
+ 
     auto RenderConstraints = [&](RenderData::Data& data, std::function<bool(const Constraint*)> cb_Condition = [](const Constraint* constraint){ (void)constraint; return true; }) { 
         // Clear the old data
         data.Clear();
@@ -249,6 +249,29 @@ bool SketchRenderer::UpdateRenderData()
 
     };
     
+    // This holds a list of the selected items as sketch_items
+    auto UpdateSelectionList = [&]() {
+        // Clear old data
+        m_Parent->Events().m_SelectedPoints.clear();
+        m_Parent->Events().m_SelectedElements.clear();
+        m_Parent->Events().m_SelectedPolygons.clear();
+        
+        // Make array of all the selected points
+        m_Parent->Factory().ForEachItemPoint([&](Item_Point& item) {
+            if(item.IsSelected()) { m_Parent->Events().m_SelectedPoints.push_back(item.Reference()); }
+        }, true); // include origin point
+        
+        // Make array of all the selected elements
+        m_Parent->Factory().ForEachItemElement([&](Item_Element& item) {
+            // ignore points as elements (they are handled as points)
+            if(item.Type() == SketchItem::Type::Point) { return; }
+            if(item.IsSelected()) { m_Parent->Events().m_SelectedElements.push_back(item.Reference()); }
+        }, true);
+        
+        // Make array of all the selected polygonised polygons
+        RenderPolygonisedElements(m_Parent->Events().m_SelectedPolygons, [](const SelectableGeometry& item) { return item.IsSelected(); });
+    };
+    
     
     // return if no update required
     if(m_Update == UpdateFlag::None) { return false; }
@@ -282,6 +305,8 @@ bool SketchRenderer::UpdateRenderData()
         // clear the selected / hovered flags on elements (note: flags on polygonised geometry are reset with UpdateFlag::Elements)
         m_Parent->Factory().ClearSelected();
         m_Parent->Factory().ClearHovered();
+        m_Parent->Events().m_PolygonisedGeometry.ClearSelected();
+        m_Parent->Events().m_PolygonisedGeometry.ClearHovered();
     } 
         
                 
@@ -291,7 +316,7 @@ bool SketchRenderer::UpdateRenderData()
     if(m_Update & UpdateFlag::Elements) {
         std::cout << "updating Elements" << std::endl;
     
-        // Render all items    
+        // Render all items to unselected (no condition)
         RenderElements(elements.unselected);
         // Render all failed to solve items
         RenderElements(elements.failed, [](const Item& item) { return item.IsFailed(); });
@@ -303,16 +328,19 @@ bool SketchRenderer::UpdateRenderData()
     // Update Selected / Hovered
     if(m_Update & UpdateFlag::Selection) {
         std::cout << "updating Selection" << std::endl;
-         
+        
         // Render all selected items
         RenderElements(elements.selected, [](const Item& item) { return item.IsSelected(); });
         // Render all hovered items
         RenderElements(elements.hovered,  [](const Item& item) { return item.IsHovered();  });
 
         // Render all selected polygonised items
-        RenderPolygonisedElements(elements.selected, [](const SelectableGeometry& item) { return item.IsSelected(); });
+        RenderPolygonisedElements(elements.selected.linestrings, [](const SelectableGeometry& item) { return item.IsSelected(); });
         // Render all hovered polygonised items
-        RenderPolygonisedElements(elements.hovered,  [](const SelectableGeometry& item) { return item.IsHovered(); });
+        RenderPolygonisedElements(elements.hovered.linestrings,  [](const SelectableGeometry& item) { return item.IsHovered(); });
+        
+        // this holds a list of the selected items as sketch items
+        UpdateSelectionList();
     }
     
     
@@ -565,7 +593,9 @@ void SketchEvents::SetCommandType(CommandType commandType)
 {
     // Set command
     m_CommandType = commandType;
-        
+    
+    // Reset the selection filter    
+    m_SelectionFilter = SelectionFilter::All;
     // Update render data (for arc to line or line to arc, use the previous element's data as a start point)
     if(m_PreviousElement.type == SketchItem::Type::Line && m_CommandType == CommandType::Add_Arc) {
         m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);        
@@ -620,23 +650,20 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
 
     // TODO: Work out where point should be (i.e. if snapped etc) 
     
-    // Return if no command set
-    if(m_CommandType == CommandType::None) { return false; } // do nothing - this assumes we dont need to update if only the cursor position has changed
-    // Handle Select Command
-    else if(m_CommandType == CommandType::Select) {
-        
+    // Select Tool
+    auto Command_Select = [&]() {
         if(button == MouseButton::Left && action == MouseAction::Press) {
             // Reset selected item if ctrl or shift is not pressed
             if(modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift) {
                 m_Parent->Factory().ClearSelected();
             }
             
-            bool success = m_Parent->Factory().SetSelectedByPosition(m_CursorPos);
+            bool success = m_Parent->Factory().SetSelectedByPosition(m_CursorPos, m_SelectionFilter);
             // start dragging selection box if no item under cursor
             m_IsDragSelectionBox = !success;
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
-            
+            return success;
         }
         else if(button == MouseButton::Left && action == MouseAction::Release) {
             // ensure bounding box hsa a size
@@ -651,27 +678,66 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                 }
                 bool includePartiallyInside = (m_CursorPos.x - m_CursorClickedPos.x) < 0;
                 // Find selection inside selection box
-                m_Parent->Factory().AddSelectionBetween(m_CursorPos, m_CursorClickedPos, includePartiallyInside);
+                bool success = m_Parent->Factory().AddSelectionBetween(m_CursorPos, m_CursorClickedPos, m_SelectionFilter, includePartiallyInside);
                 m_IsDragSelectionBox = false;                
                 // Update render data
                 m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection | UpdateFlag::Cursor);
+                return success;
             }
-        }    
+        }  
+        return false;
+    };
+    
+    auto Command_SelectPolygonise = [&]() {
+         
+        if(button == MouseButton::Left && action == MouseAction::Press) {
+            // Reset selected item if ctrl or shift is not pressed
+            if(modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift) {
+                m_PolygonisedGeometry.ClearSelected();
+            } 
+            // selected item at cursorpos
+            m_PolygonisedGeometry.SetSelectedByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
+            // Update render data
+            m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
+            return true;
+        }  
+        return false;
+    };
+    
+    // Return if no command set
+    if(m_CommandType == CommandType::None) { return false; } // do nothing - this assumes we dont need to update if only the cursor position has changed
+    // Handle Select Command
+    else if(m_CommandType == CommandType::Select) {
+        // Try to select something with the select tool
+        // We start on SelectionFilter::All, the filter changes to the same type as the type selected 
+        return Command_Select();
     }
     
     // Handle Select loop Command
     else if(m_CommandType == CommandType::SelectLoop) {
         
+        // TODO: combine mouse button press
+        
+        // We start on SelectionFilter::All, the filter changes to the same type as the type selected 
+        // Try to select an element with the select tool
+        bool success = Command_Select();
+        // Set the selction filter to the type of the first item clicked
         if(button == MouseButton::Left && action == MouseAction::Press) {
-            // Reset selected item if ctrl or shift is not pressed
-            if(modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift) {
-                m_Parent->Events().m_PolygonisedGeometry.ClearSelected();
-            } 
-            // selected item at cursorpos
-            m_Parent->Events().m_PolygonisedGeometry.SetSelectedByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
-            // Update render data
-            m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
-        }  
+            if(success && (m_SelectionFilter == SelectionFilter::All)) { m_SelectionFilter = SelectionFilter::Basic; }
+        }
+        // If no elements found, look for polygons 
+        if(!success && (m_SelectionFilter & SelectionFilter::Polygons)) { 
+            success |= Command_SelectPolygonise();
+            // Set the selction filter to the type of the first item clicked
+            if(button == MouseButton::Left && action == MouseAction::Press) {
+                if(success && (m_SelectionFilter == SelectionFilter::All)) { m_SelectionFilter = SelectionFilter::Polygons; }
+            }
+        }
+        // if neither elements or polgons were found, and we're not selecting multiple items, reset the selection filter
+        if(button == MouseButton::Left && action == MouseAction::Press) {
+            if(!success && (modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift)) { m_SelectionFilter = SelectionFilter::All; }
+        }
+        return success;
     }
     // Handle add element commands
     else if(m_CommandType == CommandType::Add_Point || m_CommandType == CommandType::Add_Line || m_CommandType == CommandType::Add_Arc || m_CommandType == CommandType::Add_Circle) 
@@ -815,30 +881,12 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
 bool SketchEvents::Mouse_Move(const Vec2& p)
 { 
     
-    // Reset the mouse button / action
-    if(m_MouseAction == MouseAction::Release) { m_MouseButton = MouseButton::None; m_MouseAction = MouseAction::None; }
-    
-    // TODO: Work out where point should be (i.e. if snapped etc)
-    
-    // return early if no change to p, to prevent solving constraints unnecessarily 
-    if(p == m_CursorPos) { return false; }
-    
-            
-    Vec2 pDif = p - m_CursorPos;
-    // Update cursor
-    m_CursorPos = p;
-    // Update render data
-    m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Cursor);
-    
-    // Return if no command set
-    if(m_CommandType == CommandType::None) { return false;} // do nothing - this assumes we dont need to update if only the cursor position has changed
-    // Hover / drag / 
-    else if(m_CommandType == CommandType::Select) {
-        
-        // Highlight item if hovered over
+    auto Command_Select = [&](bool isDragEnabled = false) {
+        bool success = false;
+         // Highlight item if hovered over
         if(m_MouseButton == MouseButton::None) { 
             m_Parent->Factory().ClearHovered();
-            m_Parent->Factory().SetHoveredByPosition(m_CursorPos);            
+            success |= m_Parent->Factory().SetHoveredByPosition(m_CursorPos, m_SelectionFilter);            
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
         }
@@ -851,20 +899,24 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 
                 bool includePartiallyInside = (m_CursorPos.x - m_CursorClickedPos.x) < 0;
                 // Find selection inside selection box
-                m_Parent->Factory().AddHoveredBetween(m_CursorPos, m_CursorClickedPos, includePartiallyInside);               
+                success |= m_Parent->Factory().AddHoveredBetween(m_CursorPos, m_CursorClickedPos, m_SelectionFilter, includePartiallyInside);               
                 // Update render data
                 m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
-                
-            } else {
-                std::cout << "p: " << p << std::endl;
-                m_Parent->SolveConstraints(pDif);
-                // Update render data (selection is required for knowing which is dragged)
-                m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_DontClearSelection);
+            } else {  
+                // drag a point 
+                if(isDragEnabled) {
+                    Vec2 pDif = p - m_CursorPos;
+                    std::cout << "p: " << p << std::endl;
+                    m_Parent->SolveConstraints(pDif);
+                    // Update render data (selection is required for knowing which is dragged)
+                    m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_DontClearSelection);
+                }
             }
         }
-    } 
-    // Hover / drag / 
-    else if(m_CommandType == CommandType::SelectLoop) {
+        return success;
+    };
+    
+    auto Command_SelectPolygonise = [&]() {
         
         // Highlight item if hovered over
         if(m_MouseButton == MouseButton::None) { 
@@ -872,7 +924,47 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             m_Parent->Events().m_PolygonisedGeometry.SetHoveredByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
+            return true;
         }
+        return false;
+    };
+    
+    std::cout << "m_SelectionFilter: " << (int)m_SelectionFilter << std::endl;
+    
+    
+    // Reset the mouse button / action
+    if(m_MouseAction == MouseAction::Release) { m_MouseButton = MouseButton::None; m_MouseAction = MouseAction::None; }
+    
+    // TODO: Work out where point should be (i.e. if snapped etc)
+    
+    // return early if no change to p, to prevent solving constraints unnecessarily 
+    if(p == m_CursorPos) { return false; }
+    
+
+    // Update cursor
+    m_CursorPos = p;
+    // Update render data
+    m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Cursor);
+        
+    // Return if no command set
+    if(m_CommandType == CommandType::None) { return false;} // do nothing - this assumes we dont need to update if only the cursor position has changed
+    // Hover / drag / 
+    else if(m_CommandType == CommandType::Select) {
+        // Highlight item if hovered over
+        return Command_Select(true); // drag enabled
+    } 
+    // Hover / drag / 
+    else if(m_CommandType == CommandType::SelectLoop) { 
+        // Highlight an element with the select tool if mouse over
+        // We start on SelectionFilter::All, the filter changes to the same type as the type selected 
+        bool success = Command_Select();
+        std::cout << "element found success: " << success << std::endl;
+        // If no elements found, look for polygons 
+        if(!success && (m_SelectionFilter & SelectionFilter::Polygons)) { 
+            success |= Command_SelectPolygonise();
+            std::cout << "polgon found success: " << success << std::endl << std::endl;
+        } 
+        return success;
     } 
     // Preview New Element
     else if(m_CommandType == CommandType::Add_Point || m_CommandType == CommandType::Add_Line || m_CommandType == CommandType::Add_Arc || m_CommandType == CommandType::Add_Circle) {
@@ -880,16 +972,17 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
         m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Preview);
     }
     
-    return true;
+    return false;
 } 
 
- 
+
 
  bool ConstraintButtons::DrawImGui(std::function<bool(const std::string&, RenderData::Image::Type)> cb_ImageButton, std::function<void(double*)> cb_InputValue) 
 {
+    const std::vector<SketchItem>& points = m_Parent->Events().GetSelectedPoints();
+    const std::vector<SketchItem>& elements = m_Parent->Events().GetSelectedElements();
     
-    const std::vector<SketchItem>& points = m_Factory->GetSelectedPoints();
-    const std::vector<SketchItem>& elements = m_Factory->GetSelectedElements();
+    ElementFactory& factory = m_Parent->Factory();
     
     // return ealry if nothing selected
     if(points.empty() && elements.empty()) { return false; }
@@ -907,25 +1000,25 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
         else if(points.size() == 2) {
             // Add Coincident constraint between 2 points
             if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) {
-                m_Factory->AddConstraint<Coincident_PointToPoint>(points[0], points[1]);
+                factory.AddConstraint<Coincident_PointToPoint>(points[0], points[1]);
             }
                 
             ImGui::SameLine();
             // Add Horizontal constraint between 2 points
             if(cb_ImageButton("Horizontal", RenderData::Image::Type::Horizontal)) {
-                m_Factory->AddConstraint<Horizontal>(points[0], points[1]);
+                factory.AddConstraint<Horizontal>(points[0], points[1]);
             }
                 
             ImGui::SameLine();
             // Add Vertical constraint between 2 points
             if(cb_ImageButton("Vertical", RenderData::Image::Type::Vertical)) {
-                m_Factory->AddConstraint<Vertical>(points[0], points[1]);
+                factory.AddConstraint<Vertical>(points[0], points[1]);
             }
                 
             ImGui::SameLine();
             // Add Distance constraint between 2 points
             if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {
-                m_Factory->AddConstraint<Distance_PointToPoint>(points[0], points[1], m_Distance);
+                factory.AddConstraint<Distance_PointToPoint>(points[0], points[1], m_Distance);
             }
             ImGui::SameLine();
             // Draw inputbox
@@ -942,20 +1035,20 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 
                 // Add Horizontal constraint of Line
                 if(cb_ImageButton("Horizontal", RenderData::Image::Type::Horizontal)) {
-                    m_Factory->AddConstraint<Horizontal>(elements[0]);
+                    factory.AddConstraint<Horizontal>(elements[0]);
                 }
                     
                 ImGui::SameLine();
                 // Add Vertical constraint of Line
                 if(cb_ImageButton("Vertical", RenderData::Image::Type::Vertical)) {
-                    m_Factory->AddConstraint<Vertical>(elements[0]);
+                    factory.AddConstraint<Vertical>(elements[0]);
                     isConstraintAdded = true;
                 }
                     
                 ImGui::SameLine();
                 // Add Distance constraint of Line    
                 if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {   
-                    m_Factory->AddConstraint<Distance_PointToPoint>(elements[0], m_Distance);
+                    factory.AddConstraint<Distance_PointToPoint>(elements[0], m_Distance);
                     isConstraintAdded = true;
                 }
                 ImGui::SameLine();
@@ -966,7 +1059,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             else if(elements[0].type == SketchItem::Type::Arc) {
                 // Add Radius constraint of Arc                
                 if(cb_ImageButton("Radius", RenderData::Image::Type::Radius)) {
-                    m_Factory->AddConstraint<AddRadius_Arc>(elements[0], m_Radius);
+                    factory.AddConstraint<AddRadius_Arc>(elements[0], m_Radius);
                     isConstraintAdded = true;
                 }
                 ImGui::SameLine();
@@ -976,7 +1069,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             else if(elements[0].type == SketchItem::Type::Circle) {
                 // Add Radius constraint of Circle                 
                 if(cb_ImageButton("Radius", RenderData::Image::Type::Radius)) {  
-                    m_Factory->AddConstraint<AddRadius_Circle>(elements[0], m_Radius);
+                    factory.AddConstraint<AddRadius_Circle>(elements[0], m_Radius);
                     isConstraintAdded = true;
                 }
                 ImGui::SameLine();
@@ -990,21 +1083,21 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             if(elements[0].type == SketchItem::Type::Line) {
                 // Add Coincident constraint between Point and Line 
                 if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) {                   
-                    m_Factory->AddConstraint<Coincident_PointToLine>(points[0], elements[0]);
+                    factory.AddConstraint<Coincident_PointToLine>(points[0], elements[0]);
                     isConstraintAdded = true;
                 }
                 
                 ImGui::SameLine();
                 // Add Midpoint constraint between Point and Line              
                 if(cb_ImageButton("Midpoint", RenderData::Image::Type::Midpoint)) {      
-                    m_Factory->AddConstraint<AddMidPoint_PointToLine>(points[0], elements[0]);
+                    factory.AddConstraint<AddMidPoint_PointToLine>(points[0], elements[0]);
                     isConstraintAdded = true;
                 }
                     
                 ImGui::SameLine();
                 // Add Distance constraint between Point and Line         
                 if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {
-                    m_Factory->AddConstraint<Distance_PointToLine>(points[0], elements[0], m_Distance);
+                    factory.AddConstraint<Distance_PointToLine>(points[0], elements[0], m_Distance);
                     isConstraintAdded = true;
                 }
                     
@@ -1016,14 +1109,14 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             else if(elements[0].type == SketchItem::Type::Arc) {
                 // Add Coincident constraint between Point and Arc  
                 if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) { 
-                    m_Factory->AddConstraint<Coincident_PointToArc>(points[0], elements[0]);
+                    factory.AddConstraint<Coincident_PointToArc>(points[0], elements[0]);
                     isConstraintAdded = true;
                 }
             }
             else if(elements[0].type == SketchItem::Type::Circle) {
                 // Add Coincident constraint between Point and Circle  
                 if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) { 
-                    m_Factory->AddConstraint<Coincident_PointToCircle>(points[0], elements[0]);
+                    factory.AddConstraint<Coincident_PointToCircle>(points[0], elements[0]);
                     isConstraintAdded = true;
                 }
             }
@@ -1039,28 +1132,28 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             if(elements[0].type == SketchItem::Type::Line && elements[1].type == SketchItem::Type::Line) {
                 // Add Midpoint constraint            
                 if(cb_ImageButton("Perpendicular", RenderData::Image::Type::Perpendicular)) { 
-                    m_Factory->AddConstraint<Perpendicular>(elements[0], elements[1]);
+                    factory.AddConstraint<Perpendicular>(elements[0], elements[1]);
                     isConstraintAdded = true;
                 } 
                 
                 ImGui::SameLine();
                 // Add Parallel constraint
                 if(cb_ImageButton("Parallel", RenderData::Image::Type::Parallel)) { 
-                    m_Factory->AddConstraint<Parallel>(elements[0], elements[1]);
+                    factory.AddConstraint<Parallel>(elements[0], elements[1]);
                     isConstraintAdded = true;
                 } 
                 
                 ImGui::SameLine();
                 // Add Equal Length constraint  
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {              
-                    m_Factory->AddConstraint<EqualLength>(elements[0], elements[1]);
+                    factory.AddConstraint<EqualLength>(elements[0], elements[1]);
                     isConstraintAdded = true;
                 } 
                     
                 ImGui::SameLine();
                 // Add Angle constraint       
                 if(cb_ImageButton("Angle", RenderData::Image::Type::Angle)) {   
-                    m_Factory->AddConstraint<Angle_LineToLine>(elements[0], elements[1], m_Angle);
+                    factory.AddConstraint<Angle_LineToLine>(elements[0], elements[1], m_Angle);
                     isConstraintAdded = true;
                 } 
                     
@@ -1073,14 +1166,14 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Arc) {
                 // Add Equal radius constraint               
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {   
-                    m_Factory->AddConstraint<EqualRadius_Arc_Arc>(elements[0], elements[1]);
+                    factory.AddConstraint<EqualRadius_Arc_Arc>(elements[0], elements[1]);
                     isConstraintAdded = true;
                 }  
                 
                 ImGui::SameLine();
                 // Add Tangent constraint               
                 if(cb_ImageButton("Tangent", RenderData::Image::Type::Tangent)) {   
-                    m_Factory->AddConstraint<Tangent_Arc_Arc>(elements[0], elements[1]);
+                    factory.AddConstraint<Tangent_Arc_Arc>(elements[0], elements[1]);
                     isConstraintAdded = true;
                 }  
             }
@@ -1088,7 +1181,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             else if(elements[0].type == SketchItem::Type::Circle && elements[1].type == SketchItem::Type::Circle) {
                 // Add Equal radius constraint               
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {   
-                    m_Factory->AddConstraint<EqualRadius_Circle_Circle>(elements[0], elements[1]);
+                    factory.AddConstraint<EqualRadius_Circle_Circle>(elements[0], elements[1]);
                     isConstraintAdded = true;
                 }  
             }
@@ -1114,7 +1207,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             else if(elements[0].type == SketchItem::Type::Arc && elements[1].type == SketchItem::Type::Circle) {
                 // Add Equal Radius constraint                
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {  
-                    m_Factory->AddConstraint<EqualRadius_Arc_Circle>(elements[0], elements[1]);
+                    factory.AddConstraint<EqualRadius_Arc_Circle>(elements[0], elements[1]);
                     isConstraintAdded = true;
                 }  
             }
@@ -1122,7 +1215,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             else if(elements[0].type == SketchItem::Type::Circle && elements[1].type == SketchItem::Type::Arc) {
                 // Add Equal Radius constraint                  
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {  
-                    m_Factory->AddConstraint<EqualRadius_Arc_Circle>(elements[1], elements[0]);
+                    factory.AddConstraint<EqualRadius_Arc_Circle>(elements[1], elements[0]);
                     isConstraintAdded = true;
                 }   
             }
@@ -1135,17 +1228,18 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
     // Add constraint between 1 or 2 points, returns true if new constraint was added
 void ConstraintButtons::ConstraintButton_Tangent_ArcLine(SketchItem arc, SketchItem line) 
 {
+    ElementFactory& factory = m_Parent->Factory();
+    
     SketchItem item_arc_p0  = { SketchItem::Type::Arc_P0, arc.element };
     SketchItem item_arc_p1  = { SketchItem::Type::Arc_P1, arc.element };
     SketchItem item_line_p0 = { SketchItem::Type::Line_P0, line.element };
     SketchItem item_line_p1 = { SketchItem::Type::Line_P1, line.element };
     
-     
     // get p0 & p1 from arc and line
-    const Vec2& arc_p0  = m_Factory->GetItemPointBySketchItem(item_arc_p0).p;
-    const Vec2& arc_p1  = m_Factory->GetItemPointBySketchItem(item_arc_p1).p;
-    const Vec2& line_p0 = m_Factory->GetItemPointBySketchItem(item_line_p0).p;
-    const Vec2& line_p1 = m_Factory->GetItemPointBySketchItem(item_line_p1).p;
+    const Vec2& arc_p0  = factory.GetItemPointBySketchItem(item_arc_p0).p;
+    const Vec2& arc_p1  = factory.GetItemPointBySketchItem(item_arc_p1).p;
+    const Vec2& line_p0 = factory.GetItemPointBySketchItem(item_line_p0).p;
+    const Vec2& line_p1 = factory.GetItemPointBySketchItem(item_line_p1).p;
     
     // Check which points are closest together (default to arc p0 to line p0)
     double shortestDistance = Hypot(line_p0 - arc_p0);
@@ -1164,16 +1258,16 @@ void ConstraintButtons::ConstraintButton_Tangent_ArcLine(SketchItem arc, SketchI
     checkIfCloser(arc_p0, line_p1, 0b01); 
                 
     // Constrain these closest points
-    m_Factory->AddConstraint<Coincident_PointToPoint>((closestPoints & 0b10) ? item_arc_p1 : item_arc_p0, (closestPoints & 0b01) ? item_line_p1 : item_line_p0);
+    factory.AddConstraint<Coincident_PointToPoint>((closestPoints & 0b10) ? item_arc_p1 : item_arc_p0, (closestPoints & 0b01) ? item_line_p1 : item_line_p0);
     // Add Tangent constraint   
     //std::cout << "Adding tangent constraint to: P" << (closestPoints & 0b10) << std::endl;
-    m_Factory->AddConstraint<Tangent_Arc_Line>(arc, line, (bool)(closestPoints & 0b10));
+    factory.AddConstraint<Tangent_Arc_Line>(arc, line, (bool)(closestPoints & 0b10));
 }
 
 
 
 Sketcher::Sketcher() 
-    : m_Events(this), m_Renderer(this)
+    : m_Events(this), m_Renderer(this), m_ConstraintButtons(this)
 {
     
     ElementFactory& f = Factory(); // sketcher.Factory();
@@ -1596,8 +1690,8 @@ void Sketcher::DrawImGui_ElementInputValues()
     }
     else if(m_Events.GetCommandType() == SketchEvents::CommandType::Select) {
         
-        const std::vector<SketchItem>& points = m_Factory.GetSelectedPoints();
-        const std::vector<SketchItem>& elements = m_Factory.GetSelectedElements();
+        const std::vector<SketchItem>& points = m_Events.GetSelectedPoints();
+        const std::vector<SketchItem>& elements = m_Events.GetSelectedElements();
         
         // Display current selection
         ImGui::TextUnformatted("Current Selection");

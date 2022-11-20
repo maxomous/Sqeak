@@ -160,54 +160,94 @@ struct ParametersList
 };
 
 
-enum ButtonType { Primary, Secondary, Connect, New, Edit, ToolbarButtonPrimary, ToolbarButton, ToolbarSketchButton, ToolbarConstraintButton, ToolbarHeader, ToolbarBack, Jog };
+
+
+
+
+
 enum Colour     { Text, HeaderText };
 
-struct ButtonDimension { 
-    ImVec2 Size; 
-    ImVec2 ImageSize;
-};
 
 // internal settings (not added to user settings ini file)
 struct GUISettings 
 {   
+    typedef ImGuiModules::ImageButtonStyle ImageButtonStyle;
     
-    /*             
-    struct _
+    Vector_Ptrs<ImageButtonStyle> imageButtons;
+    
+    ImageButtonStyle* imageButton_Toolbar_Edit;
+    ImageButtonStyle* imageButton_Toolbar_Header;
+    ImageButtonStyle* imageButton_Toolbar_Back;
+    ImageButtonStyle* imageButton_Toolbar_LevelToggler;
+    ImageButtonStyle* imageButton_Toolbar_Settings;
+    ImageButtonStyle* imageButton_Toolbar_Connect;
+    
+    ImageButtonStyle* imageButton_Toolbar_ButtonPrimary;
+    //ImageButtonStyle* imageButton_Toolbar_ButtonSecondary;
+    ImageButtonStyle* imageButton_Toolbar_Button;
+    ImageButtonStyle* imageButton_Toolbar_SketchPrimary;
+    ImageButtonStyle* imageButton_Toolbar_Sketch;
+    ImageButtonStyle* imageButton_Toolbar_Constraint;
+    ImageButtonStyle* imageButton_Toolbar_Jog;
+    ImageButtonStyle* imageButton_SubToolbar_Button;
+    
+
+    // Initialise the image buttons with fonts, sizes etc. These must be initialised after image fonts etc
+    void InitialiseImageButtons() 
     {
-        ButtonDimension dimension;
-        Font* font;
-        ImageTexture&
-    };
-    */
-    GUISettings()
-    {
-        button[ButtonType::Primary]                 = {{ 90.0f, 36.0f }, { 16.0f, 16.0f }};   // Primary
-        button[ButtonType::Secondary]               = {{ 60.0f, 31.0f }, { 16.0f, 16.0f }};   // Secondary
-        button[ButtonType::Connect]                 = {{ 73.0f, 63.0f }, { 24.0f, 24.0f }};   // Functions
-        button[ButtonType::New]                     = {{ 28.0f, 28.0f }, { 16.0f, 16.0f }};   // New
-        button[ButtonType::Edit]                    = {{ 12.0f, 12.0f }, { 12.0f, 12.0f }};   // Edit
-        button[ButtonType::ToolbarButtonPrimary]    = {{ 80.0f, 63.0f }, { 24.0f, 24.0f }};   // toolbar main item
-        button[ButtonType::ToolbarButton]           = {{ 56.0f, 63.0f }, { 24.0f, 24.0f }};   // toolbar general item
-        button[ButtonType::ToolbarSketchButton]     = {{ 46.0f, 63.0f }, { 24.0f, 24.0f }};   // toolbar sketch item
-        button[ButtonType::ToolbarConstraintButton] = {{ 70.0f, 50.0f }, { 24.0f, 24.0f }};   // toolbar constraint item
-        button[ButtonType::ToolbarHeader]           = {{ 88.0f, 63.0f }, { 28.0f, 28.0f }};   // toolbar header item
-        button[ButtonType::ToolbarBack]             = {{ 47.0f, 46.0f }, { 24.0f, 24.0f }};   // toolbar back button
-        button[ButtonType::Jog]                     = {{ 18.0f, 18.0f }, { 12.0f, 12.0f }};   // Jog
+        
+        // Add Text Buttons                                                              Name                    Button Size                     Image Size          Font            Text / Image Offset
+            
+        imageButton_Toolbar_Edit            = imageButtons.Addp(ImageButtonStyle("Toolbar Edit",                ImVec2(50.0f, 9.0f),                imageSize_Small,    font_small,     imageButtonOffset_Centred));
+        
+        imageButton_Toolbar_Header          = imageButtons.Addp(ImageButtonStyle("Toolbar Header",              ImVec2(50.0f, toolbarItemHeight),   imageSize_Huge,   font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Back            = imageButtons.Addp(ImageButtonStyle("Toolbar Back",                ImVec2(28.0f, 40.0F),               imageSize_Medium,   font_small,     imageButtonOffset_Centred));
+        imageButton_Toolbar_LevelToggler    = imageButtons.Addp(ImageButtonStyle("Toolbar Draw / Run Toggler",  ImVec2(93.0f, 40.0f),               imageSize_Large,    font_small,     imageButtonOffset_Horizontal));
+        
+        imageButton_Toolbar_Settings        = imageButtons.Addp(ImageButtonStyle("Toolbar Settings",            ImVec2(40.0f, 40.0f),               imageSize_Medium,   font_small,     imageButtonOffset_Centred));
+        imageButton_Toolbar_Connect         = imageButtons.Addp(ImageButtonStyle("Toolbar Connect",             ImVec2(66.0f, 70.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        
+        imageButton_Toolbar_ButtonPrimary   = imageButtons.Addp(ImageButtonStyle("Toolbar Button Primary",      ImVec2(66.0f, 70.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        //imageButton_Toolbar_ButtonSecondary = imageButtons.Addp(ImageButtonStyle("Toolbar Button Secondary",    ImVec2(56.0f, 60.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Button          = imageButtons.Addp(ImageButtonStyle("Toolbar Button",              ImVec2(56.0f, 50.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_SketchPrimary   = imageButtons.Addp(ImageButtonStyle("Toolbar SketchPrimary",       ImVec2(70.0f, 70.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Sketch          = imageButtons.Addp(ImageButtonStyle("Toolbar Sketch",              ImVec2(46.0f, 60.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Constraint      = imageButtons.Addp(ImageButtonStyle("Toolbar Constraints",         ImVec2(70.0f, 50.0f),               imageSize_Large,    font_small,     imageButtonOffset_Constraint));
+        imageButton_Toolbar_Jog             = imageButtons.Addp(ImageButtonStyle("Toolbar Jog",                 ImVec2(18.0f, 18.0f),               imageSize_Smaller,  font_small,     imageButtonOffset_Centred));
+        imageButton_SubToolbar_Button       = imageButtons.Addp(ImageButtonStyle("Sub-Toolbar Button",          ImVec2(50.0f, 30.0f),               imageSize_Smaller,  font_small,     imageButtonOffset_Horizontal));
     }
     
+
+    // Standard image sizes
+    ImVec2 imageSize_Smaller   = { 12.0f, 12.0f };
+    ImVec2 imageSize_Small     = { 16.0f, 16.0f };
+    ImVec2 imageSize_Medium    = { 20.0f, 20.0f };
+    ImVec2 imageSize_Large     = { 24.0f, 24.0f };
+    ImVec2 imageSize_Larger    = { 28.0f, 28.0f };
+    ImVec2 imageSize_Huge      = { 32.0f, 32.0f };
+
+    const float CENTRED = 0.0f;
+    // Image Button text / image offsets                            Text Offset             Image Offset
+    ImageButtonStyle::Offsets imageButtonOffset_Horizontal      = { { -3.0f,    CENTRED },  { 17.0f,     CENTRED } };
+    ImageButtonStyle::Offsets imageButtonOffset_Vertical        = { { CENTRED,  17.0f },    { CENTRED,  -10.0f } };
+    ImageButtonStyle::Offsets imageButtonOffset_Centred         = { { CENTRED,  CENTRED },  { CENTRED,  CENTRED } };
+    ImageButtonStyle::Offsets imageButtonOffset_Constraint      = { { CENTRED,  12.0f },    { CENTRED,  -7.0f } };
     
-    ButtonDimension button[12];       //      Button Size,      Image Size
-    float functionButtonTextOffset  = 52.0f;
-    float functionButtonImageOffset = 8.0f;
+    
+    
+
+
+
+
 
     float dockPadding               =   20.0f;
-    float toolbarHeight             =   164.0f;
-    float toolbarTableHeight        =   91.0f; // toolbarHeight - 62.0f
+    float toolbarHeight             =   134.0f;
+    float toolbarTableHeight        =   118.0f;
     float toolbarTableScrollbarSize =   12.0f;
     float toolbarSpacer             =   22.0f;
-    float toolbarItemHeight         =   65.0f;
+    float toolbarItemHeight         =   88.0f;
     float toolbarWidgetWidth        =   80.0f;
+    float toolbarToolMaterialWidth  =   150.0f;
     
     ImVec2 FramePosition_UnderToolbar();
     //ImVec2 FramePosition_BottomOfScreen() { return { dockPadding, ImGui::GetMainViewport()->WorkSize.y - windowSize.y - dockPadding }; } //under toolbar
@@ -270,6 +310,8 @@ struct GUISettings
     ImageTexture img_Sketch_Constraint_Radius;
     ImageTexture img_Sketch_Constraint_Angle;
 
+    ImageTexture img_Function_CutPath;
+    ImageTexture img_Function_Drill;
     
 };
 

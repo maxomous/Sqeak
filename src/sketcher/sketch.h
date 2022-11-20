@@ -105,9 +105,6 @@ TODO: RenderLine, Arc etc. should be on renderer, not elementfactory
 
  */
  
-
- 
- 
 // A container of all the renderable data in sketcher
 struct RenderData
 {
@@ -181,6 +178,9 @@ private:
 };
     
     
+     
+    
+    
 // a collection of selectable geometry
 // will consume input geometries
 class PolygonisedGeometry
@@ -205,7 +205,7 @@ private:
     // Polygonised linestring data
     std::vector<SelectableGeometry> m_Geometry;
 
-    // Finds geometry within a tolerance to position p and sets their hovered flag to true
+    // Finds geometry within a tolerance to position p and calls callback
     // l is a polygon which 
     bool FindIntersects(const Vec2& p, double tolerance, std::function<void(SelectableGeometry&)> cb);
 };
@@ -262,6 +262,9 @@ private:
     friend class SketchEvents;
 };
     
+    
+
+
 class SketchEvents
 {
 public:
@@ -289,6 +292,8 @@ public:
     // GLFW_MOD_CAPS_LOCK  0x0010
     // GLFW_MOD_NUM_LOCK   0x0020
     enum class KeyModifier { None = 0x00, Shift = 0x01, Ctrl = 0x02, Alt = 0x04, Super = 0x08, CapsLock = 0x10, NumLock = 0x20 };
+
+ 
 
 
     SketchEvents(Sketcher* parent) : m_Parent(parent) {}
@@ -322,6 +327,11 @@ public:
     //   Returns true if update required
     bool Mouse_Move(const Vec2& p);
 
+
+    const std::vector<SketchItem>&  GetSelectedPoints()   { return m_SelectedPoints; }
+    const std::vector<SketchItem>&  GetSelectedElements() { return m_SelectedElements; }
+    const std::vector<Geometry>&    GetSelectedPolygons() { return m_SelectedPolygons; }
+    
     
 private:
     
@@ -341,10 +351,15 @@ private:
     MouseAction m_MouseAction;
     //KeyModifier m_Modifier;
 
-
+    // Filters the input selection to points / lines / polygons 
+    SelectionFilter m_SelectionFilter = SelectionFilter::All;
+    // Easy to access arrays of selected item
+    std::vector<SketchItem> m_SelectedPoints;   // Points as SketchItems
+    std::vector<SketchItem> m_SelectedElements; // Lines as SketchItems
+    std::vector<Geometry> m_SelectedPolygons;   // Polygons (polygonised) as vector<Vec2>
+    
     // polygonises all of the geometry so we can select loops
     PolygonisedGeometry m_PolygonisedGeometry;
-
 
 
     std::vector<Vec2>& InputData() { return m_InputData; }
@@ -358,12 +373,11 @@ private:
 class ConstraintButtons
 {
 public:
-    ConstraintButtons(ElementFactory* factory) : m_Factory(factory) {}
-    
+    ConstraintButtons(Sketcher* parent) : m_Parent(parent) {}
     // Draw ImGui buttons for constraints
     bool DrawImGui(std::function<bool(const std::string&, RenderData::Image::Type)> cb_ImageButton, std::function<void(double*)> cb_InputValue);
 private:
-    ElementFactory* m_Factory;
+    Sketcher* m_Parent;
     double m_Distance = 100.0;
     double m_Radius = 100.0;
     double m_Angle = 90.0;
@@ -390,15 +404,9 @@ public:
         return updateRequired;
     }
             
-     
-    
     // Attempts to solve constraints. 
-    // movedPoint can be set for moving a point
     void SolveConstraints(Vec2 pDif = Vec2()); 
     
-    
-
-
     void Draw_ConstraintButtons(std::function<bool(const std::string&, RenderData::Image::Type)> cb_ImageButton, std::function<void(double*)> cb_InputValue);
     void DrawImGui();
     void DrawImGui_Elements(ElementID& deleteElement);
@@ -417,7 +425,7 @@ private:
     SketchEvents m_Events;  
     SketchRenderer m_Renderer;
     
-    ConstraintButtons m_ConstraintButtons = ConstraintButtons(&m_Factory);
+    ConstraintButtons m_ConstraintButtons;
 };
      
 

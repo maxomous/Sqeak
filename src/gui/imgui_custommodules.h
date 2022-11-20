@@ -34,8 +34,7 @@ struct ImGuiCustomModules
         }
     }
     static bool HereButton(GRBLVals& grblVals, glm::vec3& p);
-    static bool ImageButtonWithText_Function(Settings& settings, const std::string& name, ImageTexture& image, bool isActive = false, ButtonType buttonType = ButtonType::ToolbarButton, bool isInvisible = false);
-    static bool ImageButtonWithText_Function(Settings& settings, const std::string& name, ImageTexture& image, bool isActive, ButtonType buttonType, float imageOffset, float textOffset, ImFont* font, bool isInvisible = false);
+    
     // text heading
     static void Heading(Settings& settings, const std::string& text, float centreAboutWidth = 0.0f);
     static void HeadingInTable(Settings& settings, const std::string& text); 
@@ -43,6 +42,19 @@ struct ImGuiCustomModules
     static bool HeadingWithEdit(Settings& settings, const std::string& name);
     // edit button
     static bool EditButton(Settings& settings, const char* id);
+    
+    
+    // same as ImGuiModules::ImageButtonWithText() but centres about frame 
+    static bool ImageButtonWithText_CentredVertically(const std::string& text, ImageTexture& image, ImGuiModules::ImageButtonStyle* imageButton, bool isActive, float frameHeight)
+    { 
+        // Centre widget about toolbarItemHeight
+        ImGui::BeginGroup();
+            ImGuiModules::CentreItemVerticallyAboutItem(frameHeight, imageButton->buttonSize.y);
+            bool isClicked = ImGuiModules::ImageButtonWithText(text, image, imageButton->buttonSize, imageButton->imageSize, imageButton->font, imageButton->textOffset, imageButton->imageOffset, isActive);
+        ImGui::EndGroup();
+        return isClicked;
+    }
+
 };
 
 } // end namespace Sqeak
