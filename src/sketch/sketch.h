@@ -937,12 +937,12 @@ private:
     
 };
  
-class Function
+class A_Function
 {
 public: 
-    Function(std::string name) : m_Name(name) {}
+    A_Function(std::string name) : m_Name(name) {}
     // to ensure inherited destructor is called
-    virtual ~Function() = default;
+    virtual ~A_Function() = default;
     std::string& Name() { return m_Name; }
     
     virtual void HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) = 0;
@@ -968,12 +968,12 @@ protected:
 };
 
  
-class Function_Draw : public Function
+class A_Function_Draw : public A_Function
 {
 public: 
     enum class Command { Select, Line, Arc };
 
-    Function_Draw(ElementFactory& elementFactory, std::string name = "Draw");
+    A_Function_Draw(ElementFactory& elementFactory, std::string name = "Draw");
     // handles mouse move / keypresses
     void HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) override;
     // draws ImGui widgets
@@ -993,11 +993,11 @@ private:
     void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineList, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isActive) override;
      //Event<Event_DisplayShapeOffset>::Dispatch( { elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments), elementFactory.RawPoint_PointsList(), false } );
    
-    struct Function_Draw_Parameters {
+    struct A_Function_Draw_Parameters {
         int polygoniseOutput = 0;
         Vec2 z = { 20.0f, 0.0f };
         int cutSide = (int)CompensateCutter::None;
-        float finishingPass = 1.0f;
+        float finishPass = 1.0f;
     } m_Params;
     
     ElementFactory::SketchOld_LineLoop m_LineLoop;
@@ -1014,21 +1014,21 @@ public:
     
     void HandleEvents(Settings& settings, InputEvent& inputEvent);
     // get name of active function
-    void ActiveFunction_DrawImGui_Tools(Settings& settings);
-    void DrawImGui_Functions(Settings& settings);
+    void ActiveA_Function_DrawImGui_Tools(Settings& settings);
+    void DrawImGui_A_Functions(Settings& settings);
     void DrawImGui(Settings& settings);
     // get active function name
-    std::string ActiveFunction_Name();
+    std::string ActiveA_Function_Name();
     // returns true if active function selected
-    bool ActiveFunction_HasItemSelected() { return m_ActiveFunctions.HasItemSelected(); }      
+    bool ActiveA_Function_HasItemSelected() { return m_ActiveA_Functions.HasItemSelected(); }      
     // export gcode and run
-    void ActiveFunction_Run(GRBL& grbl, Settings& settings);
+    void ActiveA_Function_Run(GRBL& grbl, Settings& settings);
     // export gcode and save
-    int ActiveFunction_ExportGCode(Settings& settings, std::string saveFileDirectory);
+    int ActiveA_Function_ExportGCode(Settings& settings, std::string saveFileDirectory);
     // delete current active function
-    void ActiveFunction_Delete();
+    void ActiveA_Function_Delete();
     // returns the gcode strings
-    std::optional<std::vector<std::string>> ActiveFunction_UpdateViewer(Settings& settings);
+    std::optional<std::vector<std::string>> ActiveA_Function_UpdateViewer(Settings& settings);
     // update viewer
     void UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists);
 
@@ -1042,10 +1042,10 @@ private:
     // contains a list of all the points in a drawing
     ElementFactory m_ElementFactory;
     // contains a list of all the active functions in a drawing
-    Vector_SelectablePtrs<std::unique_ptr<Function>> m_ActiveFunctions;
-    int m_FunctionIDCounter = 0;
+    Vector_SelectablePtrs<std::unique_ptr<A_Function>> m_ActiveA_Functions;
+    int m_A_FunctionIDCounter = 0;
     // used to open tree node of new function
-    bool m_IsActiveFunctionChanged = true;
+    bool m_IsActiveA_FunctionChanged = true;
     // allow sketch to access private members
     friend class SketchOld;
 };
@@ -1056,22 +1056,22 @@ class SketchOld
 public:
     SketchOld();
     
-    std::string  ActiveFunction_Name();
+    std::string  ActiveA_Function_Name();
     
     std::optional<Vec2> RawPoint_GetClosest(const Vec2& p, float tolerance);
     
-    void ActiveFunction_Run(GRBL& grbl, Settings& settings);
-    void ActiveFunction_Export(Settings& settings);
-    void ActiveFunction_Delete(Settings& settings);
+    void ActiveA_Function_Run(GRBL& grbl, Settings& settings);
+    void ActiveA_Function_Export(Settings& settings);
+    void ActiveA_Function_Delete(Settings& settings);
         
     // pushes updates to any active drawings and their functions
     void HandleEvents(Settings& settings, InputEvent& inputEvent);
     
     
     // draws the ImGui Widgets for the active function's tools
-    void ActiveFunction_DrawImGui_Tools(Settings& settings);
+    void ActiveA_Function_DrawImGui_Tools(Settings& settings);
     // draws the ImGui Widgets for the active drawing's functions
-    void ActiveDrawing_DrawImGui_Functions(Settings& settings);
+    void ActiveDrawing_DrawImGui_A_Functions(Settings& settings);
     // draws the ImGui Widgets for connecting (returns true if activated)
     bool DrawImGui_StartSketchOld(Settings& settings);
     // draws the popup at the cursor
@@ -1100,7 +1100,7 @@ private:
     std::vector<DynamicBuffer::ColouredVertexList> m_ViewerPointLists;
     
     // updates viewer for active drawing
-    void ActiveFunction_UpdateViewer(Settings& settings);
+    void ActiveA_Function_UpdateViewer(Settings& settings);
     void ActiveDrawing_UpdateViewer(Settings& settings);
 };
 

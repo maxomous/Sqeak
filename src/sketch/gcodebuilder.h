@@ -8,17 +8,16 @@ class GCodeBuilder
 public:
     
     // TODO this should inlclude a tool & tab settings, this would prevent needing to take Settings&
-    enum RetractType { Full, Partial, None };
+    enum ForceRetract { Full, Partial, None };
     
     typedef struct {
         std::vector<Vec2>* points;
-        float z0;
-        float z1;
+        float zTop;
+        float zBottom;
         float cutDepth;
         float feedPlunge;
         float feedCutting;
-        bool isLoop = false;
-        RetractType retract = RetractType::None;
+        ForceRetract retract = ForceRetract::None;
     } CutPathParams;
     
     void Add(std::string gcode);

@@ -345,7 +345,7 @@ private:
                     
     Vec2 m_CursorPos;
     Vec2 m_CursorClickedPos;
-    bool m_IsDragSelectionBox = false; 
+    bool m_IsSelectionBox = false; 
     
     MouseButton m_MouseButton;
     MouseAction m_MouseAction;

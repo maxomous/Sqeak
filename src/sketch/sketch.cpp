@@ -29,7 +29,7 @@ using namespace sketch;
     
     SketchOld
         - Drawing
-            - (Functions)            
+            - (A_Functions)            
             - Slot
             - Square
             - Bore
@@ -188,17 +188,17 @@ void ElementFactory::RefPointToElement_DrawImGui()
     ImGui::PopID(); 
 }   
  
-void Function_Draw::DrawImGui_Tools(Settings& settings) 
+void A_Function_Draw::DrawImGui_Tools(Settings& settings) 
 {
-   // if(ImGuiModules::ImageButtonWithText_Function(settings, "Select##OLD", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
+   // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Select##OLD", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
    // ImGui::SameLine();
-   // if(ImGuiModules::ImageButtonWithText_Function(settings, "Line##OLD", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
+   // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Line##OLD", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
    // ImGui::SameLine();
-   // if(ImGuiModules::ImageButtonWithText_Function(settings, "Arc##OLD", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
+   // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Arc##OLD", settings.guiSettings.img_Sketch_Arc, m_ActiveCommand == Command::Arc)) { m_ActiveCommand = Command::Arc; }
      
 } 
 
-void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings) 
+void A_Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings) 
 {
     (void)settings;
 
@@ -212,7 +212,7 @@ void Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settings
         ImGui::Dummy(ImVec2());
   //      updateViewer |= ImGui::InputFloat2("Z Top/Bottom", &m_Params.z[0]);
         updateViewer |= ImGui::Combo("Cut Side", &m_Params.cutSide, "None\0Left\0Right\0Pocket\0\0");
-        updateViewer |= ImGui::InputFloat("Finishing Pass", &m_Params.finishingPass);
+        updateViewer |= ImGui::InputFloat("Finishing Pass", &m_Params.finishPass);
         
         ImGui::TreePop();
     }
@@ -259,37 +259,37 @@ void DrawImGui_PathCutterParameters(Settings& settings)
     ImGui::Unindent();
     if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
 }
-std::string A_Drawing::ActiveFunction_Name()
+std::string A_Drawing::ActiveA_Function_Name()
 {   
-    if(!m_ActiveFunctions.HasItemSelected()) { return ""; }
-    return m_ActiveFunctions.CurrentItem()->Name();
+    if(!m_ActiveA_Functions.HasItemSelected()) { return ""; }
+    return m_ActiveA_Functions.CurrentItem()->Name();
 } 
-std::string SketchOld::ActiveFunction_Name()
+std::string SketchOld::ActiveA_Function_Name()
 {    
     if(!m_Drawings.HasItemSelected()) { return ""; }
-    return m_Drawings.CurrentItem().ActiveFunction_Name();
+    return m_Drawings.CurrentItem().ActiveA_Function_Name();
 }
-void A_Drawing::ActiveFunction_DrawImGui_Tools(Settings& settings)
+void A_Drawing::ActiveA_Function_DrawImGui_Tools(Settings& settings)
 {     
     // handle the selected active function
-    if(m_ActiveFunctions.HasItemSelected()) {
-        m_ActiveFunctions.CurrentItem()->DrawImGui_Tools(settings);
+    if(m_ActiveA_Functions.HasItemSelected()) {
+        m_ActiveA_Functions.CurrentItem()->DrawImGui_Tools(settings);
     }  
 }
 
-void A_Drawing::DrawImGui_Functions(Settings& settings)
+void A_Drawing::DrawImGui_A_Functions(Settings& settings)
 {    
     // new function buttons
-  // if(ImGuiModules::ImageButtonWithText_Function(settings, "Draw##OLD", settings.guiSettings.img_Sketch_Draw)) {    
-  //     std::unique_ptr<Function> newFunction = std::make_unique<Function_Draw>(m_ElementFactory, "Draw " + to_string(m_FunctionIDCounter++));
-  //     m_ActiveFunctions.Add(move(newFunction));
+  // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Draw##OLD", settings.guiSettings.img_Sketch_Draw)) {    
+  //     std::unique_ptr<A_Function> newA_Function = std::make_unique<A_Function_Draw>(m_ElementFactory, "Draw " + to_string(m_A_FunctionIDCounter++));
+  //     m_ActiveA_Functions.Add(move(newA_Function));
   //     settings.SetUpdateFlag(ViewerUpdate::Full);
   //     // to open tree node
-  //     m_IsActiveFunctionChanged = true;
+  //     m_IsActiveA_FunctionChanged = true;
   // }
   // ImGui::SameLine();
   // 
-  // if(ImGuiModules::ImageButtonWithText_Function(settings, "Measure##OLD", settings.guiSettings.img_Sketch_Measure)) {    
+  // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Measure##OLD", settings.guiSettings.img_Sketch_Measure)) {    
   //     std::cout << "Measure" << std::endl;
   // }
 }   
@@ -306,17 +306,17 @@ void A_Drawing::DrawImGui(Settings& settings)
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     
      // active function imgui widgets
-    if (ImGui::TreeNode("Active Functions")) 
+    if (ImGui::TreeNode("Active A_Functions")) 
     { 
         // draw active function Tree Nodes
-        static std::function<std::string*(std::unique_ptr<Function>& item)> cb_GetItemStringPtr = [](std::unique_ptr<Function>& activeFunction) { 
-            return &(activeFunction->Name()); 
+        static std::function<std::string*(std::unique_ptr<A_Function>& item)> cb_GetItemStringPtr = [](std::unique_ptr<A_Function>& activeA_Function) { 
+            return &(activeA_Function->Name()); 
         };
-        static std::function<void(std::unique_ptr<Function>&)> cb_DrawTabImGui = [&](std::unique_ptr<Function>& activeFunction) { 
-            activeFunction->DrawImGui(m_ElementFactory, settings);
+        static std::function<void(std::unique_ptr<A_Function>&)> cb_DrawTabImGui = [&](std::unique_ptr<A_Function>& activeA_Function) { 
+            activeA_Function->DrawImGui(m_ElementFactory, settings);
         };
          
-        if(ImGuiModules::TreeNodes(m_ActiveFunctions, m_IsActiveFunctionChanged, cb_GetItemStringPtr, cb_DrawTabImGui)) {
+        if(ImGuiModules::TreeNodes(m_ActiveA_Functions, m_IsActiveA_FunctionChanged, cb_GetItemStringPtr, cb_DrawTabImGui)) {
             settings.SetUpdateFlag(ViewerUpdate::Full);
         }
         ImGui::TreePop();
@@ -327,18 +327,18 @@ void A_Drawing::DrawImGui(Settings& settings)
         ImVec2& buttonSizeSmall = settings.guiSettings.button[ButtonType::New].Size;
    
       
-        static std::function<std::string(std::unique_ptr<Function>& item)> callback = [](std::unique_ptr<Function>& item) { return item->Name(); };
-        if(ImGuiModules::Buttons(m_ActiveFunctions, buttonSize, callback)) {
+        static std::function<std::string(std::unique_ptr<A_Function>& item)> callback = [](std::unique_ptr<A_Function>& item) { return item->Name(); };
+        if(ImGuiModules::Buttons(m_ActiveA_Functions, buttonSize, callback)) {
             settings.SetUpdateFlag(ViewerUpdate::Full);
         }
         
         ImGui::SameLine();
             
-        // remove active Function button
-        if(m_ActiveFunctions.HasItemSelected()) 
-        {   // remove Function
-            if(ImGui::Button("-##Remove Function", buttonSizeSmall)) {
-                m_ActiveFunctions.RemoveCurrent();
+        // remove active A_Function button
+        if(m_ActiveA_Functions.HasItemSelected()) 
+        {   // remove A_Function
+            if(ImGui::Button("-##Remove A_Function", buttonSizeSmall)) {
+                m_ActiveA_Functions.RemoveCurrent();
                 settings.SetUpdateFlag(ViewerUpdate::Full);
             }
         }
@@ -355,16 +355,16 @@ void A_Drawing::DrawImGui(Settings& settings)
 }
     
     
-void SketchOld::ActiveFunction_DrawImGui_Tools(Settings& settings) 
+void SketchOld::ActiveA_Function_DrawImGui_Tools(Settings& settings) 
 {
     if(m_Drawings.HasItemSelected()) { 
-        m_Drawings.CurrentItem().ActiveFunction_DrawImGui_Tools(settings);
+        m_Drawings.CurrentItem().ActiveA_Function_DrawImGui_Tools(settings);
     }
 }
-void SketchOld::ActiveDrawing_DrawImGui_Functions(Settings& settings) 
+void SketchOld::ActiveDrawing_DrawImGui_A_Functions(Settings& settings) 
 {
     if(m_Drawings.HasItemSelected()) { 
-        m_Drawings.CurrentItem().DrawImGui_Functions(settings);
+        m_Drawings.CurrentItem().DrawImGui_A_Functions(settings);
     }
 }
 
@@ -372,14 +372,14 @@ bool SketchOld::DrawImGui_StartSketchOld(Settings& settings)
 {
     if(!IsActive()) {
         
-  //      if(ImGuiModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch)) {  
+  //      if(ImGuiModules::ImageButtonWithText_A_Function(settings, "SketchOld", settings.guiSettings.img_Sketch)) {  
   //          Activate();
   //          settings.SetUpdateFlag(ViewerUpdate::Full);
   //          return true;
   //      }
   //  } else {    
   //      // sketch is active
-  //      if(ImGuiModules::ImageButtonWithText_Function(settings, "SketchOld", settings.guiSettings.img_Sketch, true)) {  
+  //      if(ImGuiModules::ImageButtonWithText_A_Function(settings, "SketchOld", settings.guiSettings.img_Sketch, true)) {  
   //          Deactivate();
   //      }
     }
@@ -988,7 +988,7 @@ void ElementFactory::LineLoop_AddArc(ElementFactory::SketchOld_LineLoop& sketchL
     LineLoop_AddArc(sketchLineLoop, p1, direction, Vec2(centre.x, centre.y));
 } 
 // returns 0 on success 
-int Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory, std::function<int(std::vector<std::string> gcode)> callback)
+int A_Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory, std::function<int(std::vector<std::string> gcode)> callback)
 {
     // get gcodes and and if successful, call function provided
     if(auto gcodes = InterpretGCode(settings, elementFactory)) {
@@ -998,7 +998,7 @@ int Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory,
 }
 
 // bool is success
-std::optional<std::vector<std::string>> Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory)
+std::optional<std::vector<std::string>> A_Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory)
 {
     // error check
     if(settings.p.toolSettings.tools.IsToolAndMaterialSelected())
@@ -1011,12 +1011,12 @@ std::optional<std::vector<std::string>> Function::InterpretGCode(Settings& setti
     return {};
 }
  
-Function_Draw::Function_Draw(ElementFactory& elementFactory, std::string name) : Function(name) 
+A_Function_Draw::A_Function_Draw(ElementFactory& elementFactory, std::string name) : A_Function(name) 
 {
     m_LineLoop = elementFactory.LineLoop_Create();
 }
 
-bool Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFactory) 
+bool A_Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFactory) 
 {
     // check tool and material is selected
     if(settings.p.toolSettings.tools.IsToolAndMaterialSelected())
@@ -1048,15 +1048,15 @@ bool Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFac
     return true;
 }   
 
-std::string Function_Draw::HeaderText(Settings& settings, ElementFactory& elementFactory) 
+std::string A_Function_Draw::HeaderText(Settings& settings, ElementFactory& elementFactory) 
 {
-    Function_Draw_Parameters& p = m_Params;
+    A_Function_Draw_Parameters& p = m_Params;
     ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
     ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();    
     
     // write header
     std::ostringstream stream;
-    stream << "; Function: " << m_Name << '\n';
+    stream << "; A_Function: " << m_Name << '\n';
     stream << "; \tBetween: " << p.z.x << " and " << p.z.y << '\n';
     stream << "; \tPoints:" << '\n';
     
@@ -1069,7 +1069,7 @@ std::string Function_Draw::HeaderText(Settings& settings, ElementFactory& elemen
     if(p.cutSide == CompensateCutter::Right) stream << "; \tCompensate: Right\n";
     if(p.cutSide == CompensateCutter::Pocket) stream << "; \tCompensate: Pocket\n";
     
-    if(p.finishingPass) stream << "; Finishing Pass: " << p.finishingPass << '\n';
+    if(p.finishPass) stream << "; Finishing Pass: " << p.finishPass << '\n';
     
     stream << "; Tool: " << tool.Name << '\n';
     stream << "; \tDiameter: " << tool.Diameter << '\n';
@@ -1081,116 +1081,116 @@ std::string Function_Draw::HeaderText(Settings& settings, ElementFactory& elemen
     
 // TODO: can we get rid of pathParams.isLoop?
     
-std::optional<std::vector<std::string>> Function_Draw::ExportGCode(Settings& settings, ElementFactory& elementFactory)  
+std::optional<std::vector<std::string>> A_Function_Draw::ExportGCode(Settings& settings, ElementFactory& elementFactory)  
 {
-    // error check  
-    if(!IsValidInputs(settings, elementFactory)) {
-        return {};  
-    }  
-    ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
-    ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
-         
-    // initialise 
-    GCodeBuilder gcodes;
-    gcodes.Add(HeaderText(settings, elementFactory));
-    gcodes.InitCommands(toolData.speed);
-      
-    // define offset path parameters:  0 = no compensation, 1 = compensate left / pocket, -1 = compensate right
-    int cutSide = GetCutSide((CompensateCutter)m_Params.cutSide);
-    float toolRadius = settings.p.toolSettings.tools.toolList.CurrentItem().Diameter / 2.0f;
-    float offsetDistance = fabsf(toolRadius) + m_Params.finishingPass;
-    // define geos parameters
- 	GeosBufferParams& geosParameters = settings.p.pathCutter.geosParameters;
-    // calculate offset
-    GCodeBuilder::CutPathParams pathParams;
-    // populate parameters
-    pathParams.z0 = m_Params.z.x;  
-    pathParams.z1 = m_Params.z.y; 
-    pathParams.cutDepth = toolData.cutDepth; 
-    pathParams.feedPlunge = toolData.feedPlunge; 
-    pathParams.feedCutting = toolData.feedCutting; 
-    pathParams.isLoop = elementFactory.LineLoop_IsLoop(m_LineLoop);
-     
-    Geos geos;  
-    // make a path of line segments (arcs are converted to many line segments)    
-    Geom::LineString inputPath = elementFactory.LineLoop_PointsList(m_LineLoop, geosParameters.QuadrantSegments);
-    // vector for storing the final paths
-    std::vector<Geom::LineString> path;
-    bool isPocket = false;
-    std::vector<Geom::LineString> enclosingPath;
-     
-    // Simple path
-    if(m_Params.cutSide == CompensateCutter::None) {
-        //path.push_back(inputPath);
-        //path = geos.Polygonise(inputPath, m_Params.polygoniseOutput);
-    } // Compensate path 
-    else {
-        // make the inital offset   
-        path = geos.Offset(inputPath, cutSide * offsetDistance, geosParameters);
-        // add pocket path 
-        if(m_Params.cutSide == CompensateCutter::Pocket) { 
-            isPocket = true;
-            // distance to offset per pass
-            float boringOffset = 2.0f * fabsf(toolRadius) - settings.p.pathCutter.CutOverlap; 
-            // make a copy of the orignal path
-            // start a recursive loop of offset for boring, if cutting simple offset, this breaks loop after the first iteration
-            Geos::RecursiveOffset recursiveOffset = geos.OffsetPolygon_Recursive(path, boringOffset, true /*reverse*/, geosParameters);
-            path = recursiveOffset.path;
-            enclosingPath = recursiveOffset.enclosingPath;
-        }
-
-    }
-
-    
-    // for each one of the pocketing out line loop, cut depths
-    for (size_t i = 0; i < path.size(); i++) {
-        
-        if(isPocket) {
-            // sanity check
-            if(path.size() != enclosingPath.size()) {
-                Log::Error("Path sizes do not match, forcing full retract");
-                pathParams.retract = GCodeBuilder::RetractType::Full;
-            } else {
-                // do we need to retract z for each depth of pocket
-                if(geos.Within({ path[i].front(), path[i].back() }, enclosingPath[i])) {
-                    pathParams.retract = GCodeBuilder::RetractType::Partial;
-                } else {
-                    pathParams.retract = GCodeBuilder::RetractType::Full;
-                }
-            }
-        }
-        
-        pathParams.points = &(path[i]);
-        // add gcodes for path at depths
-        if(gcodes.CutPathDepths(settings, pathParams)) { return {}; }
-    }         
-    // add finishing path
-    if(m_Params.finishingPass) {
-        pathParams.z0 = pathParams.z1;
-        std::vector<Geom::LineString> finishPath = geos.Offset(inputPath, cutSide * fabsf(toolRadius), geosParameters);     
-        for(size_t i = 0; i < finishPath.size(); i++) {
-            pathParams.points = &(finishPath[i]);
-            // add gcodes for path at depths
-            if(gcodes.CutPathDepths(settings, pathParams)) { return {}; }
-        }
-    }
-    // move to zPlane, end program
-    gcodes.EndCommands();
-    return gcodes.Get();
+   // // error check  
+   // if(!IsValidInputs(settings, elementFactory)) {
+   //     return {};  
+   // }  
+   // ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
+   // ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
+   //      
+   // // initialise 
+   // GCodeBuilder gcodes;
+   // gcodes.Add(HeaderText(settings, elementFactory));
+   // gcodes.InitCommands(toolData.speed);
+   //   
+   // // define offset path parameters:  0 = no compensation, 1 = compensate left / pocket, -1 = compensate right
+   // int cutSide = GetCutSide((CompensateCutter)m_Params.cutSide);
+   // float toolRadius = settings.p.toolSettings.tools.toolList.CurrentItem().Diameter / 2.0f;
+   // float offsetDistance = fabsf(toolRadius) + m_Params.finishPass;
+   // // define geos parameters
+ 	//GeosBufferParams& geosParameters = settings.p.pathCutter.geosParameters;
+   // // calculate offset
+   // GCodeBuilder::CutPathParams pathParams;
+   // // populate parameters
+   // pathParams.z0 = m_Params.zTop;  
+   // pathParams.z1 = m_Params.zBottom; 
+   // pathParams.cutDepth = toolData.cutDepth; 
+   // pathParams.feedPlunge = toolData.feedPlunge; 
+   // pathParams.feedCutting = toolData.feedCutting; 
+   //  
+   // Geos geos;  
+   // // make a path of line segments (arcs are converted to many line segments)    
+   // Geom::LineString inputPath = elementFactory.LineLoop_PointsList(m_LineLoop, geosParameters.QuadrantSegments);
+   // // vector for storing the final paths
+   // std::vector<Geom::LineString> path;
+   // bool isPocket = false;
+   // std::vector<Geom::LineString> enclosingPath;
+   //  
+   // // Simple path
+   // if(m_Params.cutSide == CompensateCutter::None) {
+   //     //path.push_back(inputPath);
+   //     //path = geos.Polygonise(inputPath, m_Params.polygoniseOutput);
+   // } // Compensate path 
+   // else {
+   //     // make the inital offset   
+   //     path = geos.Offset(inputPath, cutSide * offsetDistance, geosParameters);
+   //     // add pocket path 
+   //     if(m_Params.cutSide == CompensateCutter::Pocket) { 
+   //         isPocket = true;
+   //         // distance to offset per pass
+   //         float boringOffset = 2.0f * fabsf(toolRadius) - settings.p.pathCutter.CutOverlap; 
+   //         // make a copy of the orignal path
+   //         // start a recursive loop of offset for boring, if cutting simple offset, this breaks loop after the first iteration
+   //         Geos::RecursiveOffset recursiveOffset = geos.OffsetPolygon_Recursive(path, boringOffset, true /*reverse*/, geosParameters);
+   //         path = recursiveOffset.path;
+   //         enclosingPath = recursiveOffset.enclosingPath;
+   //     }
+   //
+   // }
+   //
+   // 
+   // // for each one of the pocketing out line loop, cut depths
+   // for (size_t i = 0; i < path.size(); i++) {
+   //     
+   //     if(isPocket) {
+   //         // sanity check
+   //         if(path.size() != enclosingPath.size()) {
+   //             Log::Error("Path sizes do not match, forcing full retract");
+   //             pathParams.retract = GCodeBuilder::ForceRetract::Full;
+   //         } else {
+   //             // do we need to retract z for each depth of pocket
+   //             if(geos.Within({ path[i].front(), path[i].back() }, enclosingPath[i])) {
+   //                 pathParams.retract = GCodeBuilder::ForceRetract::Partial;
+   //             } else {
+   //                 pathParams.retract = GCodeBuilder::ForceRetract::Full;
+   //             }
+   //         }
+   //     }
+   //     
+   //     pathParams.points = &(path[i]);
+   //     // add gcodes for path at depths
+   //     if(gcodes.CutPathDepths(settings, pathParams)) { return {}; }
+   // }         
+   // // add finishing path
+   // if(m_Params.finishPass) {
+   //     pathParams.z0 = pathParams.z1;
+   //     std::vector<Geom::LineString> finishPath = geos.Offset(inputPath, cutSide * fabsf(toolRadius), geosParameters);     
+   //     for(size_t i = 0; i < finishPath.size(); i++) {
+   //         pathParams.points = &(finishPath[i]);
+   //         // add gcodes for path at depths
+   //         if(gcodes.CutPathDepths(settings, pathParams)) { return {}; }
+   //     }
+   // }
+   // // move to zPlane, end program
+   // gcodes.EndCommands();
+   // return gcodes.Get();
+   return {};
 }
 
  
  
  
  
-void A_Drawing::ActiveFunction_Run(GRBL& grbl, Settings& settings) 
+void A_Drawing::ActiveA_Function_Run(GRBL& grbl, Settings& settings) 
 {
-    if(!m_ActiveFunctions.HasItemSelected()) {
+    if(!m_ActiveA_Functions.HasItemSelected()) {
         Log::Error("No active function selected");
         return;
     }
     // build gcode of active function and run it
-    m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){
+    m_ActiveA_Functions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){
         // start file timer
         Event<Event_ResetFileTimer>::Dispatch({});  
         // send gocdes to grbl
@@ -1202,17 +1202,17 @@ void A_Drawing::ActiveFunction_Run(GRBL& grbl, Settings& settings)
     });
 }  
 // export the active function as gcode
-int A_Drawing::ActiveFunction_ExportGCode(Settings& settings, std::string saveFileDirectory) 
+int A_Drawing::ActiveA_Function_ExportGCode(Settings& settings, std::string saveFileDirectory) 
 { 
-    if(!m_ActiveFunctions.HasItemSelected()) {
+    if(!m_ActiveA_Functions.HasItemSelected()) {
         Log::Error("No active function selected");
         return -1; 
     }
     // make filepath for new GCode file 
-    std::string filepath = File::CombineDirPath(saveFileDirectory, m_ActiveFunctions.CurrentItem()->Name() + ".nc"); 
+    std::string filepath = File::CombineDirPath(saveFileDirectory, m_ActiveA_Functions.CurrentItem()->Name() + ".nc"); 
     Log::Info("Exporting GCode to %s", filepath.c_str());
     // build gcode of active function and export it to file 
-    return m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){ 
+    return m_ActiveA_Functions.CurrentItem()->InterpretGCode(settings, m_ElementFactory, [&](auto gcodes){ 
         File::WriteArray(filepath, gcodes);
         return 0;
     }); 
@@ -1220,40 +1220,40 @@ int A_Drawing::ActiveFunction_ExportGCode(Settings& settings, std::string saveFi
 
 
 // delete active function
-void A_Drawing::ActiveFunction_Delete()
+void A_Drawing::ActiveA_Function_Delete()
 {
-    if(!m_ActiveFunctions.HasItemSelected()) {
+    if(!m_ActiveA_Functions.HasItemSelected()) {
         return; 
     }
     // remove active function
-    m_ActiveFunctions.RemoveCurrent();
+    m_ActiveA_Functions.RemoveCurrent();
 }
 
-void SketchOld::ActiveFunction_Run(GRBL& grbl, Settings& settings) 
+void SketchOld::ActiveA_Function_Run(GRBL& grbl, Settings& settings) 
 {
     if(!m_Drawings.HasItemSelected()) { return; }
-    if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
+    if(!m_Drawings.CurrentItem().ActiveA_Function_HasItemSelected()) { return; }
     
-    m_Drawings.CurrentItem().ActiveFunction_Run(grbl, settings);
+    m_Drawings.CurrentItem().ActiveA_Function_Run(grbl, settings);
 }
-void SketchOld::ActiveFunction_Export(Settings& settings) 
+void SketchOld::ActiveA_Function_Export(Settings& settings) 
 {
     if(!m_Drawings.HasItemSelected()) { return; }
-    if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
+    if(!m_Drawings.CurrentItem().ActiveA_Function_HasItemSelected()) { return; }
     
     if(ImGui::Button("Save")) { 
-        if(m_Drawings.CurrentItem().ActiveFunction_ExportGCode(settings, settings.p.system.saveFileDirectory)) {
+        if(m_Drawings.CurrentItem().ActiveA_Function_ExportGCode(settings, settings.p.system.saveFileDirectory)) {
             Log::Error("Unable to save file");
         }
     }
 }
-void SketchOld::ActiveFunction_Delete(Settings& settings) 
+void SketchOld::ActiveA_Function_Delete(Settings& settings) 
 {    
     if(!m_Drawings.HasItemSelected()) { return; }
-    if(!m_Drawings.CurrentItem().ActiveFunction_HasItemSelected()) { return; }
+    if(!m_Drawings.CurrentItem().ActiveA_Function_HasItemSelected()) { return; }
     
     if(ImGui::Button("Delete")) { 
-        m_Drawings.CurrentItem().ActiveFunction_Delete();
+        m_Drawings.CurrentItem().ActiveA_Function_Delete();
         settings.SetUpdateFlag(ViewerUpdate::Full);
     }
 }
@@ -1273,7 +1273,7 @@ SketchOld::SketchOld()
 
 
  
-void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) 
+void A_Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, ElementFactory& elementFactory) 
 { 
     auto selectRawPoint = [&]() 
     {
@@ -1363,11 +1363,11 @@ void Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, Ele
             
 void A_Drawing::HandleEvents(Settings& settings, InputEvent& inputEvent)
 {
-    if(!m_ActiveFunctions.HasItemSelected()) {
+    if(!m_ActiveA_Functions.HasItemSelected()) {
         return;
     }
     // handle mouse and keyboard events and return if update viewer needed
-    m_ActiveFunctions.CurrentItem()->HandleEvents(settings, inputEvent, m_ElementFactory);
+    m_ActiveA_Functions.CurrentItem()->HandleEvents(settings, inputEvent, m_ElementFactory);
 }
 
 
@@ -1381,7 +1381,7 @@ void SketchOld::HandleEvents(Settings& settings, InputEvent& inputEvent)
 }
 
 
-void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isActive)
+void A_Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isActive)
 {
     // set colours
     DynamicBuffer::ColouredVertexList lines((!isActive) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour);
@@ -1443,9 +1443,9 @@ void Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFact
 void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists)
 {
     // update viewer for each active function
-    for (size_t i = 0; i < m_ActiveFunctions.Size(); i++) {
-        bool isActiveItem = (m_ActiveFunctions.CurrentIndex() == (int)i);
-        m_ActiveFunctions[i]->UpdateViewer(settings, m_ElementFactory, viewerLineLists, viewerPointLists, isActiveItem);
+    for (size_t i = 0; i < m_ActiveA_Functions.Size(); i++) {
+        bool isActiveItem = (m_ActiveA_Functions.CurrentIndex() == (int)i);
+        m_ActiveA_Functions[i]->UpdateViewer(settings, m_ElementFactory, viewerLineLists, viewerPointLists, isActiveItem);
     }
 }
 // update viewer
@@ -1497,23 +1497,23 @@ void SketchOld::ActiveDrawing_UpdateViewer(Settings& settings)
 
 
 // update viewer
-std::optional<std::vector<std::string>> A_Drawing::ActiveFunction_UpdateViewer(Settings& settings)
+std::optional<std::vector<std::string>> A_Drawing::ActiveA_Function_UpdateViewer(Settings& settings)
 {
-    if(!m_ActiveFunctions.HasItemSelected()) {
+    if(!m_ActiveA_Functions.HasItemSelected()) {
         Log::Error("No active function selected");
         return {};  
     }
     // add gcode path of current active function to viewer
-    return move(m_ActiveFunctions.CurrentItem()->InterpretGCode(settings, m_ElementFactory));
+    return move(m_ActiveA_Functions.CurrentItem()->InterpretGCode(settings, m_ElementFactory));
 }   
 
-void SketchOld::ActiveFunction_UpdateViewer(Settings& settings)
+void SketchOld::ActiveA_Function_UpdateViewer(Settings& settings)
 { 
     // get current active function's gcodes and update viewer
     if(!m_Drawings.HasItemSelected()) { return; }
-    std::cout << "Updating: Draw Function" << std::endl;
+    std::cout << "Updating: Draw A_Function" << std::endl;
     // update the active function 
-    if(auto gcodes = m_Drawings.CurrentItem().ActiveFunction_UpdateViewer(settings)) {
+    if(auto gcodes = m_Drawings.CurrentItem().ActiveA_Function_UpdateViewer(settings)) {
         Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(move(*gcodes)) }); 
     } else {
         Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(/*empty*/) });
@@ -1536,7 +1536,7 @@ void SketchOld::UpdateViewer(Settings& settings)
         // update active drawing
         if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { /*8std::cout << "UPDATING ACTIVE DRAWING" << std::endl; */  ActiveDrawing_UpdateViewer(settings); }
         // update active function
-        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { /*std::cout << "UPDATING ACTIVE FUNCTION" << std::endl; */ ActiveFunction_UpdateViewer(settings); }
+        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { /*std::cout << "UPDATING ACTIVE FUNCTION" << std::endl; */ ActiveA_Function_UpdateViewer(settings); }
     }
     
     // reset the update flag

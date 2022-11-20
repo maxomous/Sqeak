@@ -4,6 +4,7 @@
 CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.cpp
 CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -51,8 +52,57 @@ CMakeFiles/Sqeak.dir/common.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/
 CMakeFiles/Sqeak.dir/dev/joystick.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.cpp
 CMakeFiles/Sqeak.dir/dev/joystick.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
 
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.cpp
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imconfig.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_impl_glfw.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_impl_opengl3.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_internal.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_stb_image.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_stdlib.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imstb_textedit.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui_modules/imgui_modules.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/glcore.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/glm.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/globjects.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/glsys.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/material.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/modelloader.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/renderer.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/shader.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/texture.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/gclist.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl_common.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/grblcodes.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/grbl/serial.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/frames.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/gui.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/settings.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include/slvs.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch.h
+CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.h
+
 CMakeFiles/Sqeak.dir/gcreader.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/gcreader.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/gcreader.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/gcreader.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.cpp
 CMakeFiles/Sqeak.dir/gcreader.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/gcreader.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
@@ -100,6 +150,7 @@ CMakeFiles/Sqeak.dir/gcreader.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketche
 
 CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -147,6 +198,7 @@ CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/
 
 CMakeFiles/Sqeak.dir/gui/frames.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/gui/frames.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/gui/frames.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/gui/frames.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/gui/frames.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/gui/frames.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -194,6 +246,7 @@ CMakeFiles/Sqeak.dir/gui/frames.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketc
 
 CMakeFiles/Sqeak.dir/gui/gui.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/gui/gui.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/gui/gui.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/gui/gui.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/gui/gui.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/gui/gui.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -241,6 +294,7 @@ CMakeFiles/Sqeak.dir/gui/gui.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher
 
 CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -288,6 +342,7 @@ CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o: /home/pi/Desktop/Projects/Sq
 
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -341,6 +396,7 @@ CMakeFiles/Sqeak.dir/libs/qrcodegen.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/l
 
 CMakeFiles/Sqeak.dir/main.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/main.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/main.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/main.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/main.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/main.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -388,6 +444,7 @@ CMakeFiles/Sqeak.dir/main.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketcher/sk
 
 CMakeFiles/Sqeak.dir/settings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/settings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/settings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/settings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/settings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/settings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -435,6 +492,7 @@ CMakeFiles/Sqeak.dir/settings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketche
 
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h
@@ -482,6 +540,7 @@ CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/
 
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/common.h
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.h
+CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.h
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/fonts/font_geomanist.h

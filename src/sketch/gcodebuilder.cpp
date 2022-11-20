@@ -178,7 +178,7 @@ void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, 
     }
     float& tabHeight  = settings.p.pathCutter.TabHeight;
     float& tabWidth   = settings.p.pathCutter.TabWidth;
-    float tabZPos = params.z1 + tabHeight;
+    float tabZPos = params.zBottom + tabHeight;
     
     auto addTab = [&]() {
         // get tab position
@@ -242,21 +242,22 @@ int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params)
     // get the positions of where tabs should lie and their indexes within points[]
     std::vector<std::pair<size_t, Vec2>> tabPositions = GetTabPositions(settings, params);
     
-    float zCurrent = params.z0;
-    int zDirection = ((params.z1 - params.z0) > 0) ? FORWARD : BACKWARD; // 1 or -1
+    float zCurrent = params.zTop;
+    int zDirection = ((params.zBottom - params.zTop) > 0) ? FORWARD : BACKWARD; // 1 or -1
     bool isMovingForward = true;
     
     const std::vector<Vec2>* points = params.points;
+    bool isLoop = points->front() == points->back();
         
     do {
         // retract then move to initial x, y position
         // if first run or requires retract for pocketing, move to safe z
-        if((zCurrent == params.z0) || params.retract == RetractType::Full) {    //params.isLoop && (points->front() != points->back());
+        if((zCurrent == params.zTop) || params.retract == ForceRetract::Full) {    //params.isLoop && (points->front() != points->back());
             RetractToZPlane();
             Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", (*points)[0].x, (*points)[0].y));
         }
         // or retract a small distance
-        if(params.retract == RetractType::Partial) {
+        if(params.retract == ForceRetract::Partial) {
             Retract(settings.p.pathCutter.PartialRetractDistance);
             Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", (*points)[0].x, (*points)[0].y));
         }
@@ -275,15 +276,15 @@ int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params)
             Add(va_str("G1 X%.3f Y%.3f F%.0f", pNext.x, pNext.y, params.feedCutting));
         }
         // reverse direction at end of linestring
-        if(!params.isLoop) { isMovingForward = !isMovingForward; }
+        if(!isLoop) { isMovingForward = !isMovingForward; }
         // if we have reached the final z depth, break out of loop
-        if(zCurrent == params.z1) { break; }
+        if(zCurrent == params.zBottom) { break; }
         // update z
         zCurrent += zDirection * fabsf(params.cutDepth);
         
         // if z zepth is further than final depth, adjust to final depth
-        if((zDirection == FORWARD && zCurrent > params.z1) || (zDirection == BACKWARD && zCurrent < params.z1)) {
-            zCurrent = params.z1;
+        if((zDirection == FORWARD && zCurrent > params.zBottom) || (zDirection == BACKWARD && zCurrent < params.zBottom)) {
+            zCurrent = params.zBottom;
         }
     } while(1);
 

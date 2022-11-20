@@ -255,6 +255,33 @@ dev/joystick.cpp.s:
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/dev/joystick.cpp.s
 .PHONY : dev/joystick.cpp.s
 
+functions/functions.o: functions/functions.cpp.o
+
+.PHONY : functions/functions.o
+
+# target to build an object file
+functions/functions.cpp.o:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/functions/functions.cpp.o
+.PHONY : functions/functions.cpp.o
+
+functions/functions.i: functions/functions.cpp.i
+
+.PHONY : functions/functions.i
+
+# target to preprocess a source file
+functions/functions.cpp.i:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/functions/functions.cpp.i
+.PHONY : functions/functions.cpp.i
+
+functions/functions.s: functions/functions.cpp.s
+
+.PHONY : functions/functions.s
+
+# target to generate assembly for a file
+functions/functions.cpp.s:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/functions/functions.cpp.s
+.PHONY : functions/functions.cpp.s
+
 gcreader.o: gcreader.cpp.o
 
 .PHONY : gcreader.o
@@ -627,6 +654,9 @@ help:
 	@echo "... dev/joystick.o"
 	@echo "... dev/joystick.i"
 	@echo "... dev/joystick.s"
+	@echo "... functions/functions.o"
+	@echo "... functions/functions.i"
+	@echo "... functions/functions.s"
 	@echo "... gcreader.o"
 	@echo "... gcreader.i"
 	@echo "... gcreader.s"

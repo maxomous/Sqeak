@@ -3,6 +3,7 @@ file(REMOVE_RECURSE
   "/home/pi/Desktop/Projects/Sqeak/Sqeak.pdb"
   "CMakeFiles/Sqeak.dir/common.cpp.o"
   "CMakeFiles/Sqeak.dir/dev/joystick.cpp.o"
+  "CMakeFiles/Sqeak.dir/functions/functions.cpp.o"
   "CMakeFiles/Sqeak.dir/gcreader.cpp.o"
   "CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o"
   "CMakeFiles/Sqeak.dir/gui/frames.cpp.o"

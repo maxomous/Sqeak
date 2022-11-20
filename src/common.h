@@ -66,10 +66,21 @@ struct InputEvent {
 
 #include "gui/filebrowser.h"
 #include "gui/viewer.h"
+
+namespace Sqeak {
+    
+struct Event_Update3DModelFromFile      { std::string filename; };
+struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
+struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::ColouredVertexList>* dynamicLineLists; };
+struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::ColouredVertexList>* dynamicPointLists; };
+}
+
 #include "sketch/gcodebuilder.h"
 #include "sketch/sketch.h"
 
 #include "sketcher/sketch.h"
+
+#include "functions/functions.h"
 
 #include "gui/frames.h"
 #include "gui/gui.h"
@@ -78,11 +89,6 @@ struct InputEvent {
 
 namespace Sqeak {
     
-struct Event_Update3DModelFromFile      { std::string filename; };
-struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
-struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::ColouredVertexList>* dynamicLineLists; };
-struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::ColouredVertexList>* dynamicPointLists; };
-
 struct Event_PopupMessage               { std::string msg; };
 struct Event_ResetFileTimer             {};
 struct Event_SaveSettings               {};

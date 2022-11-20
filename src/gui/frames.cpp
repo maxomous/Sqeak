@@ -22,141 +22,6 @@ namespace Sqeak {
 //******************************************************************************//
 //**********************************FRAMES**************************************//
 
-class Function
-{
-public:
-    virtual void DrawWindow() = 0;
-    std::string Name() { return m_Name; } 
-protected:
-    Function(std::string name, Settings* settings, Sketch::Sketcher* sketcher)
-        : m_Name(name), m_Settings(settings), m_Sketcher(sketcher) {}
-    
-    std::string m_Name;
-    Settings* m_Settings;
-    Sketch::Sketcher* m_Sketcher;
-};
-
- 
- 
- 
- 
- //   holding selection
- //       const std::vector<SketchItem>&    points   = m_Events->GetSelectedPoints();
- //       const std::vector<SketchItem>&    elements = m_Events->GetSelectedElements();
- //       const std::vector<Geometry>&      polygons = m_Events->GetSelectedPolygons();
- //   
- //   when we are about to run function:
- //       void PreProcessGeometry() {
- //           - make lines into linestrings
- //           - make polygons in polygons with holes
- //       }
- //        
- //   on sketch element has changed:
- //       void UpdateFunction() {
- //           // For SketchItem
- //           check it still has the same points
- //           // For Polygons
- //           check if loop matches any in new polygonised?
- //       }
-        
-    
-    
-    
- 
-class Function_CutPath : public Function
-{
-public:
-    Function_CutPath(std::string name, Settings* settings, Sketch::Sketcher* sketcher)
-        : Function(name, settings, sketcher) {}
-        
-    void DrawWindow() override {
-        GUISettings& s = m_Settings->guiSettings;
-        Sketch::SketchEvents& events = m_Sketcher->Events();
-        // Button is active if select loop command is selected
-        bool isActive = (events.GetCommandType() == Sketch::SketchEvents::CommandType::SelectLoop);
-        // Selection Button
-        if (ImGuiModules::ImageButtonWithText("Select Geometry##FunctionButton", s.img_Sketch_SelectLoop, s.imageButton_Toolbar_SketchPrimary, isActive)) { 
-            // Set command type to select loop
-            events.SetCommandType(Sketch::SketchEvents::CommandType::SelectLoop);
-        }
-        // Show ok / cancel buttons if on the Select command
-        if(isActive) {
-            ImGui::SameLine();
-            if(ImGui::Button("Ok")) {
-                // Store a copy of the selected geometry
-                //m_Selectd_Points = events.GetSelectedPoints();
-                m_Selected_Linestrings = events.GetSelectedElements();
-                m_Selected_Polygons = events.GetSelectedPolygons();
-                // Deselect tool
-                events.SetCommandType(Sketch::SketchEvents::CommandType::None);
-            }
-            ImGui::SameLine();
-            if(ImGui::Button("Cancel")) {
-                // Deselect tool
-                events.SetCommandType(Sketch::SketchEvents::CommandType::None);
-            }
-        }
-        
-        // NEW LINE
-        // ImGui::CollapsingHeader()
-        if(ImGui::TreeNode("LineStrings")) {
-            // Display the selected linestrings
-            for(size_t i = 0; i < m_Selected_Linestrings.size(); i++) {
-                ImGui::TextUnformatted(m_Selected_Linestrings[i].Name().c_str());
-            }
-            ImGui::TreePop();
-        }
-        
-        if(ImGui::TreeNode("Polygons")) {
-            // Display the selected polygons
-            for(size_t i = 0; i < m_Selected_Polygons.size(); i++) {
-                std::string name = "Polygon " + to_string(i);
-                ImGui::TextUnformatted(name.c_str());
-            }
-            ImGui::TreePop();
-        }
-    }
-    
-private:
-    // A selection of geometry which links back to the original sketch element so that it can update if sketch is modified 
-    //std::vector<SketchItem> m_Selectd_Points;
-    std::vector<Sketch::SketchItem> m_Selected_Linestrings;
-    // A selection of raw points so cannot link back to original polygonised points
-    std::vector<Geometry> m_Selected_Polygons;
-};
-
-
-struct Functions 
-{
-    Functions(Settings* settings, Sketch::Sketcher* sketcher)
-        : m_Settings(settings), m_Sketcher(sketcher) 
-    {
-        // Initialise a function temporarily
-        m_Functions.Add<Function_CutPath>("Cut Path##INSERT ID", settings, sketcher);
-    }
-    
-    void DrawWindows() 
-    {  
-        // For each function
-        for(size_t i = 0; i < m_Functions.Size(); i++) {
-            // begin new imgui window
-            static ImGuiCustomModules::ImGuiWindow window(*m_Settings, m_Functions[i].Name());
-            if(window.Begin(*m_Settings)) {  
-                // Draw function window
-                m_Functions[i].DrawWindow();
-                window.End();
-            }
-        }
-    }
-    
-    Settings* m_Settings; 
-    Sketch::Sketcher* m_Sketcher;
-
-    Vector_Ptrs<Function> m_Functions;
-
-    
-};
-
 
 struct Console 
 {     
@@ -1796,7 +1661,7 @@ public:
             if (ImGuiModules::ImageButtonWithText("Run##SubToolbar", s.img_Play, s.imageButton_SubToolbar_Button)) {
                 if(sketcher.IsActive()) { 
                     // run sketch function
-                    sketcher.ActiveFunction_Run(grbl, *m_Settings);
+                    sketcher.ActiveA_Function_Run(grbl, *m_Settings);
                 } else { 
                     // run file
                     RunFile(grbl);
@@ -1823,10 +1688,10 @@ public:
                 grbl.sendRT(GRBL_RT_RESUME);
             }
             SameLineSpacer();
-            sketcher.ActiveFunction_Export(*m_Settings);
+            sketcher.ActiveA_Function_Export(*m_Settings);
             
             ImGui::SameLine();
-            sketcher.ActiveFunction_Delete(*m_Settings);
+            sketcher.ActiveA_Function_Delete(*m_Settings);
             
         ImGui::EndGroup(); 
     } 

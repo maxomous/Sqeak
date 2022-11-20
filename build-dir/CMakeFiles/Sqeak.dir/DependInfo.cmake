@@ -6,6 +6,7 @@ set(CMAKE_DEPENDS_LANGUAGES
 set(CMAKE_DEPENDS_CHECK_CXX
   "/home/pi/Desktop/Projects/Sqeak/src/common.cpp" "/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles/Sqeak.dir/common.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/dev/joystick.cpp" "/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles/Sqeak.dir/dev/joystick.cpp.o"
+  "/home/pi/Desktop/Projects/Sqeak/src/functions/functions.cpp" "/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles/Sqeak.dir/functions/functions.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/gcreader.cpp" "/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles/Sqeak.dir/gcreader.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.cpp" "/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/gui/frames.cpp" "/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles/Sqeak.dir/gui/frames.cpp.o"

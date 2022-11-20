@@ -301,7 +301,7 @@ bool SketchRenderer::UpdateRenderData()
     if(m_Update & UpdateFlag::ClearSelection) {
         std::cout << "updating Clear Selection" << std::endl;
         // reset dragged selection box
-        m_Parent->Events().m_IsDragSelectionBox = false;    
+        m_Parent->Events().m_IsSelectionBox = false;    
         // clear the selected / hovered flags on elements (note: flags on polygonised geometry are reset with UpdateFlag::Elements)
         m_Parent->Factory().ClearSelected();
         m_Parent->Factory().ClearHovered();
@@ -430,7 +430,7 @@ EqualRadius_Circle_Circle
         cursor.Clear();
         
         // Render dragged selection box
-        if(m_Parent->Events().m_IsDragSelectionBox) {
+        if(m_Parent->Events().m_IsSelectionBox) {
         
             Vec2& p0 = m_Parent->Events().m_CursorClickedPos;
             Vec2& p1 = m_Parent->Events().m_CursorPos;
@@ -650,17 +650,22 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
 
     // TODO: Work out where point should be (i.e. if snapped etc) 
     
+    auto Command_ClearSelected = [&]() {
+        // Clear selected if mouse is clicked or mouse is released during selection box
+        bool isClicked                  = (button == MouseButton::Left && action == MouseAction::Press);
+        bool isReleaseOnSelectionBox    = (button == MouseButton::Left) && (action == MouseAction::Release) && m_IsSelectionBox && (m_CursorPos != m_CursorClickedPos); // m_IsSelectionBox gets activated as we click so we need to check it's actually moved else it may not really be a drag
+        bool isCtrlOrShift              = (modifier == KeyModifier::Ctrl || modifier == KeyModifier::Shift);
+        // Reset selected item if ctrl or shift is not pressed
+        if((isClicked || isReleaseOnSelectionBox) && !isCtrlOrShift) {
+            m_Parent->Factory().ClearSelected();
+            m_PolygonisedGeometry.ClearSelected();
+        }
+    };
+    
     // Select Tool
     auto Command_Select = [&]() {
         if(button == MouseButton::Left && action == MouseAction::Press) {
-            // Reset selected item if ctrl or shift is not pressed
-            if(modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift) {
-                m_Parent->Factory().ClearSelected();
-            }
-            
             bool success = m_Parent->Factory().SetSelectedByPosition(m_CursorPos, m_SelectionFilter);
-            // start dragging selection box if no item under cursor
-            m_IsDragSelectionBox = !success;
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
             return success;
@@ -668,20 +673,18 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
         else if(button == MouseButton::Left && action == MouseAction::Release) {
             // ensure bounding box hsa a size
             if(m_CursorPos == m_CursorClickedPos)  {
-                m_IsDragSelectionBox = false;
+                m_IsSelectionBox = false;
             }
             // If we have dragged the cursor whilst button was pressed
-            if(m_IsDragSelectionBox) {
-                // Reset selected item if ctrl or shift is not pressed
-                if(modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift) {
-                    m_Parent->Factory().ClearSelected();
-                }
+            if(m_IsSelectionBox) {
+                // include geometry partially inside selection box of fully contained within
                 bool includePartiallyInside = (m_CursorPos.x - m_CursorClickedPos.x) < 0;
                 // Find selection inside selection box
                 bool success = m_Parent->Factory().AddSelectionBetween(m_CursorPos, m_CursorClickedPos, m_SelectionFilter, includePartiallyInside);
-                m_IsDragSelectionBox = false;                
+                m_IsSelectionBox = false;                
                 // Update render data
                 m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection | UpdateFlag::Cursor);
+                std::cout << "successful drag  box?: " << success << std::endl;
                 return success;
             }
         }  
@@ -691,15 +694,11 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
     auto Command_SelectPolygonise = [&]() {
          
         if(button == MouseButton::Left && action == MouseAction::Press) {
-            // Reset selected item if ctrl or shift is not pressed
-            if(modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift) {
-                m_PolygonisedGeometry.ClearSelected();
-            } 
             // selected item at cursorpos
-            m_PolygonisedGeometry.SetSelectedByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
+             bool success = m_PolygonisedGeometry.SetSelectedByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
-            return true;
+            return success;
         }  
         return false;
     };
@@ -708,21 +707,29 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
     if(m_CommandType == CommandType::None) { return false; } // do nothing - this assumes we dont need to update if only the cursor position has changed
     // Handle Select Command
     else if(m_CommandType == CommandType::Select) {
+        // Clear the selection data for points, elements and polygons
+        Command_ClearSelected();
         // Try to select something with the select tool
         // We start on SelectionFilter::All, the filter changes to the same type as the type selected 
-        return Command_Select();
+        bool success = Command_Select();
+        
+        // start dragging selection box if no item under cursor
+        if(!success && (button == MouseButton::Left) && (action == MouseAction::Press)) {
+            m_IsSelectionBox = true;
+        }
     }
     
     // Handle Select loop Command
     else if(m_CommandType == CommandType::SelectLoop) {
-        
+        // Clear the selection data for points, elements and polygons
+        Command_ClearSelected();
         // TODO: combine mouse button press
         
         // We start on SelectionFilter::All, the filter changes to the same type as the type selected 
         // Try to select an element with the select tool
         bool success = Command_Select();
         // Set the selction filter to the type of the first item clicked
-        if(button == MouseButton::Left && action == MouseAction::Press) {
+        if((button == MouseButton::Left && action == MouseAction::Press) || (button == MouseButton::Left && action == MouseAction::Release)) {
             if(success && (m_SelectionFilter == SelectionFilter::All)) { m_SelectionFilter = SelectionFilter::Basic; }
         }
         // If no elements found, look for polygons 
@@ -733,9 +740,14 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                 if(success && (m_SelectionFilter == SelectionFilter::All)) { m_SelectionFilter = SelectionFilter::Polygons; }
             }
         }
-        // if neither elements or polgons were found, and we're not selecting multiple items, reset the selection filter
-        if(button == MouseButton::Left && action == MouseAction::Press) {
-            if(!success && (modifier != KeyModifier::Ctrl && modifier != KeyModifier::Shift)) { m_SelectionFilter = SelectionFilter::All; }
+        // if neither elements or polgons were found, 
+        if(!success && (button == MouseButton::Left) && (action == MouseAction::Press)) {
+            // Start dragging selection box
+            m_IsSelectionBox = true;
+            // And we're not selecting multiple items, reset the selection filter
+            if((modifier != KeyModifier::Ctrl) && (modifier != KeyModifier::Shift)) { 
+                m_SelectionFilter = SelectionFilter::All; 
+            }
         }
         return success;
     }
@@ -880,12 +892,36 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
 // return true if update required
 bool SketchEvents::Mouse_Move(const Vec2& p)
 { 
+    // TODO: Work out where point should be (i.e. if snapped etc)
+    std::cout << "m_SelectionFilter: " << (int)m_SelectionFilter << std::endl;
+    
+    // Reset the mouse button / action
+    if(m_MouseAction == MouseAction::Release) { m_MouseButton = MouseButton::None; m_MouseAction = MouseAction::None; }
+    // return early if no change to p, to prevent solving constraints unnecessarily 
+    if(p == m_CursorPos) { return false; }
+    // Update cursor
+    Vec2 pDif = p - m_CursorPos;
+    m_CursorPos = p;
+    // Update render data
+    m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Cursor);
+    
+    
+    auto Command_ClearSelected = [&]() {
+        // Is mouse moving but no buttons pressed, or dragging a selection box?
+        bool isNoMouseButton         = m_MouseButton == MouseButton::None;
+        bool isDraggingSelectionBox  = (m_MouseButton == MouseButton::Left) && (m_MouseAction == MouseAction::Press) && m_IsSelectionBox && (m_CursorPos != m_CursorClickedPos);
+        // Clear the hovered points & elements and polygons
+        if(isNoMouseButton || isDraggingSelectionBox) { 
+            m_Parent->Factory().ClearHovered();
+            m_Parent->Events().m_PolygonisedGeometry.ClearHovered();
+        }
+    };
+    
     
     auto Command_Select = [&](bool isDragEnabled = false) {
         bool success = false;
          // Highlight item if hovered over
         if(m_MouseButton == MouseButton::None) { 
-            m_Parent->Factory().ClearHovered();
             success |= m_Parent->Factory().SetHoveredByPosition(m_CursorPos, m_SelectionFilter);            
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
@@ -893,9 +929,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
         
         if(m_MouseButton == MouseButton::Left && m_MouseAction == MouseAction::Press) {
             // Dragging selection box
-            if(m_IsDragSelectionBox) {
-                
-                m_Parent->Factory().ClearHovered();
+            if(m_IsSelectionBox) {
                 
                 bool includePartiallyInside = (m_CursorPos.x - m_CursorClickedPos.x) < 0;
                 // Find selection inside selection box
@@ -905,11 +939,11 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             } else {  
                 // drag a point 
                 if(isDragEnabled) {
-                    Vec2 pDif = p - m_CursorPos;
                     std::cout << "p: " << p << std::endl;
                     m_Parent->SolveConstraints(pDif);
                     // Update render data (selection is required for knowing which is dragged)
                     m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_DontClearSelection);
+                    return true;
                 }
             }
         }
@@ -920,41 +954,27 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
         
         // Highlight item if hovered over
         if(m_MouseButton == MouseButton::None) { 
-            m_Parent->Events().m_PolygonisedGeometry.ClearHovered();
-            m_Parent->Events().m_PolygonisedGeometry.SetHoveredByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
+            bool success = m_Parent->Events().m_PolygonisedGeometry.SetHoveredByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
-            return true;
+            return success;
         }
         return false;
     };
     
-    std::cout << "m_SelectionFilter: " << (int)m_SelectionFilter << std::endl;
-    
-    
-    // Reset the mouse button / action
-    if(m_MouseAction == MouseAction::Release) { m_MouseButton = MouseButton::None; m_MouseAction = MouseAction::None; }
-    
-    // TODO: Work out where point should be (i.e. if snapped etc)
-    
-    // return early if no change to p, to prevent solving constraints unnecessarily 
-    if(p == m_CursorPos) { return false; }
-    
-
-    // Update cursor
-    m_CursorPos = p;
-    // Update render data
-    m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Cursor);
-        
     // Return if no command set
     if(m_CommandType == CommandType::None) { return false;} // do nothing - this assumes we dont need to update if only the cursor position has changed
     // Hover / drag / 
     else if(m_CommandType == CommandType::Select) {
+        // Clear the selection data for points, elements and polygons
+        Command_ClearSelected();
         // Highlight item if hovered over
         return Command_Select(true); // drag enabled
     } 
     // Hover / drag / 
-    else if(m_CommandType == CommandType::SelectLoop) { 
+    else if(m_CommandType == CommandType::SelectLoop) {
+        // Clear the selection data for points, elements and polygons
+        Command_ClearSelected();
         // Highlight an element with the select tool if mouse over
         // We start on SelectionFilter::All, the filter changes to the same type as the type selected 
         bool success = Command_Select();
