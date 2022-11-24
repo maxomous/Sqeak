@@ -190,6 +190,7 @@ void ElementFactory::RefPointToElement_DrawImGui()
  
 void A_Function_Draw::DrawImGui_Tools(Settings& settings) 
 {
+    (void)settings;
    // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Select##OLD", settings.guiSettings.img_Sketch_Select, m_ActiveCommand == Command::Select)) { m_ActiveCommand = Command::Select; }
    // ImGui::SameLine();
    // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Line##OLD", settings.guiSettings.img_Sketch_Line, m_ActiveCommand == Command::Line)) { m_ActiveCommand = Command::Line; }
@@ -229,35 +230,36 @@ void A_Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settin
 
 void DrawImGui_PathCutterParameters(Settings& settings) 
 {
-    ParametersList::PathCutter& pathCutter = settings.p.pathCutter;
-    bool updateViewer = false;
-    
-    ImGui::InputFloat("Cut Overlap", &pathCutter.CutOverlap);
-    ImGui::InputFloat("Partial Retract Distance", &pathCutter.PartialRetractDistance);
-    
-    updateViewer |= ImGui::InputInt("Quadrant Segments", &settings.p.pathCutter.geosParameters.QuadrantSegments);
-/*    // cap style / join style
-    static int imgui_CapStyle = settings.p.pathCutter.geosParameters.CapStyle - 1;
-    if(ImGui::Combo("Cap Style", &imgui_CapStyle, "Round\0Flat\0Square\0\0")) {
-        settings.p.pathCutter.geosParameters.CapStyle = imgui_CapStyle + 1;
-        updateViewer = true;
-    }
-    static int imgui_JoinStyle = settings.p.pathCutter.geosParameters.JoinStyle - 1;
-    if(ImGui::Combo("Join Style", &imgui_JoinStyle, "Round\0Mitre\0Bevel\0\0")) {
-        settings.p.pathCutter.geosParameters.JoinStyle = imgui_JoinStyle + 1;
-        updateViewer = true;
-    }
-*/    
-    updateViewer |= ImGui::Checkbox("Cut Tabs", &pathCutter.CutTabs);
-        
-    ImGui::Indent();
-        if(pathCutter.CutTabs) {
-            updateViewer |= ImGui::InputFloat("Tab Spacing", &pathCutter.TabSpacing);
-            updateViewer |= ImGui::InputFloat("Tab Height",  &pathCutter.TabHeight);
-            updateViewer |= ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
-        }
-    ImGui::Unindent();
-    if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
+    (void)settings;
+   // ParametersList::PathCutter& pathCutter = settings.p.pathCutter;
+   // bool updateViewer = false;
+   // 
+   // ImGui::InputFloat("Cut Overlap", &pathCutter.CutOverlap);
+   // ImGui::InputFloat("Partial Retract Distance", &pathCutter.PartialRetractDistance);
+   // 
+   // updateViewer |= ImGui::InputInt("Quadrant Segments", &settings.p.pathCutter.geosParameters.QuadrantSegments);
+/* //   // cap style / join style
+   // static int imgui_CapStyle = settings.p.pathCutter.geosParameters.CapStyle - 1;
+   // if(ImGui::Combo("Cap Style", &imgui_CapStyle, "Round\0Flat\0Square\0\0")) {
+   //     settings.p.pathCutter.geosParameters.CapStyle = imgui_CapStyle + 1;
+   //     updateViewer = true;
+   // }
+   // static int imgui_JoinStyle = settings.p.pathCutter.geosParameters.JoinStyle - 1;
+   // if(ImGui::Combo("Join Style", &imgui_JoinStyle, "Round\0Mitre\0Bevel\0\0")) {
+   //     settings.p.pathCutter.geosParameters.JoinStyle = imgui_JoinStyle + 1;
+   //     updateViewer = true;
+   // }
+*/ //   
+   // updateViewer |= ImGui::Checkbox("Cut Tabs", &pathCutter.CutTabs);
+   //     
+   // ImGui::Indent();
+   //     if(pathCutter.CutTabs) {
+   //         updateViewer |= ImGui::InputFloat("Tab Spacing", &pathCutter.TabSpacing);
+   //         updateViewer |= ImGui::InputFloat("Tab Height",  &pathCutter.TabHeight);
+   //         updateViewer |= ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
+   //     }
+   // ImGui::Unindent();
+   // if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
 }
 std::string A_Drawing::ActiveA_Function_Name()
 {   
@@ -279,6 +281,7 @@ void A_Drawing::ActiveA_Function_DrawImGui_Tools(Settings& settings)
 
 void A_Drawing::DrawImGui_A_Functions(Settings& settings)
 {    
+    (void)settings;
     // new function buttons
   // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Draw##OLD", settings.guiSettings.img_Sketch_Draw)) {    
   //     std::unique_ptr<A_Function> newA_Function = std::make_unique<A_Function_Draw>(m_ElementFactory, "Draw " + to_string(m_A_FunctionIDCounter++));
@@ -370,6 +373,7 @@ void SketchOld::ActiveDrawing_DrawImGui_A_Functions(Settings& settings)
 
 bool SketchOld::DrawImGui_StartSketchOld(Settings& settings) 
 {
+    (void)settings;
     if(!IsActive()) {
         
   //      if(ImGuiModules::ImageButtonWithText_A_Function(settings, "SketchOld", settings.guiSettings.img_Sketch)) {  
@@ -1083,6 +1087,7 @@ std::string A_Function_Draw::HeaderText(Settings& settings, ElementFactory& elem
     
 std::optional<std::vector<std::string>> A_Function_Draw::ExportGCode(Settings& settings, ElementFactory& elementFactory)  
 {
+    (void)settings; (void)elementFactory;
    // // error check  
    // if(!IsValidInputs(settings, elementFactory)) {
    //     return {};  
@@ -1388,7 +1393,7 @@ void A_Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFa
     DynamicBuffer::ColouredVertexList points(settings.p.sketch.point.colour);
     
     // get line loop positions (return if there are none)
-    std::vector<Vec2> positions = elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments);
+    std::vector<Vec2> positions = elementFactory.LineLoop_PointsList(m_LineLoop, 15);
     if(positions.empty()) { return; }
     
     lines.position.clear();
@@ -1426,7 +1431,7 @@ void A_Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFa
                     points.position.push_back({ centre.x, centre.y, 0.0f });
                     // get path of arc as lines
                     int direction = Geom::Direction::CW;
-                    int quadrantSegments = settings.p.pathCutter.geosParameters.QuadrantSegments;
+                    int quadrantSegments = 15;
                     std::vector<Vec2> arcPath = elementFactory.Element_GetArcPath(p0, p1, direction, centre, quadrantSegments);
                     // add lines
                     for(const Vec2& p : arcPath) {

@@ -86,6 +86,14 @@ geos_c.h
 MaxLib.h
 -
 
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.cpp
+initializer_list
+-
+constraints.h
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
+elementfactory.h
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.h
+
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
 vector
 -
@@ -112,6 +120,10 @@ assert.h
 libslvs/include/slvs.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include/slvs.h
 
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.cpp
+elementfactory.h
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.h
+
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.h
 sketch_common.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.h
@@ -119,6 +131,12 @@ elements.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.h
 constraints.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.h
+
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.cpp
+iostream
+-
+elements.h
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.h
 memory
@@ -149,6 +167,10 @@ sketch_common.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.h
 elementfactory.h
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.h
+
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.cpp
+sketch_common.h
+/home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.h
 string

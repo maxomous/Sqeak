@@ -11,9 +11,67 @@ using namespace MaxLib;
 
 namespace Sqeak { 
 
+    
+bool Function_CutPath::Parameters_CutPath::Draw()
+{
+    bool needsUpdate = false;
+    // Draw the parameters in a tree
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if (ImGui::TreeNode("Parameters")) {
 
-
-
+        // General Parameters
+        ImGui::TextUnformatted("General"); ImGui::Indent();
+            needsUpdate |= ImGui::Combo("Cut Side", &cutSide, "None\0Left\0Right\0Pocket\0\0");
+            
+            needsUpdate |= ImGui::InputFloat("Z Top", &cutPathParameters.depth.zTop);
+            needsUpdate |= ImGui::InputFloat("Z Bottom", &cutPathParameters.depth.zBottom);
+            needsUpdate |= ImGui::InputFloat("Depth of Cut", &cutPathParameters.depth.cutDepth);
+            needsUpdate |= ImGui::InputFloat("Cut Overlap", &cutOverlap);
+        ImGui::Unindent();
+        
+        // Retract Parameters
+        ImGui::TextUnformatted("Retract"); ImGui::Indent();
+            needsUpdate |= ImGui::Combo("Force Retract", (int*)&cutPathParameters.depth.retract, "None\0Partial\0Full\0\0");
+            needsUpdate |= ImGui::InputFloat("Partial Retract Distance", &cutPathParameters.depth.partialRetractDistance);
+        ImGui::Unindent();
+        
+          
+        // Tab Parameters
+        ImGui::TextUnformatted("Tabs"); ImGui::Indent();
+        needsUpdate |= ImGui::Checkbox("Cut Tabs", &cutPathParameters.tabs.isActive);
+        if(cutPathParameters.tabs.isActive) {
+            ImGui::Indent();
+                needsUpdate |= ImGui::InputFloat("Spacing", &cutPathParameters.tabs.spacing);
+                needsUpdate |= ImGui::InputFloat("Height",  &cutPathParameters.tabs.height);
+                needsUpdate |= ImGui::InputFloat("Width",   &cutPathParameters.tabs.width);
+            ImGui::Unindent();
+        }
+        ImGui::Unindent();
+        
+        // Finishing Pass Parameters
+        ImGui::TextUnformatted("Finishing Pass"); ImGui::Indent();
+            needsUpdate |= ImGui::InputFloat("Thickness", &finishPass);
+        ImGui::Unindent();
+        
+        // Interpolation
+        ImGui::TextUnformatted("Advanced"); ImGui::Indent();
+            needsUpdate |= ImGui::InputInt("Arc Smoothness", &geosParameters.QuadrantSegments, 1, 100);
+            /*// cap style / join style
+            static int imgui_CapStyle = geosParameters.CapStyle - 1;
+            if(ImGui::Combo("Cap Style", &imgui_CapStyle, "Round\0Flat\0Square\0\0")) {
+                geosParameters.CapStyle = imgui_CapStyle + 1;
+                needsUpdate = true;
+            }
+            static int imgui_JoinStyle = geosParameters.JoinStyle - 1;
+            if(ImGui::Combo("Join Style", &imgui_JoinStyle, "Round\0Mitre\0Bevel\0\0")) {
+                geosParameters.JoinStyle = imgui_JoinStyle + 1;
+                needsUpdate = true;
+            }*/ 
+        ImGui::Unindent();
+        ImGui::TreePop();
+    }
+    return needsUpdate;
+}
 
     
 int Function_CutPath::Parameters_CutPath::GetCutSide() 
@@ -29,33 +87,36 @@ bool Function_CutPath::DrawWindow()
 {
     bool needsUpdate = false;
 
+    needsUpdate |= ImGui::InputText("Name", &m_Name); ImGui::Dummy(ImVec2());
+        
     // Select Geometry Button
     DrawSelectButton(&m_Selected_Points, &m_Selected_Elements, &m_Selected_Polygons);
     
-    // Set Parameters
-    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-    if (ImGui::TreeNode("Parameters")) 
-    {     
-        needsUpdate |= ImGui::InputText("Name", &m_Name);
-        ImGui::Dummy(ImVec2());
-        needsUpdate |= ImGui::InputFloat("Z Top", &m_Params.zTop);
-        needsUpdate |= ImGui::InputFloat("Z Bottom", &m_Params.zBottom);
-        needsUpdate |= ImGui::Combo("Cut Side", &m_Params.cutSide, "None\0Left\0Right\0Pocket\0\0");
-        needsUpdate |= ImGui::InputFloat("Finishing Pass", &m_Params.finishPass);
-        
-        ImGui::TreePop();
-    }
+    m_Params.Draw();
     
     if(ImGui::Button("Build GCode")) {
-        // make an array of points to send to gcodebuilder
-        LineString v;
-        for(size_t i = 0; i < m_Selected_Elements.size(); i++) {
-            // copy the points into an array
-            v.push_back(m_Sketcher->Factory().GetPositionBySketchItem(m_Selected_Elements[i]));
-        }
         
-        GCode_SendToViewer(v);
-        needsUpdate = true;
+        if(!m_Selected_Elements.empty() || !m_Selected_Polygons.empty()) {
+            // make an array of points to send to gcodebuilder 
+            std::vector<Geometry> combinedGeometry;
+            // choose either elements of polygons
+            if(!m_Selected_Polygons.empty()) { // copy the array
+                combinedGeometry = m_Selected_Polygons;
+            } 
+            else { // get points from sketchitem and copy the points into an array
+                std::vector<Geometry> geometry;
+                for(auto& element : m_Selected_Elements) {
+                    Geometry g = m_Sketcher->Factory().RenderElementBySketchItem(element);
+                    geometry.push_back(g); 
+                }         
+                // Simplify geometry       
+                Geos geos;
+                combinedGeometry = geos.CombineLineStrings(geometry);
+            }
+            
+            GCode_SendToViewer(combinedGeometry);
+            needsUpdate = true; 
+        }
     }
     
     // Draw the selected Geometry
@@ -72,7 +133,7 @@ std::string Function_CutPath::HeaderText()
     // write header
     std::ostringstream stream;
     stream << "; Function: " << m_Name << '\n';
-    stream << "; \tBetween: " << p.zTop << " and " << p.zBottom << '\n';
+    stream << "; \tBetween: " << p.cutPathParameters.depth.zTop << " and " << p.cutPathParameters.depth.zBottom << '\n';
     stream << "; \tPoints:" << '\n';
     
     // TODO add header text
@@ -93,15 +154,9 @@ std::string Function_CutPath::HeaderText()
 }
 
 
-
- 
+// Error check each inputpath
 bool Function_CutPath::IsValidInputs(const Geom::LineString& inputPath) 
 {  
-    // check tool and material is selected
-    if(m_Settings->p.toolSettings.tools.IsToolAndMaterialSelected()) {
-        Log::Error("Tool and Material must be selected");
-        return false;
-    }
     // start and end point
     if(inputPath.size() == 0) {
         Log::Error("Path is empty");
@@ -113,8 +168,33 @@ bool Function_CutPath::IsValidInputs(const Geom::LineString& inputPath)
         Log::Error("Pocket requires start and end points to be identical");
         return false;
     }
+    
+    return true;
+}   
+
+// Error check all inputpath
+bool Function_CutPath::IsValidInputs(const std::vector<Geom::LineString>& inputPaths) 
+{  
+    // ensure input data is available
+    if(inputPaths.empty()) {
+        Log::Error("Path is empty");
+        return false;
+    }
+    // error check for each linestring in inputpath
+    for(size_t i = 0; i < inputPaths.size(); i++) { 
+        if(!IsValidInputs(inputPaths[i])) {
+            return false;  
+        }  
+    }
+    
+    // check tool and material is selected
+    if(m_Settings->p.toolSettings.tools.IsToolAndMaterialSelected()) {
+        Log::Error("Tool and Material must be selected");
+        return false;
+    }
+
     // z top and bottom
-    if(m_Params.zBottom > m_Params.zTop) {
+    if(m_Params.cutPathParameters.depth.zBottom > m_Params.cutPathParameters.depth.zTop) {
         Log::Error("Z Bottom must be below or equal to Z Top");
         return false;
     }
@@ -131,12 +211,11 @@ bool Function_CutPath::IsValidInputs(const Geom::LineString& inputPath)
 
     
 // return value is success
-bool Function_CutPath::InterpretGCode(const Geom::LineString& inputPath, std::function<void(std::vector<std::string>)> cb)  
+bool Function_CutPath::InterpretGCode(const std::vector<Geom::LineString>& inputPaths, std::function<void(std::vector<std::string>&)> cb)  
 {
-    // error check  
-    if(!IsValidInputs(inputPath)) {
-        return true;  
-    }  
+    // Error check inputs
+    if(!IsValidInputs(inputPaths)) { return false; }  
+    // get tool / material
     ToolSettings::Tools::Tool& tool = m_Settings->p.toolSettings.tools.toolList.CurrentItem();
     ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
          
@@ -152,16 +231,21 @@ bool Function_CutPath::InterpretGCode(const Geom::LineString& inputPath, std::fu
     float toolRadius = fabsf(tool.Diameter / 2.0f);
     float pathOffset = toolRadius + fabsf(m_Params.finishPass);
     // define geos parameters
-    GeosBufferParams& geosParameters = m_Settings->p.pathCutter.geosParameters;
+    GeosBufferParams& geosParameters = m_Params.geosParameters;
+    
+    
     // calculate offset
-    GCodeBuilder::CutPathParams pathParams;
+//    GCodeBuilder::CutPathParams pathParams;
     // populate parameters
-    pathParams.zTop = m_Params.zTop;  
-    pathParams.zBottom = m_Params.zBottom; 
-    pathParams.cutDepth = toolData.cutDepth; 
-    pathParams.feedPlunge = toolData.feedPlunge;  
-    pathParams.feedCutting = toolData.feedCutting; 
+//    pathParams.zTop = m_Params.zTop;  
+//    pathParams.zBottom = m_Params.zBottom; 
+//    pathParams.cutDepth = toolData.cutDepth; 
+//    pathParams.feedPlunge = toolData.feedPlunge;  
+//    pathParams.feedCutting = toolData.feedCutting; 
      
+     
+    m_Params.cutPathParameters.tool.diameter = tool.Diameter;
+    
     // vector for storing the final paths
     std::vector<Geom::LineString> path;
     std::vector<Geom::LineString> enclosingPath;
@@ -170,67 +254,75 @@ bool Function_CutPath::InterpretGCode(const Geom::LineString& inputPath, std::fu
     // Initialise geos (for geometry offseting)
     Geos geos;
     
-    // Simple path
-    if(m_Params.cutSide == Parameters_CutPath::CompensateCutter::None) {
-        path.push_back(inputPath);
-    } 
-    // Compensate path by radius
-    else {
-        // make the inital offset   
-        path = geos.Offset(inputPath, cutSide * pathOffset, geosParameters);
-        // add pocket path 
-        if(isPocket) { 
-            // distance to offset per pass
-            float boringOffset = 2.0f * toolRadius - m_Settings->p.pathCutter.CutOverlap; 
-            // start a recursive loop of offset for boring, if cutting simple offset, this breaks loop after the first iteration
-            Geos::RecursiveOffset recursiveOffset = geos.OffsetPolygon_Recursive(path, boringOffset, true , geosParameters); // true is reverse
-            path = recursiveOffset.path;
-            enclosingPath = recursiveOffset.enclosingPath;
-        }
+    // for each linestring in inputpath
+    for(size_t i = 0; i < inputPaths.size(); i++)
+    {  
+        // Get input path
+        const Geom::LineString& inputPath = inputPaths[i];
+        // Just add Simple path
+        if(m_Params.cutSide == Parameters_CutPath::CompensateCutter::None) {
+            path.push_back(inputPath);
+        } 
+        // Compensate path by radius
+        else {
+            // make the inital offset   
+            path = geos.Offset(inputPath, cutSide * pathOffset, geosParameters);
+            // add pocket path 
+            if(isPocket) { 
+                // distance to offset per pass
+                float boringOffset = 2.0f * toolRadius - m_Params.cutOverlap; 
+                // start a recursive loop of offset for boring, if cutting simple offset, this breaks loop after the first iteration
+                Geos::RecursiveOffset recursiveOffset = geos.OffsetPolygon_Recursive(path, boringOffset, true , geosParameters); // true is reverse
+                path = recursiveOffset.path;
+                enclosingPath = recursiveOffset.enclosingPath;
+            }
 
-    }
-    
-    // for each one of the pocketing out line loop, cut depths
-    for (size_t i = 0; i < path.size(); i++) {
+        }
         
-        // Check to see if there is a clear path to the next starting point, if not, we retract fully
-        if(isPocket) {
-            // sanity check
-            if(path.size() != enclosingPath.size()) {
-                Log::Error("Path sizes do not match, forcing full retract");
-                pathParams.retract = GCodeBuilder::ForceRetract::Full;
-            } else {
-                // We need to retract z for each depth of pocket
-                if(geos.Within({ path[i].front(), path[i].back() }, enclosingPath[i])) {
-                    pathParams.retract = GCodeBuilder::ForceRetract::Partial;
+        // for each one of the pocketing out line loop, cut depths
+        for (size_t i = 0; i < path.size(); i++) {
+            
+            // Check to see if there is a clear path to the next starting point, if not, we retract fully
+            if(isPocket) {
+                // sanity check
+                if(path.size() != enclosingPath.size()) {
+                    Log::Error("Path sizes do not match, forcing full retract");
+                    m_Params.cutPathParameters.depth.retract = GCodeBuilder::ForceRetract::Full;
                 } else {
-                    pathParams.retract = GCodeBuilder::ForceRetract::Full;
+                    // We need to retract z for each depth of pocket
+                    if(geos.Within({ path[i].front(), path[i].back() }, enclosingPath[i])) {
+                        m_Params.cutPathParameters.depth.retract = GCodeBuilder::ForceRetract::Partial;
+                    } else {
+                        m_Params.cutPathParameters.depth.retract = GCodeBuilder::ForceRetract::Full;
+                    }
                 }
             }
-        }
-        // copy the ptr of the path vertex data
-        pathParams.points = &(path[i]);
-        // add gcodes for path at depths
-        if(gcodes.CutPathDepths(*m_Settings, pathParams)) { return false; }
-    }         
-    // add finishing path
-    if(m_Params.finishPass) {
-        // Force a single pass for the finishing path
-        pathParams.zTop = pathParams.zBottom;
-        // Calculate the path offset radius away from inputPath
-        std::vector<Geom::LineString> finishPath = geos.Offset(inputPath, cutSide * toolRadius, geosParameters);    
-        // Cut all the finishing paths 
-        for(size_t i = 0; i < finishPath.size(); i++) {
             // copy the ptr of the path vertex data
-            pathParams.points = &(finishPath[i]);
+         //   pathParams.points = &(path[i]);
             // add gcodes for path at depths
-            if(gcodes.CutPathDepths(*m_Settings, pathParams)) { return false; }
+            if(gcodes.CutPathDepths(path[i], m_Params.cutPathParameters)) { return false; }
+        }         
+        // add finishing path
+        if(m_Params.finishPass) {
+            // Force a single pass for the finishing path
+            GCodeBuilder::CutPathParams finishPathParams = m_Params.cutPathParameters;
+            finishPathParams.depth.zTop = finishPathParams.depth.zBottom;
+            finishPathParams.depth.retract = GCodeBuilder::ForceRetract::Full;
+            // Calculate the path offset radius away from inputPath
+            std::vector<Geom::LineString> finishPath = geos.Offset(inputPath, cutSide * toolRadius, geosParameters);    
+            // Cut all the finishing paths 
+            for(size_t i = 0; i < finishPath.size(); i++) {
+                // copy the ptr of the path vertex data
+                //finishPathParams.points = &(finishPath[i]);
+                // add gcodes for path at depths
+                if(gcodes.CutPathDepths(finishPath[i], finishPathParams)) { return false; }
+            }
         }
     }
     // move to zPlane, end program
     gcodes.EndCommands();
-    
-    cb(move(gcodes.Get()));
+    // send points to callback
+    cb(gcodes.Output());
     return true; 
 }
 

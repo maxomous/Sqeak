@@ -53,8 +53,6 @@ gui/filebrowser.h
 /home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.h
 gui/viewer.h
 /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.h
-sketch/gcodebuilder.h
-/home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
 sketch/sketch.h
 /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 sketcher/sketch.h
@@ -70,9 +68,15 @@ gui/gui.h
 MaxLib.h
 -
 
+/home/pi/Desktop/Projects/Sqeak/src/functions/functions.cpp
+functions.h
+/home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
+
 /home/pi/Desktop/Projects/Sqeak/src/functions/functions.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
+../sketch/gcodebuilder.h
+/home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
 
 /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 MaxLib.h
@@ -357,12 +361,14 @@ initializer_list
 -
 
 /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
-../common.h
-/home/pi/Desktop/Projects/Sqeak/src/common.h
-
-/home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.cpp
-sketch.h
-/home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
+iostream
+-
+vector
+-
+string
+-
+MaxLib.h
+-
 
 /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 MaxLib.h

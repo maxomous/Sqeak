@@ -1,8 +1,9 @@
 #include "gcodebuilder.h"
 
-    
 using namespace std;
+using namespace MaxLib;
 using namespace MaxLib::String;
+using namespace MaxLib::Geom;
 
 
 namespace Sqeak { 
@@ -54,88 +55,25 @@ void GCodeBuilder::EndCommands() {
     Add("M30\t(End Program)");
 }
 
-// executes length in one axis and then moves width of cutter in other axis
-void GCodeBuilder::FacingCutXY(Settings& settings, Vec2 p0, Vec2 p1, bool isYFirst) 
-{
-    ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
-    ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();
-    
-    float cutWidth  = tool.Diameter - settings.p.pathCutter.CutOverlap;
-    Vec2 pNext = p0; 
-    bool forward    = true;
-        
-    if(isYFirst) {
-        int xDirection = ((p1.x - p0.x) > 0) ? FORWARD : BACKWARD;
-        
-        do {
-            // y direction
-            pNext.y = (forward) ? p1.y : p0.y;
-            Add(va_str("G1 Y%.3f F%.0f", pNext.y, toolData.feedCutting));
-            
-            // x direction
-            if(pNext.x == p1.x) {
-                break;
-            }
-            
-            pNext.x += xDirection * cutWidth;
-            
-            if((xDirection == FORWARD && pNext.x > p1.x) || (xDirection == BACKWARD && pNext.x < p1.x)) {
-                pNext.x = p1.x;
-            }
-            Add(va_str("G1 X%.3f F%.0f", pNext.x, toolData.feedCutting));
-        
-            // change direction
-            forward = !forward;
-        } while(1);
-    } 
-    else {
-        int yDirection = ((p1.y - p0.y) > 0) ? FORWARD : BACKWARD;
-        
-        do {
-            // x direction
-            pNext.x = (forward) ? p1.x : p0.x;
-            Add(va_str("G1 X%.3f F%.0f", pNext.x, toolData.feedCutting));
-            
-            // y direction
-            if(pNext.y == p1.y) {
-                break;
-            }
-            
-            pNext.y += yDirection * cutWidth;
-            
-            if((yDirection == FORWARD && pNext.y > p1.y) || (yDirection == BACKWARD && pNext.y < p1.y)) {
-                pNext.y = p1.y;
-            }
-            Add(va_str("G1 Y%.3f F%.0f", pNext.y, toolData.feedCutting));
-        
-            // change direction
-            forward = !forward;
-        } while(1);
-    }
-}
- 
-
-std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(Settings& settings, const CutPathParams& params)
+std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(const std::vector<Vec2>& path, const CutPathParams& params)
 { 
-    if(!settings.p.pathCutter.CutTabs) {
+    if(!params.tabs.isActive) {
         return {}; 
     }
-    float& tabSpacing = settings.p.pathCutter.TabSpacing;
-    float& tabWidth   = settings.p.pathCutter.TabWidth;
-    
-    const std::vector<Vec2>* points = params.points;
+    float tabSpacing = params.tabs.spacing;
+    float tabWidth   = params.tabs.width;
     
     // Tab variables
-    Vec2 p0 = (*points)[0];
+    Vec2 p0 = path[0];
     float distanceAtLastPoint = 0.0f;
     float nextTabPos = tabSpacing;
     int tabCount = 0;
     // vector to return
     std::vector<std::pair<size_t, Vec2>> tabPositions;
     
-    for (size_t i = 1; i < points->size(); i++) 
+    for (size_t i = 1; i < path.size(); i++) 
     {
-        Vec2 p1 = (*points)[i];
+        Vec2 p1 = path[i];
         // calculate distance
         Vec2 dif = p1-p0;
         float distance = hypotf(dif.x, dif.y);
@@ -146,7 +84,7 @@ std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(Settings& set
             float tabPosAlongLine = nextTabPos - distanceAtLastPoint;
             
             // if the next tab falls too close to a corner, keep incrementing it until it's posible to produce
-            float toolRadius = settings.p.toolSettings.tools.toolList.CurrentItem().Diameter / 2.0f;
+            float toolRadius = params.tool.diameter / 2.0f;
             float minDistance = (tabWidth/2.0f) + toolRadius + 1.0f; // +1mm just to be sure
             
             if(tabPosAlongLine < minDistance || distance-tabPosAlongLine < minDistance) {
@@ -170,15 +108,15 @@ std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(Settings& set
     }
     return move(tabPositions);
 }
-
-void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, Vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
+        
+void GCodeBuilder::CheckForTab(const std::vector<Vec2>& path, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, Vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
 {
-    if(!settings.p.pathCutter.CutTabs) {
+    if(!params.tabs.isActive) {
         return; 
     }
-    float& tabHeight  = settings.p.pathCutter.TabHeight;
-    float& tabWidth   = settings.p.pathCutter.TabWidth;
-    float tabZPos = params.zBottom + tabHeight;
+    float tabHeight  = params.tabs.height;
+    float tabWidth   = params.tabs.width;
+    float tabZPos = params.depth.zBottom + tabHeight;
     
     auto addTab = [&]() {
         // get tab position
@@ -187,17 +125,17 @@ void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, 
         float distance = hypotf(pDif.x, pDif.y);
         
         Vec2 normalised = pDif / distance;
-        float toolRadius = settings.p.toolSettings.tools.toolList.CurrentItem().Diameter / 2.0f;
+        float toolRadius = params.tool.diameter / 2.0f;
         Vec2 tabOffset = normalised * ((tabWidth / 2.0f) +  toolRadius);
         Vec2 tabStart = tabPosition - tabOffset;
         Vec2 tabEnd = tabPosition + tabOffset;
         
         // start of tab
-        Add(va_str("G1 X%.3f Y%.3f Z%.3f F%.0f", tabStart.x, tabStart.y, zCurrent, params.feedCutting));
-        Add(va_str("G1 Z%.3f F%.0f\t(Start Tab)", tabZPos, params.feedCutting));
+        Add(va_str("G1 X%.3f Y%.3f Z%.3f F%.0f", tabStart.x, tabStart.y, zCurrent, params.tool.feedCutting));
+        Add(va_str("G1 Z%.3f F%.0f\t(Start Tab)", tabZPos, params.tool.feedCutting));
         // end of tab
-        Add(va_str("G1 X%.3f Y%.3f F%.0f", tabEnd.x, tabEnd.y, params.feedCutting));
-        Add(va_str("G1 Z%.3f F%.0f\t(End Tab)", zCurrent, params.feedCutting));
+        Add(va_str("G1 X%.3f Y%.3f F%.0f", tabEnd.x, tabEnd.y, params.tool.feedCutting));
+        Add(va_str("G1 Z%.3f F%.0f\t(End Tab)", zCurrent, params.tool.feedCutting));
     };
     // continue if below top of tab
     if(zCurrent >= tabZPos)
@@ -215,7 +153,7 @@ void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, 
     } // if moving backward along path
     else if(!isMovingForward && (tabIndex >= 0)) {   
         // add a tab if index matches with position
-        while(tabPositions[tabIndex].first == params.points->size()-i) {
+        while(tabPositions[tabIndex].first == path.size()-i) {
             addTab();
             if(--tabIndex < 0) {
                 break;
@@ -223,68 +161,65 @@ void GCodeBuilder::CheckForTab(Settings& settings, const CutPathParams& params, 
         }
     }
 }
-    
-int GCodeBuilder::CutPathDepths(Settings& settings, const CutPathParams& params) {
+int GCodeBuilder::CutPathDepths(const std::vector<Vec2>& path, const CutPathParams& params) {
     
     // error check
-    if(params.points->size() < 2) {
+    if(path.size() < 2) {
         Log::Error("There should be 2 or more points");
         return -1;
     }
-    if(params.feedPlunge == 0.0f) {
+    if(params.tool.feedPlunge == 0.0f) {
         Log::Error("Plunge feedrate requires a value");
         return -1;
     }
-    if(params.feedCutting == 0.0f) {
+    if(params.tool.feedCutting == 0.0f) {
         Log::Error("Cutting feedrate requires a value");
         return -1;
     }
     // get the positions of where tabs should lie and their indexes within points[]
-    std::vector<std::pair<size_t, Vec2>> tabPositions = GetTabPositions(settings, params);
+    std::vector<std::pair<size_t, Vec2>> tabPositions = GetTabPositions(path, params);
     
-    float zCurrent = params.zTop;
-    int zDirection = ((params.zBottom - params.zTop) > 0) ? FORWARD : BACKWARD; // 1 or -1
+    float zCurrent = params.depth.zTop;
+    int zDirection = ((params.depth.zBottom - params.depth.zTop) > 0) ? 1 : -1; // negative multiplier
     bool isMovingForward = true;
-    
-    const std::vector<Vec2>* points = params.points;
-    bool isLoop = points->front() == points->back();
+    bool isLoop = path.front() == path.back();
         
     do {
         // retract then move to initial x, y position
         // if first run or requires retract for pocketing, move to safe z
-        if((zCurrent == params.zTop) || params.retract == ForceRetract::Full) {    //params.isLoop && (points->front() != points->back());
+        if((zCurrent == params.depth.zTop) || params.depth.retract == ForceRetract::Full) {    //params.isLoop && (path.front() != path.back());
             RetractToZPlane();
-            Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", (*points)[0].x, (*points)[0].y));
+            Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", path[0].x, path[0].y));
         }
         // or retract a small distance
-        if(params.retract == ForceRetract::Partial) {
-            Retract(settings.p.pathCutter.PartialRetractDistance);
-            Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", (*points)[0].x, (*points)[0].y));
+        if(params.depth.retract == ForceRetract::Partial) {
+            Retract(params.depth.partialRetractDistance);
+            Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", path[0].x, path[0].y));
         }
         // plunge to next z
-        Add(va_str("G1 Z%.3f F%.0f\t(Move To Z)", zCurrent, params.feedPlunge));
+        Add(va_str("G1 Z%.3f F%.0f\t(Move To Z)", zCurrent, params.tool.feedPlunge));
         
         int tabIndex = (isMovingForward) ? 0 : tabPositions.size()-1;
         // Feed along path
-        for (size_t i = 1; i < (*points).size(); i++) {
+        for (size_t i = 1; i < path.size(); i++) {
             // get start and end points of current line
-            const Vec2& pLast = (isMovingForward) ? (*points)[i-1] : (*points)[points->size()-i];
-            const Vec2& pNext = (isMovingForward) ? (*points)[i]   : (*points)[points->size()-i-1];
+            const Vec2& pLast = (isMovingForward) ? path[i-1] : path[path.size()-i];
+            const Vec2& pNext = (isMovingForward) ? path[i]   : path[path.size()-i-1];
             // check for and draw tabs
-            CheckForTab(settings, params, tabPositions, pNext-pLast, zCurrent, isMovingForward, tabIndex, i);
+            CheckForTab(path, params, tabPositions, pNext-pLast, zCurrent, isMovingForward, tabIndex, i);
             // move to next point in linestring
-            Add(va_str("G1 X%.3f Y%.3f F%.0f", pNext.x, pNext.y, params.feedCutting));
+            Add(va_str("G1 X%.3f Y%.3f F%.0f", pNext.x, pNext.y, params.tool.feedCutting));
         }
         // reverse direction at end of linestring
         if(!isLoop) { isMovingForward = !isMovingForward; }
         // if we have reached the final z depth, break out of loop
-        if(zCurrent == params.zBottom) { break; }
+        if(zCurrent == params.depth.zBottom) { break; }
         // update z
-        zCurrent += zDirection * fabsf(params.cutDepth);
+        zCurrent += zDirection * fabsf(params.depth.cutDepth);
         
         // if z zepth is further than final depth, adjust to final depth
-        if((zDirection == FORWARD && zCurrent > params.zBottom) || (zDirection == BACKWARD && zCurrent < params.zBottom)) {
-            zCurrent = params.zBottom;
+        if((zDirection == 1 && zCurrent > params.depth.zBottom) || (zDirection == -1 && zCurrent < params.depth.zBottom)) {
+            zCurrent = params.depth.zBottom;
         }
     } while(1);
 

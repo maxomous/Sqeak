@@ -934,6 +934,7 @@ struct Toolbar {
         ToolbarItem* SketchTools;
         ToolbarItem* SketchConstraints;
         ToolbarItem* Function_CutPath;
+        ToolbarItem* SwitchView;
     } toolbarIndex;
     
     bool openPopup_FileBrowser = false;
@@ -1286,6 +1287,25 @@ struct Toolbar {
             // Draw edit popup
             jogController.DrawJogSetting(m_Settings->grblVals);
         });
+        
+        // 2D / 3D
+        toolbarIndex.SwitchView = toolbarItems.Addp("Switch View", DisabledFlag::Never, [&]() {
+            // Draw ImGui Widgets
+            GUISettings& s = m_Settings->guiSettings;
+            // Draw ImGui Widgets
+            ImGui::BeginGroup();
+            
+                bool is2DMode;
+                Event<Event_Get2DMode>::Dispatch( { is2DMode } );
+                
+                std::string name = (is2DMode) ? "3D##ToolbarButton" : "2D##ToolbarButton";
+                
+                // Draw button
+                if (ImGuiCustomModules::ImageButtonWithText_CentredVertically(name, s.img_Connect, s.imageButton_Toolbar_Connect, is2DMode, s.toolbarItemHeight)) { 
+                    Event<Event_Set2DMode>::Dispatch( { !is2DMode } );
+                }
+            ImGui::EndGroup();  
+        });
 
 // Function LEVEL  
         // ...
@@ -1379,11 +1399,12 @@ private:
             SetItemVisible(toolbarIndex.Function_CutPath);
             SetItemVisible(toolbarIndex.Spacer);
             SetItemVisible(toolbarIndex.Tools);
+            SetItemVisible(toolbarIndex.SwitchView);
         } 
         
         // Settings
         if(m_CurrentLevel == CurrentLevel::Settings) {
-            // Set visiable toolbar items
+            // Set visiable toolbar items 
             SetItemVisible(toolbarIndex.Header_Settings); // as header
         } 
         
@@ -1404,6 +1425,9 @@ private:
         // Functions
         if(m_CurrentLevel == CurrentLevel::Function_CutPath) {
             SetItemVisible(toolbarIndex.Header_Back);
+            SetItemVisible(toolbarIndex.Spacer);
+            SetItemVisible(toolbarIndex.Tools);
+            SetItemVisible(toolbarIndex.SwitchView);
         } else {
             // Reset sketch command type
             m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::None);

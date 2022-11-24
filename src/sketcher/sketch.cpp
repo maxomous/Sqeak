@@ -99,6 +99,7 @@ const RenderData& SketchRenderer::GetRenderData() const {
 bool SketchRenderer::UpdateRenderData()
 {
 
+
     auto RenderElements = [&](RenderData::Data& data, std::function<bool(const Item&)> cb_Condition = [](const Item& item){ (void)item; return true; }) { 
                 
         // Clear the old data
@@ -121,15 +122,7 @@ bool SketchRenderer::UpdateRenderData()
             if(!cb_Condition(element->Item_Elem())) { return; }
             
             // Line Data
-            LineString l;
-            // skip point, as it is added to pointdata above 
-            if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } 
-            // other element are addded with line buffer 
-            else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { l = m_Parent->Factory().RenderLine(line->P0(), line->P1()); }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { l = m_Parent->Factory().RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { l = m_Parent->Factory().RenderCircle(circle->PC(), circle->Radius()); }
-            else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
-            
+            LineString l = m_Parent->Factory().RenderElement(element);
             assert(!l.empty() && "No render data in linestring");
             
             // Add Element to renderdata

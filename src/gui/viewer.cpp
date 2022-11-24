@@ -446,6 +446,10 @@ Viewer::Viewer()
         m_DynamicPointLists = data.dynamicPointLists;
     };
     
+    auto Get2DModeEvent = [&](Event_Get2DMode data) {
+        data.is2DMode = m_Camera.Is2DMode();
+    };
+    
     auto Set2DModeEvent = [&](Event_Set2DMode data) {
         m_Camera.Set2DMode(data.isTrue);
     };
@@ -466,6 +470,7 @@ Viewer::Viewer()
     event_Keyboard              = make_unique<EventHandler<Event_KeyInput>>(KeyboardEvent);
     event_AddLineLists          = make_unique<EventHandler<Event_Viewer_AddLineLists>>(AddColouredVertexLists); 
     event_AddPointLists         = make_unique<EventHandler<Event_Viewer_AddPointLists>>(AddDynamicPointLists); 
+    event_Get2DMode             = make_unique<EventHandler<Event_Get2DMode>>(Get2DModeEvent);
     event_Set2DMode             = make_unique<EventHandler<Event_Set2DMode>>(Set2DModeEvent);
     //event_UpdateCamera = make_unique<EventHandler<Event_SettingsUpdated>>(UpdateCameraEvent);
       

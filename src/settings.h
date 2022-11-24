@@ -117,7 +117,7 @@ struct ParametersList
                 bool shouldOpen = false;
             } popup;
             
-            std::optional<glm::vec2> Position_Snapped;              // snapped 2d mouse position in current coord sys
+            std::optional<glm::vec2> Position_Snapped;      // snapped 2d mouse position in current coord sys
             std::optional<glm::vec2> Position_Clicked;      // snapped 2d mouse click position in current coord sys
             std::optional<glm::vec2> Position_Raw;          // raw 2d mouse position in current coord sys
             std::optional<glm::vec2> Position_WorldCoords;  // snapped 2d mouse position in world space
@@ -136,19 +136,6 @@ struct ParametersList
             
         } cursor;
     } sketch;
-
-    struct PathCutter {
-        // Tab Parameters
-        bool CutTabs                    = true;
-        float TabSpacing                = 50.0f;
-        float TabHeight                 = 4.0f;
-        float TabWidth                  = 8.0f;
-        
-        float CutOverlap                = 1.0f;     // mm
-        float PartialRetractDistance    = 1.0f; // mm
-        GeosBufferParams geosParameters;
-                   
-    } pathCutter;
     
     struct CustomGCode {
         std::string name;
@@ -252,7 +239,7 @@ struct GUISettings
     ImVec2 FramePosition_UnderToolbar();
     //ImVec2 FramePosition_BottomOfScreen() { return { dockPadding, ImGui::GetMainViewport()->WorkSize.y - windowSize.y - dockPadding }; } //under toolbar
         
-    float widgetWidth               =   180.0f; // general widget width
+    float widgetWidth               =   100.0f; // general widget width
         
     float popupPosition_alpha       =   0.6f;
     float popupPosition_offsetPos   =   12.0f;

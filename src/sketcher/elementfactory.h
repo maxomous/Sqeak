@@ -24,6 +24,68 @@ public:
     // tolerance to make selection
     double selectionTolerance = 10.0;
     
+    
+    void SetSelected(SketchItem item, bool value) {
+        // clear selection
+        ClearSelected();
+        // Find item
+        GetItemPointBySketchItem(item).SetSelected(value);
+    }
+    
+    // TODO: Test these ptrs * with references & instead
+    void ForEachElement(std::function<void(Sketch::Element*)> cb_Element, bool isOriginIncluded = false) 
+    {
+        // Call callback for each element
+        size_t startIndex = (isOriginIncluded) ? 0 : 1;
+        for(size_t i = startIndex; i < m_Elements.Size(); i++) {
+            // Cast so we can get the ptr
+            cb_Element(m_Elements.CastItem<Sketch::Element>(i)); 
+        }
+    }
+    void ForEachConstraint(std::function<void(Sketch::Constraint*)> cb_Constraint) 
+    {
+        // Call callback for each constraint
+        for(size_t i = 0; i < m_Constraints.Size(); i++) {
+            // Cast so we can get the ptr
+            cb_Constraint(m_Constraints.CastItem<Sketch::Constraint>(i));       
+        }
+    }
+    
+           
+    void ForEachItemElement(std::function<void(Item_Element&)> cb, bool isOriginIncluded = false) {
+        
+        ForEachElement([&](Sketch::Element* element) {
+            cb(element->Item_Elem());
+        }, isOriginIncluded);
+    }
+
+    void ForEachItemPoint(std::function<void(Item_Point&)> cb, bool isOriginIncluded = false, std::function<bool(Sketch::Element*)> cb_ElementCondition = [](Sketch::Element* element) { (void)element; return true; }) {
+        
+        ForEachElement([&](Sketch::Element* element) {
+            // check condition callback
+            if(!cb_ElementCondition(element)) { return; }
+            // find type of element and call cb for each point
+            if(auto* point = dynamic_cast<Sketch::Point*>(element)) { 
+                point->ForEachItemPoint(cb); 
+            } else if(auto* line = dynamic_cast<Sketch::Line*>(element)) { 
+                line->ForEachItemPoint(cb);
+            } else if(auto* arc = dynamic_cast<Sketch::Arc*>(element)) { 
+                arc->ForEachItemPoint(cb);
+            } else if(auto* circle = dynamic_cast<Sketch::Circle*>(element)) { 
+                circle->ForEachItemPoint(cb); 
+            } else { // Should never reach
+                assert(0 && "Could not cast element, type unknown");                
+            }
+                    
+        }, isOriginIncluded);
+    }
+
+    void ForEachItem(std::function<void(Item&)> cb, bool isOriginIncluded = false) 
+    {
+        ForEachItemElement(cb, isOriginIncluded);
+        ForEachItemPoint(cb, isOriginIncluded);
+    }
+
     // Render element to linestring
     LineString RenderLine(const Vec2& p0, const Vec2& p1)
     {
@@ -84,70 +146,28 @@ public:
         if(!circle.empty()) { circle.back() = circle.front(); }
         return std::move(circle);
     }
+    
+    LineString RenderElement(Sketch::Element* element) 
+    {
+        // Line Data
+        LineString l;
+        // skip point, as it is added to pointdata 
+        if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { l.emplace_back(point->P()); }
+        // other element are addded with line buffer 
+        else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { return RenderLine(line->P0(), line->P1()); }
+        else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { return RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction()); }
+        else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { return RenderCircle(circle->PC(), circle->Radius()); }
+        else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
         
-    
-    void SetSelected(SketchItem item, bool value) {
-        // clear selection
-        ClearSelected();
-        // Find item
-        GetItemPointBySketchItem(item).SetSelected(value);
-    }
-    
-
-    // TODO: Test these ptrs * with references & instead
-    void ForEachElement(std::function<void(Sketch::Element*)> cb_Element, bool isOriginIncluded = false) 
-    {
-        // Call callback for each element
-        size_t startIndex = (isOriginIncluded) ? 0 : 1;
-        for(size_t i = startIndex; i < m_Elements.Size(); i++) {
-            // Cast so we can get the ptr
-            cb_Element(m_Elements.CastItem<Sketch::Element>(i)); 
-        }
-    }
-    void ForEachConstraint(std::function<void(Sketch::Constraint*)> cb_Constraint) 
-    {
-        // Call callback for each constraint
-        for(size_t i = 0; i < m_Constraints.Size(); i++) {
-            // Cast so we can get the ptr
-            cb_Constraint(m_Constraints.CastItem<Sketch::Constraint>(i));       
-        }
+        return std::move(l);
     }
     
-           
-    void ForEachItemElement(std::function<void(Item_Element&)> cb, bool isOriginIncluded = false) {
-        
-        ForEachElement([&](Sketch::Element* element) {
-            cb(element->Item_Elem());
-        }, isOriginIncluded);
-    }
-
-    void ForEachItemPoint(std::function<void(Item_Point&)> cb, bool isOriginIncluded = false, std::function<bool(Sketch::Element*)> cb_ElementCondition = [](Sketch::Element* element) { (void)element; return true; }) {
-        
-        ForEachElement([&](Sketch::Element* element) {
-            // check condition callback
-            if(!cb_ElementCondition(element)) { return; }
-            // find type of element and call cb for each point
-            if(auto* point = dynamic_cast<Sketch::Point*>(element)) { 
-                point->ForEachItemPoint(cb); 
-            } else if(auto* line = dynamic_cast<Sketch::Line*>(element)) { 
-                line->ForEachItemPoint(cb);
-            } else if(auto* arc = dynamic_cast<Sketch::Arc*>(element)) { 
-                arc->ForEachItemPoint(cb);
-            } else if(auto* circle = dynamic_cast<Sketch::Circle*>(element)) { 
-                circle->ForEachItemPoint(cb); 
-            } else { // Should never reach
-                assert(0 && "Could not cast element, type unknown");                
-            }
-                    
-        }, isOriginIncluded);
-    }
-
-    void ForEachItem(std::function<void(Item&)> cb, bool isOriginIncluded = false) 
+    LineString RenderElementBySketchItem(SketchItem item) 
     {
-        ForEachItemElement(cb, isOriginIncluded);
-        ForEachItemPoint(cb, isOriginIncluded);
+        return RenderElement(GetElementByID<Sketch::Element>(item.element));
     }
-
+    
+    
     
     Vec2 GetPositionBySketchItem(SketchItem item) {
         // elements

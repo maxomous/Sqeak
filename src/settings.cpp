@@ -53,15 +53,15 @@ void Settings::AddSettings()
     s.AddParameter("ToolColourOutline", &p.viewer.spindle.colours.toolOutline);
     m_SettingsList.push_back(s);   
        
-    s = Setting("PathCutter", 0);   
-    s.AddParameter("CutTabs", &p.pathCutter.CutTabs);
-    s.AddParameter("TabSpacing", &p.pathCutter.TabSpacing);  
-    s.AddParameter("TabHeight", &p.pathCutter.TabHeight);
-    s.AddParameter("TabWidth", &p.pathCutter.TabWidth);
-    s.AddParameter("CutOverlap", &p.pathCutter.CutOverlap);
-    s.AddParameter("PartialRetractDistance", &p.pathCutter.PartialRetractDistance);
-    s.AddParameter("QuadrantSegments", &p.pathCutter.geosParameters.QuadrantSegments);
-    m_SettingsList.push_back(s);
+   // s = Setting("PathCutter", 0);   
+   // s.AddParameter("CutTabs", &p.pathCutter.CutTabs);
+   // s.AddParameter("TabSpacing", &p.pathCutter.TabSpacing);  
+   // s.AddParameter("TabHeight", &p.pathCutter.TabHeight);
+   // s.AddParameter("TabWidth", &p.pathCutter.TabWidth);
+   // s.AddParameter("CutOverlap", &p.pathCutter.CutOverlap);
+  //  s.AddParameter("PartialRetractDistance", &p.pathCutter.PartialRetractDistance);
+    //s.AddParameter("QuadrantSegments", &p.pathCutter.geosParameters.QuadrantSegments);
+   // m_SettingsList.push_back(s);
 } 
 
 void Settings::AddDynamicSettings()

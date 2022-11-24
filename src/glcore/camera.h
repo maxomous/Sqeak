@@ -29,7 +29,7 @@ public:
 	void SetZoomMinMax(float min, float max)             		{ m_ZoomMin = min; m_ZoomMax = max; };		
 	void SetZoom(float zoom)              		                { m_Zoom = zoom; updateCameraVectors(); };		
     float GetZoom()              		                        { return m_Zoom; };		
-    
+    float Is2DMode()                                            { return m_2DMode; }
     // returns focal point
 	glm::vec3 GetPosition() { return m_Position; };
 	glm::vec3 GetCentre() { return m_Centre; };

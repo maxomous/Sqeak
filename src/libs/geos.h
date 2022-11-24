@@ -114,9 +114,59 @@ public:
         });
     }
     
+          
+    // Combines and simplifies all the geometries in geom
+    std::vector<MaxLib::Geom::Geometry> CombineGeometry(const std::vector<MaxLib::Geom::Geometry>& geom)
+    {
+        if(geom.empty()) { return {}; }
+        
+        GEOSGeometry* geom_A = GeosPointLineStringOrPolygon(geom[0]);
+        if(!geom_A) return {};
+        
+        for(size_t i = 1; i < geom.size(); i++)
+        {
+            GEOSGeometry* geom_B = GeosPointLineStringOrPolygon(geom[i]);
+            if(!geom_B) return {};
+            
+            GEOSGeometry* result = GEOSUnion(geom_A, geom_B);
+            
+            GEOSGeom_destroy(geom_A);
+            GEOSGeom_destroy(geom_B);
+            geom_A = result;
+        }
+        
+        std::vector<MaxLib::Geom::Geometry> output = GeosGetGeometry(geom_A);
+        GEOSGeom_destroy(geom_A);
+        return std::move(output);
+    }
     
     
+          
+    // Combines and simplifies all the linestrings in geom
+    std::vector<MaxLib::Geom::Geometry> CombineLineStrings(const std::vector<MaxLib::Geom::Geometry>& geom)
+    {
+        if(geom.empty()) { return {}; }
     
+        std::vector<GEOSGeometry*> lineStrings;
+    
+        // Define geos linestrings
+        for(size_t i = 0; i < geom.size(); i++) { 
+            lineStrings.push_back(Geos::GeosLineString(geom[i]));
+            if(!lineStrings.back()) return {};
+        }
+        // make a geos geometry collection
+        GEOSGeometry* collection = GEOSGeom_createCollection(GEOS_MULTILINESTRING, lineStrings.data(), lineStrings.size());
+        // merge the linestrings combining share points
+        GEOSGeometry* merged = GEOSLineMerge(collection);
+        // convert geos geometry to vector<linestring>
+        std::vector<MaxLib::Geom::Geometry> output = GeosGetGeometry(merged);
+        
+        // Free old geos geometry (linestrings are all passed over to collection)
+        GEOSGeom_destroy(collection);
+        GEOSGeom_destroy(merged);
+        // return output
+        return std::move(output);
+    }
     
     struct PolygonisedData
     {
@@ -335,6 +385,8 @@ private:
     // Converts GEOS point or GEOS linestring to Geom::LineString
     std::optional<MaxLib::Geom::LineString>  GeosGetCoords(const GEOSGeometry* geometry, bool reversePoints);
     
+    // Converts linestrings or polygons into std::vector<LineString>
+    std::vector<MaxLib::Geom::LineString>    GeosGetGeometry(const GEOSGeometry* geometry);
     // Converts GEOS geometry collection to std::vector<Geom::LineString>
     std::vector<MaxLib::Geom::LineString>    GeosGetLineStrings(const GEOSGeometry* geometry);
     // Converts GEOS geometry collection to std::vector<Geom::LineString>

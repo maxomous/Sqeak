@@ -193,12 +193,12 @@ sketcher/deps/constraintsolver/libslvs/clean: sketcher/deps/constraintsolver/lib
 # Target rules for target CMakeFiles/Sqeak.dir
 
 # All Build rule for target.
-CMakeFiles/Sqeak.dir/all: glcore/deps/imgui/CMakeFiles/ImGui.dir/all
-CMakeFiles/Sqeak.dir/all: sketcher/CMakeFiles/Sketcher.dir/all
 CMakeFiles/Sqeak.dir/all: sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/all
 CMakeFiles/Sqeak.dir/all: sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all
 CMakeFiles/Sqeak.dir/all: grbl/CMakeFiles/GRBL.dir/all
 CMakeFiles/Sqeak.dir/all: glcore/CMakeFiles/GLCore.dir/all
+CMakeFiles/Sqeak.dir/all: glcore/deps/imgui/CMakeFiles/ImGui.dir/all
+CMakeFiles/Sqeak.dir/all: sketcher/CMakeFiles/Sketcher.dir/all
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/depend
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build-dir/CMakeFiles --progress-num=36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52 "Built target Sqeak"

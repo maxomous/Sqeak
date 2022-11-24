@@ -205,9 +205,10 @@ private:
     std::unique_ptr<EventHandler<Event_KeyInput>> event_Keyboard;
     std::unique_ptr<EventHandler<Event_Viewer_AddLineLists>> event_AddLineLists;
     std::unique_ptr<EventHandler<Event_Viewer_AddPointLists>> event_AddPointLists;
+    std::unique_ptr<EventHandler<Event_Get2DMode>> event_Get2DMode;
     std::unique_ptr<EventHandler<Event_Set2DMode>> event_Set2DMode;
     //std::unique_ptr<EventHandler<Event_UpdateCamera>> event_UpdateCamera;
-    
+     
     // 3d shape primitives
     Shapes m_Shapes;
     // tool

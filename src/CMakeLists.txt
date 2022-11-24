@@ -109,6 +109,8 @@ target_link_libraries(${PROJECT_NAME}
 #             Set Compiler Options
 ####################################################
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g -O0) #-O0 -v -Q for valgrind (try -Q for showing function names)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi) 
+#-O0 -v -Q for valgrind (try -Q for showing function names)
+# -Wno-psabi hides "changed in GCC 7.1" warning
 
 ####################################################

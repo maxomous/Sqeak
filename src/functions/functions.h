@@ -5,6 +5,8 @@
 
 #pragma once
 #include "../common.h"
+#include "../sketch/gcodebuilder.h"
+
 
 namespace Sqeak { 
    
@@ -34,7 +36,7 @@ public:
     // Draw Imgui side window widgets
     virtual bool DrawWindow() = 0;
     // return value is success
-    virtual bool InterpretGCode(const Geom::LineString& inputPath, std::function<void(std::vector<std::string>)> cb) = 0;
+    virtual bool InterpretGCode(const std::vector<Geom::LineString>& inputPaths, std::function<void(std::vector<std::string>&)> cb) = 0;
                
     /*
     // Send strait to GRBL
@@ -56,11 +58,11 @@ public:
     }  
     * */
     
-    bool GCode_SendToViewer(const Geom::LineString& inputPath)
+    bool GCode_SendToViewer(const std::vector<Geom::LineString>& inputPaths)
     { 
         std::cout << "Updating: GCode_SendToViewer" << std::endl;
         // update the active function 
-        bool success = InterpretGCode(inputPath, [](auto gcodes) {
+        bool success = InterpretGCode(inputPaths, [](auto gcodes) {
             Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(move(gcodes)) }); 
         });
         if(!success) {
@@ -70,13 +72,13 @@ public:
     }
         
     // export the active function as gcode
-    bool GCode_Export(std::string saveDirectory, const Geom::LineString& inputPath) 
+    bool GCode_Export(std::string saveDirectory, const std::vector<Geom::LineString>& inputPaths) 
     { 
         // make filepath for new GCode file 
         std::string filepath = File::CombineDirPath(saveDirectory, Name() + ".nc"); 
         Log::Info("Exporting GCode to %s", filepath.c_str());
         // build gcode of active function and export it to file 
-        return InterpretGCode(inputPath, [&](auto gcodes) { 
+        return InterpretGCode(inputPaths, [&](auto gcodes) { 
             File::WriteArray(filepath, gcodes);
         }); 
     }
@@ -162,34 +164,79 @@ protected:
 
 };
 
+        
+  
 
+    
 
 class Function_CutPath : public Function
 {
-public:
+public: 
+    
+    
     struct Parameters_CutPath 
     {
         enum CompensateCutter { None, Left, Right, Pocket };
         
-        float zTop = 20.0f;
-        float zBottom = 0.0f;
-        float finishPass = 1.0f;
         // int allows us to use this with ImGui, but really this is a CompensateCutter
-        int cutSide = (int)CompensateCutter::None;
+        int cutSide                     = (int)CompensateCutter::None;
+        // width of the finsihing pass
+        float finishPass                = 1.0f;
+        // width of overlap between adjacent passes
+        float cutOverlap                = 1.0f; // mm
+        // path cut at depth parameters
+        GCodeBuilder::CutPathParams cutPathParameters;
+        // Geos geometry offset parameters
+        GeosBufferParams geosParameters;
         // get cut side as 0 (none), 1 (right) or -1 (left)
         int GetCutSide();
+        // ImGui input widgets for the parameters
+        bool Draw();
     };
+/*
+    
+    struct Parameters_CutPath 
+    {
+        enum CompensateCutter { None, Left, Right, Pocket };
+        
+        struct Tabs {
+            bool isActive   = true; 
+            float spacing   = 50.0f;  
+            float height    = 4.0f;  
+            float width     = 8.0f;  
+        } tabs;
+        // get cut side as 0 (none), 1 (right) or -1 (left)
+        int GetCutSide();
+        // ImGui input widgets for the parameters
+        bool Draw();
+        // int allows us to use this with ImGui, but really this is a CompensateCutter
+        int cutSide                     = (int)CompensateCutter::None;
+        // start and end Z coords
+        float zTop                      = 20.0f;
+        float zBottom                   = 0.0f;
+        // width of the finsihing pass
+        float finishPass                = 1.0f;
+        // width of overlap between adjacent passes
+        float cutOverlap                = 1.0f; // mm
+        // distance to retract when not retracting to r plane
+        float partialRetractDistance    = 1.0f; // mm
+        // Geos geometry offset parameters
+        GeosBufferParams geosParameters;
+    };
+*/
+    
     
     Function_CutPath(std::string name, Settings* settings, Sketch::Sketcher* sketcher)
         : Function(name, settings, sketcher) {}
         
     bool DrawWindow() override;
     // return value is success
-    bool InterpretGCode(const Geom::LineString& inputPath, std::function<void(std::vector<std::string>)> cb) override;
+    bool InterpretGCode(const std::vector<Geom::LineString>& inputPaths, std::function<void(std::vector<std::string>&)> cb) override;
     
     std::string HeaderText();
-     
+    
     bool IsValidInputs(const Geom::LineString& inputPath);
+    bool IsValidInputs(const std::vector<Geom::LineString>& inputPaths);
         
     
 private:

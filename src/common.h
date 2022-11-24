@@ -65,6 +65,14 @@ struct InputEvent {
 #include "gui/imgui_custommodules.h"
 
 #include "gui/filebrowser.h"
+
+namespace Sqeak {
+struct Event_Get2DMode                  { bool& is2DMode; };
+struct Event_Set2DMode                  { bool isTrue; };
+struct Event_Set2DCursor                { bool isValid; glm::vec2 worldCoords; };
+struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords; };
+}
+
 #include "gui/viewer.h"
 
 namespace Sqeak {
@@ -75,7 +83,6 @@ struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::ColouredVer
 struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::ColouredVertexList>* dynamicPointLists; };
 }
 
-#include "sketch/gcodebuilder.h"
 #include "sketch/sketch.h"
 
 #include "sketcher/sketch.h"
@@ -93,9 +100,6 @@ struct Event_PopupMessage               { std::string msg; };
 struct Event_ResetFileTimer             {};
 struct Event_SaveSettings               {};
 struct Event_UpdateSettingsFromFile     {};
-struct Event_Set2DMode                  { bool isTrue; };
-struct Event_Set2DCursor                { bool isValid; glm::vec2 worldCoords; };
-struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords; };
 
 
 #define GUI_WINDOW_NAME     "Sqeak"

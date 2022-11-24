@@ -165,6 +165,49 @@ std::optional<LineString> Geos::GeosGetCoords(const GEOSGeometry* geometry, bool
 }  
 
 
+// Converts linestrings or polygons into std::vector<LineString>
+std::vector<LineString> Geos::GeosGetGeometry(const GEOSGeometry* inputGeometry)
+{  
+    std::vector<LineString> returnPolygons;
+    
+    for (int i = 0; i < GEOSGetNumGeometries(inputGeometry); i++)
+    {
+        const GEOSGeometry* geometry = GEOSGetGeometryN(inputGeometry, i);
+        if(!geometry) return {};
+        // Polygon
+        if(GEOSGeomTypeId(geometry) == GEOS_POLYGON) {
+            
+            // Get interior rings
+            for(int i = 0; i < GEOSGetNumInteriorRings(geometry); i++)
+            {
+                const GEOSGeometry* interiorRing = GEOSGetInteriorRingN(geometry, i); 
+                if(!interiorRing) return {};
+                
+                // Put coords into vector   
+                std::optional<LineString> ls = GeosGetCoords(interiorRing, true); 
+                if(!ls) return {};  
+                returnPolygons.push_back(*ls); 
+            }
+            // Get exterior ring
+            const GEOSGeometry* exteriorRing = GEOSGetExteriorRing(geometry); 
+            if(!exteriorRing) return {};  
+                
+            // Put coords into vector   
+            std::optional<LineString> ls = GeosGetCoords(exteriorRing, true); 
+            if(!ls) return {};  
+            returnPolygons.push_back(*ls); 
+        }
+        // linestring
+        else if(GEOSGeomTypeId(geometry) == GEOS_LINESTRING) {
+            
+            std::optional<LineString> coords = GeosGetCoords(geometry, false);
+            if(!coords) return {};  
+            returnPolygons.push_back(*coords); 
+        }
+    }
+    return std::move(returnPolygons);
+}
+
 // Converts geometry collection to std::vector<LineString> 
 std::vector<LineString> Geos::GeosGetLineStrings(const GEOSGeometry* geometry)
 {  
