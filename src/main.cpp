@@ -273,6 +273,11 @@ TODO:
         grbl.SendRT(GRBL_RT_MIST_COOLANT);
     
     
+    // TODO: Rewrite OffsetPolygon_Recursive()
+    //  We need to offset n*offset from the original path, otherwise the number of lines in an arc increase n^2
+    //      OffsetLines = OffsetPolygon(ORIGINAL PATH, n * pathOffset, params);
+    // This will also allow us to do adaptive arc segments
+    * 
     
 Other notes:
     * if we need to sync gui to grbl, use G4 P0.01

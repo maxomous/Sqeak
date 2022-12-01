@@ -57,9 +57,9 @@ void GCodeBuilder::EndCommands() {
 
 std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(const std::vector<Vec2>& path, const CutPathParams& params)
 { 
-    if(!params.tabs.isActive) {
-        return {}; 
-    }
+    // error checks
+    if(!params.tabs.isActive)   { return {}; }
+    if(path.empty())            { return {}; }
     float tabSpacing = params.tabs.spacing;
     float tabWidth   = params.tabs.width;
     
@@ -109,7 +109,7 @@ std::vector<std::pair<size_t, Vec2>> GCodeBuilder::GetTabPositions(const std::ve
     return move(tabPositions);
 }
         
-void GCodeBuilder::CheckForTab(const std::vector<Vec2>& path, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, Vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
+void GCodeBuilder::CheckForTab(const std::vector<Vec2>& path, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, float zCurrent, bool isMovingForward, int& tabIndex, size_t i) 
 {
     if(!params.tabs.isActive) {
         return; 
@@ -117,6 +117,11 @@ void GCodeBuilder::CheckForTab(const std::vector<Vec2>& path, const CutPathParam
     float tabHeight  = params.tabs.height;
     float tabWidth   = params.tabs.width;
     float tabZPos = params.depth.zBottom + tabHeight;
+    
+    // get start and end points of current line
+    const Vec2& pLast = (isMovingForward) ? path[i-1] : path[path.size()-i];
+    const Vec2& pNext = (isMovingForward) ? path[i]   : path[path.size()-i-1];
+    Vec2 pDif = pNext - pLast;
     
     auto addTab = [&]() {
         // get tab position
@@ -161,7 +166,7 @@ void GCodeBuilder::CheckForTab(const std::vector<Vec2>& path, const CutPathParam
         }
     }
 }
-int GCodeBuilder::CutPathDepths(const std::vector<Vec2>& path, const CutPathParams& params) {
+int GCodeBuilder::CutPathDepths(const std::vector<Vec2>& path, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions) {
     
     // error check
     if(path.size() < 2) {
@@ -176,37 +181,35 @@ int GCodeBuilder::CutPathDepths(const std::vector<Vec2>& path, const CutPathPara
         Log::Error("Cutting feedrate requires a value");
         return -1;
     }
-    // get the positions of where tabs should lie and their indexes within points[]
-    std::vector<std::pair<size_t, Vec2>> tabPositions = GetTabPositions(path, params);
-    
     float zCurrent = params.depth.zTop;
     int zDirection = ((params.depth.zBottom - params.depth.zTop) > 0) ? 1 : -1; // negative multiplier
     bool isMovingForward = true;
     bool isLoop = path.front() == path.back();
         
     do {
+        
+        
         // retract then move to initial x, y position
-        // if first run or requires retract for pocketing, move to safe z
-        if((zCurrent == params.depth.zTop) || params.depth.retract == ForceRetract::Full) {    //params.isLoop && (path.front() != path.back());
+        // if first run (before we've moved anywhere) or requires retract for pocketing, move to safe z
+        if(params.depth.retract == RetractType::Full || (zCurrent == params.depth.zTop)) {    //params.isLoop && (path.front() != path.back());
             RetractToZPlane();
             Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", path[0].x, path[0].y));
         }
         // or retract a small distance
-        if(params.depth.retract == ForceRetract::Partial) {
+        else if(params.depth.retract == RetractType::Partial) {
             Retract(params.depth.partialRetractDistance);
             Add(va_str("G0 X%.3f Y%.3f\t(Move To Initial X & Y)", path[0].x, path[0].y));
         }
         // plunge to next z
         Add(va_str("G1 Z%.3f F%.0f\t(Move To Z)", zCurrent, params.tool.feedPlunge));
-        
-        int tabIndex = (isMovingForward) ? 0 : tabPositions.size()-1;
+        // tabStartIndex gets modified by CheckForTab whilst looping through path
+        int tabStartIndex = (isMovingForward) ? 0 : tabPositions.size()-1;
         // Feed along path
         for (size_t i = 1; i < path.size(); i++) {
-            // get start and end points of current line
-            const Vec2& pLast = (isMovingForward) ? path[i-1] : path[path.size()-i];
-            const Vec2& pNext = (isMovingForward) ? path[i]   : path[path.size()-i-1];
             // check for and draw tabs
-            CheckForTab(path, params, tabPositions, pNext-pLast, zCurrent, isMovingForward, tabIndex, i);
+            CheckForTab(path, params, tabPositions, zCurrent, isMovingForward, tabStartIndex, i);
+            // get start and end points of current line
+            const Vec2& pNext = (isMovingForward) ? path[i]   : path[path.size()-i-1];
             // move to next point in linestring
             Add(va_str("G1 X%.3f Y%.3f F%.0f", pNext.x, pNext.y, params.tool.feedCutting));
         }

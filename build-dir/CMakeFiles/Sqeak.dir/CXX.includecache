@@ -6,6 +6,10 @@
 
 #IncludeRegexTransform: 
 
+/home/pi/Desktop/Projects/Sqeak/src/common.cpp
+common.h
+/home/pi/Desktop/Projects/Sqeak/src/common.h
+
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 algorithm
 -
@@ -77,6 +81,10 @@ functions.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 ../sketch/gcodebuilder.h
 /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.h
+
+/home/pi/Desktop/Projects/Sqeak/src/gcreader.cpp
+common.h
+/home/pi/Desktop/Projects/Sqeak/src/common.h
 
 /home/pi/Desktop/Projects/Sqeak/src/gcreader.h
 MaxLib.h
@@ -316,25 +324,63 @@ wiringSerial.h
 grbl_common.h
 /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl_common.h
 
+/home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.cpp
+filebrowser.h
+/home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.h
+
 /home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
+
+/home/pi/Desktop/Projects/Sqeak/src/gui/frames.cpp
+frames.h
+/home/pi/Desktop/Projects/Sqeak/src/gui/frames.h
 
 /home/pi/Desktop/Projects/Sqeak/src/gui/frames.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
+/home/pi/Desktop/Projects/Sqeak/src/gui/gui.cpp
+iostream
+-
+string
+-
+gui.h
+/home/pi/Desktop/Projects/Sqeak/src/gui/gui.h
+
 /home/pi/Desktop/Projects/Sqeak/src/gui/gui.h
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
+/home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.cpp
+imgui_custommodules.h
 /home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.h
+
+/home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.h
+../common.h
+/home/pi/Desktop/Projects/Sqeak/src/common.h
+
+/home/pi/Desktop/Projects/Sqeak/src/gui/viewer.cpp
+iostream
+-
 ../common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
 
 /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.h
 ../glcore/glcore.h
 /home/pi/Desktop/Projects/Sqeak/src/glcore/glcore.h
+
+/home/pi/Desktop/Projects/Sqeak/src/libs/geos.cpp
+cmath
+-
+iostream
+-
+sstream
+-
+iomanip
+-
+geos.h
+/home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
 
 /home/pi/Desktop/Projects/Sqeak/src/libs/geos.h
 stdio.h
@@ -354,6 +400,14 @@ geos_c.h
 MaxLib.h
 -
 
+/home/pi/Desktop/Projects/Sqeak/src/main.cpp
+common.h
+/home/pi/Desktop/Projects/Sqeak/src/common.h
+
+/home/pi/Desktop/Projects/Sqeak/src/settings.cpp
+common.h
+/home/pi/Desktop/Projects/Sqeak/src/common.h
+
 /home/pi/Desktop/Projects/Sqeak/src/settings.h
 common.h
 /home/pi/Desktop/Projects/Sqeak/src/common.h
@@ -369,6 +423,10 @@ string
 -
 MaxLib.h
 -
+
+/home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.cpp
+sketch.h
+/home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 
 /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.h
 MaxLib.h

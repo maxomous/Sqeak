@@ -246,15 +246,20 @@ public:
     // Updates RenderData based on update flag
     bool UpdateRenderData();
     
-    
     void SetUpdateFlag(UpdateFlag flag);
     
+    LineString RenderElement(Sketch::Element* element);
+    LineString RenderElementBySketchItem(SketchItem item);
+     
+    double arcTolerance = 0.01;
+     
 private: 
     Sketcher* m_Parent = nullptr;   
     // update flag
     UpdateFlag m_Update = UpdateFlag::Full;
     // draw list for viewer
     RenderData m_RenderData;
+    
     
     // update the preview render data from the cursorPos
     void UpdatePreview();
@@ -387,7 +392,6 @@ private:
 };
 
 
-
 class Sketcher
 {
 public:
@@ -424,7 +428,6 @@ private:
     ElementFactory m_Factory;
     SketchEvents m_Events;  
     SketchRenderer m_Renderer;
-    
     ConstraintButtons m_ConstraintButtons;
 };
      

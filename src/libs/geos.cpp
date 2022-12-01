@@ -11,8 +11,7 @@ using namespace std;
 using namespace MaxLib::Geom;
 
 
- 
-std::vector<LineString> Geos::Offset(const LineString& points, float offset, GeosBufferParams& params)
+std::vector<LineString> Geos::Offset(const LineString& points, float offset, Geos::BufferParameters& params)
 {
     // err if no points
     if(points.size() < 2) return {};
@@ -24,14 +23,14 @@ std::vector<LineString> Geos::Offset(const LineString& points, float offset, Geo
     }
 }
 
-std::vector<LineString> Geos::OffsetLine(const LineString& points, float offset, GeosBufferParams& params) 
+std::vector<LineString> Geos::OffsetLine(const LineString& points, float offset, Geos::BufferParameters& params) 
 {     
     // Define line string   
     GEOSGeometry* lineString = GeosLineString(points);   
     if(!lineString) return {};   
     
-    // offset line  
-    GEOSGeometry* bufferOp = GEOSOffsetCurve(lineString, offset, params.QuadrantSegments, params.JoinStyle, params.MitreLimit);
+    // offset line   
+    GEOSGeometry* bufferOp = GEOSOffsetCurve(lineString, offset, ArcSegments(offset, params.arcTolerance), params.joinStyle, params.mitreLimit);
     if(!bufferOp) return {};   
     
     // put coords into vector 
@@ -46,13 +45,13 @@ std::vector<LineString> Geos::OffsetLine(const LineString& points, float offset,
     return move(offsetGeom); 
 }
 
-std::vector<LineString> Geos::OffsetPolygon(const LineString& points, float offset, GeosBufferParams& params) 
+std::vector<LineString> Geos::OffsetPolygon(const LineString& points, float offset, Geos::BufferParameters& params) 
 {    
     // Define as polygon
     GEOSGeometry* poly = GeosPolygon(points); 
     if(!poly) return {};
     // offset polygon
-    GEOSGeometry* bufferOp = GEOSBufferWithStyle(poly, -offset, params.QuadrantSegments, params.CapStyle, params.JoinStyle, params.MitreLimit); 
+    GEOSGeometry* bufferOp = GEOSBufferWithStyle(poly, -offset, ArcSegments(offset, params.arcTolerance), params.capStyle, params.joinStyle, params.mitreLimit); 
     if(!bufferOp) return {};
     
     // there may be multiple polygons produced so loop through and add the return vector

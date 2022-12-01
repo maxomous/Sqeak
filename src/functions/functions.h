@@ -11,8 +11,6 @@
 namespace Sqeak { 
    
  //     TODO:
- 
- //     remove m_Settings from gcodes.CutPathDepths()
  //   when we are about to run function:
  //       void PreProcessGeometry() {
  //           - make lines into linestrings
@@ -173,7 +171,6 @@ class Function_CutPath : public Function
 {
 public: 
     
-    
     struct Parameters_CutPath 
     {
         enum CompensateCutter { None, Left, Right, Pocket };
@@ -183,48 +180,15 @@ public:
         // width of the finsihing pass
         float finishPass                = 1.0f;
         // width of overlap between adjacent passes
-        float cutOverlap                = 1.0f; // mm
+        float cutOverlap                = 1.0f; // mm   // **only used for pocket
         // path cut at depth parameters
         GCodeBuilder::CutPathParams cutPathParameters;
-        // Geos geometry offset parameters
-        GeosBufferParams geosParameters;
         // get cut side as 0 (none), 1 (right) or -1 (left)
         int GetCutSide();
         // ImGui input widgets for the parameters
         bool Draw();
     };
-/*
-    
-    struct Parameters_CutPath 
-    {
-        enum CompensateCutter { None, Left, Right, Pocket };
-        
-        struct Tabs {
-            bool isActive   = true; 
-            float spacing   = 50.0f;  
-            float height    = 4.0f;  
-            float width     = 8.0f;  
-        } tabs;
-        // get cut side as 0 (none), 1 (right) or -1 (left)
-        int GetCutSide();
-        // ImGui input widgets for the parameters
-        bool Draw();
-        // int allows us to use this with ImGui, but really this is a CompensateCutter
-        int cutSide                     = (int)CompensateCutter::None;
-        // start and end Z coords
-        float zTop                      = 20.0f;
-        float zBottom                   = 0.0f;
-        // width of the finsihing pass
-        float finishPass                = 1.0f;
-        // width of overlap between adjacent passes
-        float cutOverlap                = 1.0f; // mm
-        // distance to retract when not retracting to r plane
-        float partialRetractDistance    = 1.0f; // mm
-        // Geos geometry offset parameters
-        GeosBufferParams geosParameters;
-    };
-*/
-    
+
     
     Function_CutPath(std::string name, Settings* settings, Sketch::Sketcher* sketcher)
         : Function(name, settings, sketcher) {}

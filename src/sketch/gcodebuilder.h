@@ -11,7 +11,7 @@ using namespace MaxLib::Geom;
 class GCodeBuilder 
 {
 public:
-    enum ForceRetract { None, Partial, Full };
+    enum RetractType { Full, Partial };
     
     struct CutPathParams 
     {
@@ -26,8 +26,8 @@ public:
             float zTop                      = 30;
             float zBottom                   = 0;
             float cutDepth                  = 2;
-            float partialRetractDistance    = 5; // mm
-            ForceRetract retract            = ForceRetract::None;
+            float partialRetractDistance    = 5; // mm              // **Only used for pocketing
+            RetractType retract             = RetractType::Full;    // **Only used for pocketing (should be on full on any other type)
         } depth;
         
         struct Tool {
@@ -40,8 +40,10 @@ public:
     // adds gcodes to cut a generic path or loop at depths between z0 and z1
     // moves to safe z position, then moves to p0
     // returns value on error
-    int CutPathDepths(const std::vector<Vec2>& path, const CutPathParams& params);
-
+    int CutPathDepths(const std::vector<Vec2>& path, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions);
+    // determines the positions of tabs along path (see CutPathDepths())
+    std::vector<std::pair<size_t, Vec2>> GetTabPositions(const std::vector<Vec2>& path, const CutPathParams& params);
+    
     void Add(std::string gcode);
     void Clear();
     // move 
@@ -57,9 +59,7 @@ public:
     
 private:
     std::vector<std::string> m_gcodes;
-        // determines the positions of tabs along path
-    std::vector<std::pair<size_t, Vec2>> GetTabPositions(const std::vector<Vec2>& path, const CutPathParams& params);
-    void CheckForTab(const std::vector<Vec2>& path, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, Vec2 pDif, float zCurrent, bool isMovingForward, int& tabIndex, size_t i);
+    void CheckForTab(const std::vector<Vec2>& path, const CutPathParams& params, std::vector<std::pair<size_t, Vec2>> tabPositions, float zCurrent, bool isMovingForward, int& tabIndex, size_t i);
 
 };
 

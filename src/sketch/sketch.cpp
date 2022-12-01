@@ -1153,13 +1153,13 @@ std::optional<std::vector<std::string>> A_Function_Draw::ExportGCode(Settings& s
    //         // sanity check
    //         if(path.size() != enclosingPath.size()) {
    //             Log::Error("Path sizes do not match, forcing full retract");
-   //             pathParams.retract = GCodeBuilder::ForceRetract::Full;
+   //             pathParams.retract = GCodeBuilder::RetractType::Full;
    //         } else {
    //             // do we need to retract z for each depth of pocket
    //             if(geos.Within({ path[i].front(), path[i].back() }, enclosingPath[i])) {
-   //                 pathParams.retract = GCodeBuilder::ForceRetract::Partial;
+   //                 pathParams.retract = GCodeBuilder::RetractType::Partial;
    //             } else {
-   //                 pathParams.retract = GCodeBuilder::ForceRetract::Full;
+   //                 pathParams.retract = GCodeBuilder::RetractType::Full;
    //             }
    //         }
    //     }
@@ -1431,8 +1431,8 @@ void A_Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFa
                     points.position.push_back({ centre.x, centre.y, 0.0f });
                     // get path of arc as lines
                     int direction = Geom::Direction::CW;
-                    int quadrantSegments = 15;
-                    std::vector<Vec2> arcPath = elementFactory.Element_GetArcPath(p0, p1, direction, centre, quadrantSegments);
+                    double arcTolerance = 15;
+                    std::vector<Vec2> arcPath = elementFactory.Element_GetArcPath(p0, p1, direction, centre, arcTolerance);
                     // add lines
                     for(const Vec2& p : arcPath) {
                         lines.position.push_back({ p.x, p.y, 0.0f });

@@ -2473,6 +2473,8 @@ struct Overrides {
 
     
 struct Debug {
+    
+    
     void showName(const char *name) {
         ImGui::TextUnformatted(name);
         ImGui::SameLine();
@@ -2514,7 +2516,7 @@ struct Debug {
     };
   
     
-    void Draw(GRBL &grbl, Settings& settings) 
+    void Draw(GRBL &grbl, Settings& settings, Sketch::Sketcher* sketcher) 
     {
         GRBLVals& grblVals = settings.grblVals;
         GRBLVals& v = grblVals;
@@ -2528,6 +2530,39 @@ struct Debug {
         if (ImGui::TreeNode("Settings")) {
             ImGui::InputText("Save File Location", &settings.p.system.saveFileDirectory);
             
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Render Element Settings")) {
+
+    
+            // Arc Interpolation (Arc Segments)
+            if (ImGui::InputDouble("Arc Tolerance", &settings.p.geosParameters.arcTolerance)) {
+                // must be > 0.000...01
+           //     settings.p.geosParameters.arcTolerance = std::max(1e-12, fabs(settings.p.geosParameters.arcTolerance));
+                // Update render data
+                sketcher->Renderer().SetUpdateFlag(Sketch::UpdateFlag::Elements);
+                // update main arc segments also
+                sketcher->Renderer().arcTolerance = settings.p.geosParameters.arcTolerance;
+                std::cout << "UPDATING ARC TOLERANCE: " << settings.p.geosParameters.arcTolerance << std::endl;
+            }
+            
+            
+            
+            /*// cap style / join style
+            static int imgui_CapStyle = geosParameters.CapStyle - 1;
+            if(ImGui::Combo("Cap Style", &imgui_CapStyle, "Round\0Flat\0Square\0\0")) {
+                geosParameters.CapStyle = imgui_CapStyle + 1;
+                needsUpdate = true;
+            }
+            static int imgui_JoinStyle = geosParameters.JoinStyle - 1;
+            if(ImGui::Combo("Join Style", &imgui_JoinStyle, "Round\0Mitre\0Bevel\0\0")) {
+                geosParameters.JoinStyle = imgui_JoinStyle + 1;
+                needsUpdate = true;
+            }*/ 
+            
+            ImGui::Unindent();
+
             ImGui::TreePop();
         }
         
@@ -2973,7 +3008,7 @@ void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::Sketch
         
         // TODO: TEMPORARILY MAKING THESE VISIBLE THE ENTIRE TIME
         // Debug settings
-        debug.Draw(grbl, *settings);
+        debug.Draw(grbl, *settings, sketcherNew);
         // show ImGui Demo 
         ImGui::ShowDemoWindow(NULL);
         

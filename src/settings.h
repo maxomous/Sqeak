@@ -144,10 +144,9 @@ struct ParametersList
     std::vector<CustomGCode> customGCodes;
     // List of tools and materials. includes imgui methdos
     ToolSettings toolSettings;
+    // Parameters for geos buffer offset
+    Geos::BufferParameters geosParameters;
 };
-
-
-
 
 
 
@@ -222,7 +221,6 @@ struct GUISettings
     
     
     
-
 
 
 

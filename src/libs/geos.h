@@ -21,17 +21,29 @@
 // \see GEOSBufferParams_create()
 // \see GEOSBufferParams_destroy()
 
-//typedef struct GEOSBufParams_t GEOSBufferParams;
+//struct GeosBufferParams {
+//    int QuadrantSegments    = 30; // # lines segments in 90 degree arc
+//    int CapStyle            = GEOSBufCapStyles::GEOSBUF_CAP_ROUND;
+//    int JoinStyle           = GEOSBufJoinStyles::GEOSBUF_JOIN_ROUND;
+//    double MitreLimit       = 1.0;
+//};
 
-struct GeosBufferParams {
-    int QuadrantSegments    = 30; // # lines segments in 90 degree arc
-    int CapStyle            = GEOSBufCapStyles::GEOSBUF_CAP_ROUND;
-    int JoinStyle           = GEOSBufJoinStyles::GEOSBUF_JOIN_ROUND;
-    double MitreLimit       = 1.0;
-};
+//typedef struct GEOSBufParams_t GEOSBufferParams;
+const double MIN_GEOMETRY_TOLERANCE = 0.01;
+
+
 
 class Geos {
 public:    
+    
+    // do not use:  typedef geos::operation::buffer::BufferParameters BufferParameters;  Does not compile
+    
+    struct BufferParameters {
+        double arcTolerance     = MIN_GEOMETRY_TOLERANCE; // # lines segments in 90 degree arc
+        int capStyle            = GEOSBufCapStyles::GEOSBUF_CAP_ROUND;
+        int joinStyle           = GEOSBufJoinStyles::GEOSBUF_JOIN_ROUND;
+        double mitreLimit       = 1.0;
+    };
     
     Geos();
     ~Geos();
@@ -116,7 +128,7 @@ public:
     
           
     // Combines and simplifies all the geometries in geom
-    std::vector<MaxLib::Geom::Geometry> CombineGeometry(const std::vector<MaxLib::Geom::Geometry>& geom)
+    std::vector<MaxLib::Geom::Geometry> CombinePolygons(const std::vector<MaxLib::Geom::Geometry>& geom)
     {
         if(geom.empty()) { return {}; }
         
@@ -134,8 +146,9 @@ public:
             GEOSGeom_destroy(geom_B);
             geom_A = result;
         }
-        
-        std::vector<MaxLib::Geom::Geometry> output = GeosGetGeometry(geom_A);
+        GEOSGeometry* simplified = GEOSSimplify(geom_A, MIN_GEOMETRY_TOLERANCE);
+        std::vector<MaxLib::Geom::Geometry> output = GeosGetGeometry(simplified);
+        GEOSGeom_destroy(simplified);
         GEOSGeom_destroy(geom_A);
         return std::move(output);
     }
@@ -227,20 +240,20 @@ public:
         // return polygons
         return std::move(output);        
     }
-    
+
     // returns offset of a line or polygon. result may be multiple linestrings
     // offset is negative for right side offset / positive for left side
     // determines whether points are a line or polygon by if the first and last point is the same 
-    std::vector<MaxLib::Geom::LineString> Offset(const MaxLib::Geom::LineString& points, float offset, GeosBufferParams& params);
-    std::vector<MaxLib::Geom::LineString> OffsetLine(const MaxLib::Geom::LineString& points, float offset, GeosBufferParams& params);
-    std::vector<MaxLib::Geom::LineString> OffsetPolygon(const MaxLib::Geom::LineString& points, float offset, GeosBufferParams& params);
+    std::vector<MaxLib::Geom::LineString> Offset(const MaxLib::Geom::LineString& points, float offset, BufferParameters& params);
+    std::vector<MaxLib::Geom::LineString> OffsetLine(const MaxLib::Geom::LineString& points, float offset, BufferParameters& params);
+    std::vector<MaxLib::Geom::LineString> OffsetPolygon(const MaxLib::Geom::LineString& points, float offset, BufferParameters& params);
     
     struct RecursiveOffset {
         std::vector<MaxLib::Geom::LineString> path;
         std::vector<MaxLib::Geom::LineString> enclosingPath;        
     };
     
-    RecursiveOffset OffsetPolygon_Recursive(const std::vector<MaxLib::Geom::LineString>& lineStrings, float pathOffset, bool isReversed, GeosBufferParams& params)
+    RecursiveOffset OffsetPolygon_Recursive(const std::vector<MaxLib::Geom::LineString>& lineStrings, float pathOffset, bool isReversed, BufferParameters& params)
     {
         RecursiveOffset returnVals;
         MaxLib::Geom::LineString buffer;
@@ -263,10 +276,17 @@ public:
     
 private:    
 
+    // TODO: Rewrite OffsetPolygon_Recursive()
+    //  We need to offset n*offset from the original path, otherwise the number of lines in an arc increase n^2
+    //      OffsetLines = OffsetPolygon(ORIGINAL PATH, n * pathOffset, params);
+    // This will also allow us to do adaptive arc segments
+
     // adds linestring and subsequent offsets into returnPoints
     // if offset > 0 we recursively make offsets until offset fails
-    void OffsetPolygon_Recursive(RecursiveOffset& returnVals, const std::vector<MaxLib::Geom::LineString>& lineStrings, float pathOffset, MaxLib::Geom::LineString& buffer, std::vector<size_t>& startIndex, bool isEnclosingPath, GeosBufferParams& params)
+    void OffsetPolygon_Recursive(RecursiveOffset& returnVals, const std::vector<MaxLib::Geom::LineString>& lineStrings, float pathOffset, MaxLib::Geom::LineString& buffer, std::vector<size_t>& startIndex, bool isEnclosingPath, BufferParameters& params)
     {    
+        // We recursively offset each linestring in linestrings 
+        // We take a set of linestrings because when we do an offset, a single linestring can become multiple linestrings
         // sanity check
         assert(lineStrings.size() == startIndex.size() && "Start index size isnt equal to linestring size");
         

@@ -106,6 +106,27 @@ void ProbeWidget() {
     // get height of line / frame
     std::cout << "LineHeight = " << ImGui::GetTextLineHeight() << " (With Spacing) = " << ImGui::GetTextLineHeightWithSpacing() << std::endl;
     std::cout << "FrameHeight = " << ImGui::GetFrameHeight() << " (With Spacing) = " << ImGui::GetFrameHeightWithSpacing() << std::endl;
+    
+    std::cout << "FrameHeight = " << ImGui::GetFrameHeight() << " (With Spacing) = " << ImGui::GetFrameHeightWithSpacing() << std::endl;
+    
+
+    std::cout << "IsItemHovered + flags = "     << ImGui::IsItemHovered()               << std::endl;       // allows flags 
+    std::cout << "IsItemActive = "              << ImGui::IsItemActive()                << std::endl;                                    
+    std::cout << "IsItemFocused = "             << ImGui::IsItemFocused()               << std::endl;                                   
+    std::cout << "IsItemClicked + flags = "     << ImGui::IsItemClicked()               << std::endl;       // allows flags 
+    std::cout << "IsItemVisible = "             << ImGui::IsItemVisible()               << std::endl;                                   
+    std::cout << "IsItemEdited = "              << ImGui::IsItemEdited()                << std::endl;                                    
+    std::cout << "IsItemActivated = "           << ImGui::IsItemActivated()             << std::endl;                                 
+    std::cout << "IsItemDeactivated = "         << ImGui::IsItemDeactivated()           << std::endl;                               
+    std::cout << "IsItemDeactivatedAfterEdit = "<< ImGui::IsItemDeactivatedAfterEdit()  << std::endl;                      
+    std::cout << "IsItemToggledOpen = "         << ImGui::IsItemToggledOpen()           << std::endl;                               
+    std::cout << "IsAnyItemHovered = "          << ImGui::IsAnyItemHovered()            << std::endl;                                
+    std::cout << "IsAnyItemActive = "           << ImGui::IsAnyItemActive()             << std::endl;                                 
+    std::cout << "IsAnyItemFocused = "          << ImGui::IsAnyItemFocused()            << std::endl;                                
+    std::cout << "GetItemRectMin = "            << ImGui::GetItemRectMin()              << std::endl;                                  
+    std::cout << "GetItemRectMax = "            << ImGui::GetItemRectMax()              << std::endl;                                  
+    std::cout << "GetItemRectSize = "           << ImGui::GetItemRectSize()             << std::endl;                              
+
 }
 
  // Moves the cursor from current position

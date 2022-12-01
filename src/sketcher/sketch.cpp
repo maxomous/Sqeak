@@ -62,7 +62,7 @@ void PolygonisedGeometry::ForEachGeometry(std::function<void(SelectableGeometry&
 bool PolygonisedGeometry::FindIntersects(const Vec2& p, double tolerance, std::function<void(SelectableGeometry&)> cb) 
 {
     // draw a tolerence ring around point, and check if intersect
-    LineString p_with_tol = m_Parent->Factory().RenderCircle(p, tolerance);
+    LineString p_with_tol = RenderCircle(p, tolerance, m_Parent->Renderer().arcTolerance);
     // create instance of geos for calculating intersect
     Geos geos;
     
@@ -122,7 +122,7 @@ bool SketchRenderer::UpdateRenderData()
             if(!cb_Condition(element->Item_Elem())) { return; }
             
             // Line Data
-            LineString l = m_Parent->Factory().RenderElement(element);
+            LineString l = m_Parent->Renderer().RenderElement(element);
             assert(!l.empty() && "No render data in linestring");
             
             // Add Element to renderdata
@@ -449,8 +449,26 @@ void SketchRenderer::SetUpdateFlag(UpdateFlag flag)
 { 
     m_Update = m_Update | flag; 
 }
+ 
+LineString SketchRenderer::RenderElement(Sketch::Element* element) 
+{
+    // Line Data
+    LineString l;
+    // skip point, as it is added to pointdata 
+    if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { l.emplace_back(point->P()); }
+    // other element are addded with line buffer 
+    else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { return Geom::RenderLine(line->P0(), line->P1()); }
+    else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { return Geom::RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction(), arcTolerance); }
+    else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { return Geom::RenderCircle(circle->PC(), circle->Radius(), arcTolerance); }
+    else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
+    
+    return std::move(l);
+}
 
-
+LineString SketchRenderer::RenderElementBySketchItem(SketchItem item) 
+{
+    return RenderElement(m_Parent->Factory().GetElementByID<Sketch::Element>(item.element));
+}
 
 // Render preview element 
 void SketchRenderer::UpdatePreview() 
@@ -500,7 +518,7 @@ void SketchRenderer::UpdatePreview()
             points.push_back(inputData[0]);
             points.push_back(p1);        
             // add line to line buffer            
-            linestring = m_Parent->Factory().RenderLine(inputData[0], p1);
+            linestring = RenderLine(inputData[0], p1);
         }
     }
     // Render Arc
@@ -524,9 +542,9 @@ void SketchRenderer::UpdatePreview()
                         points.push_back(p);            // p1
                         points.push_back(*pC);          // pC
                         inputDirection = Geom::LeftOfLine(l0, inputData[0], p) ? Direction::CCW : Direction::CW;
-                        linestring = m_Parent->Factory().RenderArc(inputData[0], p, *pC, inputDirection);    
+                        linestring = RenderArc(inputData[0], p, *pC, inputDirection, arcTolerance);    
                     }
-                }
+                } 
             }
             else 
             {
@@ -538,7 +556,7 @@ void SketchRenderer::UpdatePreview()
                     points.push_back(inputData[0]); // P0
                     points.push_back(p);            // p1
                     points.push_back(pC);           // pC
-                    linestring = m_Parent->Factory().RenderArc(inputData[0], p, pC, inputDirection);    
+                    linestring = RenderArc(inputData[0], p, pC, inputDirection, arcTolerance);    
                 }
                 // 2 points have already been added
                 else if(inputData.size() == 2) {
@@ -548,7 +566,7 @@ void SketchRenderer::UpdatePreview()
                     points.push_back(inputData[0]); // p0
                     points.push_back(inputData[1]); // p1
                     points.push_back(pC);           // pC
-                    linestring = m_Parent->Factory().RenderArc(inputData[0], inputData[1], pC, inputDirection);
+                    linestring = RenderArc(inputData[0], inputData[1], pC, inputDirection, arcTolerance);
                 }                
             }
             
@@ -566,7 +584,7 @@ void SketchRenderer::UpdatePreview()
         else if(inputData.size() == 1) {
             points.push_back(inputData[0]); 
             // calculate circle from radius (p to pC)
-            linestring = m_Parent->Factory().RenderCircle(inputData[0], Hypot(p-inputData[0]));
+            linestring = RenderCircle(inputData[0], Hypot(p-inputData[0]), arcTolerance);
         }
     }
     
@@ -1283,7 +1301,7 @@ Sketcher::Sketcher()
     : m_Events(this), m_Renderer(this), m_ConstraintButtons(this)
 {
     
-    ElementFactory& f = Factory(); // sketcher.Factory();
+    ElementFactory& f = Factory();
     
     SketchItem l1 = f.AddLine({ 100.0, 100.0 }, { 200.0, 523.0 });
     SketchItem l2 = f.AddLine({ 200.0, 523.0 }, { 500.0, 500.0 });
@@ -1679,16 +1697,10 @@ void Sketcher::DrawImGui_Settings()
             // Update render data
             m_Renderer.SetUpdateFlag(UpdateFlag::Full);
         }   
-           
-        // Arc Segments
-        if (ImGui::InputInt("Arc Segments", &m_Factory.arcSegments)) {
-            m_Factory.arcSegments = abs(m_Factory.arcSegments); // it is uint
-            // Update render data
-            m_Renderer.SetUpdateFlag(UpdateFlag::Elements);
-        }
         // Selection Tolerance
         ImGui::InputDouble("Selection Tolerance", &m_Factory.selectionTolerance);
         
+      
     }
     ImGui::Separator();
 }
