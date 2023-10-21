@@ -283,7 +283,7 @@ namespace ImGuiModules
  
     // returns true if current item has changed
     template<typename T>
-    bool TreeNodes(Vector_SelectablePtrs<T>& items, bool& isActiveItemInitiallyOpen, std::function<std::string*(T& item)>& cb_GetItemStringPtr, std::function<void(T&)> cb_DrawItemImGui)
+    bool TreeNodes(Vector_SelectablePtrs<T>& items, bool& openCurrentItem, std::function<std::string(T&)>& cb_GetItemString, std::function<void(T&)> cb_DrawItemImGui)
     {
         bool isActiveItemChanged = false;
         
@@ -306,16 +306,16 @@ namespace ImGuiModules
             //}
             
             // set active item to be open initially & inactive items to be closed
-            if(items.CurrentIndex() == (int)n) { 
-                if(isActiveItemInitiallyOpen) {
-                    ImGui::SetNextItemOpen(true); 
-                    isActiveItemInitiallyOpen = false;
-                }
-            } else { ImGui::SetNextItemOpen(false); }
+            if(items.CurrentIndex() != (int)n) { 
+                ImGui::SetNextItemOpen(false); 
+            } else if(openCurrentItem) {
+                ImGui::SetNextItemOpen(true); 
+                openCurrentItem = false;
+            }
             
             // tree node 
-            std::string* name = cb_GetItemStringPtr(items[n]);
-            if (ImGui::TreeNode(name->c_str())) {
+            const std::string& name = cb_GetItemString(items[n]);
+            if (ImGui::TreeNode(name.c_str())) {
                 assert(items.HasItemSelected() && "No item selected in cb_DrawTabImGui");
                 // draw the imgui callback for the specific tab
                 cb_DrawItemImGui(items[n]);

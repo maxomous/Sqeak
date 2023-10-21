@@ -62,7 +62,7 @@ bool DrawRawPointPosition(Settings& settings, RawPoint* p) {
     (void)settings;
     (void)p;
    // if(ImGui::InputFloat2(va_str("##(ID:%d)", p->ID()).c_str(), &(p->Vec2().x))) {
-   //     settings.SetUpdateFlag(ViewerUpdate::Full);
+   //     settings.SetUpdateFlag(SqeakUpdate::Full);
    //     return true;
    // }
     return false;
@@ -122,11 +122,11 @@ void Element_Arc::DrawImGui(Settings& settings) {
             }
             if(ImGui::InputFloat("Radius", &m_Radius)) {
                 SetRadius(m_Radius);
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             }
             if(ImGui::Combo("Direction", &m_DirectionImGui, "Clockwise\0Anticlockwise\0\0")) {
                 m_Direction = (m_DirectionImGui == 0) ? Geom::Direction::CW : Geom::Direction::CCW;
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             }
             ImGui::Text("tangent radius: %g", m_TangentRadius);
             ImGui::TreePop(); 
@@ -146,7 +146,7 @@ void ElementFactory::LineLoop_DrawImGui(Settings& settings, SketchOld_LineLoop& 
             ImGui::SameLine();
             if(ImGui::Button(va_str("Delete##%d",i).c_str())) {
                 LineLoop_DeleteElement(sketchLineLoop->id, (size_t)i);
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             } 
         }
         ImGui::TreePop();
@@ -219,7 +219,7 @@ void A_Function_Draw::DrawImGui(ElementFactory& elementFactory, Settings& settin
     }
     
     // set viewer update flag
-    if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
+    if(updateViewer) { settings.SetUpdateFlag(SqeakUpdate::Full); }
     
     elementFactory.LineLoop_DrawImGui(settings, m_LineLoop);
     
@@ -259,7 +259,7 @@ void DrawImGui_PathCutterParameters(Settings& settings)
    //         updateViewer |= ImGui::InputFloat("Tab Width",   &pathCutter.TabWidth);
    //     }
    // ImGui::Unindent();
-   // if(updateViewer) { settings.SetUpdateFlag(ViewerUpdate::Full); }
+   // if(updateViewer) { settings.SetUpdateFlag(SqeakUpdate::Full); }
 }
 std::string A_Drawing::ActiveA_Function_Name()
 {   
@@ -286,7 +286,7 @@ void A_Drawing::DrawImGui_A_Functions(Settings& settings)
   // if(ImGuiModules::ImageButtonWithText_A_Function(settings, "Draw##OLD", settings.guiSettings.img_Sketch_Draw)) {    
   //     std::unique_ptr<A_Function> newA_Function = std::make_unique<A_Function_Draw>(m_ElementFactory, "Draw " + to_string(m_A_FunctionIDCounter++));
   //     m_ActiveA_Functions.Add(move(newA_Function));
-  //     settings.SetUpdateFlag(ViewerUpdate::Full);
+  //     settings.SetUpdateFlag(SqeakUpdate::Full);
   //     // to open tree node
   //     m_IsActiveA_FunctionChanged = true;
   // }
@@ -308,22 +308,22 @@ void A_Drawing::DrawImGui(Settings& settings)
     ImGui::Separator();
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     
-     // active function imgui widgets
-    if (ImGui::TreeNode("Active A_Functions")) 
-    { 
-        // draw active function Tree Nodes
-        static std::function<std::string*(std::unique_ptr<A_Function>& item)> cb_GetItemStringPtr = [](std::unique_ptr<A_Function>& activeA_Function) { 
-            return &(activeA_Function->Name()); 
-        };
-        static std::function<void(std::unique_ptr<A_Function>&)> cb_DrawTabImGui = [&](std::unique_ptr<A_Function>& activeA_Function) { 
-            activeA_Function->DrawImGui(m_ElementFactory, settings);
-        };
-         
-        if(ImGuiModules::TreeNodes(m_ActiveA_Functions, m_IsActiveA_FunctionChanged, cb_GetItemStringPtr, cb_DrawTabImGui)) {
-            settings.SetUpdateFlag(ViewerUpdate::Full);
-        }
-        ImGui::TreePop();
-    }
+ //    // active function imgui widgets
+ //   if (ImGui::TreeNode("Active A_Functions")) 
+ //   { 
+ //       // draw active function Tree Nodes
+ //       static std::function<const std::string&(std::unique_ptr<A_Function>& item)> cb_GetItemStringPtr = [](std::unique_ptr<A_Function>& activeA_Function) { 
+ //           return activeA_Function->Name(); 
+ //       };
+ //       static std::function<void(std::unique_ptr<A_Function>&)> cb_DrawTabImGui = [&](std::unique_ptr<A_Function>& activeA_Function) { 
+ //           activeA_Function->DrawImGui(m_ElementFactory, settings);
+ //       };
+ //        
+ //       if(ImGuiModules::TreeNodes(m_ActiveA_Functions, m_IsActiveA_FunctionChanged, cb_GetItemStringPtr, cb_DrawTabImGui)) {
+ //           settings.SetUpdateFlag(SqeakUpdate::Full);
+ //       }
+ //       ImGui::TreePop();
+ //   }
         
         /*
         ImVec2& buttonSize = settings.guiSettings.button[ButtonType::Toolbar_Button].Size;
@@ -332,7 +332,7 @@ void A_Drawing::DrawImGui(Settings& settings)
       
         static std::function<std::string(std::unique_ptr<A_Function>& item)> callback = [](std::unique_ptr<A_Function>& item) { return item->Name(); };
         if(ImGuiModules::Buttons(m_ActiveA_Functions, buttonSize, callback)) {
-            settings.SetUpdateFlag(ViewerUpdate::Full);
+            settings.SetUpdateFlag(SqeakUpdate::Full);
         }
         
         ImGui::SameLine();
@@ -342,7 +342,7 @@ void A_Drawing::DrawImGui(Settings& settings)
         {   // remove A_Function
             if(ImGui::Button("-##Remove A_Function", buttonSizeSmall)) {
                 m_ActiveA_Functions.RemoveCurrent();
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             }
         }
         */
@@ -378,7 +378,7 @@ bool SketchOld::DrawImGui_StartSketchOld(Settings& settings)
         
   //      if(ImGuiModules::ImageButtonWithText_A_Function(settings, "SketchOld", settings.guiSettings.img_Sketch)) {  
   //          Activate();
-  //          settings.SetUpdateFlag(ViewerUpdate::Full);
+  //          settings.SetUpdateFlag(SqeakUpdate::Full);
   //          return true;
   //      }
   //  } else {    
@@ -406,7 +406,7 @@ bool SketchOld::DrawImGui_StartSketchOld(Settings& settings)
         
         if(ImGui::Button(va_str("Delete##%d",i).c_str())) {
             LineLoop_DeleteElement(id, (size_t)i);
-            settings.SetUpdateFlag(ViewerUpdate::Full);
+            settings.SetUpdateFlag(SqeakUpdate::Full);
         } 
         
            */ 
@@ -433,7 +433,7 @@ void SketchOld::DrawPopup_Cursor(Settings& settings)
                 // delete
                 if(ImGui::Selectable("Delete")) {
                     if(m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_Delete()) {
-                        settings.SetUpdateFlag(ViewerUpdate::Full);
+                        settings.SetUpdateFlag(SqeakUpdate::Full);
                     }
                 }
             }
@@ -491,7 +491,7 @@ void SketchOld::DrawImGui(Settings& settings)
                 // delete
                 if(ImGui::Selectable("Delete")) {
                     if(m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_Delete()) {
-                        settings.SetUpdateFlag(ViewerUpdate::Full);
+                        settings.SetUpdateFlag(SqeakUpdate::Full);
                     }
                 }
             });
@@ -514,7 +514,7 @@ void SketchOld::DrawImGui(Settings& settings)
         if (ImGui::SmallButton("New Drawing")) {
             m_Drawings.Add("Drawing " + to_string(m_DrawingIDCounter++));
             isNewDrawing = true;
-            settings.SetUpdateFlag(ViewerUpdate::Full);
+            settings.SetUpdateFlag(SqeakUpdate::Full);
         } 
         
         for(size_t i = 0; i < m_Drawings.Size(); )
@@ -533,14 +533,14 @@ void SketchOld::DrawImGui(Settings& settings)
                 if(m_Drawings.CurrentIndex() != (int)i) {
                     std::cout << "Setting current drawing index" << std::endl;
                     m_Drawings.SetCurrentIndex(i);
-                    settings.SetUpdateFlag(ViewerUpdate::Full);
+                    settings.SetUpdateFlag(SqeakUpdate::Full);
                 }
                 // draw the imgui widgets for drawing 
                 m_Drawings.CurrentItem().DrawImGui(settings); 
             }
             if(!closeIsntClicked) { // has been closed
                 m_Drawings.Remove(i); 
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             } else { 
                 i++; 
             }                        
@@ -563,7 +563,7 @@ void SketchOld::DrawImGui(Settings& settings)
         return item.Name(); 
     };
     static std::function<A_Drawing(void)> cb_AddNewItem = [&]() { 
-        settings.SetUpdateFlag(ViewerUpdate::Full);
+        settings.SetUpdateFlag(SqeakUpdate::Full);
         return A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)); 
     };
     static std::function<void()> cb_DrawTabImGui = [&]() {  
@@ -571,7 +571,7 @@ void SketchOld::DrawImGui(Settings& settings)
     };
      
     if(ImGuiModules::Tabs(m_Drawings, cb_GetItemString, cb_AddNewItem, cb_DrawTabImGui)) {
-        settings.SetUpdateFlag(ViewerUpdate::Full);
+        settings.SetUpdateFlag(SqeakUpdate::Full);
     }
 */
 }   
@@ -1042,7 +1042,7 @@ bool A_Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementF
         return false;
     }
     // cut depth should have value
-    ToolSettings::Tools::Tool::ToolData& toolData = settings.p.toolSettings.tools.toolList.CurrentItem().Data.CurrentItem();
+    ToolSettings::Tools::Tool::ToolData& toolData = settings.p.toolSettings.tools.toolList.CurrentItem().data.CurrentItem();
     if(toolData.cutDepth <= 0.0f) {
         Log::Error("Cut Depth must be positive");
         return false;
@@ -1056,7 +1056,7 @@ std::string A_Function_Draw::HeaderText(Settings& settings, ElementFactory& elem
 {
     A_Function_Draw_Parameters& p = m_Params;
     ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
-    ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem();    
+    ToolSettings::Tools::Tool::ToolData& toolData = tool.data.CurrentItem();    
     
     // write header
     std::ostringstream stream;
@@ -1093,12 +1093,12 @@ std::optional<std::vector<std::string>> A_Function_Draw::ExportGCode(Settings& s
    //     return {};  
    // }  
    // ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
-   // ToolSettings::Tools::Tool::ToolData& toolData = tool.Data.CurrentItem(); 
+   // ToolSettings::Tools::Tool::ToolData& toolData = tool.data.CurrentItem(); 
    //      
    // // initialise 
    // GCodeBuilder gcodes;
    // gcodes.Add(HeaderText(settings, elementFactory));
-   // gcodes.InitCommands(toolData.speed);
+   // gcodes.Initialisation(toolData.speed);
    //   
    // // define offset path parameters:  0 = no compensation, 1 = compensate left / pocket, -1 = compensate right
    // int cutSide = GetCutSide((CompensateCutter)m_Params.cutSide);
@@ -1259,7 +1259,7 @@ void SketchOld::ActiveA_Function_Delete(Settings& settings)
     
     if(ImGui::Button("Delete")) { 
         m_Drawings.CurrentItem().ActiveA_Function_Delete();
-        settings.SetUpdateFlag(ViewerUpdate::Full);
+        settings.SetUpdateFlag(SqeakUpdate::Full);
     }
 }
 
@@ -1285,10 +1285,10 @@ void A_Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, E
         if(m_ActiveCommand == Command::Select) 
         {   // select point under cursor
             if(auto cursorPos = settings.p.sketch.cursor.Position_Snapped) {
-                if(elementFactory.ActivePoint_SetByPosition(Vec2((*cursorPos).x, (*cursorPos).y), settings.p.sketch.cursor.SelectionTolerance_Scaled)) {
-                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
-                    return true;
-                }
+            //    if(elementFactory.ActivePoint_SetByPosition(Vec2((*cursorPos).x, (*cursorPos).y), settings.p.sketch.cursor.SelectionTolerance_Scaled)) {
+            //        settings.SetUpdateFlag(SqeakUpdate::Full);
+            //        return true;
+            //    }
             }
         }
         return false;
@@ -1317,11 +1317,11 @@ void A_Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, E
                     
                     if(m_ActiveCommand == Command::Line) {
                         elementFactory.LineLoop_AddLine(m_LineLoop, { (*cursorPos).x,  (*cursorPos).y });
-                        settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+                        settings.SetUpdateFlag(SqeakUpdate::Full | SqeakUpdate::Full);
                     }
                     if(m_ActiveCommand == Command::Arc) {
                         elementFactory.LineLoop_AddArc(m_LineLoop, { (*cursorPos).x,  (*cursorPos).y }, Geom::Direction::CW);
-                        settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+                        settings.SetUpdateFlag(SqeakUpdate::Full | SqeakUpdate::Full);
                     }
                 }
             }
@@ -1337,7 +1337,7 @@ void A_Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, E
             if(mouse->Button == GLFW_MOUSE_BUTTON_LEFT) 
             {  
                 if(updateRequiredOnKeyRelease) {
-                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing | ViewerUpdate::ActiveFunction);
+                    settings.SetUpdateFlag(SqeakUpdate::Full | SqeakUpdate::Full);
                     updateRequiredOnKeyRelease = false;
                 } 
             }
@@ -1352,17 +1352,17 @@ void A_Function_Draw::HandleEvents(Settings& settings, InputEvent& inputEvent, E
             if(Mouse::IsLeftClicked()) {//inputEvent.mouseClick.Action == GLFW_REPEAT  &&  inputEvent.mouseClick.Button == GLFW_MOUSE_BUTTON_LEFT) {
                 if(elementFactory.ActivePoint_Move({ (*cursorPos).x,  (*cursorPos).y })) {    
                     std::cout << "setting update flag to active drawing" << std::endl;            
-                    settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+                    settings.SetUpdateFlag(SqeakUpdate::Full);
                     updateRequiredOnKeyRelease = true;
                 }
             } 
             // preview next element based on current mouse position
-            settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+            settings.SetUpdateFlag(SqeakUpdate::Full);
         }
     }
     // handle keyboard event
     if(inputEvent.keyboard) {
-        // settings.SetUpdateFlag(ViewerUpdate::ActiveDrawing);
+        // settings.SetUpdateFlag(SqeakUpdate::Full);
     }
 } 
             
@@ -1528,20 +1528,20 @@ void SketchOld::ActiveA_Function_UpdateViewer(Settings& settings)
 void SketchOld::UpdateViewer(Settings& settings)
 {
     // return if no update required
-    if(settings.GetUpdateFlag() == ViewerUpdate::None) { return; }
+    if(settings.GetUpdateFlag() == SqeakUpdate::None) { return; }
     
     //std::cout << "*** UPDATE FLAG *** : " << (int)settings.GetUpdateFlag() << std::endl;
     
     // clear overrides other bits in flag
-    if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::Clear) { 
+    if((int)settings.GetUpdateFlag() & (int)SqeakUpdate::Full) { 
         std::cout << "Clearing viewer" << std::endl;  
         ClearViewer(); 
     } 
     else {     
         // update active drawing
-        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveDrawing)  { /*8std::cout << "UPDATING ACTIVE DRAWING" << std::endl; */  ActiveDrawing_UpdateViewer(settings); }
+        if((int)settings.GetUpdateFlag() & (int)SqeakUpdate::Full)  { /*8std::cout << "UPDATING ACTIVE DRAWING" << std::endl; */  ActiveDrawing_UpdateViewer(settings); }
         // update active function
-        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::ActiveFunction) { /*std::cout << "UPDATING ACTIVE FUNCTION" << std::endl; */ ActiveA_Function_UpdateViewer(settings); }
+        if((int)settings.GetUpdateFlag() & (int)SqeakUpdate::Full) { /*std::cout << "UPDATING ACTIVE FUNCTION" << std::endl; */ ActiveA_Function_UpdateViewer(settings); }
     }
     
     // reset the update flag

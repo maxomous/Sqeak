@@ -279,7 +279,10 @@ TODO:
     // This will also allow us to do adaptive arc segments
     * 
     
+    Retracion uses the z component of G28, therefore the user must set G28 at a safe z position (ideally z_max)
+    
 Other notes:
+    
     * if we need to sync gui to grbl, use G4 P0.01
 
     EEPROM Issues

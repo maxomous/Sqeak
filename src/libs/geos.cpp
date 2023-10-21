@@ -106,10 +106,17 @@ GEOSGeometry* Geos::GeosLinearRing(const LineString& points)
     return GEOSGeom_createLinearRing(seq); 
 }    
   
-GEOSGeometry* Geos::GeosPolygon(const LineString& points)
+GEOSGeometry* Geos::GeosPolygon(const LineString& polygon/*, const std::vector<LineString>& holes = {}*/)
 {
-    GEOSGeometry* geom = GeosLinearRing(points);
+    GEOSGeometry* geom = GeosLinearRing(polygon);
     if(!geom) return nullptr;
+
+    // TODO:
+    //GEOSGeometry** geoms = malloc(sizeof(GEOSGeometry*) * holes.size());
+    
+    //g                                                                                                                          eoms[i] = GeosLinearRing(holes[i]);
+    //if(!geom) return nullptr;
+    
     // Define as polygon 
     return GEOSGeom_createPolygon(geom, NULL, 0);   
 }    

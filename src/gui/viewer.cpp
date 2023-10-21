@@ -752,10 +752,6 @@ void Viewer::ImGuiRender(Settings& settings)
         ImGui::SameLine();
         ImGui::Text("%g Scaled", settings.p.sketch.cursor.Size_Scaled);
         
-        if(ImGui::InputFloat("Selection Tolerance", &settings.p.sketch.cursor.SelectionTolerance)) {
-             settings.p.sketch.cursor.SelectionTolerance_Scaled = ScaleToPx(settings.p.sketch.cursor.SelectionTolerance);
-        }
-        
         ImGui::SliderFloat("Cursor Snap Distance", &settings.p.sketch.cursor.SnapDistance, 0.1f, 100.0f, "%.1f", ImGuiSliderFlags_Logarithmic);
         ImGui::SameLine();
         ImGui::Text("%g Scaled", settings.p.sketch.cursor.SnapDistance_Scaled);

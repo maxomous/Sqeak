@@ -12,7 +12,7 @@
 #include <MaxLib.h>	
 
 // delete this, for debugging only
-//static void printVec2(const std::string& text, const MaxLib::Geom::Vec2& v) {
+//static void printMaxLib::Geom::Vec2(const std::string& text, const MaxLib::Geom::MaxLib::Geom::Vec2& v) {
 //    std::cout << text << ": (" << v.x << ", " << v.y << ")" << std::endl;
 //}
 
@@ -34,9 +34,7 @@ const double MIN_GEOMETRY_TOLERANCE = 0.01;
 
 
 class Geos {
-public:    
-    
-    // do not use:  typedef geos::operation::buffer::BufferParameters BufferParameters;  Does not compile
+public:   
     
     struct BufferParameters {
         double arcTolerance     = MIN_GEOMETRY_TOLERANCE; // # lines segments in 90 degree arc
@@ -50,7 +48,7 @@ public:
     // returns centroid of a polygon
     std::optional<MaxLib::Geom::Vec2> Centroid(const MaxLib::Geom::LineString& points);
     
-    // converts a vector<Vec2> to a Geos Point, LineString or Polygon, defined by the number of points it contains
+    // converts a vector<MaxLib::Geom::Vec2> to a Geos Point, MaxLib::Geom::LineString or Polygon, defined by the number of points it contains
     GEOSGeometry* GeosPointLineStringOrPolygon(const MaxLib::Geom::LineString& points) {
         // err if no points
         if(points.size() == 0) { return {}; }
@@ -181,7 +179,24 @@ public:
         return std::move(output);
     }
     
-    struct PolygonisedData
+  // 
+  // std::vector<Geometry> CombinePolygons(const std::vector<Geometry>& geom)
+  // {
+  //     if(geom.empty()) { return {}; }
+  //     
+  //     GEOSGeometry* geom_A = GeosPolygon(geom[0]);
+  //     if(!geom_A) return {};
+  //     
+  //     
+  //     GEOSDifference();
+  //     
+  //     
+  //     GEOSConstrainedDelaunayTriangulation;
+  //     
+  // }   
+  // 
+    
+    struct PolygonizedResult
     {
         std::vector<MaxLib::Geom::LineString> valid;
         std::vector<MaxLib::Geom::LineString> cuts;
@@ -195,7 +210,7 @@ public:
     // usage should be:
     //  if inside polygon and closest to centroid, select that shape
     // Geometry can be vector of Linestring or Polyons
-    PolygonisedData Polygonise(const std::vector<MaxLib::Geom::Geometry>& input)
+    PolygonizedResult Polygonize(const std::vector<MaxLib::Geom::Geometry>& input)
     {   
         std::vector<GEOSGeometry*> lineStrings;
         // Make geos line string for each input linestring
@@ -215,12 +230,12 @@ public:
         // Type: Geometry Collection
         GEOSGeometry *cuts, *dangles, *invalid; 
     
-        // Polygonise (convert the noded linestring into polygons)
+        // Polygonize (convert the noded linestring into polygons)
         GEOSGeometry* polygons = GEOSPolygonize_full(nodedLines, &cuts, &dangles, &invalid);
         if(!polygons) return {}; 
         
         
-        PolygonisedData output;
+        PolygonizedResult output;
         output.valid = GeosGetPolygons(polygons);
         output.cuts = GeosGetLineStrings(cuts);
         output.dangles = GeosGetLineStrings(dangles);
@@ -313,7 +328,7 @@ private:
             }
             // make first and last point the same
             buffer.push_back(l[startIndex[n]]);
-            
+            // is top level of item
             if(isEnclosingPath) {
                 returnVals.enclosingPath.push_back(buffer);
             }
@@ -402,14 +417,14 @@ private:
 
     GEOSCoordSequence*         GeosCoordSequence(const MaxLib::Geom::LineString& points);
     
-    // Converts GEOS point or GEOS linestring to Geom::LineString
+    // Converts GEOS point or GEOS linestring to Geom::MaxLib::Geom::LineString
     std::optional<MaxLib::Geom::LineString>  GeosGetCoords(const GEOSGeometry* geometry, bool reversePoints);
     
-    // Converts linestrings or polygons into std::vector<LineString>
+    // Converts linestrings or polygons into std::vector<MaxLib::Geom::LineString>
     std::vector<MaxLib::Geom::LineString>    GeosGetGeometry(const GEOSGeometry* geometry);
-    // Converts GEOS geometry collection to std::vector<Geom::LineString>
+    // Converts GEOS geometry collection to std::vector<Geom::MaxLib::Geom::LineString>
     std::vector<MaxLib::Geom::LineString>    GeosGetLineStrings(const GEOSGeometry* geometry);
-    // Converts GEOS geometry collection to std::vector<Geom::LineString>
+    // Converts GEOS geometry collection to std::vector<Geom::MaxLib::Geom::LineString>
     std::vector<MaxLib::Geom::LineString>    GeosGetPolygons(const GEOSGeometry* geometry);
 
     // Generic boolean operation with callback

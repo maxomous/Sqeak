@@ -126,13 +126,14 @@ struct ParametersList
             
             float Size                  = 14.0f; // mm
             float Size_Scaled;          // gets updated with change in zoom
+            
+            float SelectionTolerance    = 10.0f;
+            
             float SnapDistance          = 5.0f; // mm
             float SnapDistance_Scaled;  // gets updated with change in zoom
             glm::vec2 SnapCursor(const glm::vec2& cursorPos) {
                 return roundVec2(SnapDistance_Scaled, cursorPos);
             }
-            float SelectionTolerance    = 10.0f;
-            float SelectionTolerance_Scaled; 
             
         } cursor;
     } sketch;
@@ -145,7 +146,7 @@ struct ParametersList
     // List of tools and materials. includes imgui methdos
     ToolSettings toolSettings;
     // Parameters for geos buffer offset
-    Geos::BufferParameters geosParameters;
+    GeosCPP::Operation::OffsetParameters geosParameters;
 };
 
 
@@ -354,15 +355,15 @@ private:
     friend class Settings;
 };
 
-enum class ViewerUpdate {
+enum class SqeakUpdate {
     None            = 0x00,
-    Clear           = 0x01,
-    Sketch          = 0x02,
-    ActiveDrawing   = 0x04,
-    ActiveFunction  = 0x08,
-    Full            = ActiveDrawing | ActiveFunction
+    Viewer          = 0x01,
+    Full            = 0xFF
 };
-inline ViewerUpdate operator|(ViewerUpdate a, ViewerUpdate b) { return static_cast<ViewerUpdate>(static_cast<int>(a) | static_cast<int>(b)); }
+inline SqeakUpdate operator|(SqeakUpdate a, SqeakUpdate b) { return static_cast<SqeakUpdate>(static_cast<int>(a) | static_cast<int>(b)); }
+inline bool operator&(SqeakUpdate a, SqeakUpdate b) { return static_cast<bool>(static_cast<int>(a) & static_cast<int>(b)); }
+
+
 
 // main class - Contains all settings / dynamic settings
 class Settings 
@@ -374,9 +375,9 @@ public:
     int UpdateFromFile();
     
     // viewer update
-    ViewerUpdate GetUpdateFlag() { return m_UpdateFlag; }
-    void SetUpdateFlag(ViewerUpdate flag) { m_UpdateFlag = m_UpdateFlag | flag; }
-    void ResetUpdateFlag() { m_UpdateFlag = ViewerUpdate::None; }
+    SqeakUpdate GetUpdateFlag() { return m_UpdateFlag; }
+    void SetUpdateFlag(SqeakUpdate flag) { m_UpdateFlag = m_UpdateFlag | flag; }
+    void ResetUpdateFlag() { m_UpdateFlag = SqeakUpdate::None; }
 
     GRBLVals grblVals;
     ParametersList p;
@@ -391,7 +392,7 @@ private:
 // *************************************************************************************************************
         
 private:
-    ViewerUpdate m_UpdateFlag = ViewerUpdate::None;
+    SqeakUpdate m_UpdateFlag = SqeakUpdate::Full;
     std::string m_Filename;
     std::vector<Setting> m_SettingsList;
     std::vector<DynamicSetting> m_VectorList;

@@ -14,7 +14,7 @@ class ToolSettings
 {
 public:
     struct Tools 
-    { 
+    {   
         struct Tool 
         {
             struct ToolData {
@@ -25,14 +25,14 @@ public:
                 float cutDepth          = 1.0f;
             };
             
-            Tool(std::string name = "Tool", float diameter = 6.0f, float length = 20.0f) : Name(name), Diameter(diameter), Length(length) {}
+            Tool(std::string Name = "Tool", float Diameter = 6.0f, float Length = 20.0f) : name(Name), diameter(Diameter), length(Length) {}
             
-            Vec3 Dimensions() { return Vec3(Diameter, Diameter, Length); }
+            Vec3 Dimensions() { return Vec3(diameter, diameter, length); }
             
-            Vector_SelectablePtrs<ToolData> Data;
-            std::string Name;
-            float Diameter;
-            float Length;    
+            std::string name;
+            float diameter;
+            float length;    
+            Vector_SelectablePtrs<ToolData> data; // feeds, speeds & depths for different materials
         };
         Vector_SelectablePtrs<Tool> toolList;
         // check if tool & material is selected

@@ -25,7 +25,8 @@
 // OpenGL / ImGui
 #include "glcore/glcore.h"
 
-#include "libs/geos.h"
+//#include "libs/geos.h" // old c version
+#include "libs/Geos.h"
 
 // allows bitwise operations on enums
 template<class T> inline T operator~ (T a) { return (T)~(int)a; }

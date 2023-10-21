@@ -200,7 +200,7 @@ void Settings::SaveToFile()
     UpdateDynamicSettings();
     std::ostringstream stream;
     // go through each setting
-    for(auto setting : m_SettingsList) {
+    for(auto& setting : m_SettingsList) {
         stream << "[" << setting.name << "][" << setting.id << "]" << std::endl;
         // go through each parameter
         for (size_t i = 0; i < setting.data.size(); i++)

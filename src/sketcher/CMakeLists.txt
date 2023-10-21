@@ -48,7 +48,7 @@ endif()
 ####################################################
 #                 Build Target
 ####################################################
-
+ 
 ## Build target with source files
 add_library(${PROJECT_NAME} ${SRC_FILES}) # add_library / add_executable
 
@@ -68,6 +68,6 @@ target_link_libraries(${PROJECT_NAME}
 #             Set Compiler Options
 ####################################################
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g -O0) #-O0 -v -Q for valgrind (try -Q for showing function names)
+target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi) #-O0 -v -Q for valgrind (try -Q for showing function names)
 
 ####################################################

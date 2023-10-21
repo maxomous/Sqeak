@@ -65,7 +65,7 @@ class Sketcher;
         using namespace MaxLib::;
     * from header files
 
-    TODO: Perhaps SelectableGeometry should replace how we select all stuff?...
+    TODO: Perhaps SelectablePolygon should replace how we select all stuff?...
       this is slightly different as other finds closest point for points, but we can handle this inside the class, not easily as requires p + tolerance
    
     TODO: Check if point on arc works?
@@ -159,22 +159,22 @@ struct RenderData
 
 // A piece of geometry which can be either selected or hovered
 // This will take ownership of input geometry
-class SelectableGeometry
+class SelectablePolygon
 {
 public:     
     // Geometry is equiv. to std::vector<Vec2>, LineString, Polygon, Points
     // Will take ownership of input geometry
-    SelectableGeometry(Geom::Geometry&& geometry) : m_Geometry(std::move(geometry)) {}
+    SelectablePolygon(Geom::Polygon&& geometry) : m_Geometry(std::move(geometry)) {}
     
-    const std::vector<Vec2>& Geometry() { return m_Geometry; }
+    const Geom::Polygon& Polygon()      { return m_Geometry; }
     bool IsSelected() const             { return m_IsSelected; }
     bool IsHovered() const              { return m_IsHovered; }
     
 private:
-    Geom::Geometry m_Geometry;
+    Geom::Polygon m_Geometry;
     bool m_IsSelected = false;
     bool m_IsHovered = false;
-    friend class PolygonisedGeometry;
+    friend class PolygonizedGeometry;
 };
     
     
@@ -182,32 +182,31 @@ private:
     
     
 // a collection of selectable geometry
-// will consume input geometries
-class PolygonisedGeometry
+class PolygonizedGeometry
 {
 public:
-    // Generates the polygonised selection geometry
-    PolygonisedGeometry(Sketcher* parent = nullptr, const std::vector<Geometry>& geometries = {});
+    // Generates the polygonized selection geometry & will consume input geometries
+    PolygonizedGeometry(Sketcher* parent = nullptr, const std::vector<Geometry>& geometries = {});
     
     // Clears all of the geometries' hovered flags
     void ClearHovered();
     // Clears all of the geometries' seleceted flags
     void ClearSelected();
     // Finds geometry within a tolerance to position p and sets their Hovered flag to true
-    bool SetHoveredByPosition(const Vec2& p, double tolerance);
+    bool SetHoveredByPosition(const Vec2& p);
     // Finds geometry within a tolerance to position p and sets their Selected flag to true
-    bool SetSelectedByPosition(const Vec2& p, double tolerance);
-    // Calls callback function on each SelectableGeometry item  
-    void ForEachGeometry(std::function<void(SelectableGeometry&)> cb);
+    bool SetSelectedByPosition(const Vec2& p);
+    // Calls callback function on each SelectablePolygon item  
+    void ForEachGeometry(std::function<void(SelectablePolygon&)> cb);
      
 private:
     Sketcher* m_Parent = nullptr;
-    // Polygonised linestring data
-    std::vector<SelectableGeometry> m_Geometry;
+    // Polygonized linestring data
+    std::vector<SelectablePolygon> m_Geometry;
 
     // Finds geometry within a tolerance to position p and calls callback
     // l is a polygon which 
-    bool FindIntersects(const Vec2& p, double tolerance, std::function<void(SelectableGeometry&)> cb);
+    bool FindIntersects(const Vec2& p, std::function<void(SelectablePolygon&)> cb);
 };
 
 // A flag used when building render data to only render the required item
@@ -215,7 +214,7 @@ enum class UpdateFlag {
     None                               = 0x0,  
     Cursor                             = 0x1, // handles dragged selection box
     Selection                          = 0x2, // handles selected & hovered
-    Elements                           = 0x4, // handles change to elements, also polygonises elements 
+    Elements                           = 0x4, // handles change to elements, also polygonizes elements 
     Preview                            = 0x8, // handles element preview whilst creating an element
     Constraints                        = 0x10, // handles constraints
     
@@ -250,8 +249,6 @@ public:
     
     LineString RenderElement(Sketch::Element* element);
     LineString RenderElementBySketchItem(SketchItem item);
-     
-    double arcTolerance = 0.01;
      
 private: 
     Sketcher* m_Parent = nullptr;   
@@ -335,7 +332,7 @@ public:
 
     const std::vector<SketchItem>&  GetSelectedPoints()   { return m_SelectedPoints; }
     const std::vector<SketchItem>&  GetSelectedElements() { return m_SelectedElements; }
-    const std::vector<Geometry>&    GetSelectedPolygons() { return m_SelectedPolygons; }
+    const std::vector<Polygon>&     GetSelectedPolygons() { return m_SelectedPolygons; }
     
     
 private:
@@ -361,10 +358,10 @@ private:
     // Easy to access arrays of selected item
     std::vector<SketchItem> m_SelectedPoints;   // Points as SketchItems
     std::vector<SketchItem> m_SelectedElements; // Lines as SketchItems
-    std::vector<Geometry> m_SelectedPolygons;   // Polygons (polygonised) as vector<Vec2>
+    std::vector<Polygon> m_SelectedPolygons;   // Polygons (polygonized) as vector<Vec2>
     
-    // polygonises all of the geometry so we can select loops
-    PolygonisedGeometry m_PolygonisedGeometry;
+    // polygonizes all of the geometry so we can select loops
+    PolygonizedGeometry m_PolygonizedGeometry;
 
 
     std::vector<Vec2>& InputData() { return m_InputData; }
@@ -417,14 +414,11 @@ public:
     void DrawImGui_Constraints(ConstraintID& deleteConstraint);
     void DrawImGui_ElementInputValues();
     void DrawImGui_Settings();
-
-
-    void SetSelectCommand() { m_Command_ImGui = 1; }
+    void DrawImGui_Items();
+    
 private:
     bool m_IsActive = false;
     
-    int m_Command_ImGui = 0;
-        
     ElementFactory m_Factory;
     SketchEvents m_Events;  
     SketchRenderer m_Renderer;

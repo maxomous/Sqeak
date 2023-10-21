@@ -55,7 +55,7 @@ void imgui_Settings(Settings& settings)
     s.img_Add.Init(File::ThisDir("img/img_add.png").c_str());
     s.img_Open.Init(File::ThisDir("img/img_open.png").c_str());
     s.img_Connect.Init(File::ThisDir("img/img_connect.png").c_str());
-    s.img_ArrowUp.Init(File::ThisDir("img/img_arrowup0.png").c_str());
+    s.img_ArrowUp.Init(File::ThisDir("img/img_arr>owup0.png").c_str());
     s.img_ArrowDown.Init(File::ThisDir("img/img_arrowdown0.png").c_str());
     s.img_ArrowLeft.Init(File::ThisDir("img/img_arrowleft0.png").c_str());
     s.img_ArrowRight.Init(File::ThisDir("img/img_arrowright0.png").c_str());
@@ -120,17 +120,15 @@ public:
     void HandleUpdateFlag(Settings& settings, Sketch::Sketcher& sketcher) 
     {
         // return if no update required
-        if(settings.GetUpdateFlag() == ViewerUpdate::None) { return; }
+        if(settings.GetUpdateFlag() == SqeakUpdate::None) { return; }
         
-        // clear overrides other bits in flag
-        if((int)settings.GetUpdateFlag() & (int)ViewerUpdate::Clear) { 
-            std::cout << "Clearing Ciewer" << std::endl;  
-            ClearViewer(); 
-        } 
-        else {     
-            std::cout << "Updating Viewer" << std::endl;  
+        if(settings.GetUpdateFlag() & SqeakUpdate::Viewer) { 
+            std::cout << "Updating Sketch" << std::endl;  
             // update 
-            UpdateViewer(settings, sketcher);
+            UpdateViewerFromSketch(settings, sketcher);
+            
+            // TODO:
+            //functions.Update();
         }
         
         // reset the update flag
@@ -148,8 +146,18 @@ private:
     std::vector<RenderImage> m_Images;
     std::vector<RenderText> m_Texts;
     
+    void ClearViewer()
+    {
+        // line lists
+        Event<Event_Viewer_AddLineLists>::Dispatch( { nullptr } );
+        // points lists
+        Event<Event_Viewer_AddPointLists>::Dispatch( { nullptr } );
+        //
+        Event<Event_Update3DModelFromVector>::Dispatch( { vector<string>(/*empty*/) } );
+    }
     
-    void UpdateViewer(Settings& settings, Sketch::Sketcher& sketcher)
+    
+    void UpdateViewerFromSketch(Settings& settings, Sketch::Sketcher& sketcher)
     { 
         // make a list of points / lines which is sent to viewer
         m_ViewerPointLists.clear();
@@ -248,16 +256,7 @@ private:
                 CopyVertices(m_ViewerLineLists, cursor.linestrings, selectionBoxColour);
             }
         }
-    }
-    
-    void ClearViewer()
-    {
-        // line lists
-        Event<Event_Viewer_AddLineLists>::Dispatch( { nullptr } );
-        // points lists
-        Event<Event_Viewer_AddPointLists>::Dispatch( { nullptr } );
-        //
-        Event<Event_Update3DModelFromVector>::Dispatch( { vector<string>(/*empty*/) } );
+        
     }
     
 };
@@ -321,8 +320,15 @@ int gui(GRBL& grbl, Settings& settings)
     GCodeReader gcReader(settings);
     Viewer viewer;
     sketch::SketchOld sketcher;
+    
     Sketch::Sketcher sketcherNew;
+    
+    Functions functions(settings, sketcherNew);
+    
+     
+    
     Frames frames(settings);
+    
     Updater updater;
         
     
@@ -423,13 +429,22 @@ int gui(GRBL& grbl, Settings& settings)
         sketcherNew.Events().Event_Keyboard(data.Key, (Sketch::SketchEvents::KeyAction)data.Action, (Sketch::SketchEvents::KeyModifier)data.Modifier);
             
         // TODO THIS SHOULDNT BE HERER
-        settings.SetUpdateFlag(ViewerUpdate::Full);
+        settings.SetUpdateFlag(SqeakUpdate::Viewer);
     
     
     
     });
     
-    Event<Event_MouseButton>::RegisterHandler([&settings, &sketcher, &sketcherNew](Event_MouseButton data) {
+    
+    Event<Event_MouseScroll>::RegisterHandler([&](Event_MouseScroll data) {
+        (void)data;
+        // ignore if a ImGui window is hovered over
+        if(ImGui::GetIO().WantCaptureMouse) { return; }
+        // update the selection Tolerance
+        sketcherNew.Factory().selectionTolerance = viewer.ScaleToPx(settings.p.sketch.cursor.SelectionTolerance);
+    });
+    
+    Event<Event_MouseButton>::RegisterHandler([&settings, &sketcherNew](Event_MouseButton data) {
         if((data.Button != GLFW_MOUSE_BUTTON_LEFT) && (data.Button != GLFW_MOUSE_BUTTON_RIGHT) && (data.Button != GLFW_MOUSE_BUTTON_MIDDLE))
             return; 
         auto& cursor = settings.p.sketch.cursor;
@@ -445,23 +460,12 @@ int gui(GRBL& grbl, Settings& settings)
         InputEvent inputEvent; 
         Event_MouseButton mouseClick = data;
         inputEvent.mouseClick = &mouseClick;
-     //   sketcher.HandleEvents(settings, inputEvent);
         
         if(cursor.Position_Snapped) {  
-             
+            // Sketch Event (Mouse Button)
             if(sketcherNew.Events().Mouse_Button((Sketch::SketchEvents::MouseButton)data.Button, (Sketch::SketchEvents::MouseAction)data.Action, (Sketch::SketchEvents::KeyModifier)data.Modifier)) {
-                
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Viewer);
             }
-            
-            
-            //if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_PRESS) {
-            //    sketcherNew.Events().Event_Click({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y });                
-            //}
-            //if(data.Button == GLFW_MOUSE_BUTTON_LEFT && data.Action == GLFW_RELEASE) {
-            //    sketcherNew.Events().Event_MouseRelease();                
-            //}        
-            
         }
     });
             
@@ -479,22 +483,16 @@ int gui(GRBL& grbl, Settings& settings)
 
         // update 2d cursor positions
         cursor.Position_Raw = glm::vec2(returnCoords);
-        // snap cursor or snap to raw point
-        std::optional<Vec2> closestPoint = sketcher.RawPoint_GetClosest({ returnCoords.x, returnCoords.y }, cursor.SelectionTolerance_Scaled);
-        cursor.Position_Snapped = (closestPoint) ? glm::vec2({ (*closestPoint).x, (*closestPoint).y }) : cursor.SnapCursor({ returnCoords.x, returnCoords.y });
+        // snap cursor
+        cursor.Position_Snapped = cursor.SnapCursor({ returnCoords.x, returnCoords.y });
+        
         Vec3 coordSys = settings.grblVals.ActiveCoordSys();
         cursor.Position_WorldCoords = *(cursor.Position_Snapped) + glm::vec2({ coordSys.x, coordSys.y });
 
-        // issue event to sketch
-        InputEvent inputEvent;  
-        Event_MouseMove mouseMove = data;
-        inputEvent.mouseMove = &mouseMove;
-     //   sketcher.HandleEvents(settings, inputEvent);
-           
         if(cursor.Position_Snapped) {       
             
             if(sketcherNew.Events().Mouse_Move({ (*cursor.Position_Snapped).x, (*cursor.Position_Snapped).y })) {
-                settings.SetUpdateFlag(ViewerUpdate::Full);                
+                settings.SetUpdateFlag(SqeakUpdate::Viewer);                
             }            
         }
     });
@@ -504,8 +502,6 @@ int gui(GRBL& grbl, Settings& settings)
     auto ScaleMouseData = [](Settings& settings, Viewer& viewer) {
         // scale the cursor size
         settings.p.sketch.cursor.Size_Scaled                = viewer.ScaleToPx(settings.p.sketch.cursor.Size);
-        
-        settings.p.sketch.cursor.SelectionTolerance_Scaled  = viewer.ScaleToPx(settings.p.sketch.cursor.SelectionTolerance);
         // scale the cursor snap distance
         float snapDistance                                  = viewer.ScaleToPx(settings.p.sketch.cursor.SnapDistance);
         // make 0.01, 0.1, 1, 10 or 100
@@ -558,8 +554,8 @@ int gui(GRBL& grbl, Settings& settings)
         // Draw ImGui
         glsys.imgui_NewFrame();
 		{
-            // Updates the skether when needed
-            if(sketcherNew.Update()) { settings.SetUpdateFlag(ViewerUpdate::Sketch); }
+            // Updates the sketch when needed
+            if(sketcherNew.Update()) { settings.SetUpdateFlag(SqeakUpdate::Viewer); }
             
             // make updates for viewer
             updater.HandleUpdateFlag(settings, sketcherNew);
@@ -570,7 +566,7 @@ int gui(GRBL& grbl, Settings& settings)
             
             
             // draw imgui frames
-            frames.Draw(grbl, &settings, viewer, sketcher, &sketcherNew, timer.dt());
+            frames.Draw(grbl, &settings, viewer, sketcher, &sketcherNew, functions, timer.dt());
             // render imgui
             RenderImguiDrawList();
     

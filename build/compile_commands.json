@@ -1,0 +1,277 @@
+[
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/common.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/common.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/common.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/gcreader.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gcreader.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/gcreader.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/main.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/main.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/main.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/settings.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/settings.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/settings.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/dev/joystick.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/dev/joystick.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/dev/joystick.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/libs/Geos.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/libs/Geos.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/libs/Geos.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/libs/geos.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/libs/geos.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/libs/geos.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/libs/qrcodegen.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/libs/qrcodegen.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/libs/qrcodegen.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/gui/filebrowser.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/gui/filebrowser.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/gui/frames.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/frames.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/gui/frames.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/gui/gui.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/gui.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/gui/gui.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/gui/viewer.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/gui/viewer.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/functions/functions.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/functions/functions.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/functions/functions.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/camera.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/camera.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/camera.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/glcore.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/glcore.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/glcore.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/globjects.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/globjects.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/globjects.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/glsys.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/glsys.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/glsys.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/material.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/material.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/material.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/modelloader.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/modelloader.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/modelloader.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/renderer.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/renderer.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/renderer.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/shader.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/shader.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/shader.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/texture.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/texture.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/texture.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore",
+  "command": "/usr/bin/c++  -DGLFW_DLL -I/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui -I/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui  -g   -Wall -Wextra -Wpedantic -std=gnu++17 -o CMakeFiles/GLCore.dir/deps/imgui_modules/imgui_modules.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui_modules/imgui_modules.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui_modules/imgui_modules.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_demo.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_demo.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_demo.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_draw.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_draw.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_draw.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_impl_glfw.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_impl_glfw.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_impl_glfw.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_impl_opengl3.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_impl_opengl3.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_impl_opengl3.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_stb_image.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_stb_image.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_stb_image.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_stdlib.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_stdlib.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_stdlib.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_tables.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_tables.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_tables.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/glcore/deps/imgui",
+  "command": "/usr/bin/c++  -DGLFW_DLL  -g   -Wall -Wextra -Wpedantic -g -std=gnu++17 -o CMakeFiles/ImGui.dir/imgui_widgets.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_widgets.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/glcore/deps/imgui/imgui_widgets.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sketcher.dir/constraints.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/constraints.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sketcher.dir/elementfactory.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/elementfactory.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sketcher.dir/elements.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/elements.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sketcher.dir/sketch.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sketcher.dir/sketch_common.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/sketch_common.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/Sketcher.dir/deps/constraintsolver/solver.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver",
+  "command": "/usr/bin/c++   -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include  -g   -Wall -Wextra -Wpedantic -g -O0 -std=c++11 -std=gnu++17 -o CMakeFiles/ConstraintSolver.dir/solver.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/solver.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/constrainteq.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/constrainteq.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/constrainteq.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/entity.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/entity.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/entity.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/expr.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/expr.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/expr.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/system.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/system.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/system.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/util.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/util.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/util.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/platform/unixutil.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/platform/unixutil.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/platform/unixutil.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/lib.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/lib.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/lib.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/sketcher/deps/constraintsolver/libslvs",
+  "command": "/usr/bin/c++  -DLIBRARY -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/include -I/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs  -g   -Wno-missing-field-initializers -Wno-psabi -std=c++11 -std=gnu++17 -o CMakeFiles/libslvs.dir/SolveSpaceSystem.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/SolveSpaceSystem.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/sketcher/deps/constraintsolver/libslvs/SolveSpaceSystem.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/grbl",
+  "command": "/usr/bin/c++    -g   -Wall -Wextra -Wpedantic -g -O0 -std=gnu++17 -o CMakeFiles/GRBL.dir/gclist.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/grbl/gclist.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/grbl/gclist.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/grbl",
+  "command": "/usr/bin/c++    -g   -Wall -Wextra -Wpedantic -g -O0 -std=gnu++17 -o CMakeFiles/GRBL.dir/grbl.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/grbl/grbl.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/grbl/grbl.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/grbl",
+  "command": "/usr/bin/c++    -g   -Wall -Wextra -Wpedantic -g -O0 -std=gnu++17 -o CMakeFiles/GRBL.dir/grblcodes.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/grbl/grblcodes.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/grbl/grblcodes.cpp"
+},
+{
+  "directory": "/home/pi/Desktop/Projects/Sqeak/build/grbl",
+  "command": "/usr/bin/c++    -g   -Wall -Wextra -Wpedantic -g -O0 -std=gnu++17 -o CMakeFiles/GRBL.dir/serial.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/grbl/serial.cpp",
+  "file": "/home/pi/Desktop/Projects/Sqeak/src/grbl/serial.cpp"
+}
+]

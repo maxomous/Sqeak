@@ -21,10 +21,9 @@ public:
         m_Origin = AddPoint({ 0.0, 0.0 });
     }
 
-    const int ARC_SEGMENTS = 30;
-
+    double arcTolerance = 0.01;
     // tolerance to make selection
-    double selectionTolerance = 10.0;
+    double selectionTolerance = 7.0;
     
     
     void SetSelected(SketchItem item, bool value) {
@@ -203,7 +202,7 @@ public:
     // Finds points within a tolerance to position p and sets their hovered flag to true
     bool SetHoveredByPosition(const Vec2& p, SelectionFilter filter) 
     { 
-        return EditItemByPosition(p, selectionTolerance, [](Sketch::Item& item) {
+        return EditItemByPosition(p, [](Sketch::Item& item) {
             item.SetHovered(true);
         }, filter, true); // include origin point    
     }
@@ -211,7 +210,7 @@ public:
     // Finds points within a tolerance to position p and sets their selected flag to true
     bool SetSelectedByPosition(const Vec2& p, SelectionFilter filter) 
     {
-        bool hasSelection = EditItemByPosition(p, selectionTolerance, [](Sketch::Item& item) {
+        bool hasSelection = EditItemByPosition(p, [](Sketch::Item& item) {
             item.SetSelected(!item.IsSelected());
         }, filter, true); // include origin point
         return hasSelection;
@@ -435,7 +434,6 @@ private:
         // Check each element to see whether it falls within tolerance
         bool isElementFound = false;
         
-        Geos geos;
         // Make bounding box (minimum in bottom left, max in top right)
         Vec2 boundary_p0 = { std::min(p0.x, p1.x), std::min(p0.y, p1.y) };
         Vec2 boundary_p1 = { std::max(p0.x, p1.x), std::max(p0.y, p1.y) };
@@ -456,14 +454,15 @@ private:
                 }
             }, isOriginIncluded);
         }
+        GeosCPP geos;
         // Check each element to see whether it falls within tolerance
         ForEachElement([&](Sketch::Element* element) {
                                      
             LineString l;
             if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, handled above
             else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { if(!(filter & SelectionFilter::Lines)) { return; }   l = RenderLine(line->P0(), line->P1()); }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { if(!(filter & SelectionFilter::Arcs)) { return; }    l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction(), ARC_SEGMENTS); }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { if(!(filter & SelectionFilter::Circles)) { return; } l = RenderCircle(circle->PC(), circle->Radius(), ARC_SEGMENTS); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { if(!(filter & SelectionFilter::Arcs)) { return; }    l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction(), arcTolerance); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { if(!(filter & SelectionFilter::Circles)) { return; } l = RenderCircle(circle->PC(), circle->Radius(), arcTolerance); }
             else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
             
             assert(!l.empty() && "Linestring is empty");
@@ -476,16 +475,16 @@ private:
                 bool isCircle = l.front() == l.back();
                 if(isCircle) { 
                     // done like this instead of intersects() becuase when dragging box inside circle, you dont want to select the circle
-                    if(std::optional<bool> s = geos.Overlaps(boundingBox, l)) { success |= *s; }
-                    if(std::optional<bool> s = geos.Contains(boundingBox, l)) { success |= *s; }
+                    if(std::optional<bool> s = geos.operation.Overlaps(boundingBox, l)) { success |= *s; }
+                    if(std::optional<bool> s = geos.operation.Contains(boundingBox, l)) { success |= *s; }
                 } 
                 else {
-                    if(std::optional<bool> s = geos.Intersects(boundingBox, l)) { success |= *s; }
+                    if(std::optional<bool> s = geos.operation.Intersects(boundingBox, l)) { success |= *s; }
                 }
             } 
             // if dragging box to right, include only anything contained within
             else {
-                if(std::optional<bool> s = geos.Contains(boundingBox, l)) { success |= *s; }
+                if(std::optional<bool> s = geos.operation.Contains(boundingBox, l)) { success |= *s; }
             }
             
             // call callback function if item is inside bounding box
@@ -503,10 +502,10 @@ private:
     // Points are prioritised over elements
     // Callback on a Point element will be ignored and handled within the ItemPoint instead to prevent testing position twice
     // Returns success
-    bool EditItemByPosition(const Vec2& p, double tolerance, std::function<void(Sketch::Item&)> cb, SelectionFilter filter, bool isOriginIncluded = false)
+    bool EditItemByPosition(const Vec2& p, std::function<void(Sketch::Item&)> cb, SelectionFilter filter, bool isOriginIncluded = false)
     {     
         Sketch::SketchItem closestItem;
-        double closestDistance = tolerance;
+        double closestDistance = selectionTolerance;
         
         // find points
         if(filter & SelectionFilter::Points) {
@@ -535,8 +534,9 @@ private:
         // Check each element to see whether it falls within tolerance
         bool isElementFound = false;
         // draw a tolerence ring around point, to check if intersect
-        LineString p_with_tol = RenderCircle(p, tolerance, ARC_SEGMENTS);
-         
+        LineString p_with_tol = RenderCircle(p, selectionTolerance, arcTolerance);
+     
+        GeosCPP geos;
         ForEachElement([&](Sketch::Element* element) {
             // The first element found is the one which is set to selected
             // So skip until end if element was already found
@@ -545,20 +545,16 @@ private:
             LineString l;
             if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { (void)point; return; } // do nothing, this is handled above
             else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { if(!(filter & SelectionFilter::Lines)) { return; }   l = RenderLine(line->P0(), line->P1()); }
-            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { if(!(filter & SelectionFilter::Arcs)) { return; }    l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction(), ARC_SEGMENTS); }
-            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { if(!(filter & SelectionFilter::Circles)) { return; } l = RenderCircle(circle->PC(), circle->Radius(), ARC_SEGMENTS); }
+            else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { if(!(filter & SelectionFilter::Arcs)) { return; }    l = RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction(), arcTolerance); }
+            else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { if(!(filter & SelectionFilter::Circles)) { return; } l = RenderCircle(circle->PC(), circle->Radius(), arcTolerance); }
             else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
             
             assert(!l.empty() && "Linestring is empty");
-            // Check if point and element intersect 
-            Geos geos;
             // circles require overlap, arc + line require intersects 
-            auto success = (l.front() == l.back()) ? geos.Overlaps(p_with_tol, l) : geos.Intersects(p_with_tol, l);
+            auto success = (l.front() == l.back()) ? geos.operation.Overlaps(p_with_tol, l) : geos.operation.Intersects(p_with_tol, l);
             if(success) {
-                if(*success) {
-                    cb(element->Item_Elem());
-                    isElementFound = true;
-                }
+                cb(element->Item_Elem());
+                isElementFound = true;
             }    
         }, isOriginIncluded); 
         return isElementFound;

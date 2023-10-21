@@ -78,12 +78,12 @@ add_subdirectory(grbl)
 
 
 # Geos
-find_library(GEOS_LIBRARIES NAMES geos_c)
 
 # link libraries
 target_link_libraries(${PROJECT_NAME}
     MaxLib
-    ${GEOS_LIBRARIES}
+    #geos_c
+    geos 
     GLCore
     Sketcher
     GRBL

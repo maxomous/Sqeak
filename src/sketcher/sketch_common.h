@@ -5,6 +5,7 @@
 #include <vector>
 #include <MaxLib.h>
 #include "../libs/geos.h" // TODO: Sketch shouldn't own geos
+#include "../libs/Geos.h" // TODO: Sketch shouldn't own geos
 
 
 namespace Sketch {

@@ -108,7 +108,7 @@ bool ToolSettings::DrawPopup()
 // private members
 
       
-int ToolSettings::Draw_SelectTool()
+int ToolSettings::Draw_SelectTool() 
 { 
     bool isToolSelected = tools.toolList.HasItemSelected();
      

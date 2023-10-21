@@ -14,44 +14,50 @@ using namespace MaxLib::String;
 using namespace MaxLib::Geom;
 
 
-PolygonisedGeometry::PolygonisedGeometry(Sketcher* parent, const std::vector<Geometry>& geometries) 
+
+PolygonizedGeometry::PolygonizedGeometry(Sketcher* parent, const std::vector<Geometry>& geometries) 
     : m_Parent(parent)
 {
-    Geos geos;
-    // Polygonise the line data
-    Geos::PolygonisedData polygonised = geos.Polygonise(geometries);
+    // TODO: Temporary waiting for Geos update
+    GeosCPP geos;
+    // Polygonize the line data
+    GeosCPP::Operation::PolygonizedResult polygonized = geos.operation.Polygonize(geometries);
     // move data into 
-    for(auto& geometry : polygonised.valid)     { m_Geometry.push_back(std::move(geometry)); }
-    for(auto& geometry : polygonised.dangles)   { m_Geometry.push_back(std::move(geometry)); }
+    // TODO: handle holes, m_Geometry should be a Polygon
+    for(auto& geometry : polygonized.polygons) { 
+        m_Geometry.emplace_back(std::move(geometry));
+    }
+    for(auto& geometry : polygonized.dangles)   { m_Geometry.emplace_back(std::move(geometry)); }
 }
 
+            //    std::vector<LineString> valid;
 // Clears all of the geometries' hovered flags
-void PolygonisedGeometry::ClearHovered() {
+void PolygonizedGeometry::ClearHovered() {
     for(auto& geometry : m_Geometry) {
         geometry.m_IsHovered = false;
     }
 }
 // Clears all of the geometries' seleceted flags
-void PolygonisedGeometry::ClearSelected() {
+void PolygonizedGeometry::ClearSelected() {
     for(auto& geometry : m_Geometry) {
         geometry.m_IsSelected = false;
     }
 }
 // Finds geometry within a tolerance to position p and sets their Hovered flag to true
-bool PolygonisedGeometry::SetHoveredByPosition(const Vec2& p, double tolerance) {
-    return FindIntersects(p, tolerance, [](SelectableGeometry& geometry) {
+bool PolygonizedGeometry::SetHoveredByPosition(const Vec2& p) {
+    return FindIntersects(p, [](SelectablePolygon& geometry) {
         geometry.m_IsHovered = true;
     });
 }   
 // Finds geometry within a tolerance to position p and sets their Selected flag to true
-bool PolygonisedGeometry::SetSelectedByPosition(const Vec2& p, double tolerance) {
-    return FindIntersects(p, tolerance, [](SelectableGeometry& geometry) {
+bool PolygonizedGeometry::SetSelectedByPosition(const Vec2& p) {
+    return FindIntersects(p, [](SelectablePolygon& geometry) {
         geometry.m_IsSelected = !geometry.m_IsSelected;
     });
 }
  
-// Calls callback function on each SelectableGeometry item  
-void PolygonisedGeometry::ForEachGeometry(std::function<void(SelectableGeometry&)> cb)  {
+// Calls callback function on each SelectablePolygon item  
+void PolygonizedGeometry::ForEachGeometry(std::function<void(SelectablePolygon&)> cb)  {
     for(auto& geometry : m_Geometry) {
         cb(geometry);
     }
@@ -59,25 +65,23 @@ void PolygonisedGeometry::ForEachGeometry(std::function<void(SelectableGeometry&
 
 // Finds geometry within a tolerance to position p and sets their hovered flag to true
 // l is a polygon which 
-bool PolygonisedGeometry::FindIntersects(const Vec2& p, double tolerance, std::function<void(SelectableGeometry&)> cb) 
+bool PolygonizedGeometry::FindIntersects(const Vec2& p, std::function<void(SelectablePolygon&)> cb) 
 {
     // draw a tolerence ring around point, and check if intersect
-    LineString p_with_tol = RenderCircle(p, tolerance, m_Parent->Renderer().arcTolerance);
-    // create instance of geos for calculating intersect
-    Geos geos;
+    LineString p_with_tol = RenderCircle(p, m_Parent->Factory().selectionTolerance, m_Parent->Factory().arcTolerance);
+    // create instance of geos for calculating intersect 
+    GeosCPP geos;
     
     bool itemFound = false;
-    ForEachGeometry([&](SelectableGeometry& geometry) 
+    ForEachGeometry([&](SelectablePolygon& geometry) 
     {
         if(itemFound) { return; } // skip to end after first item found
         
         // Check whether geometry intersects with p
-        if(auto success = geos.Intersects(p_with_tol, geometry.Geometry())) {
-            if(*success) {
+        if(geos.operation.Intersects(p_with_tol, geometry.Polygon())) {
                 cb(geometry);
                 // TODO: this just returns first found
                 itemFound = true;
-            }
         } 
     });
     return itemFound;
@@ -130,15 +134,31 @@ bool SketchRenderer::UpdateRenderData()
         }, true); // include origin point
         
     };
-        
     
-    auto RenderPolygonisedElements = [&](vector<Geometry>& linestrings, std::function<bool(const SelectableGeometry&)> cb_Condition = [](const SelectableGeometry& item){ (void)item; return true; }) { 
+    // Render polygon + holes as linestrings
+    auto RenderPolygonizedElements = [&](vector<Geometry>& linestrings, std::function<bool(const SelectablePolygon&)> cb_Condition = [](const SelectablePolygon& item){ (void)item; return true; }) { 
                 
-        // draw polygonised geometry
-        m_Parent->Events().m_PolygonisedGeometry.ForEachGeometry([&](SelectableGeometry& geometry) {
+        // draw polygonized geometry
+        m_Parent->Events().m_PolygonizedGeometry.ForEachGeometry([&](SelectablePolygon& geometry) {
                 // If condition met, add point to buffer
             if(cb_Condition(geometry)) { 
-                linestrings.push_back(geometry.Geometry()); 
+                // Shell
+                linestrings.push_back(geometry.Polygon().shell);
+                // Holes
+                for(auto& hole : geometry.Polygon().holes) {
+                    linestrings.push_back(hole); 
+                }
+            }
+        });
+    };
+    // Render Polygon as Polygon
+    auto RenderPolygonizedPolygons = [&](vector<Polygon>& linestrings, std::function<bool(const SelectablePolygon&)> cb_Condition = [](const SelectablePolygon& item){ (void)item; return true; }) { 
+                
+        // draw polygonized geometry
+        m_Parent->Events().m_PolygonizedGeometry.ForEachGeometry([&](SelectablePolygon& geometry) {
+                // If condition met, add point to buffer
+            if(cb_Condition(geometry)) { 
+                linestrings.push_back(geometry.Polygon()); 
             }
         });
     };
@@ -261,8 +281,8 @@ bool SketchRenderer::UpdateRenderData()
             if(item.IsSelected()) { m_Parent->Events().m_SelectedElements.push_back(item.Reference()); }
         }, true);
         
-        // Make array of all the selected polygonised polygons
-        RenderPolygonisedElements(m_Parent->Events().m_SelectedPolygons, [](const SelectableGeometry& item) { return item.IsSelected(); });
+        // Make array of all the selected polygonized polygons
+        RenderPolygonizedPolygons(m_Parent->Events().m_SelectedPolygons, [](const SelectablePolygon& item) { return item.IsSelected(); });
     };
     
     
@@ -295,11 +315,11 @@ bool SketchRenderer::UpdateRenderData()
         std::cout << "updating Clear Selection" << std::endl;
         // reset dragged selection box
         m_Parent->Events().m_IsSelectionBox = false;    
-        // clear the selected / hovered flags on elements (note: flags on polygonised geometry are reset with UpdateFlag::Elements)
+        // clear the selected / hovered flags on elements (note: flags on polygonized geometry are reset with UpdateFlag::Elements)
         m_Parent->Factory().ClearSelected();
         m_Parent->Factory().ClearHovered();
-        m_Parent->Events().m_PolygonisedGeometry.ClearSelected();
-        m_Parent->Events().m_PolygonisedGeometry.ClearHovered();
+        m_Parent->Events().m_PolygonizedGeometry.ClearSelected();
+        m_Parent->Events().m_PolygonizedGeometry.ClearHovered();
     } 
         
                 
@@ -314,8 +334,8 @@ bool SketchRenderer::UpdateRenderData()
         // Render all failed to solve items
         RenderElements(elements.failed, [](const Item& item) { return item.IsFailed(); });
         
-        // Update the polygonised geometry (Selectable polygons / dangles geometry from all of the element's linestrings)
-        m_Parent->Events().m_PolygonisedGeometry = { m_Parent, elements.unselected.linestrings };
+        // Update the polygonized geometry (Selectable polygons / dangles geometry from all of the element's linestrings)
+        m_Parent->Events().m_PolygonizedGeometry = { m_Parent, elements.unselected.linestrings };
     }
     
     // Update Selected / Hovered
@@ -327,10 +347,10 @@ bool SketchRenderer::UpdateRenderData()
         // Render all hovered items
         RenderElements(elements.hovered,  [](const Item& item) { return item.IsHovered();  });
 
-        // Render all selected polygonised items
-        RenderPolygonisedElements(elements.selected.linestrings, [](const SelectableGeometry& item) { return item.IsSelected(); });
-        // Render all hovered polygonised items
-        RenderPolygonisedElements(elements.hovered.linestrings,  [](const SelectableGeometry& item) { return item.IsHovered(); });
+        // Render all selected polygonized items
+        RenderPolygonizedElements(elements.selected.linestrings, [](const SelectablePolygon& item) { return item.IsSelected(); });
+        // Render all hovered polygonized items
+        RenderPolygonizedElements(elements.hovered.linestrings,  [](const SelectablePolygon& item) { return item.IsHovered(); });
         
         // this holds a list of the selected items as sketch items
         UpdateSelectionList();
@@ -458,8 +478,8 @@ LineString SketchRenderer::RenderElement(Sketch::Element* element)
     if(auto* point = dynamic_cast<const Sketch::Point*>(element))           { l.emplace_back(point->P()); }
     // other element are addded with line buffer 
     else if(auto* line = dynamic_cast<const Sketch::Line*>(element))        { return Geom::RenderLine(line->P0(), line->P1()); }
-    else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { return Geom::RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction(), arcTolerance); }
-    else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { return Geom::RenderCircle(circle->PC(), circle->Radius(), arcTolerance); }
+    else if(auto* arc = dynamic_cast<const Sketch::Arc*>(element))          { return Geom::RenderArc(arc->P0(), arc->P1(), arc->PC(), arc->Direction(), m_Parent->Factory().arcTolerance); }
+    else if(auto* circle = dynamic_cast<const Sketch::Circle*>(element))    { return Geom::RenderCircle(circle->PC(), circle->Radius(), m_Parent->Factory().arcTolerance); }
     else { assert(0 && "Cannot render element, type unknown"); }            // Should never reach
     
     return std::move(l);
@@ -542,7 +562,7 @@ void SketchRenderer::UpdatePreview()
                         points.push_back(p);            // p1
                         points.push_back(*pC);          // pC
                         inputDirection = Geom::LeftOfLine(l0, inputData[0], p) ? Direction::CCW : Direction::CW;
-                        linestring = RenderArc(inputData[0], p, *pC, inputDirection, arcTolerance);    
+                        linestring = RenderArc(inputData[0], p, *pC, inputDirection, m_Parent->Factory().arcTolerance);    
                     }
                 } 
             }
@@ -556,7 +576,7 @@ void SketchRenderer::UpdatePreview()
                     points.push_back(inputData[0]); // P0
                     points.push_back(p);            // p1
                     points.push_back(pC);           // pC
-                    linestring = RenderArc(inputData[0], p, pC, inputDirection, arcTolerance);    
+                    linestring = RenderArc(inputData[0], p, pC, inputDirection, m_Parent->Factory().arcTolerance);    
                 }
                 // 2 points have already been added
                 else if(inputData.size() == 2) {
@@ -566,7 +586,7 @@ void SketchRenderer::UpdatePreview()
                     points.push_back(inputData[0]); // p0
                     points.push_back(inputData[1]); // p1
                     points.push_back(pC);           // pC
-                    linestring = RenderArc(inputData[0], inputData[1], pC, inputDirection, arcTolerance);
+                    linestring = RenderArc(inputData[0], inputData[1], pC, inputDirection, m_Parent->Factory().arcTolerance);
                 }                
             }
             
@@ -584,7 +604,7 @@ void SketchRenderer::UpdatePreview()
         else if(inputData.size() == 1) {
             points.push_back(inputData[0]); 
             // calculate circle from radius (p to pC)
-            linestring = RenderCircle(inputData[0], Hypot(p-inputData[0]), arcTolerance);
+            linestring = RenderCircle(inputData[0], Hypot(p-inputData[0]), m_Parent->Factory().arcTolerance);
         }
     }
     
@@ -633,7 +653,6 @@ void SketchEvents::Event_Keyboard(int key, KeyAction action, KeyModifier modifie
     // GLFW_KEY_ESCAPE 
     if (key == 256 && action == KeyAction::Press) {
         SetCommandType(SketchEvents::CommandType::Select);
-        m_Parent->SetSelectCommand();
         // update handled in SetCommandType()
     }
 }
@@ -669,7 +688,7 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
         // Reset selected item if ctrl or shift is not pressed
         if((isClicked || isReleaseOnSelectionBox) && !isCtrlOrShift) {
             m_Parent->Factory().ClearSelected();
-            m_PolygonisedGeometry.ClearSelected();
+            m_PolygonizedGeometry.ClearSelected();
         }
     };
     
@@ -702,11 +721,11 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
         return false;
     };
     
-    auto Command_SelectPolygonise = [&]() {
+    auto Command_SelectPolygonize = [&]() {
          
         if(button == MouseButton::Left && action == MouseAction::Press) {
             // selected item at cursorpos
-             bool success = m_PolygonisedGeometry.SetSelectedByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
+             bool success = m_PolygonizedGeometry.SetSelectedByPosition(m_CursorPos);
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
             return success;
@@ -745,7 +764,7 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
         }
         // If no elements found, look for polygons 
         if(!success && (m_SelectionFilter & SelectionFilter::Polygons)) { 
-            success |= Command_SelectPolygonise();
+            success |= Command_SelectPolygonize();
             // Set the selction filter to the type of the first item clicked
             if(button == MouseButton::Left && action == MouseAction::Press) {
                 if(success && (m_SelectionFilter == SelectionFilter::All)) { m_SelectionFilter = SelectionFilter::Polygons; }
@@ -924,7 +943,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
         // Clear the hovered points & elements and polygons
         if(isNoMouseButton || isDraggingSelectionBox) { 
             m_Parent->Factory().ClearHovered();
-            m_Parent->Events().m_PolygonisedGeometry.ClearHovered();
+            m_Parent->Events().m_PolygonizedGeometry.ClearHovered();
         }
     };
     
@@ -961,11 +980,11 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
         return success;
     };
     
-    auto Command_SelectPolygonise = [&]() {
+    auto Command_SelectPolygonize = [&]() {
         
         // Highlight item if hovered over
         if(m_MouseButton == MouseButton::None) { 
-            bool success = m_Parent->Events().m_PolygonisedGeometry.SetHoveredByPosition(m_CursorPos, m_Parent->Factory().selectionTolerance);
+            bool success = m_Parent->Events().m_PolygonizedGeometry.SetHoveredByPosition(m_CursorPos);
             // Update render data
             m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Selection);
             return success;
@@ -992,7 +1011,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
         std::cout << "element found success: " << success << std::endl;
         // If no elements found, look for polygons 
         if(!success && (m_SelectionFilter & SelectionFilter::Polygons)) { 
-            success |= Command_SelectPolygonise();
+            success |= Command_SelectPolygonize();
             std::cout << "polgon found success: " << success << std::endl << std::endl;
         } 
         return success;
@@ -1018,7 +1037,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
     // return ealry if nothing selected
     if(points.empty() && elements.empty()) { return false; }
                     
-    bool isConstraintAdded = false;
+    bool needsUpdate = false;
     
     // 0 elements selected
     if(elements.empty()) 
@@ -1032,24 +1051,28 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
             // Add Coincident constraint between 2 points
             if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) {
                 factory.AddConstraint<Coincident_PointToPoint>(points[0], points[1]);
+                needsUpdate = true;
             }
                 
             ImGui::SameLine();
             // Add Horizontal constraint between 2 points
             if(cb_ImageButton("Horizontal", RenderData::Image::Type::Horizontal)) {
                 factory.AddConstraint<Horizontal>(points[0], points[1]);
+                needsUpdate = true;
             }
                 
             ImGui::SameLine();
             // Add Vertical constraint between 2 points
             if(cb_ImageButton("Vertical", RenderData::Image::Type::Vertical)) {
                 factory.AddConstraint<Vertical>(points[0], points[1]);
+                needsUpdate = true;
             }
                 
             ImGui::SameLine();
             // Add Distance constraint between 2 points
             if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {
                 factory.AddConstraint<Distance_PointToPoint>(points[0], points[1], m_Distance);
+                needsUpdate = true;
             }
             ImGui::SameLine();
             // Draw inputbox
@@ -1067,20 +1090,21 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Horizontal constraint of Line
                 if(cb_ImageButton("Horizontal", RenderData::Image::Type::Horizontal)) {
                     factory.AddConstraint<Horizontal>(elements[0]);
+                    needsUpdate = true;
                 }
                     
                 ImGui::SameLine();
                 // Add Vertical constraint of Line
                 if(cb_ImageButton("Vertical", RenderData::Image::Type::Vertical)) {
                     factory.AddConstraint<Vertical>(elements[0]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
                     
                 ImGui::SameLine();
                 // Add Distance constraint of Line    
                 if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {   
                     factory.AddConstraint<Distance_PointToPoint>(elements[0], m_Distance);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
                 ImGui::SameLine();
                 // Draw inputbox
@@ -1091,7 +1115,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Radius constraint of Arc                
                 if(cb_ImageButton("Radius", RenderData::Image::Type::Radius)) {
                     factory.AddConstraint<AddRadius_Arc>(elements[0], m_Radius);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
                 ImGui::SameLine();
                 // Draw inputbox
@@ -1101,7 +1125,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Radius constraint of Circle                 
                 if(cb_ImageButton("Radius", RenderData::Image::Type::Radius)) {  
                     factory.AddConstraint<AddRadius_Circle>(elements[0], m_Radius);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
                 ImGui::SameLine();
                 // Draw inputbox
@@ -1115,21 +1139,21 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Coincident constraint between Point and Line 
                 if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) {                   
                     factory.AddConstraint<Coincident_PointToLine>(points[0], elements[0]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
                 
                 ImGui::SameLine();
                 // Add Midpoint constraint between Point and Line              
                 if(cb_ImageButton("Midpoint", RenderData::Image::Type::Midpoint)) {      
                     factory.AddConstraint<AddMidPoint_PointToLine>(points[0], elements[0]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
                     
                 ImGui::SameLine();
                 // Add Distance constraint between Point and Line         
                 if(cb_ImageButton("Distance", RenderData::Image::Type::Distance)) {
                     factory.AddConstraint<Distance_PointToLine>(points[0], elements[0], m_Distance);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
                     
                 ImGui::SameLine();
@@ -1141,14 +1165,14 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Coincident constraint between Point and Arc  
                 if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) { 
                     factory.AddConstraint<Coincident_PointToArc>(points[0], elements[0]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
             }
             else if(elements[0].type == SketchItem::Type::Circle) {
                 // Add Coincident constraint between Point and Circle  
                 if(cb_ImageButton("Coincident", RenderData::Image::Type::Coincident)) { 
                     factory.AddConstraint<Coincident_PointToCircle>(points[0], elements[0]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }
             }
         }
@@ -1164,28 +1188,28 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Midpoint constraint            
                 if(cb_ImageButton("Perpendicular", RenderData::Image::Type::Perpendicular)) { 
                     factory.AddConstraint<Perpendicular>(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 } 
                 
                 ImGui::SameLine();
                 // Add Parallel constraint
                 if(cb_ImageButton("Parallel", RenderData::Image::Type::Parallel)) { 
                     factory.AddConstraint<Parallel>(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 } 
                 
                 ImGui::SameLine();
                 // Add Equal Length constraint  
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {              
                     factory.AddConstraint<EqualLength>(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 } 
                     
                 ImGui::SameLine();
                 // Add Angle constraint       
                 if(cb_ImageButton("Angle", RenderData::Image::Type::Angle)) {   
                     factory.AddConstraint<Angle_LineToLine>(elements[0], elements[1], m_Angle);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 } 
                     
                 ImGui::SameLine();
@@ -1198,14 +1222,14 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Equal radius constraint               
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {   
                     factory.AddConstraint<EqualRadius_Arc_Arc>(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }  
                 
                 ImGui::SameLine();
                 // Add Tangent constraint               
                 if(cb_ImageButton("Tangent", RenderData::Image::Type::Tangent)) {   
                     factory.AddConstraint<Tangent_Arc_Arc>(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }  
             }
             // Circle and Circle selected
@@ -1213,7 +1237,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Equal radius constraint               
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {   
                     factory.AddConstraint<EqualRadius_Circle_Circle>(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }  
             }
             
@@ -1222,7 +1246,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Tangent constraint               
                 if(cb_ImageButton("Tangent", RenderData::Image::Type::Tangent)) {  
                     ConstraintButton_Tangent_ArcLine(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }   
             }
             // Line and Arc selected (reverse order)
@@ -1230,7 +1254,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Tangent constraint                  
                 if(cb_ImageButton("Tangent", RenderData::Image::Type::Tangent)) {  
                     ConstraintButton_Tangent_ArcLine(elements[1], elements[0]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }  
             }
             
@@ -1239,7 +1263,7 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Equal Radius constraint                
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {  
                     factory.AddConstraint<EqualRadius_Arc_Circle>(elements[0], elements[1]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }  
             }
             // Circle and Arc selected (reverse order)
@@ -1247,14 +1271,14 @@ bool SketchEvents::Mouse_Move(const Vec2& p)
                 // Add Equal Radius constraint                  
                 if(cb_ImageButton("Equal", RenderData::Image::Type::Equal)) {  
                     factory.AddConstraint<EqualRadius_Arc_Circle>(elements[1], elements[0]);
-                    isConstraintAdded = true;
+                    needsUpdate = true;
                 }   
             }
         }
     }
 
     
-    return isConstraintAdded;
+    return needsUpdate;
 } 
     // Add constraint between 1 or 2 points, returns true if new constraint was added
 void ConstraintButtons::ConstraintButton_Tangent_ArcLine(SketchItem arc, SketchItem line) 
@@ -1415,7 +1439,7 @@ void Sketcher::DrawImGui()
                 // delete
                 if(ImGui::Selectable("Delete")) {
                     if(m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_Delete()) {
-                        settings.SetUpdateFlag(ViewerUpdate::Full);
+                        settings.SetUpdateFlag(SqeakUpdate::Full);
                     }
                 }
             });
@@ -1468,7 +1492,7 @@ void Sketcher::DrawImGui()
         if (ImGui::SmallButton("New Drawing")) {
             m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)));
             isNewDrawing = true;
-            settings.SetUpdateFlag(ViewerUpdate::Full);
+            settings.SetUpdateFlag(SqeakUpdate::Full);
         } 
         
         for(size_t i = 0; i < m_Drawings.Size(); )
@@ -1487,14 +1511,14 @@ void Sketcher::DrawImGui()
                 if(m_Drawings.CurrentIndex() != (int)i) {
                     std::cout << "Setting current drawing index" << std::endl;
                     m_Drawings.SetCurrentIndex(i);
-                    settings.SetUpdateFlag(ViewerUpdate::Full);
+                    settings.SetUpdateFlag(SqeakUpdate::Full);
                 }
                 // draw the imgui widgets for drawing 
                 m_Drawings.CurrentItem().DrawImGui(settings); 
             }
             if(!closeIsntClicked) { // has been closed
                 m_Drawings.Remove(i); 
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             } else { 
                 i++; 
             }                        
@@ -1687,24 +1711,6 @@ void Sketcher::DrawImGui_Constraints(ConstraintID& deleteConstraint)
     ImGui::Separator();
 }
 
-
-void Sketcher::DrawImGui_Settings() 
-{
-    if(ImGui::CollapsingHeader("Settings")) {
-    
-        if(ImGui::Button("Update Solver")) {
-            SolveConstraints();
-            // Update render data
-            m_Renderer.SetUpdateFlag(UpdateFlag::Full);
-        }   
-        // Selection Tolerance
-        ImGui::InputDouble("Selection Tolerance", &m_Factory.selectionTolerance);
-        
-      
-    }
-    ImGui::Separator();
-}
-
 void Sketcher::DrawImGui_ElementInputValues() 
 {
     // get currently selected points
@@ -1813,7 +1819,7 @@ void Sketcher::DrawImGui_ElementInputValues()
                 InputDouble2("Centre (X, Y)", &pC_disabled);
             ImGui::EndDisabled();
         }   
-        else if(inputData.size() == 2)  { 
+        else if(inputData.size() == 2)  {  
             ImGui::TextUnformatted("Set PC Position"); 
             // draw p0
             if(InputDouble2("P0 (X, Y)", &inputData[0])) {
@@ -1913,4 +1919,30 @@ void Sketcher::DrawImGui_ElementInputValues()
     
     ImGui::Separator();
 }
+
+void Sketcher::DrawImGui_Settings() 
+{
+    if(ImGui::CollapsingHeader("Settings")) {
+    
+        if(ImGui::Button("Update Solver")) {
+            SolveConstraints();
+            // Update render data
+            m_Renderer.SetUpdateFlag(UpdateFlag::Full);
+        }   
+        // Selection Tolerance
+        ImGui::InputDouble("Selection Tolerance", &m_Factory.selectionTolerance);
+        
+      
+    }
+    ImGui::Separator();
+}
+
+void Sketcher::DrawImGui_Items() 
+{
+    // for(auto& sketch : m_Factory) {
+    //    ImGui::Text(sketch.Name().c_str());
+    // }
+    ImGui::Text("Sketch 1");
+}
+
 } // end namespace Sketch

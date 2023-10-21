@@ -993,13 +993,13 @@ struct Toolbar {
                 if(ImGuiModules::ImageButtonWithText("Run##ToolbarNavigation", s.img_Play, s.imageButton_Toolbar_LevelToggler, isRunActive)) {
                     // Set Toolbar level
                     SetToolbarLevel(CurrentLevel::Run);
-                    m_Settings->SetUpdateFlag(ViewerUpdate::Full); 
+                    m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
                 }
                 // on top of each other
                 if (ImGuiModules::ImageButtonWithText("Draw##ToolbarNavigation", s.img_Sketch_Draw, s.imageButton_Toolbar_LevelToggler, isDrawActive)) {
                     // Set Toolbar level
                     SetToolbarLevel(CurrentLevel::Drawing);
-                    m_Settings->SetUpdateFlag(ViewerUpdate::Full); 
+                    m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
                 }
             ImGui::EndGroup();
             
@@ -1009,7 +1009,7 @@ struct Toolbar {
             if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("##SettingsToolbarNavigation", s.img_Settings, s.imageButton_Toolbar_Settings, isSettingsActive, s.toolbarItemHeight)) {
                 // Set Toolbar level
                 SetToolbarLevel(CurrentLevel::Settings);
-                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
             }
             
         });
@@ -1064,7 +1064,7 @@ struct Toolbar {
          //          else if(m_CurrentLevel == CurrentLevel::Function)   { SetToolbarLevel(CurrentLevel::Drawing); }
          //          else { Log::Critical("Current toolbar level unknown"); }
          //           // Update viewer
-         //          m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+         //          m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
          //      }
          //
          //  if(isDisabled) { ImGui::EndDisabled(); } 
@@ -1084,7 +1084,7 @@ struct Toolbar {
                 else if(m_CurrentLevel == CurrentLevel::Function_CutPath)   { SetToolbarLevel(CurrentLevel::Drawing); }
                 else { Log::Critical("Current toolbar level unknown"); }
                  // Update viewer
-                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
             }
         });
         
@@ -1121,7 +1121,7 @@ struct Toolbar {
                 if(m_Settings->grblVals.isFileRunning) { Log::Error("A file is running. This must finish before opening another"); } 
                 // open popup when draw open file clicked
                 toolbarIndex.OpenFile->OpenPopup();
-                m_Settings->SetUpdateFlag(ViewerUpdate::Clear);
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full); // was ::Clear
             }
         }, EDIT_BUTTON_DISABLED, [&]() { 
             // just draw the widgets for the filebrowser as we are handling the popup ourselves
@@ -1142,7 +1142,7 @@ struct Toolbar {
             if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Sketch##ToolbarButton", s.img_Sketch, s.imageButton_Toolbar_ButtonPrimary, false, s.toolbarItemHeight)) { 
                 // Set Toolbar level
                 SetToolbarLevel(CurrentLevel::Sketch);
-                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
             }
         });
 
@@ -1154,7 +1154,7 @@ struct Toolbar {
             if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Cut Path##ToolbarButton", s.img_Function_CutPath, s.imageButton_Toolbar_Button, isActive, s.toolbarItemHeight)) { 
                 // Set Toolbar level
                 SetToolbarLevel(CurrentLevel::Function_CutPath);
-                m_Settings->SetUpdateFlag(ViewerUpdate::Full);   
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
             }
         });
 
@@ -1263,12 +1263,12 @@ struct Toolbar {
                 // Draw ImGui Widgets
                 ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarToolMaterialWidth);
                 if(m_Settings->p.toolSettings.DrawTool()) {
-                    m_Settings->SetUpdateFlag(ViewerUpdate::Full);
+                    m_Settings->SetUpdateFlag(SqeakUpdate::Full);
                 }
                 // Draw Material
                 ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarToolMaterialWidth);
                 if(m_Settings->p.toolSettings.DrawMaterial()) {
-                    m_Settings->SetUpdateFlag(ViewerUpdate::Full);
+                    m_Settings->SetUpdateFlag(SqeakUpdate::Full);
                 }
             ImGui::EndGroup();
         }, EDIT_BUTTON_ENABLED, [&]() { 
@@ -1428,11 +1428,7 @@ private:
             SetItemVisible(toolbarIndex.Spacer);
             SetItemVisible(toolbarIndex.Tools);
             SetItemVisible(toolbarIndex.SwitchView);
-        } else {
-            // Reset sketch command type
-            m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::None);
         }
-
         
         // Set 2D mode
         if(m_CurrentLevel == CurrentLevel::Sketch || m_CurrentLevel == CurrentLevel::Function_CutPath) {
@@ -1608,7 +1604,7 @@ public:
             // Draw Popup
             if(toolbarItems[i].DrawPopup(m_Settings)) {
                 // update if windows was just closed
-                m_Settings->SetUpdateFlag(ViewerUpdate::Full); 
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
             }
         }
         
@@ -2169,14 +2165,14 @@ struct Stats {
             if (ImGui::Button("Zero X", sizeS)) {
                 Log::Info( "Setting current X position to 0 for this coord system");
                 grbl.send("G10 L20 P0 X0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             }
             ImGui::TableSetColumnIndex(1);
             ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
             if (ImGui::Button("Zero Y", sizeS)) {
                 Log::Info("Setting current Y position to 0 for this coord system");
                 grbl.send("G10 L20 P0 Y0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             }
 
             ImGui::TableSetColumnIndex(2);
@@ -2184,7 +2180,7 @@ struct Stats {
             if (ImGui::Button("Zero Z", sizeS)) {
                 Log::Info("Setting current Z position to 0 for this coord system");
                 grbl.send("G10 L20 P0 Z0", PreCheck::SerialIsConnected | PreCheck::NoFileRunning | PreCheck::GRBLIsIdle);
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             }
             // position cursor to bottom corner of cell so it doesnt clip
             // ImGui::SetCursorPos(ImGui::GetCursorPos() + posS);
@@ -2516,7 +2512,7 @@ struct Debug {
     };
   
     
-    void Draw(GRBL &grbl, Settings& settings, Sketch::Sketcher* sketcher) 
+    void Draw(GRBL &grbl, Settings& settings, Sketch::Sketcher* sketcher, Viewer& viewer) 
     {
         GRBLVals& grblVals = settings.grblVals;
         GRBLVals& v = grblVals;
@@ -2533,35 +2529,31 @@ struct Debug {
             ImGui::TreePop();
         }
 
-        if (ImGui::TreeNode("Render Element Settings")) {
+        
+        if (ImGui::TreeNode("Sketch Settings")) {
 
     
             // Arc Interpolation (Arc Segments)
             if (ImGui::InputDouble("Arc Tolerance", &settings.p.geosParameters.arcTolerance)) {
-                // must be > 0.000...01
-           //     settings.p.geosParameters.arcTolerance = std::max(1e-12, fabs(settings.p.geosParameters.arcTolerance));
+                // update main arc segments also
+                sketcher->Factory().arcTolerance = settings.p.geosParameters.arcTolerance;
                 // Update render data
                 sketcher->Renderer().SetUpdateFlag(Sketch::UpdateFlag::Elements);
-                // update main arc segments also
-                sketcher->Renderer().arcTolerance = settings.p.geosParameters.arcTolerance;
-                std::cout << "UPDATING ARC TOLERANCE: " << settings.p.geosParameters.arcTolerance << std::endl;
             }
-            
-            
             
             /*// cap style / join style
             static int imgui_CapStyle = geosParameters.CapStyle - 1;
             if(ImGui::Combo("Cap Style", &imgui_CapStyle, "Round\0Flat\0Square\0\0")) {
                 geosParameters.CapStyle = imgui_CapStyle + 1;
                 needsUpdate = true;
-            }
-            static int imgui_JoinStyle = geosParameters.JoinStyle - 1;
-            if(ImGui::Combo("Join Style", &imgui_JoinStyle, "Round\0Mitre\0Bevel\0\0")) {
-                geosParameters.JoinStyle = imgui_JoinStyle + 1;
-                needsUpdate = true;
             }*/ 
+
+                
+            if(ImGui::InputFloat("Selection Tolerance", &settings.p.sketch.cursor.SelectionTolerance)) {
+                // scale value to how zoomed in we are and set the element factory tolerance 
+                sketcher->Factory().selectionTolerance = viewer.ScaleToPx(settings.p.sketch.cursor.SelectionTolerance);
+            }
             
-            ImGui::Unindent();
 
             ImGui::TreePop();
         }
@@ -2862,7 +2854,7 @@ void Frames::DrawSketcher(Settings& settings, Sketch::Sketcher& sketcher)
                 // delete
                 if(ImGui::Selectable("Delete")) {
                     if(m_Drawings.CurrentItem().m_ElementFactory.ActivePoint_Delete()) {
-                        settings.SetUpdateFlag(ViewerUpdate::Full);
+                        settings.SetUpdateFlag(SqeakUpdate::Full);
                     }
                 }
             });
@@ -2893,7 +2885,7 @@ void Frames::DrawSketcher(Settings& settings, Sketch::Sketcher& sketcher)
         if (ImGui::SmallButton("New Drawing")) {
             m_Drawings.Add(A_Drawing("Drawing " + to_string(m_DrawingIDCounter++)));
             isNewDrawing = true;
-            settings.SetUpdateFlag(ViewerUpdate::Full);
+            settings.SetUpdateFlag(SqeakUpdate::Full);
         } 
         
         for(size_t i = 0; i < m_Drawings.Size(); )
@@ -2912,14 +2904,14 @@ void Frames::DrawSketcher(Settings& settings, Sketch::Sketcher& sketcher)
                 if(m_Drawings.CurrentIndex() != (int)i) {
                     std::cout << "Setting current drawing index" << std::endl;
                     m_Drawings.SetCurrentIndex(i);
-                    settings.SetUpdateFlag(ViewerUpdate::Full);
+                    settings.SetUpdateFlag(SqeakUpdate::Full);
                 }
                 // draw the imgui widgets for drawing 
                 m_Drawings.CurrentItem().DrawImGui(settings); 
             }
             if(!closeIsntClicked) { // has been closed
                 m_Drawings.Remove(i); 
-                settings.SetUpdateFlag(ViewerUpdate::Full);
+                settings.SetUpdateFlag(SqeakUpdate::Full);
             } else { 
                 i++; 
             }                        
@@ -2984,8 +2976,8 @@ void Frames::DrawDockSpace(Settings& settings)
       
 
       
-void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::SketchOld& sketcherOld, Sketch::Sketcher* sketcherNew, float dt)
-{
+void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::SketchOld& sketcherOld, Sketch::Sketcher* sketcherNew, Functions& functions, float dt)
+{ 
     
     // draw ImGui windows
     DrawDockSpace(*settings);
@@ -2997,8 +2989,7 @@ void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::Sketch
         static Console console;
         static Commands commands;
         static Overrides overrides;
-        static Functions functions(settings, sketcherNew);
-        
+
         // Console messages overlaying screen
         popupMessages.Draw(*settings, dt);
         
@@ -3008,7 +2999,7 @@ void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::Sketch
         
         // TODO: TEMPORARILY MAKING THESE VISIBLE THE ENTIRE TIME
         // Debug settings
-        debug.Draw(grbl, *settings, sketcherNew);
+        debug.Draw(grbl, *settings, sketcherNew, viewer);
         // show ImGui Demo 
         ImGui::ShowDemoWindow(NULL);
         
@@ -3030,6 +3021,12 @@ void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::Sketch
         // Draw frames corrosponding to Drawing
         else if(toolbar.Level() == Toolbar::CurrentLevel::Drawing) {
             
+            static ImGuiCustomModules::ImGuiWindow window(*settings, "Drawing##SidePanel");
+            if(window.Begin(*settings)) {  
+                sketcherNew->DrawImGui_Items();
+                functions.DrawItems();
+                window.End();
+            }
         }
         // Draw frames corrosponding to Settings
         else if(toolbar.Level() == Toolbar::CurrentLevel::Settings) {
