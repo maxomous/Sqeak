@@ -1,0 +1,2 @@
+/usr/bin/ar qc libGRBL.a  CMakeFiles/GRBL.dir/gclist.cpp.o CMakeFiles/GRBL.dir/grbl.cpp.o CMakeFiles/GRBL.dir/grblcodes.cpp.o CMakeFiles/GRBL.dir/serial.cpp.o
+/usr/bin/ranlib libGRBL.a
