@@ -24,7 +24,7 @@ namespace Sqeak {
             - maybe a template so you can pass anything?
 
 
-*/            
+*/             
     
     
 void imgui_Settings(Settings& settings)
@@ -47,6 +47,7 @@ void imgui_Settings(Settings& settings)
         
     // Images
     s.img_Icon.Init(File::ThisDir("img/img_icon.png").c_str());
+    s.img_Home.Init(File::ThisDir("img/img_home.png").c_str());
     s.img_Restart.Init(File::ThisDir("img/img_restart.png").c_str());
     s.img_Play.Init(File::ThisDir("img/img_play.png").c_str());
     s.img_Pause.Init(File::ThisDir("img/img_pause.png").c_str());
@@ -55,10 +56,21 @@ void imgui_Settings(Settings& settings)
     s.img_Add.Init(File::ThisDir("img/img_add.png").c_str());
     s.img_Open.Init(File::ThisDir("img/img_open.png").c_str());
     s.img_Connect.Init(File::ThisDir("img/img_connect.png").c_str());
-    s.img_ArrowUp.Init(File::ThisDir("img/img_arr>owup0.png").c_str());
+    s.img_ArrowUp.Init(File::ThisDir("img/img_arrowup0.png").c_str());
     s.img_ArrowDown.Init(File::ThisDir("img/img_arrowdown0.png").c_str());
     s.img_ArrowLeft.Init(File::ThisDir("img/img_arrowleft0.png").c_str());
     s.img_ArrowRight.Init(File::ThisDir("img/img_arrowright0.png").c_str());
+    s.img_ArrowForward.Init(File::ThisDir("img/img_arrowforward.png").c_str());
+    s.img_ArrowBackward.Init(File::ThisDir("img/img_arrowbackward.png").c_str());
+    s.img_Tick1.Init(File::ThisDir("img/img_confirm_tick1.png").c_str());
+    s.img_Tick2.Init(File::ThisDir("img/img_confirm_tick2.png").c_str());
+    s.img_Cross1.Init(File::ThisDir("img/img_confirm_cross1.png").c_str());
+    s.img_Cross2.Init(File::ThisDir("img/img_confirm_cross2.png").c_str());
+    s.img_Tool.Init(File::ThisDir("img/img_tool.png").c_str());
+    s.img_GCode.Init(File::ThisDir("img/img_gcode.png").c_str());
+    s.img_2D.Init(File::ThisDir("img/img_2d.png").c_str());
+    s.img_3D.Init(File::ThisDir("img/img_3d.png").c_str());
+    
     // sketch images
     s.img_Sketch.Init(File::ThisDir("img/img_sketch.png").c_str());
     s.img_Sketch_Draw.Init(File::ThisDir("img/img_sketch_draw.png").c_str());
@@ -141,8 +153,8 @@ public:
 private:
 
     // TODO: These should all go directly to viewer instead
-    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerLineLists;
-    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerPointLists;
+    std::vector<ColouredVertexList> m_ViewerLineLists;
+    std::vector<ColouredVertexList> m_ViewerPointLists;
     std::vector<RenderImage> m_Images;
     std::vector<RenderText> m_Texts;
     
@@ -178,11 +190,11 @@ private:
     {    
         using namespace Sketch;
         
-        auto CopyVertices = [](std::vector<DynamicBuffer::ColouredVertexList>& list, const vector<Geometry>& data, const glm::vec3& colour) {
+        auto CopyVertices = [](std::vector<ColouredVertexList>& list, const vector<Geometry>& data, const glm::vec3& colour) {
             
             for(const Geometry& geometry : data) {
                 
-                DynamicBuffer::ColouredVertexList vertices(colour);
+                ColouredVertexList vertices(colour);
                 
                 geometry.size();
                 
@@ -327,7 +339,7 @@ int gui(GRBL& grbl, Settings& settings)
     
      
     
-    Frames frames(settings);
+    Frames frames;
     
     Updater updater;
         

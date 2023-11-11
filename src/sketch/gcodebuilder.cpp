@@ -169,18 +169,24 @@ void GCodeBuilder::EndCommands() {
 
     
 
-int DepthCutter::CutPathDepths(GCodeBuilder& gcodes, const GeometryCollection& path, RetractType retractType = RetractType::Full) 
+int DepthCutter::CutPathDepths(GCodeBuilder& gcodes, const GeometryCollection& path, RetractType retractType) 
 {
     for(auto& lineString : path.lineStrings) { 
         if(CutPathDepths(gcodes, lineString, retractType)) { return -1; }
     }
     for(auto& polygon : path.polygons) { 
-        if(CutPathDepths(gcodes, polygon, retractType)) { return -1; }
+        // Shell
+        if(CutPathDepths(gcodes, polygon.shell, retractType)) { return -1; }
+        // Holes
+        for (auto& hole : polygon.holes) {
+            if(CutPathDepths(gcodes, hole, retractType)) { return -1; }
+        }
+        
     }
     return 0;
 }
 
-int DepthCutter::CutPathDepths(GCodeBuilder& gcodes, const std::vector<Vec2>& path, RetractType retractType = RetractType::Full) 
+int DepthCutter::CutPathDepths(GCodeBuilder& gcodes, const std::vector<Vec2>& path, RetractType retractType) 
 {
     // check the path for errors
     if(path.size() < 2) {
@@ -222,7 +228,7 @@ int DepthCutter::CutPathDepths(GCodeBuilder& gcodes, const std::vector<Vec2>& pa
         // if we have reached the final z depth, break out of loop
         if(zCurrent == depth.zBottom) { break; }
         // update z
-        zCurrent += zDirection * fabsf(depth.cutDepth);
+        zCurrent += zDirection * fabsf(tool.cutDepth);
         
         // if z zepth is further than final depth, adjust to final depth
         if((zDirection == 1 && zCurrent > depth.zBottom) || (zDirection == -1 && zCurrent < depth.zBottom)) {
@@ -253,6 +259,7 @@ int DepthCutter::ErrorCheckParameters()
         Log::Error("Cutting Feedrate must be greater than 0");
         return -1;
     }
+    return 0;
 }
 
 //int DepthCutter::ErrorCheckTabs() 

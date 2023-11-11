@@ -9,6 +9,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/Sqeak.dir/gui/frames.cpp.o"
   "CMakeFiles/Sqeak.dir/gui/gui.cpp.o"
   "CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o"
+  "CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o"
+  "CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o"
   "CMakeFiles/Sqeak.dir/gui/viewer.cpp.o"
   "CMakeFiles/Sqeak.dir/libs/Geos.cpp.o"
   "CMakeFiles/Sqeak.dir/libs/geos.cpp.o"

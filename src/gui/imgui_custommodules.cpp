@@ -54,6 +54,16 @@ bool ImGuiCustomModules::HereButton(GRBLVals& grblVals, glm::vec3& p)
         
     
 
+void ImGuiCustomModules::HeadingInTable(Settings& settings, const std::string& text) 
+{        
+    ImGui::PushFont(settings.guiSettings.font_small);
+        ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
+                ImGuiModules::TextUnformattedCentredHorizontallyInTable(text.c_str());
+        ImGui::PopStyleColor();
+    ImGui::PopFont();
+}
+
+
 void ImGuiCustomModules::Heading(Settings& settings, const std::string& text, float centreAboutWidth) 
 {        
     ImGui::PushFont(settings.guiSettings.font_small);
@@ -64,35 +74,6 @@ void ImGuiCustomModules::Heading(Settings& settings, const std::string& text, fl
                 ImGui::TextUnformatted(text.c_str());
             }
         ImGui::PopStyleColor();
-    ImGui::PopFont();
+    ImGui::PopFont(); 
 }
-
-void ImGuiCustomModules::HeadingInTable(Settings& settings, const std::string& text) 
-{        
-    ImGui::PushFont(settings.guiSettings.font_small);
-        ImGui::PushStyleColor(ImGuiCol_Text, settings.guiSettings.colour[Colour::HeaderText]);
-                ImGuiModules::TextUnformattedCentredHorizontallyInTable(text.c_str());
-        ImGui::PopStyleColor();
-    ImGui::PopFont();
-}
-
-bool ImGuiCustomModules::HeadingWithEdit(Settings& settings, const std::string& name) 
-{
-    ImGuiCustomModules::Heading(settings, name);
-    ImGui::SameLine();
-    return EditButton(settings, name.c_str());
-}
-
-bool ImGuiCustomModules::EditButton(Settings& settings, const char* id) 
-{
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f,0.0f,0.0f,0.0f));
-        ImGui::PushID(id);
-        
-            bool clicked = ImGuiModules::ImageButtonWithText(string(id) + "##Edit", settings.guiSettings.img_Edit, settings.guiSettings.imageButton_Toolbar_Edit);   
-        ImGui::PopID();
-    ImGui::PopStyleColor();
-    return clicked;
-}
-
-
 } // end namespace Sqeak

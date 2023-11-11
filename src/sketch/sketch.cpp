@@ -1005,7 +1005,7 @@ int A_Function::InterpretGCode(Settings& settings, ElementFactory& elementFactor
 std::optional<std::vector<std::string>> A_Function::InterpretGCode(Settings& settings, ElementFactory& elementFactory)
 {
     // error check
-    if(settings.p.toolSettings.tools.IsToolAndMaterialSelected())
+    if(!settings.p.toolSettings.tools.IsToolAndMaterialSelected())
         return {};
     // export gcode
     if(auto gcodes = move(ExportGCode(settings, elementFactory)))
@@ -1023,7 +1023,7 @@ A_Function_Draw::A_Function_Draw(ElementFactory& elementFactory, std::string nam
 bool A_Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementFactory) 
 {
     // check tool and material is selected
-    if(settings.p.toolSettings.tools.IsToolAndMaterialSelected())
+    if(!settings.p.toolSettings.tools.IsToolAndMaterialSelected())
         return false;
     size_t size = elementFactory.LineLoop_Size(m_LineLoop);
     // start and end point
@@ -1054,31 +1054,31 @@ bool A_Function_Draw::IsValidInputs(Settings& settings, ElementFactory& elementF
 
 std::string A_Function_Draw::HeaderText(Settings& settings, ElementFactory& elementFactory) 
 {
-    A_Function_Draw_Parameters& p = m_Params;
-    ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
-    ToolSettings::Tools::Tool::ToolData& toolData = tool.data.CurrentItem();    
+    //     A_Function_Draw_Parameters& p = m_Params;
+    //     ToolSettings::Tools::Tool& tool = settings.p.toolSettings.tools.toolList.CurrentItem();
+    //     ToolSettings::Tools::Tool::ToolData& toolData = tool.data.CurrentItem();    
     
     // write header
     std::ostringstream stream;
-    stream << "; A_Function: " << m_Name << '\n';
-    stream << "; \tBetween: " << p.z.x << " and " << p.z.y << '\n';
-    stream << "; \tPoints:" << '\n';
-    
-    // TODO add header text
-    (void)elementFactory;
-   // m_Params.drawing.AddElementsHeaderText(stream);
-    
-    if(p.cutSide == CompensateCutter::None) stream << "; \tCompensate: None\n";
-    if(p.cutSide == CompensateCutter::Left) stream << "; \tCompensate: Left\n";
-    if(p.cutSide == CompensateCutter::Right) stream << "; \tCompensate: Right\n";
-    if(p.cutSide == CompensateCutter::Pocket) stream << "; \tCompensate: Pocket\n";
-    
-    if(p.finishPass) stream << "; Finishing Pass: " << p.finishPass << '\n';
-    
-    stream << "; Tool: " << tool.Name << '\n';
-    stream << "; \tDiameter: " << tool.Diameter << '\n';
-    stream << "; \tCut Depth: " << toolData.cutDepth << '\n';
-    stream << '\n';
+    //     stream << "; A_Function: " << m_Name << '\n';
+    //     stream << "; \tBetween: " << p.z.x << " and " << p.z.y << '\n';
+    //     stream << "; \tPoints:" << '\n';
+        
+    //     // TODO add header text
+    //     (void)elementFactory;
+    //    // m_Params.drawing.AddElementsHeaderText(stream);
+        
+    //     if(p.cutSide == CompensateCutter::None) stream << "; \tCompensate: None\n";
+    //     if(p.cutSide == CompensateCutter::Left) stream << "; \tCompensate: Left\n";
+    //     if(p.cutSide == CompensateCutter::Right) stream << "; \tCompensate: Right\n";
+    //     if(p.cutSide == CompensateCutter::Pocket) stream << "; \tCompensate: Pocket\n";
+        
+    //     if(p.finishPass) stream << "; Finishing Pass: " << p.finishPass << '\n';
+        
+    //     stream << "; Tool: " << tool.Name << '\n';
+    //     stream << "; \tDiameter: " << tool.Diameter << '\n';
+    //     stream << "; \tCut Depth: " << toolData.cutDepth << '\n';
+    //     stream << '\n';
     
     return stream.str();
 }
@@ -1386,11 +1386,11 @@ void SketchOld::HandleEvents(Settings& settings, InputEvent& inputEvent)
 }
 
 
-void A_Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isActive)
+void A_Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<ColouredVertexList>* viewerLineLists, std::vector<ColouredVertexList>* viewerPointLists, bool isActive)
 {
     // set colours
-    DynamicBuffer::ColouredVertexList lines((!isActive) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour);
-    DynamicBuffer::ColouredVertexList points(settings.p.sketch.point.colour);
+    ColouredVertexList lines((!isActive) ? settings.p.sketch.line.colourDisabled : settings.p.sketch.line.colour);
+    ColouredVertexList points(settings.p.sketch.point.colour);
     
     // get line loop positions (return if there are none)
     std::vector<Vec2> positions = elementFactory.LineLoop_PointsList(m_LineLoop, 15);
@@ -1445,7 +1445,7 @@ void A_Function_Draw::UpdateViewer(Settings& settings, ElementFactory& elementFa
 } 
 
 // update viewer
-void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists)
+void A_Drawing::UpdateViewer(Settings& settings, std::vector<ColouredVertexList>* viewerLineLists, std::vector<ColouredVertexList>* viewerPointLists)
 {
     // update viewer for each active function
     for (size_t i = 0; i < m_ActiveA_Functions.Size(); i++) {
@@ -1454,10 +1454,10 @@ void A_Drawing::UpdateViewer(Settings& settings, std::vector<DynamicBuffer::Colo
     }
 }
 // update viewer
-void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists)
+void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<ColouredVertexList>* viewerPointLists)
 {
     // add raw points to m_ViewerPointLists 
-    DynamicBuffer::ColouredVertexList rawPoints(settings.p.sketch.point.colour);
+    ColouredVertexList rawPoints(settings.p.sketch.point.colour);
     
     std::vector<Vec2> positions = m_ElementFactory.RawPoint_PointsList();
     // add positions at z = 0
@@ -1468,11 +1468,11 @@ void A_Drawing::RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBu
 }
 
 // update viewer
-void A_Drawing::ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists)
+void A_Drawing::ActivePoint_UpdateViewer(Settings& settings, std::vector<ColouredVertexList>* viewerPointLists)
 {    
     if(auto position = m_ElementFactory.ActivePoint_GetPosition()) {
         // add raw points to m_ViewerPointLists 
-        DynamicBuffer::ColouredVertexList rawPoints(settings.p.sketch.point.colourActive);
+        ColouredVertexList rawPoints(settings.p.sketch.point.colourActive);
         // add position at z = 0
         rawPoints.position.push_back({ position->x, position->y, 0.0f });
         viewerPointLists->push_back(std::move(rawPoints));

@@ -1,9 +1,16 @@
 #pragma once
-#include "../common.h"
+#include <iostream>
+#include <string>
+#include <vector>
+#include <MaxLib.h>
+// OpenGL / ImGui
+#include "../glcore/glcore.h"
 
+//#include "../common.h"
 namespace Sqeak { 
     
 using namespace MaxLib;
+using namespace MaxLib::Vector;
 
 class FileBrowser 
 {

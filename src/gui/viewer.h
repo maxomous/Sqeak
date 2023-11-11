@@ -1,7 +1,13 @@
 
 #pragma once
 
-#include "../glcore/glcore.h"
+#include "../common.h"
+
+// forward declare
+class Event_Viewer_AddLineLists;
+class Event_Viewer_AddPointLists;
+class Event_Set2DMode;
+class Event_Get2DMode;
 
 namespace Sqeak { 
     
@@ -122,18 +128,10 @@ private:
     void Init_Body_Sphere();
 };
 
-
-
 class DynamicBuffer
 {
 public:
-    // contains a list of points/lines + a colour
-    struct ColouredVertexList {
-        ColouredVertexList() {}
-        ColouredVertexList(const glm::vec3& col) : colour(col) {}
-        std::vector<glm::vec3> position; 
-        glm::vec3 colour; 
-    };
+   
 
     DynamicBuffer(GLenum primitiveType, int maxVertices, int maxIndices);
     
@@ -147,8 +145,8 @@ public:
     void AddShapeOutline(const Shape& shape, const glm::vec3& colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }); 
     void AddShape(const Shape& shape, const glm::vec3& colour, const glm::vec3& translate = { 0.0f, 0.0f, 0.0f }, const glm::vec3& scale = { 1.0f, 1.0f, 1.0f }, const glm::vec2& rotate = { 0.0f, 0.0f }, bool isOutline = false);
 
-    void AddColouredVertexListAsLines(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
-    void AddColouredVertexListAsPoints(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
+    void AddColouredVertexListAsLines(const std::vector<ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
+    void AddColouredVertexListAsPoints(const std::vector<ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition);
     
     void Update();
     void Draw(glm::mat4& proj, glm::mat4& view, bool isDrawOutline = false);
@@ -168,10 +166,6 @@ private:
     std::unique_ptr<IndexBuffer> m_IndexBuffer;
 }; 
 
-// forward declare
-class Event_Viewer_AddLineLists;
-class Event_Viewer_AddPointLists;
-class Event_Set2DMode;
 
 class Viewer
 {
@@ -221,8 +215,8 @@ private:
     DynamicBuffer m_DynamicLines = { GL_LINES, 1024, 1024 };
     DynamicBuffer m_DynamicBodies = { GL_TRIANGLES, 4096, 4096 };
     
-    std::vector<DynamicBuffer::ColouredVertexList>* m_DynamicLineLists = nullptr;
-    std::vector<DynamicBuffer::ColouredVertexList>* m_DynamicPointLists = nullptr;
+    std::vector<ColouredVertexList>* m_DynamicLineLists = nullptr;
+    std::vector<ColouredVertexList>* m_DynamicPointLists = nullptr;
     //std::vector<glm::vec2> m_Shape;
     //std::vector<glm::vec2> m_ShapeOffset;
     //bool m_ShapeIsLoop = false;

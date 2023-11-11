@@ -21,7 +21,7 @@ inline bool operator&(SelectionFilter a, SelectionFilter b) { return static_cast
 
 
 // A point reference allows us to reference a specific point in an element (e.g. p1 of line)
-// This stores a pointer to the element and the type refers to which point
+// This stores an id to the element and the type refers to which point
 struct SketchItem
 {
     enum class Type { Unset, Point, Line, Arc, Circle, Line_P0, Line_P1, Arc_P0, Arc_P1, Arc_PC, Circle_PC };
@@ -30,7 +30,7 @@ struct SketchItem
     Type type = Type::Unset;  
     ElementID element = -1;
     
-    std::string Name() 
+    std::string Name() const
     {
         std::string id = std::to_string(element);
         if(type == Type::Unset)     { return "Unset"; }
@@ -65,6 +65,7 @@ struct SketchItem
 };
 // Allows us to see if 2 SketchItems are identical
 static inline bool  operator==(const SketchItem& a, const SketchItem& b) { return (a.type == b.type && a.element == b.element); }
-
+static inline bool  operator!=(const SketchItem& a, const SketchItem& b) { return !(a.type == b.type && a.element == b.element); }
+static inline std::ostream& operator<<(std::ostream& os, const SketchItem& a) { os << a.Name(); return os; }
 
 } // end namespace Sketch

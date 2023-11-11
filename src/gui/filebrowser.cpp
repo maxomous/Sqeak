@@ -1,3 +1,5 @@
+
+#include "../events.h"
 #include "filebrowser.h"
 using namespace std;
 using namespace MaxLib;

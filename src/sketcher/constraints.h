@@ -27,6 +27,7 @@ public:
     // Marked virtual so that any derived classes' destructor also gets called 
     virtual ~Constraint() = default;
     
+    virtual std::string Label() = 0;
     ConstraintID ID() const { return m_ID; }
     
     // Adds constraint to solver
@@ -90,6 +91,8 @@ class Coincident_PointToPoint : public Constraint_Template_TwoItems
 {
 public:
     Coincident_PointToPoint(ElementFactory* parent, SketchItem p0, SketchItem p1)         : Constraint_Template_TwoItems(parent, p0, p1) {}
+    // Returns constraint label
+    std::string Label() override { return "Coincident"; }
     // Adds constraint to solver    
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -103,6 +106,8 @@ class Coincident_PointToLine : public Constraint_Template_TwoItems
 {
 public:
     Coincident_PointToLine(ElementFactory* parent, SketchItem point, SketchItem line)         : Constraint_Template_TwoItems(parent, point, line) {}
+    // Returns constraint label
+    std::string Label() override { return "Coincident"; }
     // Adds constraint to solver    
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -113,6 +118,8 @@ class Coincident_PointToArc : public Constraint_Template_TwoItems
 {
 public:
     Coincident_PointToArc(ElementFactory* parent, SketchItem point, SketchItem arc)            : Constraint_Template_TwoItems(parent, point, arc) {}
+    // Returns constraint label
+    std::string Label() override { return "Coincident"; }
     // Adds constraint to solver        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };  
@@ -123,6 +130,8 @@ class Coincident_PointToCircle : public Constraint_Template_TwoItems
 {   
 public: 
     Coincident_PointToCircle(ElementFactory* parent, SketchItem point, SketchItem circle)   : Constraint_Template_TwoItems(parent, point, circle) {}
+    // Returns constraint label
+    std::string Label() override { return "Coincident"; }
     // Adds constraint to solver        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -135,6 +144,8 @@ class Distance_PointToPoint : public Constraint_Template_TwoItems
 public:                                                                                                                             
     Distance_PointToPoint(ElementFactory* parent, SketchItem p0, SketchItem p1, double d)       : Constraint_Template_TwoItems(parent, p0, p1), distance(d) {}
     Distance_PointToPoint(ElementFactory* parent, SketchItem line, double d)                    : Distance_PointToPoint(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }, d) {}
+    // Returns constraint label
+    std::string Label() override { return "Distance"; }
     // Adds constraint to solver        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
     
@@ -149,6 +160,8 @@ class Distance_PointToLine : public Constraint_Template_TwoItems
 {
 public:
     Distance_PointToLine(ElementFactory* parent, SketchItem point, SketchItem line, double d)       : Constraint_Template_TwoItems(parent, point, line), distance(d) {}
+    // Returns constraint label
+    std::string Label() override { return "Distance"; }
     // Adds constraint to solver        
     void AddToSolver(Solver::ConstraintSolver& solver) override;
     
@@ -161,6 +174,8 @@ class AddMidPoint_PointToLine : public Constraint_Template_TwoItems
 {           
 public:         
     AddMidPoint_PointToLine(ElementFactory* parent, SketchItem point, SketchItem line)                    : Constraint_Template_TwoItems(parent, point, line) {}
+    // Returns constraint label
+    std::string Label() override { return "Midpoint"; }
     // Adds constraint to solver                
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -172,6 +187,8 @@ class AddRadius_Circle : public Constraint_Template_OneItem
 {           
 public:         
     AddRadius_Circle(ElementFactory* parent, SketchItem circle, double r)                    : Constraint_Template_OneItem(parent, circle), radius(r) {}
+    // Returns constraint label
+    std::string Label() override { return "Radius"; }
     // Adds constraint to solver                
     void AddToSolver(Solver::ConstraintSolver& solver) override;
     
@@ -182,6 +199,8 @@ class AddRadius_Arc : public Constraint_Template_OneItem
 {
 public:
     AddRadius_Arc(ElementFactory* parent, SketchItem arc, double r)                             : Constraint_Template_OneItem(parent, arc), radius(r) {}
+    // Returns constraint label
+    std::string Label() override { return "Radius"; }
     // Adds constraint to solver                
     void AddToSolver(Solver::ConstraintSolver& solver) override;
     
@@ -194,6 +213,8 @@ class Angle_LineToLine : public Constraint_Template_TwoItems
 {
 public:
     Angle_LineToLine(ElementFactory* parent, SketchItem line1, SketchItem line2, double th)    : Constraint_Template_TwoItems(parent, line1, line2), angle(th) {}
+    // Returns constraint label
+    std::string Label() override { return "Angle"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
     
@@ -208,6 +229,8 @@ class Vertical : public Constraint_Template_TwoItems
 public:     
     Vertical(ElementFactory* parent, SketchItem p0, SketchItem p1)       : Constraint_Template_TwoItems(parent, p0, p1) {}
     Vertical(ElementFactory* parent, SketchItem line)                    : Vertical(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }) {}
+    // Returns constraint label
+    std::string Label() override { return "Vertical"; }
 
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
@@ -220,6 +243,8 @@ class Horizontal : public Constraint_Template_TwoItems
 public:     
     Horizontal(ElementFactory* parent, SketchItem p0, SketchItem p1)       : Constraint_Template_TwoItems(parent, p0, p1) {}
     Horizontal(ElementFactory* parent, SketchItem line)                    : Horizontal(parent, { SketchItem::Type::Line_P0, line.element }, { SketchItem::Type::Line_P1, line.element }) {}
+    // Returns constraint label
+    std::string Label() override { return "Horizontal"; }
 
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
@@ -232,6 +257,8 @@ class Parallel : public Constraint_Template_TwoItems
 {
 public:
     Parallel(ElementFactory* parent, SketchItem line1, SketchItem line2)                          : Constraint_Template_TwoItems(parent, line1, line2) {}
+    // Returns constraint label
+    std::string Label() override { return "Parellel"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -242,6 +269,8 @@ class Perpendicular : public Constraint_Template_TwoItems
 {
 public:
     Perpendicular(ElementFactory* parent, SketchItem line1, SketchItem line2)                     : Constraint_Template_TwoItems(parent, line1, line2) {}
+    // Returns constraint label
+    std::string Label() override { return "Perpendicular"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -254,6 +283,8 @@ class Tangent_Arc_Line : public Constraint_Template_TwoItems
 {
 public:
     Tangent_Arc_Line(ElementFactory* parent, SketchItem arc, SketchItem line, int tangentPt)        : Constraint_Template_TwoItems(parent, arc, line), tangentPoint(tangentPt) {}
+    // Returns constraint label
+    std::string Label() override { return "Tangent"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
     
@@ -264,6 +295,8 @@ class Tangent_Arc_Arc : public Constraint_Template_TwoItems
 {
 public:
     Tangent_Arc_Arc(ElementFactory* parent, SketchItem arc1, SketchItem arc2)                       : Constraint_Template_TwoItems(parent, arc1, arc2) {}
+    // Returns constraint label
+    std::string Label() override { return "Tangent"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -276,6 +309,8 @@ class EqualLength : public Constraint_Template_TwoItems
 {
 public:
     EqualLength(ElementFactory* parent, SketchItem line1, SketchItem line2)                       : Constraint_Template_TwoItems(parent, line1, line2) {}
+    // Returns constraint label
+    std::string Label() override { return "Equal"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -286,6 +321,8 @@ class EqualRadius_Arc_Circle : public Constraint_Template_TwoItems
 {
 public:
     EqualRadius_Arc_Circle(ElementFactory* parent, SketchItem arc,SketchItem circle)             : Constraint_Template_TwoItems(parent, arc, circle) {}
+    // Returns constraint label
+    std::string Label() override { return "Equal"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -294,6 +331,8 @@ class EqualRadius_Arc_Arc : public Constraint_Template_TwoItems
 {
 public:
     EqualRadius_Arc_Arc(ElementFactory* parent, SketchItem arc1, SketchItem arc2)                   : Constraint_Template_TwoItems(parent, arc1, arc2) {}
+    // Returns constraint label
+    std::string Label() override { return "Equal"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };
@@ -302,6 +341,8 @@ class EqualRadius_Circle_Circle : public Constraint_Template_TwoItems
 {
 public:
     EqualRadius_Circle_Circle(ElementFactory* parent, SketchItem circle1, SketchItem circle2) : Constraint_Template_TwoItems(parent, circle1, circle2) {}
+    // Returns constraint label
+    std::string Label() override { return "Equal"; }
     // Adds constraint to solver            
     void AddToSolver(Solver::ConstraintSolver& solver) override;
 };

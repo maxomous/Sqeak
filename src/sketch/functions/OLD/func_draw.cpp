@@ -51,7 +51,7 @@ void FunctionType_Draw::DrawPopup(Settings& settings)
 bool FunctionType_Draw::IsValidInputs(Settings& settings) 
 {
     // check tool and material is selected
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(!settings.p.tools.IsToolAndMaterialSelected())
         return false;
     // start and end point
     if(m_Params.drawing.Size() == 0) {

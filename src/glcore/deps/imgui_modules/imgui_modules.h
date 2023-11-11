@@ -2,6 +2,8 @@
 #include <iostream> 
 #include <sstream> 
 #include <functional>  
+#include <algorithm>  
+#include <optional>  
 #include <MaxLib/Vector.h>
 
 #define IMGUI_DEFINE_MATH_OPERATORS 
@@ -95,9 +97,9 @@ namespace ImGuiModules
         ImVec2          imageOffset;
     };
     // Image Button with text
-    bool ImageButtonWithText(const std::string& text, ImageTexture& image, const ImVec2& buttonSize, const ImVec2& imageSize, ImFont* font, const ImVec2& textOffset, const ImVec2& imageOffset, bool isActive = false);
-    bool ImageButtonWithText(const std::string& text, ImageTexture& image, ImageButtonStyle* imageButton, bool isActive = false);
-
+    bool ImageButtonWithText(const std::string& text, ImageTexture image, const ImVec2& buttonSize, const ImVec2& imageSize, ImFont* font, const ImVec2& textOffset, const ImVec2& imageOffset, bool isActive = false, ImageTexture hoveredImage = {});
+    bool ImageButtonWithText(const std::string& text, ImageTexture image, ImageButtonStyle* imageButton, bool isActive = false, ImageTexture hoveredImage = {});
+    bool ImageButton(ImageTexture image, ImageButtonStyle* imageButton, bool isActive = false, ImageTexture hoveredImage = {});
 
     // Helper to display a little (?) mark which shows a tooltip when hovered.
     void ToolTip_IfItemHovered(const std::string& text);
@@ -150,8 +152,9 @@ namespace ImGuiModules
 
     // draws buttons for a selectable vector
     // returns true if an item was clicked
-    template<typename T>
-    bool Buttons(Vector_SelectablePtrs<T>& items, ImVec2 buttonSize, std::function<std::string(T& item)> cb_GetItemString) 
+    // V can be Vector_SelectablePtrs
+    template<typename T, template <typename> class V>
+    bool Buttons(V<T>& items, ImVec2 buttonSize, std::function<std::string(T& item)> cb_GetItemString) 
     {
         bool buttonClicked = false;
         // draw all of the active functions
@@ -175,11 +178,18 @@ namespace ImGuiModules
     
     // draws combo box's for a selectable vector
     // returns true if an item was clicked
-    template<typename T>
-    bool ComboBox(const char* name, Vector_SelectablePtrs<T>& data, std::function<std::string(T& item)> cb_GetItemString, ImGuiComboFlags flags = 0)
+    template<typename T, template <typename> class V>
+    bool ComboBox(const char* name, V<T>& data, std::function<std::string(T& item)> cb_GetItemString, const std::string& labelOverride = "", ImGuiComboFlags flags = 0)
     {         
-        bool isChanged = false;   
-        std::string label = (data.Size() <= 0 || !data.HasItemSelected()) ? "" : cb_GetItemString(data.CurrentItem());
+        bool isChanged = false;  
+        
+        std::string label; 
+        if(labelOverride == "") { // Use selected item
+            label = (data.Size() <= 0 || !data.HasItemSelected()) ? "" : cb_GetItemString(data.CurrentItem());
+        } else { // override label
+            label = labelOverride;
+        }
+         
         
         if (ImGui::BeginCombo(name, label.c_str(), flags))
         {
@@ -204,9 +214,10 @@ namespace ImGuiModules
         return isChanged;
     } 
     
+    
     // returns true if item is clicked
-    template<typename T>
-    bool ListBox_Reorderable(const char* listboxName, const ImVec2& dimensions, Vector_SelectablePtrs<T>& data, std::function<std::string(T& item)> cb_GetItemString)
+    template<typename T, template <typename> class V>
+    bool ListBox_Reorderable(const char* listboxName, const ImVec2& dimensions, V<T>& data, std::function<std::string(T& item)> cb_GetItemString)
     {
         int n_clicked = -1;
         int n_current = -1;
@@ -280,10 +291,11 @@ namespace ImGuiModules
         }
         return isClicked;
     }
- 
+
+    
     // returns true if current item has changed
-    template<typename T>
-    bool TreeNodes(Vector_SelectablePtrs<T>& items, bool& openCurrentItem, std::function<std::string(T&)>& cb_GetItemString, std::function<void(T&)> cb_DrawItemImGui)
+    template<typename T, template <typename> class V>
+    bool TreeNodes(V<T>& items, bool& openCurrentItem, std::function<std::string(T&)>& cb_GetItemString, std::function<void(T&)> cb_DrawItemImGui)
     {
         bool isActiveItemChanged = false;
         
@@ -335,8 +347,8 @@ namespace ImGuiModules
     
  
     // returns true if current item has changed
-    template<typename T>
-    bool Tabs(Vector_SelectablePtrs<T>& items, std::function<std::string(T& item)>& cb_GetItemString, std::function<T(void)>& cb_AddNewItem, std::function<void()> cb_DrawItemImGui)
+    template<typename T, template <typename> class V>
+    bool Tabs(V<T>& items, std::function<std::string(T& item)>& cb_GetItemString, std::function<T(void)>& cb_AddNewItem, std::function<void()> cb_DrawItemImGui)
     {
         bool isModified = false;
         if (ImGui::BeginTabBar("MyTabBar", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyResizeDown))  // or ImGuiTabBarFlags_FittingPolicyScroll

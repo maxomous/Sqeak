@@ -162,8 +162,9 @@ struct GUISettings
     
     Vector_Ptrs<ImageButtonStyle> imageButtons;
     
-    ImageButtonStyle* imageButton_Toolbar_Edit;
     ImageButtonStyle* imageButton_Toolbar_Header;
+    ImageButtonStyle* imageButton_Toolbar_HeaderInactive;
+    ImageButtonStyle* imageButton_Toolbar_Header_Back;
     ImageButtonStyle* imageButton_Toolbar_Back;
     ImageButtonStyle* imageButton_Toolbar_LevelToggler;
     ImageButtonStyle* imageButton_Toolbar_Settings;
@@ -178,40 +179,47 @@ struct GUISettings
     ImageButtonStyle* imageButton_Toolbar_Jog;
     ImageButtonStyle* imageButton_SubToolbar_Button;
     
+    ImageButtonStyle* imageButton_Confirm;
+    
 
     // Initialise the image buttons with fonts, sizes etc. These must be initialised after image fonts etc
     void InitialiseImageButtons() 
     {
         
-        // Add Text Buttons                                                              Name                    Button Size                     Image Size          Font            Text / Image Offset
+        // Add Text Buttons                                                              Name                    Button Size                        Image Size          Font            Text / Image Offset
             
-        imageButton_Toolbar_Edit            = imageButtons.Addp(ImageButtonStyle("Toolbar Edit",                ImVec2(50.0f, 9.0f),                imageSize_Small,    font_small,     imageButtonOffset_Centred));
+        imageButton_Toolbar_Header          = imageButtons.Addp(ImageButtonStyle("Toolbar Header",              ImVec2(78.0f, toolbarItemHeight),   imageSize_Huge,         font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_HeaderInactive  = imageButtons.Addp(ImageButtonStyle("Toolbar HeaderInactive",      ImVec2(20.0f, toolbarItemHeight),   imageSize_Medium,       font_small,     { { CENTRED,  CENTRED },    { CENTRED,  -23.0f } }));
         
-        imageButton_Toolbar_Header          = imageButtons.Addp(ImageButtonStyle("Toolbar Header",              ImVec2(50.0f, toolbarItemHeight),   imageSize_Huge,   font_small,     imageButtonOffset_Vertical));
-        imageButton_Toolbar_Back            = imageButtons.Addp(ImageButtonStyle("Toolbar Back",                ImVec2(28.0f, 40.0F),               imageSize_Medium,   font_small,     imageButtonOffset_Centred));
-        imageButton_Toolbar_LevelToggler    = imageButtons.Addp(ImageButtonStyle("Toolbar Draw / Run Toggler",  ImVec2(93.0f, 40.0f),               imageSize_Large,    font_small,     imageButtonOffset_Horizontal));
+        imageButton_Toolbar_Header_Back     = imageButtons.Addp(ImageButtonStyle("Toolbar Header Back",         ImVec2(18.0f, 18.0f),               imageSize_Smaller,      font_small,     imageButtonOffset_Centred));
         
-        imageButton_Toolbar_Settings        = imageButtons.Addp(ImageButtonStyle("Toolbar Settings",            ImVec2(40.0f, 40.0f),               imageSize_Medium,   font_small,     imageButtonOffset_Centred));
-        imageButton_Toolbar_Connect         = imageButtons.Addp(ImageButtonStyle("Toolbar Connect",             ImVec2(66.0f, 70.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Back            = imageButtons.Addp(ImageButtonStyle("Toolbar Back",                ImVec2(28.0f, 40.0F),               imageSize_Medium,       font_small,     imageButtonOffset_Centred));
+        imageButton_Toolbar_LevelToggler    = imageButtons.Addp(ImageButtonStyle("Toolbar Draw / Run Toggler",  ImVec2(93.0f, 40.0f),               imageSize_Large,        font_small,     imageButtonOffset_Horizontal));
         
-        imageButton_Toolbar_ButtonPrimary   = imageButtons.Addp(ImageButtonStyle("Toolbar Button Primary",      ImVec2(66.0f, 70.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Settings        = imageButtons.Addp(ImageButtonStyle("Toolbar Settings",            ImVec2(40.0f, 40.0f),               imageSize_Medium,       font_small,     imageButtonOffset_Centred));
+        imageButton_Toolbar_Connect         = imageButtons.Addp(ImageButtonStyle("Toolbar Connect",             ImVec2(66.0f, 70.0f),               imageSize_Large,        font_small,     imageButtonOffset_Vertical));
+        
+        imageButton_Toolbar_ButtonPrimary   = imageButtons.Addp(ImageButtonStyle("Toolbar Button Primary",      ImVec2(66.0f, 70.0f),               imageSize_Large,        font_small,     imageButtonOffset_Vertical));
         //imageButton_Toolbar_ButtonSecondary = imageButtons.Addp(ImageButtonStyle("Toolbar Button Secondary",    ImVec2(56.0f, 60.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
-        imageButton_Toolbar_Button          = imageButtons.Addp(ImageButtonStyle("Toolbar Button",              ImVec2(56.0f, 50.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
-        imageButton_Toolbar_SketchPrimary   = imageButtons.Addp(ImageButtonStyle("Toolbar SketchPrimary",       ImVec2(70.0f, 70.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
-        imageButton_Toolbar_Sketch          = imageButtons.Addp(ImageButtonStyle("Toolbar Sketch",              ImVec2(46.0f, 60.0f),               imageSize_Large,    font_small,     imageButtonOffset_Vertical));
-        imageButton_Toolbar_Constraint      = imageButtons.Addp(ImageButtonStyle("Toolbar Constraints",         ImVec2(70.0f, 50.0f),               imageSize_Large,    font_small,     imageButtonOffset_Constraint));
-        imageButton_Toolbar_Jog             = imageButtons.Addp(ImageButtonStyle("Toolbar Jog",                 ImVec2(18.0f, 18.0f),               imageSize_Smaller,  font_small,     imageButtonOffset_Centred));
-        imageButton_SubToolbar_Button       = imageButtons.Addp(ImageButtonStyle("Sub-Toolbar Button",          ImVec2(50.0f, 30.0f),               imageSize_Smaller,  font_small,     imageButtonOffset_Horizontal));
+        imageButton_Toolbar_Button          = imageButtons.Addp(ImageButtonStyle("Toolbar Button",              ImVec2(56.0f, 50.0f),               imageSize_Large,        font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_SketchPrimary   = imageButtons.Addp(ImageButtonStyle("Toolbar SketchPrimary",       ImVec2(70.0f, 70.0f),               imageSize_Large,        font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Sketch          = imageButtons.Addp(ImageButtonStyle("Toolbar Sketch",              ImVec2(46.0f, 60.0f),               imageSize_Large,        font_small,     imageButtonOffset_Vertical));
+        imageButton_Toolbar_Constraint      = imageButtons.Addp(ImageButtonStyle("Toolbar Constraints",         ImVec2(70.0f, 50.0f),               imageSize_Large,        font_small,     imageButtonOffset_Constraint));
+        imageButton_Toolbar_Jog             = imageButtons.Addp(ImageButtonStyle("Toolbar Jog",                 ImVec2(18.0f, 18.0f),               imageSize_Smaller,      font_small,     imageButtonOffset_Centred));
+        imageButton_SubToolbar_Button       = imageButtons.Addp(ImageButtonStyle("Sub-Toolbar Button",          ImVec2(80.0f, 30.0f),               imageSize_SmallMedium,  font_small,     imageButtonOffset_HorizontalImageButton));
+        imageButton_Confirm                 = imageButtons.Addp(ImageButtonStyle("Confirm Buttons",             ImVec2(24.0f, 33.0f),               imageSize_Small,        font_small,     imageButtonOffset_Centred));
+   
     }
     
 
     // Standard image sizes
-    ImVec2 imageSize_Smaller   = { 12.0f, 12.0f };
-    ImVec2 imageSize_Small     = { 16.0f, 16.0f };
-    ImVec2 imageSize_Medium    = { 20.0f, 20.0f };
-    ImVec2 imageSize_Large     = { 24.0f, 24.0f };
-    ImVec2 imageSize_Larger    = { 28.0f, 28.0f };
-    ImVec2 imageSize_Huge      = { 32.0f, 32.0f };
+    ImVec2 imageSize_Smaller        = { 12.0f, 12.0f };
+    ImVec2 imageSize_Small          = { 16.0f, 16.0f };
+    ImVec2 imageSize_SmallMedium    = { 18.0f, 18.0f };
+    ImVec2 imageSize_Medium         = { 20.0f, 20.0f };
+    ImVec2 imageSize_Large          = { 24.0f, 24.0f };
+    ImVec2 imageSize_Larger         = { 28.0f, 28.0f };
+    ImVec2 imageSize_Huge           = { 32.0f, 32.0f };
 
     const float CENTRED = 0.0f;
     // Image Button text / image offsets                            Text Offset             Image Offset
@@ -219,6 +227,7 @@ struct GUISettings
     ImageButtonStyle::Offsets imageButtonOffset_Vertical        = { { CENTRED,  17.0f },    { CENTRED,  -10.0f } };
     ImageButtonStyle::Offsets imageButtonOffset_Centred         = { { CENTRED,  CENTRED },  { CENTRED,  CENTRED } };
     ImageButtonStyle::Offsets imageButtonOffset_Constraint      = { { CENTRED,  12.0f },    { CENTRED,  -7.0f } };
+    ImageButtonStyle::Offsets imageButtonOffset_HorizontalImageButton = { { 1,  CENTRED },    { -17.0f,  CENTRED } };
     
     
     
@@ -260,6 +269,7 @@ struct GUISettings
 
     // these need to be intialised in imgui_Settings()
     ImageTexture img_Icon;
+    ImageTexture img_Home;
     ImageTexture img_Restart;
     ImageTexture img_Play;
     ImageTexture img_Pause;
@@ -272,6 +282,17 @@ struct GUISettings
     ImageTexture img_ArrowDown;
     ImageTexture img_ArrowLeft;
     ImageTexture img_ArrowRight;
+    ImageTexture img_ArrowForward;
+    ImageTexture img_ArrowBackward;
+    ImageTexture img_Tick1;
+    ImageTexture img_Tick2;
+    ImageTexture img_Cross1;
+    ImageTexture img_Cross2;
+    ImageTexture img_Tool;
+    ImageTexture img_GCode;
+    ImageTexture img_2D;
+    ImageTexture img_3D;
+    
     // sketch images
     ImageTexture img_Sketch;
     ImageTexture img_Sketch_Draw;

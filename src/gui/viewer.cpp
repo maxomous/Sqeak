@@ -4,6 +4,10 @@ using namespace std;
 
 #include "../common.h" 
 
+
+// TODO: DETACH SETTINGS, SETTINGS SHOULD READ FROM HERE, THIS SHOULD  READ FROM GLCORE
+
+
 namespace Sqeak { 
     
 inline glm::vec2 glmVec2(const Vec2& v) { return { v.x, v.y }; }
@@ -348,7 +352,7 @@ void DynamicBuffer::AddShape(const Shape& shape, const glm::vec3& colour, const 
     }
 } 
 
-void DynamicBuffer::AddColouredVertexListAsLines(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
+void DynamicBuffer::AddColouredVertexListAsLines(const std::vector<ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
 {
     for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
         auto& vertices = (*dynamicVertexLists)[i].position;
@@ -361,7 +365,7 @@ void DynamicBuffer::AddColouredVertexListAsLines(const std::vector<DynamicBuffer
     }
 }
 
-void DynamicBuffer::AddColouredVertexListAsPoints(const std::vector<DynamicBuffer::ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
+void DynamicBuffer::AddColouredVertexListAsPoints(const std::vector<ColouredVertexList>* dynamicVertexLists, const glm::vec3& zeroPosition)
 {
     for (size_t i = 0; i < dynamicVertexLists->size(); i++) {
         auto& vertices = (*dynamicVertexLists)[i].position;

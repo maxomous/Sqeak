@@ -12,6 +12,8 @@ set(CMAKE_DEPENDS_CHECK_CXX
   "/home/pi/Desktop/Projects/Sqeak/src/gui/frames.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/gui/frames.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/gui/gui.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/gui/gui.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o"
+  "/home/pi/Desktop/Projects/Sqeak/src/gui/jogcontroller.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o"
+  "/home/pi/Desktop/Projects/Sqeak/src/gui/toolbar.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/gui/viewer.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/gui/viewer.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/libs/Geos.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/libs/Geos.cpp.o"
   "/home/pi/Desktop/Projects/Sqeak/src/libs/geos.cpp" "/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles/Sqeak.dir/libs/geos.cpp.o"

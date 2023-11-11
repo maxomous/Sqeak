@@ -10,7 +10,6 @@ namespace Sqeak {
     
     
 // forward declare
-class FileBrowser;
 class Functions;
 namespace sketch { class SketchOld; }
 
@@ -18,16 +17,13 @@ namespace sketch { class SketchOld; }
 class Frames
 {
 public:
-    Frames(Settings& settings)
-        : fileBrowser(std::make_unique<FileBrowser>(&settings.p.system.curDir))
-    {}
+    Frames() {}
     // draws everything imgui related
     void Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::SketchOld& sketcher, Sketch::Sketcher* sketcherNew, Functions& functions, float dt);
 private:
     void DrawDockSpace(Settings& settings);
     void DrawSketcher(Settings& settings, Sketch::Sketcher& sketcher);
     
-    std::unique_ptr<FileBrowser> fileBrowser;
     
 };
 

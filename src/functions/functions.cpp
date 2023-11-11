@@ -13,32 +13,38 @@ namespace Sqeak {
 
   
   
-    
 // update the tool data in depthCutter to the active tool in Tools
-void Function_CutPath::Parameters_CutPath::SetTool(ToolSettings::Tools& tools) 
+void Function_CutPath::Parameters_CutPath::LinkTool(ToolSettings::Tools& tools) 
 {
     if(tools.IsToolAndMaterialSelected()) {
-        // get tool / material
-        ToolSettings::Tools::Tool& tool = tools.toolList.CurrentItem();
-        ToolSettings::Tools::Tool::ToolData& toolData = tool.data.CurrentItem(); 
-        depthCutter.tool.diameter       = tool.diameter;
-        depthCutter.tool.cutDepth       = toolData.cutDepth;
-        depthCutter.tool.feedCutting    = toolData.feedCutting;
-        depthCutter.tool.feedPlunge     = toolData.feedPlunge;
-        spindleSpeed                    = toolData.speed;
+        // Shared pointers to tool / tooldata
+        tool_ptr = tools.toolList.CopyCurrentItem();
+        tooldata_ptr = tool_ptr->data.CopyCurrentItem();
+    }
+}
+    
+         
+// update the tool data in depthCutter to the tool assigned to this function
+bool Function_CutPath::Parameters_CutPath::SetTool() 
+{
+    if(tool_ptr != nullptr && tooldata_ptr != nullptr) {
+        depthCutter.tool.diameter       = tool_ptr->diameter;
+        depthCutter.tool.cutDepth       = tooldata_ptr->cutDepth;
+        depthCutter.tool.feedCutting    = tooldata_ptr->feedCutting;
+        depthCutter.tool.feedPlunge     = tooldata_ptr->feedPlunge;
+        spindleSpeed                    = tooldata_ptr->speed;
+        return true;
     } 
-    else 
-    {   Log::Error("Tool and Material must be selected");
+    else {   
+        Log::Error("Tool and Material must be selected");
         depthCutter.tool.diameter       = 0.0f;
         depthCutter.tool.cutDepth       = 0.0f;
         depthCutter.tool.feedCutting    = 0.0f;
         depthCutter.tool.feedPlunge     = 0.0f;
         spindleSpeed                    = 0.0f;
+        return false;
     }
 }
-         
-
-     
     
 bool Function_CutPath::Parameters_CutPath::Draw(Settings& settings)
 {
@@ -46,21 +52,25 @@ bool Function_CutPath::Parameters_CutPath::Draw(Settings& settings)
     // Draw the parameters in a tree
     ImGui::SetNextItemOpen(true, ImGuiCond_Once);
     if (ImGui::TreeNode("Parameters")) {
-
+ 
         // Tool
         ImGui::TextUnformatted("Tool"); ImGui::Indent();
-            // Select Tool for Depth Cutter
-            ImGui::Text("Tool Diameter: %g", depthCutter.tool.diameter);
-            ImGui::Text("Cut Depth: %g", depthCutter.tool.cutDepth);
-            ImGui::Text("FeedRate Cutting: %g", depthCutter.tool.feedCutting);
-            ImGui::Text("FeedRate Plunge: %g", depthCutter.tool.feedPlunge);
-            ImGui::Text("Spindle Speed: %g", spindleSpeed);
-            
-            if(ImGui::Button("Use Current Tool Data")) {
-                // Set tool for depth cutter to the active tool   
-                SetTool(settings.p.toolSettings.tools);
+            // labels
+            std::string toolLabel = (tool_ptr) ? tool_ptr->name : " ";
+            std::string materialLabel = (tooldata_ptr) ? tooldata_ptr->material : " ";
+            // Drop down boxes
+            if(settings.p.toolSettings.DrawToolSelector(0, 0, toolLabel, materialLabel)) {
+                LinkTool(settings.p.toolSettings.tools);
                 needsUpdate = true;
             }
+            
+            // tool parameters - these are set by tool and set to depthCutter during update
+            ImGui::Text("Tool Diameter: %g", (tool_ptr) ? tool_ptr->diameter : 0);
+            ImGui::Text("Cut Depth: %g", (tooldata_ptr) ? tooldata_ptr->cutDepth : 0);
+            ImGui::Text("FeedRate Cutting: %g", (tooldata_ptr) ? tooldata_ptr->feedCutting : 0);
+            ImGui::Text("FeedRate Plunge: %g", (tooldata_ptr) ? tooldata_ptr->feedPlunge : 0);
+            ImGui::Text("Spindle Speed: %g", (tooldata_ptr) ? tooldata_ptr->speed : 0);
+            
         ImGui::Unindent();
 
         // General Parameters
@@ -94,7 +104,7 @@ bool Function_CutPath::Parameters_CutPath::Draw(Settings& settings)
         
         // Finishing Pass Parameters
         ImGui::TextUnformatted("Finish Pass"); ImGui::Indent();
-            needsUpdate |= ImGui::InputFloat("Thickness", &pathCutter.finishPass);
+            needsUpdate |= ImGui::InputFloat("Width", &pathCutter.finishPass);
         ImGui::Unindent();
         
         
@@ -107,30 +117,24 @@ bool Function_CutPath::Parameters_CutPath::Draw(Settings& settings)
 
 bool Function_CutPath::Update() 
 {
+    // Error check
     if(m_Selected_Elements.empty() && m_Selected_Polygons.empty()) { return false; }
     
     GeosCPP geos;
     // choose either polygons
     if(!m_Selected_Polygons.empty()) { // copy the array
         // combine adjacent or overlapping polygons + send to gcoder
-        std::vector<Polygon> simplifiedGeometry = geos.operation.Combine(m_Selected_Polygons);
+        std::vector<Geom::Polygon> simplifiedGeometry = geos.operation.Combine(m_Selected_Polygons);
         GCode_SendToViewer(simplifiedGeometry);
     }
     // or choose linestrings
-    else {     
-        
+    else {
+        // Render the geometry
         std::vector<LineString> lineStrings = Vector::VectorCopy<Sketch::SketchItem, LineString>(m_Selected_Elements, [&](Sketch::SketchItem& item) {
             return m_Sketcher.Renderer().RenderElementBySketchItem(item);
         });
-        
-       // std::vector<LineString> lineStrings;
-       // // get points from sketchitem and copy the points into an array
-       // for(auto& element : m_Selected_Elements) {
-       //     LineString l = m_Sketcher.Renderer().RenderElementBySketchItem(element);
-       //     lineStrings.push_back(l); 
-       // }         
         // Simplify lineStrings     
-        std::vector<LineString> simplifiedGeometry = geos.operation.Combine(lineStrings);
+        std::vector<Geom::LineString> simplifiedGeometry = geos.operation.Combine(lineStrings);
         GCode_SendToViewer(simplifiedGeometry);
     }
     
@@ -144,21 +148,7 @@ bool Function_CutPath::DrawWindow()
 
     needsUpdate |= ImGui::InputText("Name", &m_Name); ImGui::Dummy(ImVec2());
         
-    // Select Geometry Button
-    DrawSelectButton(&m_Selected_Points, &m_Selected_Elements, &m_Selected_Polygons);
-    
-    m_Params.Draw(m_Settings);
-    
-    if(ImGui::Button("Build GCode")) {
-        needsUpdate |= Update();
-    }
-    
-    if(ImGui::Button("Triangulate")) {
-        needsUpdate |= true;
-      //  GeosCPP::GeometryCollection triangulated = geos.operation.Triangulation(holes, 0.0); 
-      //  GEOSDifference();
-
-    }
+    needsUpdate |= m_Params.Draw(m_Settings);
     
     // Draw the selected Geometry
     DrawSelectedItems("Points##CutPath", m_Selected_Points);
@@ -168,6 +158,28 @@ bool Function_CutPath::DrawWindow()
     return needsUpdate;
 }
 
+bool Function_CutPath::DrawToolbar() 
+{
+    bool needsUpdate = false;
+    GUISettings& s = m_Settings.guiSettings;
+    
+    // Select Geometry Button
+    DrawSelectButton(&m_Selected_Points, &m_Selected_Elements, &m_Selected_Polygons);
+    
+    ImGui::SameLine();       
+    if(ImGuiModules::ImageButtonWithText("Build GCode", s.img_GCode, s.imageButton_Toolbar_ButtonPrimary)) {
+        needsUpdate |= Update();
+    }
+    
+    
+    // Centre buttons about main toolbar buttons
+    // ImGuiModules::CentreItemVerticallyAboutItem(s.imageButton_Toolbar_ButtonPrimary->buttonSize.y, s.imageButton_Toolbar_Button->buttonSize.y);
+         
+    return needsUpdate;
+}
+
+    
+    
 std::string Function_CutPath::HeaderText() 
 {
     Parameters_CutPath& p = m_Params;
@@ -229,9 +241,9 @@ bool Function_CutPath::IsValidInputs(const Geom::Polygon& inputPath)
 //// return value is success
 //// T can be Geom::LineString or Geom::Polygon
 //template<typename T>
-//bool Function_CutPath::InterpretGCode(const std::vector<T>& inputPaths, std::function<void(std::vector<std::string>&)> cb)  
+//bool Function_CutPath::GenerateGCodeFromPath(const std::vector<T>& inputPaths, std::function<void(std::vector<std::string>&)> cb)  
 //// return value is success
-//bool Function_CutPath::InterpretGCode(const std::vector<Geom::LineString>& inputPaths, std::function<void(std::vector<std::string>&)> cb)  
+//bool Function_CutPath::GenerateGCodeFromPath(const std::vector<Geom::LineString>& inputPaths, std::function<void(std::vector<std::string>&)> cb)  
 //{
 //    // Error check inputs
 //    if(!IsValidInputs(inputPaths)) { return false; }  
@@ -432,14 +444,29 @@ void Functions::DrawWindows()
             needsUpdate |= m_Functions[i].DrawWindow();
             window.End();
         }
-    }
-    
-    
+    }   
     // Update if needed
     if(needsUpdate) {
         m_Settings.SetUpdateFlag(SqeakUpdate::Full);
     }
 }
+
+
+void Functions::DrawToolbars() 
+{      
+    // For each function
+    for(size_t i = 0; i < m_Functions.Size(); i++) {
+        // Draw function toolbar items
+        if(m_Functions[i].DrawToolbar()) {
+            // Update if req.
+            m_Settings.SetUpdateFlag(SqeakUpdate::Full);
+        }
+    }   
+}
+
+
+// Draw items in window 
+// TODO: Do we still want this??
 
 void Functions::DrawItems() 
 {

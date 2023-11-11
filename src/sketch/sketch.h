@@ -2,6 +2,7 @@
 #include <MaxLib.h> 
 #include "../common.h" 
 
+class InputEvent;
 
 
 namespace Sqeak { 
@@ -936,7 +937,7 @@ private:
 
     
 };
- 
+  
 class A_Function
 {
 public: 
@@ -955,7 +956,7 @@ public:
     // bool is success
     std::optional<std::vector<std::string>> InterpretGCode(Settings& settings, ElementFactory& elementFactory);
     // adds linelists to viewerLineList
-    virtual void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isDisabled) = 0;
+    virtual void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<ColouredVertexList>* viewerLineLists, std::vector<ColouredVertexList>* viewerPointLists, bool isDisabled) = 0;
     
 protected:
     std::string m_Name;
@@ -990,7 +991,7 @@ private:
     // exports gcode from current paramaters
     std::optional<std::vector<std::string>> ExportGCode(Settings& settings, ElementFactory& elementFactory) override;
     
-    void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineList, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists, bool isActive) override;
+    void UpdateViewer(Settings& settings, ElementFactory& elementFactory, std::vector<ColouredVertexList>* viewerLineList, std::vector<ColouredVertexList>* viewerPointLists, bool isActive) override;
      //Event<Event_DisplayShapeOffset>::Dispatch( { elementFactory.LineLoop_PointsList(m_LineLoop, settings.p.pathCutter.geosParameters.QuadrantSegments), elementFactory.RawPoint_PointsList(), false } );
    
     struct A_Function_Draw_Parameters {
@@ -1030,11 +1031,11 @@ public:
     // returns the gcode strings
     std::optional<std::vector<std::string>> ActiveA_Function_UpdateViewer(Settings& settings);
     // update viewer
-    void UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerLineLists, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists);
+    void UpdateViewer(Settings& settings, std::vector<ColouredVertexList>* viewerLineLists, std::vector<ColouredVertexList>* viewerPointLists);
 
-    void ActivePoint_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists);
+    void ActivePoint_UpdateViewer(Settings& settings, std::vector<ColouredVertexList>* viewerPointLists);
 
-    void RawPoints_UpdateViewer(Settings& settings, std::vector<DynamicBuffer::ColouredVertexList>* viewerPointLists);
+    void RawPoints_UpdateViewer(Settings& settings, std::vector<ColouredVertexList>* viewerPointLists);
     
 private:
     
@@ -1096,8 +1097,8 @@ private:
     bool m_IsActive = false;
 
     // draw list for viewer
-    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerLineLists;
-    std::vector<DynamicBuffer::ColouredVertexList> m_ViewerPointLists;
+    std::vector<ColouredVertexList> m_ViewerLineLists;
+    std::vector<ColouredVertexList> m_ViewerPointLists;
     
     // updates viewer for active drawing
     void ActiveA_Function_UpdateViewer(Settings& settings);

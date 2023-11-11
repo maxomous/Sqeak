@@ -99,6 +99,7 @@ public:
     
     
     // Calculate the Offset / Boring path
+    // T is Geom::LineString or Geom::Polygon
     template<typename T>
     PathData CalculatePaths(const T& inputPath, float toolRadius, GeosCPP::Operation::OffsetParameters geosParameters)
     {
@@ -106,16 +107,18 @@ public:
         GeosCPP geos;
         // Container to hold the offset paths, later to be returned
         PathData outputPaths;
+        bool skipFinishPass = false;
         // Cut only the input path, no finish pass
         if(cutSide == CompensateCutter::None) {
-            outputPaths.cutPath.lineStrings = { inputPath };
-            return outputPaths;
+            outputPaths.cutPath.AppendGeometry(inputPath);
+            skipFinishPass = true;
         } 
         // Compensate path by radius Left or Right
         else if((cutSide == CompensateCutter::Left) || (cutSide == CompensateCutter::Right))  {
             // perform an offset on the inputPath
             float offset = GetCutSide() * (fabsf(toolRadius) + fabsf(finishPass));
-            outputPaths.cutPath = geos.operation.Offset(inputPath, offset, geosParameters);
+            outputPaths.cutPath = geos.operation.Offset(std::vector<T>({ inputPath }), offset, geosParameters); // inputpath  =  vector<linestrings>  OR  vector<polygons>
+        
         }
         // Boring Operation
         else if(cutSide == CompensateCutter::Pocket)  {
@@ -127,9 +130,11 @@ public:
         else { assert(0 && "Unknown cut side"); }
         
         // Finishing path (Calculate the path offset radius away from inputPath)
-        if(finishPass != 0.0f) {                  
-            outputPaths.finishPath = geos.operation.Offset(inputPath, GetCutSide() * fabsf(toolRadius), geosParameters);
+        if((finishPass != 0.0f) && !skipFinishPass) {                  
+            outputPaths.finishPath = geos.operation.Offset(std::vector<T>({ inputPath }), GetCutSide() * fabsf(toolRadius), geosParameters);
         }
+        
+        return outputPaths;
     }
     
     // 0 = no compensation, 1 = compensate left / pocket, -1 = compensate right

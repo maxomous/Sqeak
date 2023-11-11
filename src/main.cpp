@@ -137,6 +137,14 @@ $132=350.000 (mm) : Z-axis maximum travel
  
 TODO: 
 
+    - Keyboard to change sketch commands (line, arc, point, circle) / flip arc CW CCW
+    * undo button
+    *move sketch tools input widgets to top and make more obvious
+    * add clickable constraints 
+    * SNAP TO!
+    * NOT DISSAPEARING DONT DESELECT ELEMENT WHEN ADDING CONSTRAINTS 
+    * CANT select polygon of circle under circles?
+
     Not scrolling down console
     autoscroll  doesnt look like its being set (in either log or commands)
     Limit switch / probe etc orange things not updating
@@ -297,7 +305,7 @@ Other notes:
     
 
 #include "common.h"
-
+ 
 using namespace std;
 using namespace MaxLib;
 using namespace Sqeak; 

@@ -213,9 +213,35 @@ CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/Desktop/Projects/Sqeak/src/gui/imgui_custommodules.cpp -o CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.s
 
+CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o: CMakeFiles/Sqeak.dir/flags.make
+CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/jogcontroller.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/jogcontroller.cpp
+
+CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/pi/Desktop/Projects/Sqeak/src/gui/jogcontroller.cpp > CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.i
+
+CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/Desktop/Projects/Sqeak/src/gui/jogcontroller.cpp -o CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.s
+
+CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o: CMakeFiles/Sqeak.dir/flags.make
+CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/toolbar.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/toolbar.cpp
+
+CMakeFiles/Sqeak.dir/gui/toolbar.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/Sqeak.dir/gui/toolbar.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/pi/Desktop/Projects/Sqeak/src/gui/toolbar.cpp > CMakeFiles/Sqeak.dir/gui/toolbar.cpp.i
+
+CMakeFiles/Sqeak.dir/gui/toolbar.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/Sqeak.dir/gui/toolbar.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/pi/Desktop/Projects/Sqeak/src/gui/toolbar.cpp -o CMakeFiles/Sqeak.dir/gui/toolbar.cpp.s
+
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: CMakeFiles/Sqeak.dir/flags.make
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_13) "Building CXX object CMakeFiles/Sqeak.dir/gui/viewer.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/Sqeak.dir/gui/viewer.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sqeak.dir/gui/viewer.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/gui/viewer.cpp
 
 CMakeFiles/Sqeak.dir/gui/viewer.cpp.i: cmake_force
@@ -228,7 +254,7 @@ CMakeFiles/Sqeak.dir/gui/viewer.cpp.s: cmake_force
 
 CMakeFiles/Sqeak.dir/functions/functions.cpp.o: CMakeFiles/Sqeak.dir/flags.make
 CMakeFiles/Sqeak.dir/functions/functions.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/functions/functions.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_14) "Building CXX object CMakeFiles/Sqeak.dir/functions/functions.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/Sqeak.dir/functions/functions.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sqeak.dir/functions/functions.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/functions/functions.cpp
 
 CMakeFiles/Sqeak.dir/functions/functions.cpp.i: cmake_force
@@ -241,7 +267,7 @@ CMakeFiles/Sqeak.dir/functions/functions.cpp.s: cmake_force
 
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: CMakeFiles/Sqeak.dir/flags.make
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_15) "Building CXX object CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketch/gcodebuilder.cpp
 
 CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.i: cmake_force
@@ -254,7 +280,7 @@ CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.s: cmake_force
 
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: CMakeFiles/Sqeak.dir/flags.make
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Building CXX object CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sqeak.dir/sketch/sketch.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketch/sketch.cpp
 
 CMakeFiles/Sqeak.dir/sketch/sketch.cpp.i: cmake_force
@@ -267,7 +293,7 @@ CMakeFiles/Sqeak.dir/sketch/sketch.cpp.s: cmake_force
 
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: CMakeFiles/Sqeak.dir/flags.make
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o: /home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Building CXX object CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_19) "Building CXX object CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o"
 	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.o -c /home/pi/Desktop/Projects/Sqeak/src/sketch/toolsettings.cpp
 
 CMakeFiles/Sqeak.dir/sketch/toolsettings.cpp.i: cmake_force
@@ -292,6 +318,8 @@ Sqeak_OBJECTS = \
 "CMakeFiles/Sqeak.dir/gui/frames.cpp.o" \
 "CMakeFiles/Sqeak.dir/gui/gui.cpp.o" \
 "CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o" \
+"CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o" \
+"CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o" \
 "CMakeFiles/Sqeak.dir/gui/viewer.cpp.o" \
 "CMakeFiles/Sqeak.dir/functions/functions.cpp.o" \
 "CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o" \
@@ -313,6 +341,8 @@ Sqeak_EXTERNAL_OBJECTS =
 /home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/gui/frames.cpp.o
 /home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/gui/gui.cpp.o
 /home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.o
+/home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o
+/home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o
 /home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/gui/viewer.cpp.o
 /home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/functions/functions.cpp.o
 /home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/sketch/gcodebuilder.cpp.o
@@ -330,7 +360,7 @@ Sqeak_EXTERNAL_OBJECTS =
 /home/pi/Desktop/Projects/Sqeak/Sqeak: sketcher/deps/constraintsolver/libslvs/liblibslvs.a
 /home/pi/Desktop/Projects/Sqeak/Sqeak: /usr/lib/libwiringPi.so
 /home/pi/Desktop/Projects/Sqeak/Sqeak: CMakeFiles/Sqeak.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_18) "Linking CXX executable /home/pi/Desktop/Projects/Sqeak/Sqeak"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_20) "Linking CXX executable /home/pi/Desktop/Projects/Sqeak/Sqeak"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/Sqeak.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.

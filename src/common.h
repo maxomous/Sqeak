@@ -1,4 +1,3 @@
-
 #pragma once
 
 #include <algorithm>
@@ -22,26 +21,28 @@
 //// wiring pi
 //#include <wiringPi.h>
 //#include <wiringSerial.h>
+#include <MaxLib.h>
 // OpenGL / ImGui
 #include "glcore/glcore.h"
 
 //#include "libs/geos.h" // old c version
 #include "libs/Geos.h"
-
-// allows bitwise operations on enums
-template<class T> inline T operator~ (T a) { return (T)~(int)a; }
-template<class T> inline T operator| (T a, T b) { return (T)((int)a | (int)b); }
-template<class T> inline T operator& (T a, T b) { return (T)((int)a & (int)b); }
-template<class T> inline T operator^ (T a, T b) { return (T)((int)a ^ (int)b); }
-template<class T> inline T& operator|= (T& a, T b) { return (T&)((int&)a |= (int)b); }
-template<class T> inline T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); }
-template<class T> inline T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
+#include "dev/joystick.h"
+#include "grbl/grbl.h"
 
 
-// *********************** //
-//       Events            //
-// *********************** //
 
+
+// contains a list of points/lines + a colour
+struct ColouredVertexList {
+    ColouredVertexList() {}
+    ColouredVertexList(const glm::vec3& col) : colour(col) {}
+    std::vector<glm::vec3> position; 
+    glm::vec3 colour; 
+};
+
+
+namespace Sqeak {
 
 struct InputEvent {
     Event_KeyInput* keyboard = nullptr;
@@ -49,13 +50,27 @@ struct InputEvent {
     Event_MouseMove* mouseMove = nullptr;
 };
 
+struct Event_Get2DMode                  { bool& is2DMode; };
+struct Event_Set2DMode                  { bool isTrue; };
+struct Event_Set2DCursor                { bool isValid; glm::vec2 worldCoords; };
+struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords; };
 
-#include <MaxLib.h>
+struct Event_Update3DModelFromFile      { std::string filename; };
+struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
+struct Event_Viewer_AddLineLists        { std::vector<ColouredVertexList>* dynamicLineLists; };
+struct Event_Viewer_AddPointLists       { std::vector<ColouredVertexList>* dynamicPointLists; };
+    
+struct Event_PopupMessage               { std::string msg; };
+struct Event_ResetFileTimer             {};
+struct Event_SaveSettings               {};
+struct Event_UpdateSettingsFromFile     {};
 
-#include "dev/joystick.h"
+}
 
 
-#include "grbl/grbl.h"
+
+
+
 
 #include "sketch/toolsettings.h"
 #include "settings.h"
@@ -65,24 +80,10 @@ struct InputEvent {
 
 #include "gui/imgui_custommodules.h"
 
-#include "gui/filebrowser.h"
-
-namespace Sqeak {
-struct Event_Get2DMode                  { bool& is2DMode; };
-struct Event_Set2DMode                  { bool isTrue; };
-struct Event_Set2DCursor                { bool isValid; glm::vec2 worldCoords; };
-struct Event_GetCursorWorldCoords       { bool& isValid; glm::vec3& returnCoords; };
-}
 
 #include "gui/viewer.h"
 
-namespace Sqeak {
-    
-struct Event_Update3DModelFromFile      { std::string filename; };
-struct Event_Update3DModelFromVector    { std::vector<std::string> gcodes; };
-struct Event_Viewer_AddLineLists        { std::vector<DynamicBuffer::ColouredVertexList>* dynamicLineLists; };
-struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::ColouredVertexList>* dynamicPointLists; };
-}
+
 
 #include "sketch/sketch.h"
 
@@ -90,17 +91,14 @@ struct Event_Viewer_AddPointLists       { std::vector<DynamicBuffer::ColouredVer
 
 #include "functions/functions.h"
 
+
+#include "gui/toolbar.h"
 #include "gui/frames.h"
 #include "gui/gui.h"
 
 
 
 namespace Sqeak {
-    
-struct Event_PopupMessage               { std::string msg; };
-struct Event_ResetFileTimer             {};
-struct Event_SaveSettings               {};
-struct Event_UpdateSettingsFromFile     {};
 
 
 #define GUI_WINDOW_NAME     "Sqeak"
@@ -130,3 +128,14 @@ struct Event_UpdateSettingsFromFile     {};
        
        
 } // end namespace Sqeak
+
+
+// allows bitwise operations on enums
+template<class T> inline T operator~ (T a) { return (T)~(int)a; }
+template<class T> inline T operator| (T a, T b) { return (T)((int)a | (int)b); }
+template<class T> inline T operator& (T a, T b) { return (T)((int)a & (int)b); }
+template<class T> inline T operator^ (T a, T b) { return (T)((int)a ^ (int)b); }
+template<class T> inline T& operator|= (T& a, T b) { return (T&)((int&)a |= (int)b); }
+template<class T> inline T& operator&= (T& a, T b) { return (T&)((int&)a &= (int)b); }
+template<class T> inline T& operator^= (T& a, T b) { return (T&)((int&)a ^= (int)b); }
+

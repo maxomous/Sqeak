@@ -286,7 +286,7 @@ int FunctionGCodes::CutPathDepths(Settings& settings, const CutPathParams& param
 int FunctionType::InterpretGCode(Settings& settings, std::function<int(std::vector<std::string> gcode)> callback)
 {
     // error check
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(!settings.p.tools.IsToolAndMaterialSelected())
         return -1;
     // export gcode
     std::pair<bool, vector<string>> gcodes = ExportGCode(settings);

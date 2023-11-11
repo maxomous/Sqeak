@@ -107,6 +107,8 @@ public:
         else if(item.type == SketchItem::Type::Circle_PC)   { return GetElementByID<Sketch::Circle>(item.element)->PC(); }
         else { assert(0 && "SketchItem Type is not an element point"); }// Should never reach 
     }
+    
+    
     // returns radius of a circle, will only accept a circle
     double GetRadiusOfCircleBySketchItem(SketchItem item) 
     {
@@ -119,8 +121,9 @@ public:
         if(item.type == SketchItem::Type::Arc)              { return GetElementByID<Sketch::Arc>(item.element)->Direction(); }
         else { assert(0 && "SketchItem Type is not an Arc"); }// Should never reach 
     }
-        
-    Item& GetItemBySketchItem(SketchItem item) 
+    
+    // Returns item with ref (Point, line, arc, circle) from SketchItem
+    Item_WithReference& GetItemBySketchItem(SketchItem item) 
     {
         if(item.type == SketchItem::Type::Point)            { return GetElementByID<Sketch::Point>(item.element)->Item_Elem(); }
         else if(item.type == SketchItem::Type::Line)        { return GetElementByID<Sketch::Line>(item.element)->Item_Elem(); }
@@ -141,8 +144,41 @@ public:
         else { assert(0 && "SketchItem Type is not an element point"); }// Should never reach 
     }
 
-       
+   void ConstrainPointToAny(SketchItem point, SketchItem item) 
+   {    // Create a constraint between new point and the element under cursor
+        if (item.type != SketchItem::Type::Unset) {
+            if( (item.type == SketchItem::Type::Point) || (item.type == SketchItem::Type::Line_P0) || (item.type == SketchItem::Type::Line_P1) ||
+                (item.type == SketchItem::Type::Arc_P0) || (item.type == SketchItem::Type::Arc_P1) || (item.type == SketchItem::Type::Arc_PC) || 
+                (item.type == SketchItem::Type::Circle_PC)) {
+                AddConstraint<Coincident_PointToPoint> (point, item);
+            } else if(item.type == SketchItem::Type::Line) {                              
+                AddConstraint<Coincident_PointToLine>  (point, item);
+            } else if(item.type == SketchItem::Type::Arc) { 
+                AddConstraint<Coincident_PointToArc>   (point, item);
+            } else if(item.type == SketchItem::Type::Circle) {
+                AddConstraint<Coincident_PointToCircle>(point, item);
+            } else { 
+                assert(0 && "Unkown Type"); 
+            }
+        }
+    }
+    
+    // Finds item closest to pClose and creates a Constraint between it and point
+    bool ConstrainPointToClosest(SketchItem point, const Vec2& pClose) 
+    {
+        // get parent of point (i.e. line etc.)
+        SketchItem closestItem = GetSketchItemByPosition(pClose, SelectionFilter::Basic, point.element); // ignore parent element of point 
+        // Dont add constraint if the parent element of closestItem matches the parent element of point
+        if(point.element != closestItem.element) {            
+            ConstrainPointToAny(point, closestItem);
+            return true;
+        }
+        return false;
+    }
+    
+            
         
+
  //   
  //   selecting 1st point     closest (prioritises closest point, if none, then it will select the first element within tolerence)
  //       
@@ -202,7 +238,7 @@ public:
     // Finds points within a tolerance to position p and sets their hovered flag to true
     bool SetHoveredByPosition(const Vec2& p, SelectionFilter filter) 
     { 
-        return EditItemByPosition(p, [](Sketch::Item& item) {
+        return EditItemByPosition(p, [](Sketch::Item_WithReference& item) {
             item.SetHovered(true);
         }, filter, true); // include origin point    
     }
@@ -210,12 +246,21 @@ public:
     // Finds points within a tolerance to position p and sets their selected flag to true
     bool SetSelectedByPosition(const Vec2& p, SelectionFilter filter) 
     {
-        bool hasSelection = EditItemByPosition(p, [](Sketch::Item& item) {
+        return EditItemByPosition(p, [](Sketch::Item_WithReference& item) {
             item.SetSelected(!item.IsSelected());
         }, filter, true); // include origin point
-        return hasSelection;
     }  
     
+    // Finds points within a tolerance to position p and returns the sketchitem
+    SketchItem GetSketchItemByPosition(const Vec2& p, SelectionFilter filter, Sketch::ElementID ignoreElement = -1) 
+    { 
+        SketchItem itemFound;
+        // Call callback on closest item found (prioritising points over other geometry)
+        EditItemByPosition(p, [&](Sketch::Item_WithReference& item) { 
+            itemFound = item.Reference();
+        }, filter, true, ignoreElement); // include origin point
+        return itemFound;
+    }  
     
     
     bool AddHoveredBetween(const Vec2& p0, const Vec2& p1, SelectionFilter filter, bool includePartiallyInside) {
@@ -497,12 +542,14 @@ private:
         // return whether element was found or not
         return isElementFound;
     }
-
-    // Finds points within a tolerance to position p and calls callback function, passing the item as a parameter
-    // Points are prioritised over elements
+    
+    // (TODO: USE CLOSEST ELEMENT)
+    // Finds closest point or first element within a tolerance to position p and calls callback function, passing the item as a parameter
+    // Point is prioritised over element
     // Callback on a Point element will be ignored and handled within the ItemPoint instead to prevent testing position twice
     // Returns success
-    bool EditItemByPosition(const Vec2& p, std::function<void(Sketch::Item&)> cb, SelectionFilter filter, bool isOriginIncluded = false)
+    // If element id matches ignoreElement, it will be skipped
+    bool EditItemByPosition(const Vec2& p, std::function<void(Sketch::Item_WithReference&)> cb, SelectionFilter filter, bool isOriginIncluded = false, Sketch::ElementID ignoreElement = -1)
     {     
         Sketch::SketchItem closestItem;
         double closestDistance = selectionTolerance;
@@ -511,11 +558,13 @@ private:
         if(filter & SelectionFilter::Points) {
             // Check each point on each element to see whether it falls within tolerance
             ForEachItemPoint([&](Sketch::Item_Point& item) {
-                // Adds point to pointsFound if point falls within tolerance
+                // Adds point to pointsFound if point falls within tolerance 
                 double distance = Hypot(item.p - p);
                 if(distance < closestDistance) {
-                    closestItem = item.Reference();
-                    closestDistance = distance;
+                    if(item.Reference().element != ignoreElement) { // only add if no match with ignoreItem
+                        closestItem = item.Reference();
+                        closestDistance = distance;
+                    }
                 }
             }, isOriginIncluded); // include origin
             

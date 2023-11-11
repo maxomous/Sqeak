@@ -68,9 +68,12 @@ public:
     virtual bool Update() = 0;
     // Draw Imgui side window widgets
     virtual bool DrawWindow() = 0;
+    // Draw Imgui toolbar widgets
+    virtual bool DrawToolbar() = 0;
+    
     // return value is success
-    template<typename T>
-    virtual bool InterpretGCode(const std::vector<T>& inputPaths, std::function<void(std::vector<std::string>&)> cb) = 0;
+    virtual bool GenerateGCodeFromPath(const std::vector<Geom::LineString>& inputPaths, std::function<void(std::vector<std::string>&)> cb) = 0;
+    virtual bool GenerateGCodeFromPath(const std::vector<Geom::Polygon>& inputPaths, std::function<void(std::vector<std::string>&)> cb) = 0;
                
     /*
     // Send strait to GRBL
@@ -79,7 +82,7 @@ public:
     {
         Log::Info("Sending GCode to GRBL");
         // build gcode of active function and run it
-        InterpretGCode(inputPath, [&](auto gcodes){
+        GenerateGCodeFromPath(inputPath, [&](auto gcodes){
             // start file timer
             Event<Event_ResetFileTimer>::Dispatch({});  
             // send gocdes to grbl
@@ -91,13 +94,14 @@ public:
         });
     }  
     * */
+    // display the active function on viewer
     // T can be Geom::LineString or Geom::Polygon
     template<typename T>
     bool GCode_SendToViewer(const std::vector<T>& inputPaths)
     { 
         std::cout << "Updating: GCode_SendToViewer" << std::endl;
         // update the active function 
-        bool success = InterpretGCode(inputPaths, [](auto gcodes) {
+        bool success = GenerateGCodeFromPath(inputPaths, [](auto gcodes) {
             Event<Event_Update3DModelFromVector>::Dispatch({ vector<string>(move(gcodes)) }); 
         });
         if(!success) {
@@ -107,16 +111,20 @@ public:
     }
         
     // export the active function as gcode
-    bool GCode_Export(std::string saveDirectory, const std::vector<Geom::LineString>& inputPaths) 
+    // T can be Geom::LineString or Geom::Polygon
+    template<typename T>
+    bool GCode_Export(std::string saveDirectory, const std::vector<T>& inputPaths) 
     { 
         // make filepath for new GCode file 
         std::string filepath = File::CombineDirPath(saveDirectory, Name() + ".nc"); 
         Log::Info("Exporting GCode to %s", filepath.c_str());
         // build gcode of active function and export it to file 
-        return InterpretGCode(inputPaths, [&](auto gcodes) { 
+        return GenerateGCodeFromPath(inputPaths, [&](auto gcodes) { 
             File::WriteArray(filepath, gcodes);
         }); 
     }
+
+    // TODO: GCode_Export for Polygon
     
 protected:
     Function(std::string name, Settings& settings, Sketch::Sketcher& sketcher)
@@ -141,7 +149,9 @@ protected:
         // Show ok / cancel buttons if on the Select command
         if(isActive) {
             ImGui::SameLine();
-            if(ImGui::Button("Ok")) {
+            ImGui::BeginGroup();
+            
+            if(ImGuiModules::ImageButton(s.img_Tick2, s.imageButton_Confirm)) {
                 // Store a copy of the selected geometry
                 if(points)   *points   = events.GetSelectedPoints();
                 if(elements) *elements = events.GetSelectedElements();
@@ -149,11 +159,12 @@ protected:
                 // Deselect tool
                 events.SetCommandType(Sketch::SketchEvents::CommandType::None);
             }
-            ImGui::SameLine();
-            if(ImGui::Button("Cancel")) {
+            //ImGui::SameLine();
+            if(ImGuiModules::ImageButton(s.img_Cross2, s.imageButton_Confirm)) {
                 // Deselect tool
                 events.SetCommandType(Sketch::SketchEvents::CommandType::None);
             }
+            ImGui::EndGroup();
         }
     }
     
@@ -214,10 +225,17 @@ public:
         PathCutter pathCutter;
         // contains the parameters to convert a line string in to GCode by cutting it at depths and adding tabs
         DepthCutter depthCutter;
+        // link to tool / tooldata (shared pointers) 
+        std::shared_ptr<ToolSettings::Tools::Tool> tool_ptr = nullptr;
+        std::shared_ptr<ToolSettings::Tools::Tool::ToolData> tooldata_ptr = nullptr;
         // Tool parameters
         float spindleSpeed = 12000.0f;
         
-        void SetTool(ToolSettings::Tools& tools);
+        // make a copy (shared ptr) of tool
+        void LinkTool(ToolSettings::Tools& tools);
+        // update the tool data in depthCutter to the tool assigned to this function
+        bool SetTool();
+
         // ImGui input widgets for the parameters
         bool Draw(Settings& settings);
     };
@@ -228,6 +246,7 @@ public:
     bool Update() override;
     
     bool DrawWindow() override;
+    bool DrawToolbar() override;
 
     std::string HeaderText();
     
@@ -251,14 +270,17 @@ public:
             }  
         }
         
+        
+        // TODO: CHECK VALUES IN PATHCUTTER INSTEAD OF ISTOOLANDMATERIALSELECTED
+        
         // check tool and material is selected
-        if(m_Settings.p.toolSettings.tools.IsToolAndMaterialSelected()) {
+        if(!m_Settings.p.toolSettings.tools.IsToolAndMaterialSelected()) {
             Log::Error("Tool and Material must be selected");
             return false;
         }
 
         // z top and bottom
-        if(m_Params.cutPathParameters.depth.zBottom > m_Params.cutPathParameters.depth.zTop) {
+        if(m_Params.depthCutter.depth.zBottom > m_Params.depthCutter.depth.zTop) {
             Log::Error("Z Bottom must be below or equal to Z Top");
             return false;
         }
@@ -272,23 +294,38 @@ public:
         return true;
     }   
 
+    
 
 
+    bool GenerateGCodeFromPath(const std::vector<Geom::LineString>& inputPaths, std::function<void(std::vector<std::string>&)> cb) override
+    {
+        return GenerateGCodeFromPath_Impl(inputPaths, cb);
+    }
+    bool GenerateGCodeFromPath(const std::vector<Geom::Polygon>& inputPaths, std::function<void(std::vector<std::string>&)> cb) override
+    {
+        return GenerateGCodeFromPath_Impl(inputPaths, cb);
+    }
 
+
+// TDOD: Make DepthCutter& depthCutter & float spindleSpeed a parameter
+        
     // return value is success
     // T can be Geom::LineString or Geom::Polygon
     template<typename T>
-    bool InterpretGCode(const std::vector<T>& inputPaths, std::function<void(std::vector<std::string>&)> cb) override
+    bool GenerateGCodeFromPath_Impl(const std::vector<T>& inputPaths, std::function<void(std::vector<std::string>&)> cb)
     {
         // Error check inputs
-        if(!IsValidInputs(inputPaths)) { return false; }  
-             
+        if(!IsValidInputs(inputPaths)) { return false; }
+        // Update tool parameters (error if none selected)
+        if(!m_Params.SetTool()) { return false; }
+        
         // initialise 
         GCodeBuilder gcodes;
         // Add the GCode header text
         gcodes.Add(HeaderText());
         // Resets all the main modal commands + sets spindle speed 
         gcodes.Initialisation(m_Params.spindleSpeed);
+
 
         // Tool Radius
         float toolRadius = fabsf(m_Params.depthCutter.tool.diameter / 2.0f);
@@ -341,11 +378,12 @@ struct Functions
         : m_Settings(settings), m_Sketcher(sketcher) 
     {
         // Initialise a function temporarily
-        m_Functions.Add<Function_CutPath>("Cut Path##INSERT ID", settings, sketcher);
+        m_Functions.Add<Function_CutPath>("Path##INSERT ID", settings, sketcher);
     }
     
     void Update();
     void DrawWindows();
+    void DrawToolbars();
     void DrawItems();
 
     Settings& m_Settings; 

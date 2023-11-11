@@ -1,5 +1,5 @@
 
-#include "common.h" 
+#include "gcreader.h"
 using namespace std;
 using namespace MaxLib;
 

@@ -26,7 +26,7 @@ void FunctionType_FacingCut::DrawPopup(Settings& settings)
 bool FunctionType_FacingCut::IsValidInputs(Settings& settings) 
 {
     // check tool and material is selected
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(!settings.p.tools.IsToolAndMaterialSelected())
         return false;
     // start and end point
     glm::vec3 pDif = m_Params.p1 - m_Params.p0;

@@ -38,14 +38,11 @@ struct ImGuiCustomModules
     // text heading
     static void Heading(Settings& settings, const std::string& text, float centreAboutWidth = 0.0f);
     static void HeadingInTable(Settings& settings, const std::string& text); 
-    // text heading with edit button (for toolbar)
-    static bool HeadingWithEdit(Settings& settings, const std::string& name);
-    // edit button
-    static bool EditButton(Settings& settings, const char* id);
-    
+
+
     
     // same as ImGuiModules::ImageButtonWithText() but centres about frame 
-    static bool ImageButtonWithText_CentredVertically(const std::string& text, ImageTexture& image, ImGuiModules::ImageButtonStyle* imageButton, bool isActive, float frameHeight)
+    static bool ImageButtonWithText_CentredVertically(const std::string& text, ImageTexture image, ImGuiModules::ImageButtonStyle* imageButton, bool isActive, float frameHeight)
     { 
         // Centre widget about toolbarItemHeight
         ImGui::BeginGroup();
@@ -54,7 +51,6 @@ struct ImGuiCustomModules
         ImGui::EndGroup();
         return isClicked;
     }
-
 };
 
 } // end namespace Sqeak

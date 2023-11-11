@@ -417,6 +417,60 @@ gui/imgui_custommodules.cpp.s:
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gui/imgui_custommodules.cpp.s
 .PHONY : gui/imgui_custommodules.cpp.s
 
+gui/jogcontroller.o: gui/jogcontroller.cpp.o
+
+.PHONY : gui/jogcontroller.o
+
+# target to build an object file
+gui/jogcontroller.cpp.o:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.o
+.PHONY : gui/jogcontroller.cpp.o
+
+gui/jogcontroller.i: gui/jogcontroller.cpp.i
+
+.PHONY : gui/jogcontroller.i
+
+# target to preprocess a source file
+gui/jogcontroller.cpp.i:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.i
+.PHONY : gui/jogcontroller.cpp.i
+
+gui/jogcontroller.s: gui/jogcontroller.cpp.s
+
+.PHONY : gui/jogcontroller.s
+
+# target to generate assembly for a file
+gui/jogcontroller.cpp.s:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gui/jogcontroller.cpp.s
+.PHONY : gui/jogcontroller.cpp.s
+
+gui/toolbar.o: gui/toolbar.cpp.o
+
+.PHONY : gui/toolbar.o
+
+# target to build an object file
+gui/toolbar.cpp.o:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gui/toolbar.cpp.o
+.PHONY : gui/toolbar.cpp.o
+
+gui/toolbar.i: gui/toolbar.cpp.i
+
+.PHONY : gui/toolbar.i
+
+# target to preprocess a source file
+gui/toolbar.cpp.i:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gui/toolbar.cpp.i
+.PHONY : gui/toolbar.cpp.i
+
+gui/toolbar.s: gui/toolbar.cpp.s
+
+.PHONY : gui/toolbar.s
+
+# target to generate assembly for a file
+gui/toolbar.cpp.s:
+	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/gui/toolbar.cpp.s
+.PHONY : gui/toolbar.cpp.s
+
 gui/viewer.o: gui/viewer.cpp.o
 
 .PHONY : gui/viewer.o
@@ -699,6 +753,12 @@ help:
 	@echo "... gui/imgui_custommodules.o"
 	@echo "... gui/imgui_custommodules.i"
 	@echo "... gui/imgui_custommodules.s"
+	@echo "... gui/jogcontroller.o"
+	@echo "... gui/jogcontroller.i"
+	@echo "... gui/jogcontroller.s"
+	@echo "... gui/toolbar.o"
+	@echo "... gui/toolbar.i"
+	@echo "... gui/toolbar.s"
 	@echo "... gui/viewer.o"
 	@echo "... gui/viewer.i"
 	@echo "... gui/viewer.s"

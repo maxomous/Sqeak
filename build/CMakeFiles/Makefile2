@@ -193,20 +193,20 @@ sketcher/deps/constraintsolver/libslvs/clean: sketcher/deps/constraintsolver/lib
 # Target rules for target CMakeFiles/Sqeak.dir
 
 # All Build rule for target.
-CMakeFiles/Sqeak.dir/all: glcore/deps/imgui/CMakeFiles/ImGui.dir/all
-CMakeFiles/Sqeak.dir/all: sketcher/CMakeFiles/Sketcher.dir/all
-CMakeFiles/Sqeak.dir/all: glcore/CMakeFiles/GLCore.dir/all
-CMakeFiles/Sqeak.dir/all: sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/all
 CMakeFiles/Sqeak.dir/all: sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all
 CMakeFiles/Sqeak.dir/all: grbl/CMakeFiles/GRBL.dir/all
+CMakeFiles/Sqeak.dir/all: glcore/CMakeFiles/GLCore.dir/all
+CMakeFiles/Sqeak.dir/all: glcore/deps/imgui/CMakeFiles/ImGui.dir/all
+CMakeFiles/Sqeak.dir/all: sketcher/CMakeFiles/Sketcher.dir/all
+CMakeFiles/Sqeak.dir/all: sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/all
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/depend
 	$(MAKE) -f CMakeFiles/Sqeak.dir/build.make CMakeFiles/Sqeak.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53 "Built target Sqeak"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55 "Built target Sqeak"
 .PHONY : CMakeFiles/Sqeak.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/Sqeak.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build/CMakeFiles 62
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build/CMakeFiles 64
 	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/Sqeak.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/pi/Desktop/Projects/Sqeak/build/CMakeFiles 0
 .PHONY : CMakeFiles/Sqeak.dir/rule
@@ -279,8 +279,8 @@ glcore/deps/imgui/CMakeFiles/ImGui.dir/clean:
 # Target rules for target sketcher/CMakeFiles/Sketcher.dir
 
 # All Build rule for target.
-sketcher/CMakeFiles/Sketcher.dir/all: sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/all
 sketcher/CMakeFiles/Sketcher.dir/all: sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all
+sketcher/CMakeFiles/Sketcher.dir/all: sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/all
 	$(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/depend
 	$(MAKE) -f sketcher/CMakeFiles/Sketcher.dir/build.make sketcher/CMakeFiles/Sketcher.dir/build
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=29,30,31,32,33,34,35 "Built target Sketcher"
@@ -337,7 +337,7 @@ sketcher/deps/constraintsolver/CMakeFiles/ConstraintSolver.dir/clean:
 sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all:
 	$(MAKE) -f sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build.make sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/depend
 	$(MAKE) -f sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build.make sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=54,55,56,57,58,59,60,61,62 "Built target libslvs"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/pi/Desktop/Projects/Sqeak/build/CMakeFiles --progress-num=56,57,58,59,60,61,62,63,64 "Built target libslvs"
 .PHONY : sketcher/deps/constraintsolver/libslvs/CMakeFiles/libslvs.dir/all
 
 # Build rule for subdir invocation for target.

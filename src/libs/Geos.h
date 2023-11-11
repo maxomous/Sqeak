@@ -219,7 +219,7 @@ public:
             std::vector<Geom::LineString> cutEdges;        
             std::vector<Geom::LineString> invalidRingLines;
         };
-        
+         
         // Parameters for offset
         struct OffsetParameters
         {
@@ -240,7 +240,9 @@ public:
             int nSegments = Geom::ArcSegments(distance, parameters.arcTolerance);
             
             // buffer offset operation
-            std::unique_ptr<geos::operation::buffer::BufferOp> bufferOp(collection.get(), { nSegments, parameters.endCapStyle });
+// TODO: std::unique_ptr<geos::operation::buffer::BufferOp> bufferOp(collection.get(), { nSegments, parameters.endCapStyle });
+            auto bufferOp = std::make_unique<geos::operation::buffer::BufferOp>(collection.get(), geos::operation::buffer::BufferParameters(nSegments, parameters.endCapStyle));
+
             // set if offset only 1 side of geometry
             bufferOp->setSingleSided((bool)offsetType);
             // perform offset

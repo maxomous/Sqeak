@@ -1,3 +1,4 @@
 {
+    "cmake.configureOnOpen": false,
     "cmake.sourceDirectory": "/home/pi/Desktop/Projects/Sqeak/src"
 }

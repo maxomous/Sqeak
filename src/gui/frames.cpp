@@ -3,7 +3,6 @@
  *  Max Peglar-Willis 2021
  */ 
 
-
 #include "frames.h"
 
 using namespace std;
@@ -394,1429 +393,6 @@ struct PopupMessages {
     
 };
 
-struct JogController {
-    bool allow_Keyb_Jogging = false;
-    bool currently_Jogging = false;
-    float jogDistance = 10;
-    // TODO DELETE THIS, READ DIRECTLY FROM SETTINGS
-    int feedRate = 6000;
-
-    /*
-      float calcuateJogDistance(float feedrate, float acc)
-      {
-          float v = feedrate / 60; // mm/s
-          int N = 15; // number blocks in planner buffer
-
-          float dt = (v*v) / (2*acc*(N-1));
-
-          cout << "@ " << feedrate << "mm/min" << endl;
-          cout << "dt = " << dt << endl;
-
-          float smin = v*dt; // mm (smallest jog distance
-
-          cout << "sMin = " << smin << endl << endl;
-          return smin;
-      }
-  */
-    void KeyboardJogging(GRBL &grbl) {
-        // - This is a rather messy piece of code, but for now it solves the
-        // issue.
-        // - When an arrow key is held, we want to repeatedly send jog commands
-        // to grbl.
-        // - The first issue is that we dont want to send more jog commands than
-        // the number of
-        //     planner blocks (15) in grbl, otherwise we have to remove any
-        //     commands that haven't
-        //    been acknowledged. So we wait for an ok to be received before
-        //    sending the
-        //     next jog (this ensures a max. of 15 acknowledged + 1 pending jogs
-        //     are sent)
-        // - When we release an arrow key, we want to send a 'realtime jog
-        // cancel' cmd. When all jogs
-        //    have recieved an 'ok', this works fine, but if there is a pending
-        //    jog in the queue, the cancel cmd executes first, clearing grbl's
-        //    buffer, which then allows the pending jog to execute.
-        //    - Option 1 was to wait for the 'ok' to arrive before sending the
-        //    cancel command
-        //        But this meant that we would have to wait for the last jog to
-        //        execute which could be a sizable distance.
-        //     - Option 2 was to repeatedly send cancel commands until we
-        //     recieve and 'ok' for that
-        //        pending jog - not this most elegant fix but it seems to work
-        //        for now.
-        //    - Option 3 was to not allow too many jogs to be sent to grbl to
-        //    fill the planner
-        //        blocks, but the only way to know this information was from the
-        //        status response (Bf:15,128). This just seemed messy, as we are
-        //        relying on a delayed response from grbl (or the status
-        //        responses may not even be switched on)
-        //    - Option 4 - send one long jog to end of table
-
-        int KEY_LEFT = ImGui::GetKeyIndex(ImGuiKey_LeftArrow);
-        int KEY_UP = ImGui::GetKeyIndex(ImGuiKey_UpArrow);
-        int KEY_RIGHT = ImGui::GetKeyIndex(ImGuiKey_RightArrow);
-        int KEY_DOWN = ImGui::GetKeyIndex(ImGuiKey_DownArrow);
-
-        // option 4 - one long jog (must be > than the extents of the machine
-        static int jogLongDistance = 10000;
-        // on key release, send cancel
-        if ((ImGui::IsKeyReleased(KEY_LEFT) ||
-             ImGui::IsKeyReleased(KEY_RIGHT) || ImGui::IsKeyReleased(KEY_UP) ||
-             ImGui::IsKeyReleased(KEY_DOWN)) &&
-            (!ImGui::IsKeyPressed(KEY_LEFT) &&
-             !ImGui::IsKeyPressed(KEY_RIGHT) && !ImGui::IsKeyPressed(KEY_UP) &&
-             !ImGui::IsKeyPressed(KEY_DOWN))) {
-            grbl.sendRT(GRBL_RT_JOG_CANCEL);
-            currently_Jogging = false;
-        } else if (!currently_Jogging) { // only allow combination of 2 buttons
-            if (ImGui::IsKeyPressed(KEY_LEFT) + ImGui::IsKeyPressed(KEY_UP) +
-                    ImGui::IsKeyPressed(KEY_RIGHT) +
-                    ImGui::IsKeyPressed(KEY_DOWN) <=
-                2) {
-                if (ImGui::IsKeyPressed(KEY_LEFT) &&
-                    ImGui::IsKeyPressed(KEY_UP)) {
-                    grbl.sendJog(Vec3(-jogLongDistance, jogLongDistance, 0),
-                                 feedRate);
-                    currently_Jogging = true;
-                } else if (ImGui::IsKeyPressed(KEY_UP) &&
-                           ImGui::IsKeyPressed(KEY_RIGHT)) {
-                    grbl.sendJog(Vec3(jogLongDistance, jogLongDistance, 0),
-                                 feedRate);
-                    currently_Jogging = true;
-                } else if (ImGui::IsKeyPressed(KEY_RIGHT) &&
-                           ImGui::IsKeyPressed(KEY_DOWN)) {
-                    grbl.sendJog(Vec3(jogLongDistance, -jogLongDistance, 0),
-                                 feedRate);
-                    currently_Jogging = true;
-                } else if (ImGui::IsKeyPressed(KEY_DOWN) &&
-                           ImGui::IsKeyPressed(KEY_LEFT)) {
-                    grbl.sendJog(Vec3(-jogLongDistance, -jogLongDistance, 0),
-                                 feedRate);
-                    currently_Jogging = true;
-                }
-
-                else if (ImGui::IsKeyPressed(KEY_LEFT)) {
-                    grbl.sendJog(Vec3(-jogLongDistance, 0, 0), feedRate);
-                    currently_Jogging = true;
-                } else if (ImGui::IsKeyPressed(KEY_RIGHT)) {
-                    grbl.sendJog(Vec3(jogLongDistance, 0, 0), feedRate);
-                    currently_Jogging = true;
-                } else if (ImGui::IsKeyPressed(KEY_UP)) {
-                    grbl.sendJog(Vec3(0, jogLongDistance, 0), feedRate);
-                    currently_Jogging = true;
-                } else if (ImGui::IsKeyPressed(KEY_DOWN)) {
-                    grbl.sendJog(Vec3(0, -jogLongDistance, 0), feedRate);
-                    currently_Jogging = true;
-                }
-            }
-        }
-        /*    option 1: wait to recieve ok before sending cancel
-        // flag for when arrow key is released
-        static bool send_Jog_Cancel = false;
-        // have we recieved an 'ok' for every jog command we have sent?
-        bool synced_With_grbl = grbl.gcList.status.size() == grbl.gcList.read;
-        // on key release, send cancel
-        if((ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)) ||
-        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)) ||
-            ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) ||
-        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))) {
-            send_Jog_Cancel = true;
-        }
-        else if(synced_With_grbl && !send_Jog_Cancel)
-        {
-            if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)))
-            grbl.sendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
-            else
-        if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow)))
-            grbl.sendJog(X_AXIS, FORWARD, jogDistance, feedRate);
-            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
-            grbl.sendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
-            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
-            grbl.sendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
-        }
-        // if synced, (last jog recieved 'ok') send cancel
-        if(synced_With_grbl && send_Jog_Cancel) {
-            grbl.SendRT(GRBL_RT_JOG_CANCEL);
-            send_Jog_Cancel = false;
-        }
-        */
-        /* repeatedly send cancels
-        // flag for when arrow key is released
-        static bool send_Jog_Cancel = false;
-        // have we recieved an 'ok' for every jog command we have sent?
-        bool synced_With_grbl = grbl.gcList.status.size() == grbl.gcList.read;
-        // on key release, set flag to true
-        if((ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)) ||
-        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)) ||
-            ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) ||
-        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))) {
-            send_Jog_Cancel = true;
-        } // only send jog if an ok for the last jog is received & we are not
-        waiting to cancel jog else if(synced_With_grbl && !send_Jog_Cancel)
-        {
-            if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)))
-            grbl.sendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
-            else
-        if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow)))
-            grbl.sendJog(X_AXIS, FORWARD, jogDistance, feedRate);
-            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
-            grbl.sendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
-            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
-            grbl.sendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
-        }
-        // repeatedly send cancels until the unacknowledged jog has been
-        cancelled if(send_Jog_Cancel) { grbl.SendRT(GRBL_RT_JOG_CANCEL); if
-        (synced_With_grbl) send_Jog_Cancel = false;
-        }*/
-    }
-
-    void DrawJogController(GRBL &grbl, Settings& settings) 
-    {        
-        if (allow_Keyb_Jogging)
-            KeyboardJogging(grbl);
-            
-        ImVec2& buttonSize = settings.guiSettings.imageButton_Toolbar_Jog->buttonSize;
-         
-         
-        
-        //float tableHeight = settings.guiSettings.toolbarItemHeight
-        
-        ImGui::BeginGroup();
-        // ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX,
-        if (ImGui::BeginTable("JogController",  5, ImGuiTableFlags_NoSavedSettings  | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_PadOuterX, ImVec2(buttonSize.x * 6.0f, 0.0f))) 
-        {    
-            // first row   
-            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
-                
-                // Y +
-                if(ImGui::TableSetColumnIndex(1)) {
-                    if (ImGuiModules::ImageButtonWithText("##JogY+", settings.guiSettings.img_ArrowUp, settings.guiSettings.imageButton_Toolbar_Jog)) {
-                        if (!currently_Jogging)
-                            grbl.sendJog(Vec3(0, jogDistance, 0), feedRate);
-                    }
-                }
-                
-                // Z+
-                if(ImGui::TableSetColumnIndex(4)) {
-                    if (ImGuiModules::ImageButtonWithText("##JogZ+", settings.guiSettings.img_ArrowUp, settings.guiSettings.imageButton_Toolbar_Jog)) {
-                        if (!currently_Jogging)
-                            grbl.sendJog(Vec3(0, 0, jogDistance), feedRate);
-                    }
-                } 
-            // next row
-            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
-                
-                // X -
-                if(ImGui::TableSetColumnIndex(0)) {
-                    if (ImGuiModules::ImageButtonWithText("##JogX-", settings.guiSettings.img_ArrowLeft, settings.guiSettings.imageButton_Toolbar_Jog)) {
-                        if (!currently_Jogging)
-                            grbl.sendJog(Vec3(-jogDistance, 0, 0), feedRate);
-                    }
-                }
-                // "X Y" text
-                if(ImGui::TableSetColumnIndex(1)) {
-                    ImGuiModules::CentreItemVerticallyAboutItem(buttonSize.y, settings.guiSettings.font_small->FontSize + 1.0f);
-                    ImGuiCustomModules::Heading(settings, "X Y", buttonSize.x);
-                }
-                // X +
-                if(ImGui::TableSetColumnIndex(2)) {
-                    if (ImGuiModules::ImageButtonWithText("##JogX+", settings.guiSettings.img_ArrowRight, settings.guiSettings.imageButton_Toolbar_Jog)) {
-                        if (!currently_Jogging)
-                            grbl.sendJog(Vec3(jogDistance, 0, 0), feedRate);
-                    }
-                }
-                // "Z" text
-                if(ImGui::TableSetColumnIndex(4)) {                    
-                    ImGuiModules::CentreItemVerticallyAboutItem(buttonSize.y, settings.guiSettings.font_small->FontSize + 2.0f);
-                    ImGuiCustomModules::Heading(settings, "Z", buttonSize.x);
-                }
-                  
-            // next row
-            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
-                            
-                // Y -
-                if(ImGui::TableSetColumnIndex(1)) {
-                    if (ImGuiModules::ImageButtonWithText("##JogY-", settings.guiSettings.img_ArrowDown, settings.guiSettings.imageButton_Toolbar_Jog)) {
-                        if (!currently_Jogging)
-                            grbl.sendJog(Vec3(0, -jogDistance, 0), feedRate);
-                    }
-                }
-                // Z-
-                if(ImGui::TableSetColumnIndex(4)) {
-                    if (ImGuiModules::ImageButtonWithText("##JogZ-", settings.guiSettings.img_ArrowDown, settings.guiSettings.imageButton_Toolbar_Jog)) {
-                        if (!currently_Jogging)
-                            grbl.sendJog(Vec3(0, 0, -jogDistance), feedRate);
-                    }
-                }
-            
-            ImGui::EndTable();
-        } 
-    
-        
-        ImGui::EndGroup();
-        
-        
-        
-        
-        
-        /*
-        
-        
-        // Draw Jog XY
-        ImGui::BeginGroup();
-        ImGui::PushID("JogXY");
-
-            ImGui::Dummy(buttonSize);
-            ImGui::SameLine();
-            // Y +
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp)) {
-                if (!currently_Jogging)
-                    grbl.sendJog(glm::vec3(0, jogDistance, 0), feedRate);
-            }
-            // X -
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowLeft)) {
-                if (!currently_Jogging)
-                    grbl.sendJog(glm::vec3(-jogDistance, 0, 0), feedRate);
-            }
-            ImGui::SameLine();
-            
-            // "X/Y" text
-            ImGuiModules::MoveCursorPosY(yMove);
-            ImGuiCustomModules::Heading(settings, "X Y", buttonSize.x);
-            ImGuiModules::MoveCursorPosY(-yMove);
-            
-            ImGui::SameLine();
-            // X +
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowRight)) {
-                if (!currently_Jogging)
-                    grbl.sendJog(glm::vec3(jogDistance, 0, 0), feedRate);
-            }
-            ImGui::Dummy(buttonSize);
-            ImGui::SameLine();
-            // Y -
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown)) {
-                if (!currently_Jogging)
-                    grbl.sendJog(glm::vec3(0, -jogDistance, 0), feedRate);
-            }
-            
-        ImGui::PopID();
-        ImGui::EndGroup();
-
-        ImGui::SameLine();
-        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 15);
-
-        // Draw Jog Z
-        ImGui::BeginGroup();
-        ImGui::PushID("JogZ");
-            // Z+
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp)) {
-                if (!currently_Jogging)
-                    grbl.sendJog(glm::vec3(0, 0, jogDistance), feedRate);
-            }
-            // "Z" text
-            ImGuiModules::MoveCursorPosY(yMove);
-            ImGuiCustomModules::Heading(settings, "Z", buttonSize.x);
-            ImGuiModules::MoveCursorPosY(yMove);
-            // Z-
-            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown)) {
-                if (!currently_Jogging)
-                    grbl.sendJog(glm::vec3(0, 0, -jogDistance), feedRate);
-            }
-
-        ImGui::PopID();
-        ImGui::EndGroup(); 
-        */
-    }
-    void DrawJogSetting(GRBLVals& grblVals) {
-        
-        ImGui::Checkbox("Control with arrow keys", &allow_Keyb_Jogging);
-        
-        ImGui::InputFloat("Jog Distance", &jogDistance);
-
-        ImGuiModules::Incrementer("Jog0.1", "0.1", 0.1f, jogDistance, false);
-        ImGui::SameLine();
-        ImGuiModules::Incrementer("Jog1", "1", 1.0f, jogDistance, false);
-        ImGui::SameLine();
-        ImGuiModules::Incrementer("Jog10", "10", 10.0f, jogDistance, false);
-
-        ImGui::Separator();
-
-        ImGui::SliderInt("Feed Rate", &feedRate, 0, grblVals.settings.max_FeedRate);
-    }
-
-};
-
-
-// for making button invisible
-const bool BUTTON_IS_INVISIBLE  = true;
-
-// For when a toolbar item is always enabled
-const bool EDIT_BUTTON_ENABLED  = true;
-const bool EDIT_BUTTON_DISABLED = false; 
-
-
-// All methods handle their opwn disabling (i.e. if grbl is diconnected)
-class ToolbarItem 
-{
-public:
-    enum class DisabledFlag { WhenDisconnected, Always, Never};
-    // Only one callback can be added and should be used for either the edit button or with a custom button
-    ToolbarItem(const std::string& name, DisabledFlag disabledFlag = DisabledFlag::WhenDisconnected, std::function<void()> cbDraw = []() {}, bool hasEditButton = EDIT_BUTTON_DISABLED, std::function<void()> cbDrawPopup = nullptr, ImGuiTableColumnFlags flags = 0) 
-      : m_Name(name), 
-        m_DisabledFlag(disabledFlag), 
-        cb_Draw(cbDraw), 
-        m_HasEditButton(hasEditButton), 
-        cb_DrawPopup(cbDrawPopup), 
-        m_Popup(std::string("Popup ") + name), 
-        m_TableColumnFlags(flags)
-    {}
-    
-    void DrawSetupColumn() {
-        // Ensure the item is visible
-        if(!m_IsVisible) { return; }
-        ImGui::TableSetupColumn(m_Name.c_str(), m_TableColumnFlags);
-    }
-    
-    
-    
-    void Draw(Settings* settings) 
-    { 
-        // Ensure the item is visible
-        if(!m_IsVisible) { return; }
-        
-        DisableIfRequired(settings, [&]() {
-            cb_Draw();
-            return false;
-        });
-    }
-    bool DrawEdit(Settings* settings) 
-    {
-        // Ensure the item is visible and check if there is an edit callback
-        if(!m_IsVisible || !m_HasEditButton) { return false; }
-        
-        // returns true then edit button is clicked
-        return DisableIfRequired(settings, [&]() {
-            // Draw Edit Button, if clicked, open popup
-            return DrawEditButton(settings); 
-        });
-    }
-    // Must be called after everything else
-    bool DrawPopup(Settings* settings) 
-    {
-        // Ensure the item is visible and check if there is an edit callback
-        if(!m_IsVisible || !cb_DrawPopup) { return false; }
-        // trigger open popup if edit button was pressed
-        if(m_OpenPopup) { 
-            m_Popup.Open(); 
-            m_OpenPopup = false;
-        }
-        
-        // returns true on close (next frame)
-        return DisableIfRequired(settings, [&]() {
-            // draw popup widgets (given by callback) 
-            return m_Popup.Draw([&]() {
-                cb_DrawPopup();
-                return false;
-            });
-        });
-    }
-    // to manually call open popup when no edit button
-    // if CallbackType is EditButtonWithCallback, the edit button will open the popup
-    void OpenPopup() { m_OpenPopup = true; }
-    void SetVisible(bool value) { m_IsVisible = value; }
-    bool IsVisible() { return m_IsVisible; }
-    
-    std::string m_Name;
-    DisabledFlag m_DisabledFlag;
-    
-private:
-    bool m_IsVisible = false;
-    bool m_OpenPopup = false;
-    std::function<void()> cb_Draw;
-    bool m_HasEditButton = false;
-    std::function<void()> cb_DrawPopup;
-    ImGuiModules::ImGuiPopup m_Popup;
-    ImGuiTableColumnFlags m_TableColumnFlags;
-    
-    bool DrawEditButton(Settings* settings) {
-        // align right: ImGui::GetContentRegionAvail().x - width
-        ImGui::SameLine(ImGui::CalcTextSize(m_Name.c_str()).x + 5.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        //ImGui::SameLine(13.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-            bool isClicked = ImGuiCustomModules::EditButton(*settings, m_Name.c_str()); // name as id
-        ImGui::PopStyleVar();
-        return isClicked;
-    }
-    
-    bool DisableIfRequired(Settings* settings, std::function<bool()> cb)
-    {
-        bool isDisabled;
-        if(m_DisabledFlag == DisabledFlag::Always)                  { isDisabled = true; }
-        else if(m_DisabledFlag == DisabledFlag::Never)              { isDisabled = false; }
-        else if(m_DisabledFlag == DisabledFlag::WhenDisconnected)   { isDisabled = !settings->grblVals.isConnected; }
-        else { Log::Critical("Unknown disabled flag"); }
-        
-        // Disable widgets if needed
-        if(isDisabled) { ImGui::BeginDisabled(); }
-            // Draw Edit Button, if clicked, open popup
-            bool isClicked = cb();
-        // Enable widgets if needed
-        if(isDisabled) { ImGui::EndDisabled(); }
-        return isClicked;
-    }
-};
-
-      
-
-
-    // Always centre this window when appearing
-    //ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-    //ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-
-
-struct Toolbar {
-        
-
-    //  TOP LEVEL
-    //   -> Draw
-    //      DRAWING LEVEL
-    //       ->New/Open/Save Drawing
-    //       ->New Sketch
-    //          SKETCH LEVEL
-    //           ->Select 
-    //           ->Point
-    //           ->Line
-    //           ->Arc
-    //           ->Circle
-    //       ->Tool / Material
-    //       ->Cut Path
-    //          FUNCTION LEVEL
-    //       ->Drill
-    //          FUNCTION LEVEL
-    //  -> Run
-    //      RUN LEVEL
-    //      -> Connect
-    //      -> Open
-    //      -> Set X0 Y0 Z0, reset, home etc.
-    //      -> Custom GCodes
-    //      -> Overrides(collapsable)
-    //      -> Jog(collapsable)
-    
-
-    // Defines which widgets to show
-    enum class CurrentLevel { Run, Drawing, Settings, Sketch, Function_CutPath };
-    
-    CurrentLevel Level() { return m_CurrentLevel; };
-
-//private: TODO:
-    
-    // states what Toolbar level we are in
-    CurrentLevel m_CurrentLevel; // initialised in constructor
-    bool levelUpdateRequired = true;
-    
-
-    // The toolbar items
-    Vector_Ptrs<ToolbarItem> toolbarItems;
-    // Indexes for toolbar items
-    struct ToolbarIndex {
-        ToolbarItem* Header_Navigation;
-        ToolbarItem* Header_Back;
-        ToolbarItem* Header_Run;
-        ToolbarItem* Header_Draw;
-        ToolbarItem* Header_Sketch;
-        ToolbarItem* Header_Settings;
-        ToolbarItem* Connect;
-        ToolbarItem* OpenFile;
-        ToolbarItem* Tools;
-        ToolbarItem* Spacer;
-        ToolbarItem* Jog;
-        ToolbarItem* Sketch;
-        ToolbarItem* SketchTools;
-        ToolbarItem* SketchConstraints;
-        ToolbarItem* Function_CutPath;
-        ToolbarItem* SwitchView;
-    } toolbarIndex;
-    
-    bool openPopup_FileBrowser = false;
-    
-    // Gets count of the visible toolbar items
-    size_t VisibleToolbarItemCount() {
-        size_t counter = 0;
-        for(size_t i = 0; i < toolbarItems.Size(); i++) {
-            if(toolbarItems[i].IsVisible()) {
-                counter++;
-            }
-        }
-        return counter;
-    }
-    
-    // jog controller + keyboard input
-    JogController jogController;
-    
-    // For timing the file
-    Timer timer;
-
-    // these are stored because otherwise references are lost in lambdas
-    Settings* m_Settings;
-    Sketch::Sketcher* m_Sketcher; 
-    FileBrowser* m_FileBrowser;
-
-    // shorthand
-    typedef ToolbarItem::DisabledFlag DisabledFlag;
-
-    Toolbar(GRBL& grbl, Settings* settings, Sketch::Sketcher* sketcherNew, FileBrowser* fileBrowser) 
-        : m_Settings(settings), m_Sketcher(sketcherNew), m_FileBrowser(fileBrowser)
-    {
-        Event<Event_ResetFileTimer>::RegisterHandler([&](Event_ResetFileTimer data) {
-            (void)data;
-            timer.Reset();
-        });
-      
-// Current LEVEL Header (simplifed greyed out out button)
-            
-        // Run / Draw Switch
-        toolbarIndex.Header_Navigation = toolbarItems.Addp("Navigation##SwitchHeaderColumn", DisabledFlag::Never, [&]() {
-               
-            GUISettings& s = m_Settings->guiSettings;
-          
-        // DRAW / RUN BUTTON
-            
-            bool isDrawActive = (m_CurrentLevel == CurrentLevel::Drawing) || (m_CurrentLevel == CurrentLevel::Sketch) || (m_CurrentLevel == CurrentLevel::Function_CutPath);
-            bool isRunActive = (m_CurrentLevel == CurrentLevel::Run);
-            bool isSettingsActive = (m_CurrentLevel == CurrentLevel::Settings);
-            
-            
-            
-            // remove spacing between items
-            ImGui::BeginGroup();
-                // Draw image button
-                if(ImGuiModules::ImageButtonWithText("Run##ToolbarNavigation", s.img_Play, s.imageButton_Toolbar_LevelToggler, isRunActive)) {
-                    // Set Toolbar level
-                    SetToolbarLevel(CurrentLevel::Run);
-                    m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
-                }
-                // on top of each other
-                if (ImGuiModules::ImageButtonWithText("Draw##ToolbarNavigation", s.img_Sketch_Draw, s.imageButton_Toolbar_LevelToggler, isDrawActive)) {
-                    // Set Toolbar level
-                    SetToolbarLevel(CurrentLevel::Drawing);
-                    m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
-                }
-            ImGui::EndGroup();
-            
-            ImGui::SameLine();
-        // Settings BUTTON
-            
-            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("##SettingsToolbarNavigation", s.img_Settings, s.imageButton_Toolbar_Settings, isSettingsActive, s.toolbarItemHeight)) {
-                // Set Toolbar level
-                SetToolbarLevel(CurrentLevel::Settings);
-                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
-            }
-            
-        });
-        // Toolbar Header Item
-        // draws text and an image by drawing an image button with text and turning off button background colour
-        auto DrawHeaderButton = [](Settings* settings, const std::string& name, ImageTexture& image) {
-            // Make button graphics invisible (make same colour as background)
-            ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f, 0.0f, 0.0f, 0.0f });
-            ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.0f, 0.0f, 0.0f, 0.0f });
-            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.0f, 0.0f, 0.0f, 0.0f });
-            // Draw ImGui Image button with text
-            bool isClicked = ImGuiModules::ImageButtonWithText(name, image, settings->guiSettings.imageButton_Toolbar_Header);
-            ImGui::PopStyleColor(3);
-            return isClicked;
-        };
-            
-        // Run Header
-        toolbarIndex.Header_Run = toolbarItems.Addp("##RunHeaderColumn", DisabledFlag::Never, [&]() {
-            DrawHeaderButton(m_Settings, "Run##RunHeaderToolbarButton", m_Settings->guiSettings.img_Play);
-        });
-        // Draw Header
-        toolbarIndex.Header_Draw = toolbarItems.Addp("##DrawHeaderColumn", DisabledFlag::Never, [&]() {
-            DrawHeaderButton(m_Settings, "Draw##DrawHeaderToolbarButton", m_Settings->guiSettings.img_Sketch_Draw);
-        });
-        // Sketch Header
-        toolbarIndex.Header_Sketch = toolbarItems.Addp("##SketchHeaderColumn", DisabledFlag::Never, [&]() {
-            DrawHeaderButton(m_Settings, "Sketch##SketchHeaderToolbarButton", m_Settings->guiSettings.img_Sketch);
-        });
-        // Sketch Header
-        toolbarIndex.Header_Settings = toolbarItems.Addp("##SettingsHeaderColumn", DisabledFlag::Never, [&]() {
-            DrawHeaderButton(m_Settings, "Settings##SettingsHeaderToolbarButton", m_Settings->guiSettings.img_Settings);
-        });
-        
-
-            
-         //  ImGui::SameLine();
-         //      
-         //  // BACK BUTTON
-         //  // we disable the back button in the top level (save this value as it may change)
-         //  bool isDisabled = !(m_CurrentLevel == CurrentLevel::Sketch || m_CurrentLevel == CurrentLevel::Function);
-         //  // Disable back button in the top level
-         //  if(isDisabled) { ImGui::BeginDisabled(); } 
-         //  
-         //      // Draw ImGui Widgets
-         //      if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("##BackToolbarNavigation", s.img_ArrowLeft, s.imageButton_Toolbar_Back, false, s.toolbarItemHeight)) {
-         //          // Move up a level
-         //          //if(m_CurrentLevel == CurrentLevel::TopLevel)        { } // do nothing
-         //          if(m_CurrentLevel == CurrentLevel::Run)             { } // do nothing
-         //          else if(m_CurrentLevel == CurrentLevel::Drawing)    { } // do nothing
-         //          else if(m_CurrentLevel == CurrentLevel::Settings)   { } // do nothing
-         //          else if(m_CurrentLevel == CurrentLevel::Sketch)     { SetToolbarLevel(CurrentLevel::Drawing); }
-         //          else if(m_CurrentLevel == CurrentLevel::Function)   { SetToolbarLevel(CurrentLevel::Drawing); }
-         //          else { Log::Critical("Current toolbar level unknown"); }
-         //           // Update viewer
-         //          m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
-         //      }
-         //
-         //  if(isDisabled) { ImGui::EndDisabled(); } 
-            
-        // BACK BUTTON
-
-        toolbarIndex.Header_Back = toolbarItems.Addp("##BackHeaderColumn", DisabledFlag::Never, [&]() {
-               
-            GUISettings& s = m_Settings->guiSettings;
-            // Draw ImGui Widgets
-            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("##BackToolbarNavigation", s.img_ArrowLeft, s.imageButton_Toolbar_Back, false, s.toolbarItemHeight)) {
-                // Move up a level
-                if(m_CurrentLevel == CurrentLevel::Run)                     { } // do nothing
-                else if(m_CurrentLevel == CurrentLevel::Drawing)            { } // do nothing
-                else if(m_CurrentLevel == CurrentLevel::Settings)           { } // do nothing
-                else if(m_CurrentLevel == CurrentLevel::Sketch)             { SetToolbarLevel(CurrentLevel::Drawing); }
-                else if(m_CurrentLevel == CurrentLevel::Function_CutPath)   { SetToolbarLevel(CurrentLevel::Drawing); }
-                else { Log::Critical("Current toolbar level unknown"); }
-                 // Update viewer
-                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
-            }
-        });
-        
-        
-// Run LEVEL
-        // Connect Button
-        toolbarIndex.Connect = toolbarItems.Addp("Connect", DisabledFlag::Never, [&]() {
-            GUISettings& s = m_Settings->guiSettings;
-            // Draw ImGui Widgets
-            ImGui::BeginGroup();
-                std::string name = (m_Settings->grblVals.isConnected) ? "Connected##ToolbarButton" : "Connect##ToolbarButton";
-                // Draw button
-                if (ImGuiCustomModules::ImageButtonWithText_CentredVertically(name, s.img_Connect, s.imageButton_Toolbar_Connect, m_Settings->grblVals.isConnected, s.toolbarItemHeight)) { 
-                    // Connect / disconnect from GRBL
-                    (m_Settings->grblVals.isConnected) ? grbl.disconnect() : grbl.connect(m_Settings->p.system.serialDevice, stoi(m_Settings->p.system.serialBaudrate));
-                }
-            ImGui::EndGroup();   
-            
-        }, EDIT_BUTTON_ENABLED, [&]() { 
-            // Draw edit popup
-            ImGui::SetNextItemWidth(80.0f);
-            ImGui::InputText("Device", &m_Settings->p.system.serialDevice);
-            ImGui::SetNextItemWidth(80.0f);
-            ImGui::InputText("Baudrate", &m_Settings->p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
-        });
-        
-        // Open File Button
-        toolbarIndex.OpenFile = toolbarItems.Addp("Open File", DisabledFlag::WhenDisconnected, [&]() {
-            GUISettings& s = m_Settings->guiSettings;
-            // Make active if file selected
-            bool isActive = (m_FileBrowser->CurrentFile() != "");
-            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Open##ToolbarButton", s.img_Open, s.imageButton_Toolbar_ButtonPrimary, isActive, s.toolbarItemHeight)) { 
-                // Check file is not running
-                if(m_Settings->grblVals.isFileRunning) { Log::Error("A file is running. This must finish before opening another"); } 
-                // open popup when draw open file clicked
-                toolbarIndex.OpenFile->OpenPopup();
-                m_Settings->SetUpdateFlag(SqeakUpdate::Full); // was ::Clear
-            }
-        }, EDIT_BUTTON_DISABLED, [&]() { 
-            // just draw the widgets for the filebrowser as we are handling the popup ourselves
-            // if an error occurs of a file is selected, manually close popup
-            if(m_FileBrowser->DrawWidgets()) {
-                ImGui::CloseCurrentPopup();
-            }
-        });
-
-        
-      
-// Drawing LEVEL  
-
-        // New Sketch Button
-        toolbarIndex.Sketch = toolbarItems.Addp("Sketch##Column", DisabledFlag::Never, [&]() {
-            GUISettings& s = m_Settings->guiSettings;
-            // Draw ImGui Widgets
-            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Sketch##ToolbarButton", s.img_Sketch, s.imageButton_Toolbar_ButtonPrimary, false, s.toolbarItemHeight)) { 
-                // Set Toolbar level
-                SetToolbarLevel(CurrentLevel::Sketch);
-                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
-            }
-        });
-
-        // New Function Button
-        toolbarIndex.Function_CutPath = toolbarItems.Addp("Functions##Column", DisabledFlag::Never, [&]() {
-            GUISettings& s = m_Settings->guiSettings;
-            bool isActive = (m_CurrentLevel == CurrentLevel::Function_CutPath);
-            // Draw ImGui Widgets
-            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Cut Path##ToolbarButton", s.img_Function_CutPath, s.imageButton_Toolbar_Button, isActive, s.toolbarItemHeight)) { 
-                // Set Toolbar level
-                SetToolbarLevel(CurrentLevel::Function_CutPath);
-                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
-            }
-        });
-
-// Sketch LEVEL  
-        // SketchTools
-        toolbarIndex.SketchTools = toolbarItems.Addp("Sketch Tools", DisabledFlag::Never, [&]() {
-            // Draw ImGui Widgets
-            typedef Sketch::SketchEvents::CommandType CommandType;
-            GUISettings& s = m_Settings->guiSettings;
-            // Select Button
-            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Select##ToolbarButton", s.img_Sketch_Select, s.imageButton_Toolbar_SketchPrimary, m_Sketcher->Events().GetCommandType() == CommandType::Select, s.toolbarItemHeight)) { 
-                 m_Sketcher->Events().SetCommandType(CommandType::Select);
-            }
-            
-            ImGui::SameLine();
-            
-            ImGui::BeginGroup();
-                ImGuiModules::CentreItemVerticallyAboutItem(s.toolbarItemHeight, s.imageButton_Toolbar_Sketch->buttonSize.y);
-                
-                // Add Point Button
-                if (ImGuiModules::ImageButtonWithText("Point##ToolbarButton", s.img_Sketch_Point, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Point)) {  
-                     m_Sketcher->Events().SetCommandType(CommandType::Add_Point);
-                }
-                ImGui::SameLine();
-                // Add Line Button
-                if (ImGuiModules::ImageButtonWithText("Line##ToolbarButton", s.img_Sketch_Line, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Line)) { 
-                     m_Sketcher->Events().SetCommandType(CommandType::Add_Line);
-                }
-                ImGui::SameLine();
-                // Add Arc Button
-                if (ImGuiModules::ImageButtonWithText("Arc##ToolbarButton", s.img_Sketch_Arc, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Arc)) { 
-                     m_Sketcher->Events().SetCommandType(CommandType::Add_Arc);
-                }
-                ImGui::SameLine();
-                // Add Circle Button
-                if (ImGuiModules::ImageButtonWithText("Circle##ToolbarButton", s.img_Sketch_Circle, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Circle)) {  
-                     m_Sketcher->Events().SetCommandType(CommandType::Add_Circle);
-                }
-            ImGui::EndGroup();
-        });
-        
-        toolbarIndex.SketchConstraints = toolbarItems.Addp("Constraints", DisabledFlag::Never, [&]() {
-            
-            
-            GUISettings& s = m_Settings->guiSettings;
-            float frameHeight = m_Settings->guiSettings.toolbarItemHeight;
-            ImVec2& buttonSize = s.imageButton_Toolbar_Constraint->buttonSize;
-            
-            typedef Sketch::RenderData::Image::Type Type;
-            
-            // Draws an image button for a constraint
-            auto cb_ImageButton = [&](const std::string& name, Type imageType) {
-                
-                ImageTexture* image;
-                if(imageType == Type::Coincident)        { image = &s.img_Sketch_Constraint_Coincident; } 
-                else if(imageType == Type::Midpoint)     { image = &s.img_Sketch_Constraint_Midpoint; }
-                else if(imageType == Type::Vertical)     { image = &s.img_Sketch_Constraint_Vertical; }
-                else if(imageType == Type::Horizontal)   { image = &s.img_Sketch_Constraint_Horizontal; }
-                else if(imageType == Type::Parallel)     { image = &s.img_Sketch_Constraint_Parallel; }
-                else if(imageType == Type::Perpendicular){ image = &s.img_Sketch_Constraint_Perpendicular; }
-                else if(imageType == Type::Tangent)      { image = &s.img_Sketch_Constraint_Tangent; }
-                else if(imageType == Type::Equal)        { image = &s.img_Sketch_Constraint_Equal; }
-                else if(imageType == Type::Distance)     { image = &s.img_Sketch_Constraint_Distance; }
-                else if(imageType == Type::Radius)       { image = &s.img_Sketch_Constraint_Radius; }
-                else if(imageType == Type::Angle)        { image = &s.img_Sketch_Constraint_Angle; }
-                else { Log::Critical("Unknown image type"); }
-                 
-                return ImGuiModules::ImageButtonWithText(name, *image, s.imageButton_Toolbar_Constraint);
-            };
-            
-            // Draws an inputbox for a constraint (distance, radius, angle etc.)
-            auto cb_InputValue = [&](double* value) {
-                // Set inputbox width
-                ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarWidgetWidth);
-                // Centre align to the constraint buttons
-                ImGuiModules::CentreItemVerticallyAboutItem(frameHeight);
-                // Draw inputbox
-                ImGui::InputDouble(std::string("##" + std::to_string((int)value)).c_str(), value, 0.0, 0.0, "%g"); // use value ptr as ID
-            };
-            
-            
-            
-            // Add Constraint Buttons
-            ImGui::BeginGroup();
-                // Centre contraint buttons about main toolbar buttons
-                ImGuiModules::CentreItemVerticallyAboutItem(frameHeight, buttonSize.y);
-                // TODO: Order of selection needs to be preserved - if circle then arc, circle should jump onto arc... atm it's just default order
-                m_Sketcher->Draw_ConstraintButtons(cb_ImageButton, cb_InputValue);
-            ImGui::EndGroup();
-        });
- 
-  
-  // RIGHT ALIGNED TABLE ITEMS
-  
-        // Spacer
-        toolbarIndex.Spacer = toolbarItems.Addp("##Spacer", DisabledFlag::WhenDisconnected, [&]() {}, EDIT_BUTTON_DISABLED, nullptr, ImGuiTableColumnFlags_WidthStretch);
-          
-        // Tools
-        toolbarIndex.Tools = toolbarItems.Addp("Tools", DisabledFlag::Never, [&]() {
-            // centre the 2 dropdown boxes about the main buttons
-            ImGui::BeginGroup();
-            
-                float frameHeight = m_Settings->guiSettings.toolbarItemHeight;
-                //ImGuiModules::MoveCursorPosY((itemHeight - thisItemHeight) / 2.0f);
-                ImGuiModules::CentreItemVerticallyAboutItem(frameHeight, ImGui::GetFrameHeight() * 2.0f + ImGui::GetStyle().ItemSpacing.y);
-                // Draw ImGui Widgets
-                ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarToolMaterialWidth);
-                if(m_Settings->p.toolSettings.DrawTool()) {
-                    m_Settings->SetUpdateFlag(SqeakUpdate::Full);
-                }
-                // Draw Material
-                ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarToolMaterialWidth);
-                if(m_Settings->p.toolSettings.DrawMaterial()) {
-                    m_Settings->SetUpdateFlag(SqeakUpdate::Full);
-                }
-            ImGui::EndGroup();
-        }, EDIT_BUTTON_ENABLED, [&]() { 
-            // Draw edit popup
-            if(m_Settings->p.toolSettings.DrawPopup()) {
-                ImGui::CloseCurrentPopup(); 
-            }
-        });
-        
-        
-        // Jog
-        toolbarIndex.Jog = toolbarItems.Addp("Jog", DisabledFlag::WhenDisconnected, [&]() {
-            // Draw ImGui Widgets
-            jogController.DrawJogController(grbl, *m_Settings);
-        }, EDIT_BUTTON_ENABLED, [&]() { 
-            // Draw edit popup
-            jogController.DrawJogSetting(m_Settings->grblVals);
-        });
-        
-        // 2D / 3D
-        toolbarIndex.SwitchView = toolbarItems.Addp("Switch View", DisabledFlag::Never, [&]() {
-            // Draw ImGui Widgets
-            GUISettings& s = m_Settings->guiSettings;
-            // Draw ImGui Widgets
-            ImGui::BeginGroup();
-            
-                bool is2DMode;
-                Event<Event_Get2DMode>::Dispatch( { is2DMode } );
-                
-                std::string name = (is2DMode) ? "3D##ToolbarButton" : "2D##ToolbarButton";
-                
-                // Draw button
-                if (ImGuiCustomModules::ImageButtonWithText_CentredVertically(name, s.img_Connect, s.imageButton_Toolbar_Connect, is2DMode, s.toolbarItemHeight)) { 
-                    Event<Event_Set2DMode>::Dispatch( { !is2DMode } );
-                }
-            ImGui::EndGroup();  
-        });
-
-// Function LEVEL  
-        // ...
-        
-        
-        // initialise toolbar level (show top level items)
-        SetToolbarLevel(CurrentLevel::Run);
-        UpdateLevel();
-    }
-     
-    
-    //void DrawTableSeperator(Settings& settings) 
-    //{
-    //    // draw vertical seperator line
-    //    float spacerWidth = settings.guiSettings.toolbarSpacer;
-    //    ImVec2 p0 = ImGui::GetCursorScreenPos() + ImVec2(spacerWidth / 2.0f, GImGui->Style.ItemSpacing.y / 2.0f);
-    //    ImVec2 p1 = p0 + ImVec2(1.0f /*thickness*/, 2.0f*ImGui::GetFrameHeight() /*length*/);
-    //    ImGui::GetWindowDrawList()->AddRectFilled(p0, p1, ImGui::GetColorU32(ImGuiCol_Separator));
-    //
-    
-    
-    //  TOP LEVEL
-    //   -> Draw
-    //      DRAWING LEVEL
-    //       ->New/Open/Save Drawing
-    //       ->New Sketch
-    //          SKETCH LEVEL
-    //           ->Select 
-    //           ->Point
-    //           ->Line
-    //           ->Arc
-    //           ->Circle
-    //       ->Tool / Material
-    //       ->Cut Path
-    //          FUNCTION LEVEL
-    //       ->Drill
-    //          FUNCTION LEVEL
-    //  -> Run
-    //      RUN LEVEL
-    //      -> Connect
-    //      -> Open
-    //      -> Set X0 Y0 Z0, reset, home etc.
-    //      -> Custom GCodes
-    //      -> Overrides(collapsable)
-    //      -> Jog(collapsable)
-    
-    
-    void SetToolbarLevel(CurrentLevel level) {
-        
-        m_CurrentLevel = level;
-        levelUpdateRequired = true;
-    }
-private:
-    // updates based on current level set
-    void UpdateLevel() {
-        
-        if(!levelUpdateRequired) { return; }
-        levelUpdateRequired = false;
-        // Set all items invisible
-        for(size_t i = 0; i < toolbarItems.Size(); i++) {
-            toolbarItems[i].SetVisible(false);
-        }
-        
-        // Set item visible 
-        auto SetItemVisible = [&](ToolbarItem* item) {
-            item->SetVisible(true); 
-        };
-        
-        
-        // Navigation - visible to all
-        SetItemVisible(toolbarIndex.Header_Navigation);
-        // Run
-        if(m_CurrentLevel == CurrentLevel::Run) {
-            // Set visible toolbar items
-            SetItemVisible(toolbarIndex.Header_Run); // as header
-            SetItemVisible(toolbarIndex.Connect);
-            SetItemVisible(toolbarIndex.OpenFile);
-            SetItemVisible(toolbarIndex.Spacer);
-            SetItemVisible(toolbarIndex.Jog);
-        } else {
-            // Clear the open file
-            //fileBrowser->ClearCurrentFile();
-        }
-        
-        // Drawing
-        if(m_CurrentLevel == CurrentLevel::Drawing) {
-            // Set visiable toolbar items
-            SetItemVisible(toolbarIndex.Header_Draw); // as header
-            // SetItemVisible(Drawing (New/Open/Save))  ***MAYBE THIS SHOULD BE A DROPDOWN? 
-            SetItemVisible(toolbarIndex.Sketch);
-            SetItemVisible(toolbarIndex.Function_CutPath);
-            SetItemVisible(toolbarIndex.Spacer);
-            SetItemVisible(toolbarIndex.Tools);
-            SetItemVisible(toolbarIndex.SwitchView);
-        } 
-        
-        // Settings
-        if(m_CurrentLevel == CurrentLevel::Settings) {
-            // Set visiable toolbar items 
-            SetItemVisible(toolbarIndex.Header_Settings); // as header
-        } 
-        
-        // Sketch
-        if(m_CurrentLevel == CurrentLevel::Sketch) {
-            // Set visiable toolbar items
-            SetItemVisible(toolbarIndex.Header_Back);
-            SetItemVisible(toolbarIndex.Header_Sketch); // as header
-            SetItemVisible(toolbarIndex.SketchTools);
-            SetItemVisible(toolbarIndex.SketchConstraints);
-            // Set sketch command type
-            m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::Select);
-        } else {
-            // Reset sketch command type
-            m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::None);
-        }
-        
-        // Functions
-        if(m_CurrentLevel == CurrentLevel::Function_CutPath) {
-            SetItemVisible(toolbarIndex.Header_Back);
-            SetItemVisible(toolbarIndex.Spacer);
-            SetItemVisible(toolbarIndex.Tools);
-            SetItemVisible(toolbarIndex.SwitchView);
-        }
-        
-        // Set 2D mode
-        if(m_CurrentLevel == CurrentLevel::Sketch || m_CurrentLevel == CurrentLevel::Function_CutPath) {
-            // Set 2D Mode
-            Event<Event_Set2DMode>::Dispatch( { true } );
-        } else {
-            // Unset 2D Mode
-            Event<Event_Set2DMode>::Dispatch( { false } );
-        }
-    }
-        
-        
-public:
-    
-    void Draw(GRBL &grbl, sketch::SketchOld& sketcherOld) 
-    {                
-        const ImGuiViewport* viewport = ImGui::GetMainViewport();
-        float padding = m_Settings->guiSettings.dockPadding;
-        // Set window size and position
-        ImGui::SetNextWindowPos(viewport->WorkPos + ImVec2(padding, padding));
-        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - 2.0f * padding, m_Settings->guiSettings.toolbarHeight));
-        // flags for window
-        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
-        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-        // Create Toolbar Window
-        if (!ImGui::Begin("Toolbar", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
-            ImGui::End();
-            return;
-        }
-        // push the general style widget, normally this would be done in ImGuiCustomModules::ImGuiWindow::Begin 
-        ImGuiCustomModules::ImGuiWindow::PushWidgetStyle(*m_Settings);
-        
-    // DRAW THE TOOLBAR TABLE
-    
-        // Format the table
-        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(m_Settings->guiSettings.toolbarSpacer / 2.0f, 2.0f));
-        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, m_Settings->guiSettings.toolbarTableScrollbarSize);
-        // flags for table
-        ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollX;
-                
-        // Table handles it's own ImGui::BeginDisabled()
-        // Draw Toolbar Table
-        if (ImGui::BeginTable("Toolbar",  VisibleToolbarItemCount(), flags, ImVec2(0.0f, m_Settings->guiSettings.toolbarTableHeight))) 
-        {           
-            // Style the header & edit button
-            ImGui::PushFont(m_Settings->guiSettings.font_small);
-            ImGui::PushStyleColor(ImGuiCol_Text, m_Settings->guiSettings.colour[Colour::HeaderText]);
-            // Set the background colour of the heading row to invisible
-            ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, { 0.0f, 0.0f, 0.0f, 0.0f });
-            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, { 0.0f, 0.0f, 0.0f, 0.0f });
-            ImGui::PushStyleColor(ImGuiCol_HeaderActive, { 0.0f, 0.0f, 0.0f, 0.0f });
-                        
-                // Setup Table columns (will only add visible columns)
-                for(size_t i = 0; i < toolbarItems.Size(); i++) {
-                    // only draw if visible
-                    if(toolbarItems[i].IsVisible()) {
-                        toolbarItems[i].DrawSetupColumn();
-                    }
-                } 
-                
-                // Set up Header Row with Edit buttons 
-                // Instead of calling TableHeadersRow() we'll submit custom headers ourselves so that we can add an Edit Button
-                ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
-                
-                size_t counter = 0;
-                // Draw Table Headers (with Edit Button)
-                for(size_t i = 0; i < toolbarItems.Size(); i++) 
-                {
-                    // only draw if visible
-                    if(toolbarItems[i].IsVisible()) {
-                        // Set Column Index
-                        ImGui::TableSetColumnIndex(counter++);
-                        ImGui::TableHeader(toolbarItems[i].m_Name.c_str());
-                        
-                        ImGui::PushID(i);
-                           // draw the edit button
-                            if(toolbarItems[i].DrawEdit(m_Settings)) {
-                                toolbarItems[i].OpenPopup();
-                            }
-                        ImGui::PopID();
-                    }
-                }
-                
-            ImGui::PopStyleColor(4);
-            ImGui::PopFont();      
-            
-            // Draw toolbar items (Widgets etc)
-            ImGui::TableNextRow();
-        
-            for(size_t i = 0; i < toolbarItems.Size(); i++) {
-                // only draw if visible
-                if(toolbarItems[i].IsVisible()) {
-                    ImGui::TableNextColumn();
-                    ImGui::BeginGroup();
-                        toolbarItems[i].Draw(m_Settings);
-                    ImGui::EndGroup();
-                }
-            }
-            
-            ImGui::EndTable();
-        } 
-
-
-    // DRAW THE PLAY BUTTONS AND DISPLAY CURRENT FILE
-
-        // We only need to draw with run commands
-        if(m_CurrentLevel == CurrentLevel::Run) {
-            // Save the state as this could change midway
-            bool isDisconnected = !m_Settings->grblVals.isConnected;
-            // Start disable again in function scope
-            if(isDisconnected) { ImGui::BeginDisabled(); }
-                
-                ImGui::Separator();
-                
-                flags = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_ScrollX;
-                
-                if (ImGui::BeginTable("ControlButtons", 3, flags))
-                {
-                    ImGui::TableNextRow();
-                    // Run, Cancel, Pause & Restart
-                    ImGui::TableNextColumn();
-                    DrawPlayButtons(grbl, sketcherOld);
-                    // Current file name
-                    ImGui::TableNextColumn();
-                    DrawCurrentFile();
-                    // Time elapsed
-                    ImGui::TableNextColumn();
-                    if(m_Settings->grblVals.isFileRunning) 
-                        DrawTimeElapsed(); 
-                    
-                    ImGui::EndTable();
-                }
-                
-            
-            // end disable all widgets
-            if(isDisconnected) { ImGui::EndDisabled(); }
-        }
-       
-        ImGui::PopStyleVar(2);
-        
-        
-        
-        /*
-        
-        
-        
-        
-        
-        ImGui::SameLine();
-        
-        ImGui::BeginGroup();
-            // Time elapsed
-            if(m_Settings->grblVals.isFileRunning) {
-                //ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
-                DrawTimeElapsed(m_Settings->grblVals);
-            }
-            ImGui::SameLine(); //ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
-            
-            // Current file name
-            DrawCurrentFile(m_Settings, fileBrowser);
-        ImGui::EndGroup();
-*/
- 
-
-
-
-           
-        
-        // popups handle their own ImGui::BeginDisabled()
-            
-        // Draw edit button Popups if visible
-        for(size_t i = 0; i < toolbarItems.Size(); i++) {
-            // Draw Popup
-            if(toolbarItems[i].DrawPopup(m_Settings)) {
-                // update if windows was just closed
-                m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
-            }
-        }
-        
-        
-      
-             
-        // end
-        ImGuiCustomModules::ImGuiWindow::PopWidgetStyle();
-        ImGui::End();
-        
-        // performs update based on current level set if required
-        UpdateLevel();
-    }
-
-    
-
-    
-    void DrawCurrentFile()
-    {
-        if(m_FileBrowser->CurrentFile() == "") { 
-            return; 
-        }
-        ImGui::BeginGroup();
-            ImGuiModules::CentreItemVertically(2);
-            
-            // shortens file path to "...path/at/place.gc" if length > max_FilePathDisplay
-            /*int cutOff = 0;
-            if(currentFilePath.size() > m_Settings->guiSettings.max_FilePathDisplay) {
-                cutOff = currentFilePath.size() - m_Settings->guiSettings.max_FilePathDisplay;     
-            }                 
-            const char* shortenedPath = currentFilePath.c_str() + cutOff;
-            ImGui::Text((cutOff ? "..%s" : "%s"), shortenedPath);*/
-            ImGuiModules::TextCentredHorizontallyInTable("%s", m_FileBrowser->CurrentFile().c_str());
-            ImGuiModules::ToolTip_IfItemHovered(m_FileBrowser->CurrentFilePath().c_str());
-        ImGui::EndGroup();
-    }
-
-    
-    void RunFile(GRBL& grbl) {
-        // check we have selected a file
-        if (m_FileBrowser->CurrentFile() == "") {
-            Log::Error("No file has been selected");
-            return;
-        }
-        // get filepath of file
-        string filepath = File::CombineDirPath(m_Settings->p.system.curDir, m_FileBrowser->CurrentFile());
-        // add to log
-        Log::Info(string("Sending File: ") + filepath);
-        
-        // start file timer
-        Event<Event_ResetFileTimer>::Dispatch({});
-         
-        // send file to grbl
-        if (grbl.sendFile(filepath)) {
-            // couldn't open file
-            Log::Error("Couldn't send file to grbl");
-        }
-    }
-    
-    void DrawPlayButtons(GRBL& grbl, sketch::SketchOld& sketcher)
-    {
-        auto SameLineSpacer = [&]() {
-            ImGui::SameLine();
-            ImGui::Dummy(ImVec2(m_Settings->guiSettings.toolbarSpacer, 0.0f));
-            ImGui::SameLine();
-        };
-        
-        GUISettings& s = m_Settings->guiSettings;
-        
-        ImGui::BeginGroup();
-            ImGuiModules::CentreItemVertically(2, s.toolbarItemHeight);
-
-            // Run Button
-            if (ImGuiModules::ImageButtonWithText("Run##SubToolbar", s.img_Play, s.imageButton_SubToolbar_Button)) {
-                if(sketcher.IsActive()) { 
-                    // run sketch function
-                    sketcher.ActiveA_Function_Run(grbl, *m_Settings);
-                } else { 
-                    // run file
-                    RunFile(grbl);
-                }
-            }
-            
-            ImGui::SameLine();
-            if (ImGuiModules::ImageButtonWithText("Cancel##SubToolbar", s.img_Add, s.imageButton_SubToolbar_Button)) {
-                if (m_Settings->grblVals.isFileRunning) {
-                    Log::Info("Cancelling... Note: Any commands remaining in grbl's buffer will still execute.");
-                    grbl.cancel();
-                }
-            }
-            
-            SameLineSpacer();
-            if (ImGuiModules::ImageButtonWithText("Pause##SubToolbar", s.img_Pause, s.imageButton_SubToolbar_Button)) {
-                Log::Info("Pausing...");
-                grbl.sendRT(GRBL_RT_HOLD);
-            }
-
-            ImGui::SameLine();
-            if (ImGuiModules::ImageButtonWithText("Pause##SubToolbar", s.img_Restart, s.imageButton_SubToolbar_Button)) {
-                Log::Info("Resuming...");
-                grbl.sendRT(GRBL_RT_RESUME);
-            }
-            SameLineSpacer();
-            sketcher.ActiveA_Function_Export(*m_Settings);
-            
-            ImGui::SameLine();
-            sketcher.ActiveA_Function_Delete(*m_Settings);
-            
-        ImGui::EndGroup(); 
-    } 
-    
-    void DrawTimeElapsed()
-    {
-        GRBLVals& grblVals = m_Settings->grblVals;
-        ImGui::BeginGroup();
-            // update time
-            timer.UpdateCurrentTime();
-            // normalise timer seconds to hours/mins/secs
-            Time timeElapsedNorm(timer.dt());
-            // how far through file we arefunctions
-            float percComplete = (float)grblVals.curLine / (float)grblVals.totalLines;
-            // estimate time remaining
-            uint timeExpected = timer.dt() / percComplete;
-            Time timeRemainingNorm(timeExpected - timer.dt());
-            
-            // draw ImGui widgets
-            float cursorPos_FrameTop = ImGui::GetCursorPosY();
-            
-            // progress bar
-            ImGuiModules::CentreItemVertically(2);
-            // stretch
-            ImGui::SetNextItemWidth(-155.0f);
-            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
-                ImGui::ProgressBar(percComplete, ImVec2(0.0f, 0.0f), va_str("%d/%d (%.2f%%)", grblVals.curLine, grblVals.totalLines, 100.0f * percComplete).c_str());
-            ImGui::PopStyleVar();
-        
-            ImGui::SameLine();
-            ImGui::SetCursorPosY(cursorPos_FrameTop);
-            
-            ImGui::BeginGroup();
-                ImGui::TextUnformatted("Time Elapsed:");
-                ImGui::TextUnformatted("Time Remaining:");
-            ImGui::EndGroup();
-            
-            ImGui::SameLine();
-            
-            ImGui::BeginGroup();
-                ImGui::Text("%s", timeElapsedNorm.TimeString().c_str());
-                ImGui::Text("%s", timeRemainingNorm.TimeString().c_str());
-            ImGui::EndGroup();
-                  
-        ImGui::EndGroup();
-    }
-    
-    /*
-     * 
-     * 
-    enum class Export         { False, Pending, True };
-     * 
-        // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
-        static pair<Export, string> exportFileName = make_pair(Export::False, "");
-        // handle file export
- //       DoesFileNeedExport(settings, functions, functionsexportFileName);
-             
-             
-    void DoesFileNeedExport(Settings& settings, Functions& functions, std::pair<Export, std::string>& exportFileName)
-    {   // if file doesn't exist, set flag to export. 
-        // If file does exist, show popup to confirm overwrite
-        if(exportFileName.first == Export::Pending) {
-            if(!File::Exists(exportFileName.second)) {
-                exportFileName.first = Export::True;
-            } else {
-                ImGui::OpenPopup("Overwrite File Popup");
-            }
-        }
-        // draw the popup if visible
-        DrawPopup_OverwriteFile(exportFileName);
-        // export file when ready and reset the flag
-        if(exportFileName.first == Export::True) {
-            Log::Info("Exporting file: %s", exportFileName.second.c_str());
-            functions.SaveActiveFunction(settings, exportFileName.second);
-            exportFileName = make_pair(Export::False, "");
-        }
-    }
-           
-    void DrawPopup_OverwriteFile(std::pair<Export, std::string>& exportFileName)
-    {       
-        // Always center this window when appearing
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-        if (ImGui::BeginPopupModal("Overwrite File Popup", NULL, ImGuiWindowFlags_AlwaysAutoResize))
-        {
-            ImGui::Text("The following file already exists:\n\n%s\n\nAre you sure you want to overwrite it?", exportFileName.second.c_str());
-            ImGui::Separator();
-
-            if (ImGui::Button("Overwrite", ImVec2(120, 0))) { 
-                exportFileName.first = Export::True;
-                cout << "Overwrite" << endl;
-                ImGui::CloseCurrentPopup(); 
-            }
-            ImGui::SetItemDefaultFocus();
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel", ImVec2(120, 0))) { 
-                exportFileName = make_pair(Export::False, "");
-                cout << "Cancel" << endl;
-                ImGui::CloseCurrentPopup(); 
-            }
-            ImGui::EndPopup();
-        }
-    }
-*/ 
-};
 
 /*
 x   std::string state;
@@ -2831,6 +1407,1596 @@ struct Debug {
 };
  
 
+struct JogController {
+    bool allow_Keyb_Jogging = false;
+    bool currently_Jogging = false;
+    float jogDistance = 10;
+    // TODO DELETE THIS, READ DIRECTLY FROM SETTINGS
+    int feedRate = 6000;
+
+    /*
+      float calcuateJogDistance(float feedrate, float acc)
+      {
+          float v = feedrate / 60; // mm/s
+          int N = 15; // number blocks in planner buffer
+
+          float dt = (v*v) / (2*acc*(N-1));
+
+          cout << "@ " << feedrate << "mm/min" << endl;
+          cout << "dt = " << dt << endl;
+
+          float smin = v*dt; // mm (smallest jog distance
+
+          cout << "sMin = " << smin << endl << endl;
+          return smin;
+      }
+  */
+    void KeyboardJogging(GRBL &grbl) {
+        // - This is a rather messy piece of code, but for now it solves the
+        // issue.
+        // - When an arrow key is held, we want to repeatedly send jog commands
+        // to grbl.
+        // - The first issue is that we dont want to send more jog commands than
+        // the number of
+        //     planner blocks (15) in grbl, otherwise we have to remove any
+        //     commands that haven't
+        //    been acknowledged. So we wait for an ok to be received before
+        //    sending the
+        //     next jog (this ensures a max. of 15 acknowledged + 1 pending jogs
+        //     are sent)
+        // - When we release an arrow key, we want to send a 'realtime jog
+        // cancel' cmd. When all jogs
+        //    have recieved an 'ok', this works fine, but if there is a pending
+        //    jog in the queue, the cancel cmd executes first, clearing grbl's
+        //    buffer, which then allows the pending jog to execute.
+        //    - Option 1 was to wait for the 'ok' to arrive before sending the
+        //    cancel command
+        //        But this meant that we would have to wait for the last jog to
+        //        execute which could be a sizable distance.
+        //     - Option 2 was to repeatedly send cancel commands until we
+        //     recieve and 'ok' for that
+        //        pending jog - not this most elegant fix but it seems to work
+        //        for now.
+        //    - Option 3 was to not allow too many jogs to be sent to grbl to
+        //    fill the planner
+        //        blocks, but the only way to know this information was from the
+        //        status response (Bf:15,128). This just seemed messy, as we are
+        //        relying on a delayed response from grbl (or the status
+        //        responses may not even be switched on)
+        //    - Option 4 - send one long jog to end of table
+
+        int KEY_LEFT = ImGui::GetKeyIndex(ImGuiKey_LeftArrow);
+        int KEY_UP = ImGui::GetKeyIndex(ImGuiKey_UpArrow);
+        int KEY_RIGHT = ImGui::GetKeyIndex(ImGuiKey_RightArrow);
+        int KEY_DOWN = ImGui::GetKeyIndex(ImGuiKey_DownArrow);
+
+        // option 4 - one long jog (must be > than the extents of the machine
+        static int jogLongDistance = 10000;
+        // on key release, send cancel
+        if ((ImGui::IsKeyReleased(KEY_LEFT) ||
+             ImGui::IsKeyReleased(KEY_RIGHT) || ImGui::IsKeyReleased(KEY_UP) ||
+             ImGui::IsKeyReleased(KEY_DOWN)) &&
+            (!ImGui::IsKeyPressed(KEY_LEFT) &&
+             !ImGui::IsKeyPressed(KEY_RIGHT) && !ImGui::IsKeyPressed(KEY_UP) &&
+             !ImGui::IsKeyPressed(KEY_DOWN))) {
+            grbl.sendRT(GRBL_RT_JOG_CANCEL);
+            currently_Jogging = false;
+        } else if (!currently_Jogging) { // only allow combination of 2 buttons
+            if (ImGui::IsKeyPressed(KEY_LEFT) + ImGui::IsKeyPressed(KEY_UP) +
+                    ImGui::IsKeyPressed(KEY_RIGHT) +
+                    ImGui::IsKeyPressed(KEY_DOWN) <=
+                2) {
+                if (ImGui::IsKeyPressed(KEY_LEFT) &&
+                    ImGui::IsKeyPressed(KEY_UP)) {
+                    grbl.sendJog(Vec3(-jogLongDistance, jogLongDistance, 0),
+                                 feedRate);
+                    currently_Jogging = true;
+                } else if (ImGui::IsKeyPressed(KEY_UP) &&
+                           ImGui::IsKeyPressed(KEY_RIGHT)) {
+                    grbl.sendJog(Vec3(jogLongDistance, jogLongDistance, 0),
+                                 feedRate);
+                    currently_Jogging = true;
+                } else if (ImGui::IsKeyPressed(KEY_RIGHT) &&
+                           ImGui::IsKeyPressed(KEY_DOWN)) {
+                    grbl.sendJog(Vec3(jogLongDistance, -jogLongDistance, 0),
+                                 feedRate);
+                    currently_Jogging = true;
+                } else if (ImGui::IsKeyPressed(KEY_DOWN) &&
+                           ImGui::IsKeyPressed(KEY_LEFT)) {
+                    grbl.sendJog(Vec3(-jogLongDistance, -jogLongDistance, 0),
+                                 feedRate);
+                    currently_Jogging = true;
+                }
+
+                else if (ImGui::IsKeyPressed(KEY_LEFT)) {
+                    grbl.sendJog(Vec3(-jogLongDistance, 0, 0), feedRate);
+                    currently_Jogging = true;
+                } else if (ImGui::IsKeyPressed(KEY_RIGHT)) {
+                    grbl.sendJog(Vec3(jogLongDistance, 0, 0), feedRate);
+                    currently_Jogging = true;
+                } else if (ImGui::IsKeyPressed(KEY_UP)) {
+                    grbl.sendJog(Vec3(0, jogLongDistance, 0), feedRate);
+                    currently_Jogging = true;
+                } else if (ImGui::IsKeyPressed(KEY_DOWN)) {
+                    grbl.sendJog(Vec3(0, -jogLongDistance, 0), feedRate);
+                    currently_Jogging = true;
+                }
+            }
+        }
+        /*    option 1: wait to recieve ok before sending cancel
+        // flag for when arrow key is released
+        static bool send_Jog_Cancel = false;
+        // have we recieved an 'ok' for every jog command we have sent?
+        bool synced_With_grbl = grbl.gcList.status.size() == grbl.gcList.read;
+        // on key release, send cancel
+        if((ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)) ||
+        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)) ||
+            ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) ||
+        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))) {
+            send_Jog_Cancel = true;
+        }
+        else if(synced_With_grbl && !send_Jog_Cancel)
+        {
+            if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)))
+            grbl.sendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
+            else
+        if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow)))
+            grbl.sendJog(X_AXIS, FORWARD, jogDistance, feedRate);
+            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
+            grbl.sendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
+            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
+            grbl.sendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
+        }
+        // if synced, (last jog recieved 'ok') send cancel
+        if(synced_With_grbl && send_Jog_Cancel) {
+            grbl.SendRT(GRBL_RT_JOG_CANCEL);
+            send_Jog_Cancel = false;
+        }
+        */
+        /* repeatedly send cancels
+        // flag for when arrow key is released
+        static bool send_Jog_Cancel = false;
+        // have we recieved an 'ok' for every jog command we have sent?
+        bool synced_With_grbl = grbl.gcList.status.size() == grbl.gcList.read;
+        // on key release, set flag to true
+        if((ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)) ||
+        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_RightArrow)) ||
+            ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_UpArrow)) ||
+        ImGui::IsKeyReleased(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))) {
+            send_Jog_Cancel = true;
+        } // only send jog if an ok for the last jog is received & we are not
+        waiting to cancel jog else if(synced_With_grbl && !send_Jog_Cancel)
+        {
+            if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_LeftArrow)))
+            grbl.sendJog(X_AXIS, BACKWARD, jogDistance, feedRate);
+            else
+        if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_RightArrow)))
+            grbl.sendJog(X_AXIS, FORWARD, jogDistance, feedRate);
+            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_UpArrow)))
+            grbl.sendJog(Y_AXIS, FORWARD, jogDistance, feedRate);
+            else if(ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_DownArrow)))
+            grbl.sendJog(Y_AXIS, BACKWARD, jogDistance, feedRate);
+        }
+        // repeatedly send cancels until the unacknowledged jog has been
+        cancelled if(send_Jog_Cancel) { grbl.SendRT(GRBL_RT_JOG_CANCEL); if
+        (synced_With_grbl) send_Jog_Cancel = false;
+        }*/
+    }
+
+    void DrawJogController(GRBL &grbl, Settings& settings) 
+    {        
+        if (allow_Keyb_Jogging)
+            KeyboardJogging(grbl);
+            
+        ImVec2& buttonSize = settings.guiSettings.imageButton_Toolbar_Jog->buttonSize;
+         
+         
+        
+        //float tableHeight = settings.guiSettings.toolbarItemHeight
+        
+        ImGui::BeginGroup();
+        // ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX,
+        if (ImGui::BeginTable("JogController",  5, ImGuiTableFlags_NoSavedSettings  | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_PadOuterX, ImVec2(buttonSize.x * 6.0f, 0.0f))) 
+        {    
+            // first row   
+            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
+                
+                // Y +
+                if(ImGui::TableSetColumnIndex(1)) {
+                    if (ImGuiModules::ImageButtonWithText("##JogY+", settings.guiSettings.img_ArrowUp, settings.guiSettings.imageButton_Toolbar_Jog)) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(Vec3(0, jogDistance, 0), feedRate);
+                    }
+                }
+                
+                // Z+
+                if(ImGui::TableSetColumnIndex(4)) {
+                    if (ImGuiModules::ImageButtonWithText("##JogZ+", settings.guiSettings.img_ArrowUp, settings.guiSettings.imageButton_Toolbar_Jog)) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(Vec3(0, 0, jogDistance), feedRate);
+                    }
+                } 
+            // next row
+            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
+                
+                // X -
+                if(ImGui::TableSetColumnIndex(0)) {
+                    if (ImGuiModules::ImageButtonWithText("##JogX-", settings.guiSettings.img_ArrowLeft, settings.guiSettings.imageButton_Toolbar_Jog)) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(Vec3(-jogDistance, 0, 0), feedRate);
+                    }
+                }
+                // "X Y" text
+                if(ImGui::TableSetColumnIndex(1)) {
+                    ImGuiModules::CentreItemVerticallyAboutItem(buttonSize.y, settings.guiSettings.font_small->FontSize + 1.0f);
+                    ImGuiCustomModules::Heading(settings, "X Y", buttonSize.x);
+                }
+                // X +
+                if(ImGui::TableSetColumnIndex(2)) {
+                    if (ImGuiModules::ImageButtonWithText("##JogX+", settings.guiSettings.img_ArrowRight, settings.guiSettings.imageButton_Toolbar_Jog)) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(Vec3(jogDistance, 0, 0), feedRate);
+                    }
+                }
+                // "Z" text
+                if(ImGui::TableSetColumnIndex(4)) {                    
+                    ImGuiModules::CentreItemVerticallyAboutItem(buttonSize.y, settings.guiSettings.font_small->FontSize + 2.0f);
+                    ImGuiCustomModules::Heading(settings, "Z", buttonSize.x);
+                }
+                  
+            // next row
+            ImGui::TableNextRow();//ImGuiTableRowFlags_None, buttonSize.y);
+                            
+                // Y -
+                if(ImGui::TableSetColumnIndex(1)) {
+                    if (ImGuiModules::ImageButtonWithText("##JogY-", settings.guiSettings.img_ArrowDown, settings.guiSettings.imageButton_Toolbar_Jog)) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(Vec3(0, -jogDistance, 0), feedRate);
+                    }
+                }
+                // Z-
+                if(ImGui::TableSetColumnIndex(4)) {
+                    if (ImGuiModules::ImageButtonWithText("##JogZ-", settings.guiSettings.img_ArrowDown, settings.guiSettings.imageButton_Toolbar_Jog)) {
+                        if (!currently_Jogging)
+                            grbl.sendJog(Vec3(0, 0, -jogDistance), feedRate);
+                    }
+                }
+            
+            ImGui::EndTable();
+        } 
+    
+        
+        ImGui::EndGroup();
+        
+        
+        
+        
+        
+        /*
+        
+        
+        // Draw Jog XY
+        ImGui::BeginGroup();
+        ImGui::PushID("JogXY");
+
+            ImGui::Dummy(buttonSize);
+            ImGui::SameLine();
+            // Y +
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(0, jogDistance, 0), feedRate);
+            }
+            // X -
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowLeft)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(-jogDistance, 0, 0), feedRate);
+            }
+            ImGui::SameLine();
+            
+            // "X/Y" text
+            ImGuiModules::MoveCursorPosY(yMove);
+            ImGuiCustomModules::Heading(settings, "X Y", buttonSize.x);
+            ImGuiModules::MoveCursorPosY(-yMove);
+            
+            ImGui::SameLine();
+            // X +
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowRight)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(jogDistance, 0, 0), feedRate);
+            }
+            ImGui::Dummy(buttonSize);
+            ImGui::SameLine();
+            // Y -
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(0, -jogDistance, 0), feedRate);
+            }
+            
+        ImGui::PopID();
+        ImGui::EndGroup();
+
+        ImGui::SameLine();
+        ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 15);
+
+        // Draw Jog Z
+        ImGui::BeginGroup();
+        ImGui::PushID("JogZ");
+            // Z+
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowUp)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(0, 0, jogDistance), feedRate);
+            }
+            // "Z" text
+            ImGuiModules::MoveCursorPosY(yMove);
+            ImGuiCustomModules::Heading(settings, "Z", buttonSize.x);
+            ImGuiModules::MoveCursorPosY(yMove);
+            // Z-
+            if (ImGui::ImageButton(buttonSize, buttonImgSize, settings.guiSettings.img_ArrowDown)) {
+                if (!currently_Jogging)
+                    grbl.sendJog(glm::vec3(0, 0, -jogDistance), feedRate);
+            }
+
+        ImGui::PopID();
+        ImGui::EndGroup(); 
+        */
+    }
+    void DrawJogSetting(GRBLVals& grblVals) {
+        
+        ImGui::Checkbox("Control with arrow keys", &allow_Keyb_Jogging);
+        
+        ImGui::InputFloat("Jog Distance", &jogDistance);
+
+        ImGuiModules::Incrementer("Jog0.1", "0.1", 0.1f, jogDistance, false);
+        ImGui::SameLine();
+        ImGuiModules::Incrementer("Jog1", "1", 1.0f, jogDistance, false);
+        ImGui::SameLine();
+        ImGuiModules::Incrementer("Jog10", "10", 10.0f, jogDistance, false);
+
+        ImGui::Separator();
+
+        ImGui::SliderInt("Feed Rate", &feedRate, 0, grblVals.settings.max_FeedRate);
+    }
+
+};
+
+// All methods handle their opwn disabling (i.e. if grbl is diconnected)
+class ToolbarItem 
+{
+public:
+    enum class DisabledFlag { WhenDisconnected, Always, Never};
+    enum class TitleType { MainButtonOpensPopup, BackButton, HeaderEditButtonOpensPopup};
+    
+    // Only one callback can be added and should be used for either the edit button or with a custom button
+    ToolbarItem(
+        const std::string&      name, 
+        DisabledFlag            disabledFlag = DisabledFlag::WhenDisconnected, 
+        std::function<bool()>   cbDraw = []() { return false; }, 
+        TitleType               titleType = TitleType::MainButtonOpensPopup, 
+        std::function<void()>   cbDrawPopup = nullptr, 
+        std::function<void()>   cbTitleButton = nullptr, // return true to open popup
+        ImGuiTableColumnFlags   flags = 0
+    ) 
+      : m_Name(name), 
+        m_DisabledFlag(disabledFlag), 
+        cb_Draw(cbDraw), 
+        m_TitleType(titleType), 
+        cb_DrawPopup(cbDrawPopup), 
+        cb_TitleButton(cbTitleButton), 
+        m_Popup(std::string("Popup ") + name),
+        m_TableColumnFlags(flags)
+    {}
+    
+    const std::string& Name() { return m_Name; };
+    
+    void DrawSetupColumn() {
+        // Ensure the item is visible
+        if(!m_IsVisible) { return; }
+        ImGui::TableSetupColumn(m_Name.c_str(), m_TableColumnFlags);
+    } 
+
+
+
+    bool Draw(Settings* settings) 
+    { 
+        // Ensure the item is visible
+        if(!m_IsVisible) { return false; }
+        
+        return DisableIfRequired(*settings, [&]() {
+            return cb_Draw();
+        });
+    }
+
+                                
+    void DrawTitle(Settings* settings) 
+    { 
+        // Ensure the item is visible
+        if(!m_IsVisible || m_TitleType == TitleType::MainButtonOpensPopup) { 
+            return; 
+        }
+        // Image Button
+        else if(m_TitleType == TitleType::BackButton) {
+            DisableIfRequired(*settings, [&]() { 
+                if (DrawTitleImageButton("##back", settings->guiSettings.img_ArrowBackward, settings->guiSettings.imageButton_Toolbar_Header_Back)) {
+                    cb_TitleButton();
+                }
+                return false;
+            });
+        }
+        // Edit button with popup
+        else if(m_TitleType == TitleType::HeaderEditButtonOpensPopup) {
+            DisableIfRequired(*settings, [&]() { 
+                // Draw Edit Button, if clicked, open popup
+                if(DrawTitleImageButton(m_Name, settings->guiSettings.img_Edit, settings->guiSettings.imageButton_Toolbar_Header_Back)) {
+                    OpenPopup();
+                }
+                return false;
+            });
+        }
+    }
+
+    /* bool DrawEdit(Settings* settings) 
+    {
+        // Ensure the item is visible and check if there is an edit callback
+        if(!m_IsVisible || m_TitleType == TitleType::MainButtonOpensPopup) { return false; }
+        
+        // returns true then edit button is clicked
+        return DisableIfRequired(settings, [&]() {
+            // Draw Edit Button, if clicked, open popup
+            return DrawTitleEditButton(settings); 
+        });
+    }*/
+
+    // Must be called after everything else
+    bool DrawPopup(Settings* settings) 
+    {
+        // Ensure the item is visible and check if there is an edit callback
+        if(!m_IsVisible || !cb_DrawPopup) { return false; }
+        // trigger open popup if edit button was pressed
+        if(m_OpenPopup) { 
+            m_Popup.Open(); 
+            m_OpenPopup = false;
+        }
+        
+        
+        
+        // TODO: THIS IS JUST THE TOOL MENU - SHOUOLDNT BE HERE
+        if(m_TitleType == TitleType::MainButtonOpensPopup) {
+            // Always center this window when appearing
+            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));   
+            ImGui::SetNextWindowSize(ImVec2(600.f, 420.0f));  
+                    
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(20.0f, 20.0f));
+            
+        }
+        
+        // returns true on close (next frame)
+        bool ret = DisableIfRequired(*settings, [&]() {
+            // draw popup widgets (given by callback) 
+            return m_Popup.Draw([&]() {
+                cb_DrawPopup();
+                return false;
+            });
+        });
+            
+        if(m_TitleType == TitleType::MainButtonOpensPopup) {
+            ImGui::PopStyleVar();
+        }
+        return ret;
+    }
+    // to manually call open popup when no edit button
+    // if CallbackType is EditButtonWithCallback, the edit button will open the popup
+    void OpenPopup() { m_OpenPopup = true; }
+    void SetVisible(bool value) { m_IsVisible = value; }
+    bool IsVisible() { return m_IsVisible; }
+        
+
+    bool DrawTitleImageButton(const std::string& text, ImageTexture image, ImGuiModules::ImageButtonStyle* style) {
+        // align right: ImGui::GetContentRegionAvail().x - width
+        if (!text.empty()) {
+            ImGui::SameLine(ImGui::CalcTextSize(text.c_str()).x + 5.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+        }
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+           // edit button
+            ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f,0.0f,0.0f,0.0f));
+                ImGui::PushID(text.c_str());
+                    bool isClicked = ImGuiModules::ImageButton(image, style);   
+                ImGui::PopID();
+            ImGui::PopStyleColor();
+        ImGui::PopStyleVar();
+        return isClicked;
+    }
+    
+
+    bool DisableIfRequired(Settings& settings, std::function<bool()> cb)
+    {
+        bool isDisabled;
+        if(m_DisabledFlag == DisabledFlag::Always)                  { isDisabled = true; }
+        else if(m_DisabledFlag == DisabledFlag::Never)              { isDisabled = false; }
+        else if(m_DisabledFlag == DisabledFlag::WhenDisconnected)   { isDisabled = !settings.grblVals.isConnected; }
+        else { Log::Critical("Unknown disabled flag"); }
+        
+        // Disable widgets if needed
+        if(isDisabled) { ImGui::BeginDisabled(); }
+            // Draw Edit Button, if clicked, open popup
+            bool isClicked = cb();
+        // Enable widgets if needed
+        if(isDisabled) { ImGui::EndDisabled(); }
+        return isClicked;
+    }
+      
+private:
+    std::string m_Name;
+    DisabledFlag m_DisabledFlag;
+    std::function<bool()> cb_Draw;
+    TitleType m_TitleType = TitleType::MainButtonOpensPopup;
+    std::function<void()> cb_DrawPopup;
+    std::function<void()> cb_TitleButton;
+    ImGuiModules::ImGuiPopup m_Popup;
+    ImGuiTableColumnFlags m_TableColumnFlags;
+    bool m_IsVisible = false;
+    bool m_OpenPopup = false;
+        
+  
+};
+
+      
+
+struct Toolbar {
+        
+public:
+    // Defines which widgets to show
+    enum class CurrentLevel { Home, Run, Drawing, Settings, Sketch, Function_CutPath };
+    // shorthand
+    typedef ToolbarItem::DisabledFlag DisabledFlag;
+    typedef ToolbarItem::TitleType TitleType;
+    
+    Toolbar(GRBL& grbl, Settings* settings, Sketch::Sketcher* sketcherNew, Functions& functions) 
+        : m_Settings(settings), m_Sketcher(sketcherNew), m_FileBrowser(std::make_unique<FileBrowser>(&settings->p.system.curDir))
+    {
+        Event<Event_ResetFileTimer>::RegisterHandler([&](Event_ResetFileTimer data) {
+            (void)data;
+            timer.Reset();
+        });
+      
+        
+        // Header images & back button
+        
+        // Run Home
+        toolbarList.Header_Home = toolbarItems.Addp("##HomeHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton("Home##HeaderToolbarButton", m_Settings->guiSettings.img_Home, CurrentLevel::Home);
+            return false; // Dont show popup
+        });
+        // Run Header
+        toolbarList.Header_Run = toolbarItems.Addp("##RunHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton("Run##HeaderToolbarButton", m_Settings->guiSettings.img_Play, CurrentLevel::Run);
+            return false; // Dont show popup
+        }/*, TitleType::BackButton, nullptr, [&]() { 
+            PreviousToolbarLevel(); 
+        }*/);
+        // Draw Header
+        toolbarList.Header_Draw = toolbarItems.Addp("##DrawHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton("Draw##HeaderToolbarButton", m_Settings->guiSettings.img_Sketch_Draw, CurrentLevel::Drawing);
+            return false; // Dont show popup
+        });
+        // Sketch Header
+        toolbarList.Header_Sketch = toolbarItems.Addp("##SketchHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton("Sketch##HeaderToolbarButton", m_Settings->guiSettings.img_Sketch, CurrentLevel::Sketch);
+            return false; // Dont show popup
+        });
+        // Settings Header
+        toolbarList.Header_Settings = toolbarItems.Addp("##SettingsHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton("Settings##HeaderToolbarButton", m_Settings->guiSettings.img_Settings, CurrentLevel::Settings);
+            return false; // Dont show popup
+        });
+        
+        // Settings Header
+        toolbarList.Header_Function_CutPath = toolbarItems.Addp("##FunctionCutpathHeaderColumn", DisabledFlag::Never, [&]() {
+            DrawHeaderButton("Path##HeaderToolbarButton", m_Settings->guiSettings.img_Function_CutPath, CurrentLevel::Function_CutPath);
+            return false; // Dont show popup
+        });
+        
+
+            
+         //  ImGui::SameLine();
+         //      
+         //  // BACK BUTTON
+         //  // we disable the back button in the top level (save this value as it may change)
+         //  bool isDisabled = !(m_CurrentLevel == CurrentLevel::Sketch || m_CurrentLevel == CurrentLevel::Function);
+         //  // Disable back button in the top level
+         //  if(isDisabled) { ImGui::BeginDisabled(); } 
+         //  
+         //      // Draw ImGui Widgets
+         //      if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("##BackToolbarNavigation", s.img_ArrowLeft, s.imageButton_Toolbar_Back, false, s.toolbarItemHeight)) {
+         //          // Move up a level
+         //          //if(m_CurrentLevel == CurrentLevel::TopLevel)        { } // do nothing
+         //          if(m_CurrentLevel == CurrentLevel::Run)             { } // do nothing
+         //          else if(m_CurrentLevel == CurrentLevel::Drawing)    { } // do nothing
+         //          else if(m_CurrentLevel == CurrentLevel::Settings)   { } // do nothing
+         //          else if(m_CurrentLevel == CurrentLevel::Sketch)     { SetToolbarLevel(CurrentLevel::Drawing); }
+         //          else if(m_CurrentLevel == CurrentLevel::Function)   { SetToolbarLevel(CurrentLevel::Drawing); }
+         //          else { Log::Critical("Current toolbar level unknown"); }
+         //           // Update viewer
+         //          m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
+         //      }
+         //
+         //  if(isDisabled) { ImGui::EndDisabled(); } 
+            
+        
+        // BACK BUTTON
+
+        toolbarList.Back = toolbarItems.Addp("##BackHeaderColumn", DisabledFlag::Never, [&]() {
+               
+            GUISettings& s = m_Settings->guiSettings;
+            ImGui::BeginDisabled(m_CurrentLevel == CurrentLevel::Home);
+                // Make button graphics invisible (make same colour as background)
+                ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f, 0.0f, 0.0f, 0.0f });
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.0f, 0.0f, 0.0f, 0.0f });
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.0f, 0.0f, 0.0f, 0.0f });
+                    // Draw ImGui Widgets
+                    if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("##BackToolbarNavigation", s.img_ArrowLeft, s.imageButton_Toolbar_Back, false, s.toolbarItemHeight)) {
+                        PreviousToolbarLevel(); 
+                    }
+                ImGui::PopStyleColor(3);
+            ImGui::EndDisabled();
+            return false; // Dont show popup
+        });
+
+        
+            
+        // Run / Draw Switch
+        toolbarList.Navigation = toolbarItems.Addp("Navigation##SwitchHeaderColumn", DisabledFlag::Never, [&]() {
+               
+            GUISettings& s = m_Settings->guiSettings;
+          
+        // DRAW / RUN BUTTON
+            
+            bool isDrawActive = (m_CurrentLevel == CurrentLevel::Drawing) || (m_CurrentLevel == CurrentLevel::Sketch) || (m_CurrentLevel == CurrentLevel::Function_CutPath);
+            bool isRunActive = (m_CurrentLevel == CurrentLevel::Run);
+            bool isSettingsActive = (m_CurrentLevel == CurrentLevel::Settings);
+            
+            
+            
+            // remove spacing between items
+            ImGui::BeginGroup();
+                // Draw image button
+                if(ImGuiModules::ImageButtonWithText("Run##ToolbarNavigation", s.img_Play, s.imageButton_Toolbar_LevelToggler, isRunActive)) {
+                    // Set Toolbar level
+                    SetToolbarLevel(CurrentLevel::Run);
+                }
+                // on top of each other
+                if (ImGuiModules::ImageButtonWithText("Draw##ToolbarNavigation", s.img_Sketch_Draw, s.imageButton_Toolbar_LevelToggler, isDrawActive)) {
+                    // Set Toolbar level
+                    SetToolbarLevel(CurrentLevel::Drawing);
+                }
+            ImGui::EndGroup();
+            
+            ImGui::SameLine();
+        // Settings BUTTON
+            
+            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("##SettingsToolbarNavigation", s.img_Settings, s.imageButton_Toolbar_Settings, isSettingsActive, s.toolbarItemHeight)) {
+                // Set Toolbar level
+                SetToolbarLevel(CurrentLevel::Settings); 
+            }
+            return false; // Dont show popup
+        });
+            
+            
+        
+// Run LEVEL
+
+        // Connect Button
+        toolbarList.Connect = toolbarItems.Addp("Connect", DisabledFlag::Never, [&]() {
+            GUISettings& s = m_Settings->guiSettings;
+            // Draw ImGui Widgets
+            ImGui::BeginGroup();
+                std::string name = (m_Settings->grblVals.isConnected) ? "Connected##ToolbarButton" : "Connect##ToolbarButton";
+                // Draw button
+                if (ImGuiCustomModules::ImageButtonWithText_CentredVertically(name, s.img_Connect, s.imageButton_Toolbar_Connect, m_Settings->grblVals.isConnected, s.toolbarItemHeight)) { 
+                    // Connect / disconnect from GRBL
+                    (m_Settings->grblVals.isConnected) ? grbl.disconnect() : grbl.connect(m_Settings->p.system.serialDevice, stoi(m_Settings->p.system.serialBaudrate));
+                }
+            ImGui::EndGroup();  
+            return false; // Dont show popup 
+            
+        }, TitleType::HeaderEditButtonOpensPopup, [&]() { 
+            // Draw edit popup
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::InputText("Device", &m_Settings->p.system.serialDevice);
+            ImGui::SetNextItemWidth(80.0f);
+            ImGui::InputText("Baudrate", &m_Settings->p.system.serialBaudrate, ImGuiInputTextFlags_CharsDecimal);
+        });
+        
+        
+        // Open File Button
+        toolbarList.OpenFile = toolbarItems.Addp("Open File", DisabledFlag::WhenDisconnected, [&]() {
+            GUISettings& s = m_Settings->guiSettings;
+            // Make active if file selected
+            bool isActive = (m_FileBrowser->CurrentFile() != "");
+            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Open##ToolbarButton", s.img_Open, s.imageButton_Toolbar_ButtonPrimary, isActive, s.toolbarItemHeight)) { 
+                // Check file is not running
+                if(m_Settings->grblVals.isFileRunning) { Log::Error("A file is running. This must finish before opening another"); } 
+                // open popup when draw open file clicked
+                toolbarList.OpenFile->OpenPopup();
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full); // was ::Clear
+            }
+            return false; // Dont show popup
+        }, TitleType::MainButtonOpensPopup, [&]() { 
+            // just draw the widgets for the filebrowser as we are handling the popup ourselves
+            // if an error occurs of a file is selected, manually close popup
+            if(m_FileBrowser->DrawWidgets()) {
+                ImGui::CloseCurrentPopup();
+            }
+        });
+
+    // DRAW THE PLAY BUTTONS AND DISPLAY CURRENT FILE
+
+        // Open File Button
+        toolbarList.PlayButtons = toolbarItems.Addp("Send To CNC", DisabledFlag::WhenDisconnected, [&]() {
+            
+            // Run, Cancel, Pause & Restart
+            DrawPlayButtons(grbl);
+            return false;
+            
+            
+            ImGuiTableFlags flags = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_ScrollX;
+            
+            if (ImGui::BeginTable("PlayButtons", 3, flags))
+            {
+                ImGui::TableNextRow();
+                // Run, Cancel, Pause & Restart
+                ImGui::TableNextColumn();
+                DrawPlayButtons(grbl);
+                // Current file name
+                ImGui::TableNextColumn();
+                DrawCurrentFile();
+                // Time elapsed
+                ImGui::TableNextColumn();
+                if(m_Settings->grblVals.isFileRunning) 
+                    DrawTimeElapsed(); 
+                
+                ImGui::EndTable();
+            }
+            
+            return false; // Dont show popup
+        });
+        
+        
+      
+// Drawing LEVEL  
+
+        // New Sketch Button
+        toolbarList.Sketch = toolbarItems.Addp("Sketch##Column", DisabledFlag::Never, [&]() {
+            GUISettings& s = m_Settings->guiSettings;
+            // Draw ImGui Widgets
+            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Sketch##ToolbarButton", s.img_Sketch, s.imageButton_Toolbar_ButtonPrimary, false, s.toolbarItemHeight)) { 
+                // Set Toolbar level
+                SetToolbarLevel(CurrentLevel::Sketch); 
+            }
+            return false; // Dont show popup
+        });
+
+        // New Function Button
+        toolbarList.Function_CutPath = toolbarItems.Addp("Functions##Column", DisabledFlag::Never, [&]() {
+            GUISettings& s = m_Settings->guiSettings;
+            bool isActive = (m_CurrentLevel == CurrentLevel::Function_CutPath);
+            // Draw ImGui Widgets
+            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Path##ToolbarButton", s.img_Function_CutPath, s.imageButton_Toolbar_Button, isActive, s.toolbarItemHeight)) { 
+                // Set Toolbar level
+                SetToolbarLevel(CurrentLevel::Function_CutPath);
+            }
+            return false; // Dont show popup
+        });
+
+// Sketch LEVEL  
+        // SketchTools
+        toolbarList.SketchTools = toolbarItems.Addp("Sketch Tools", DisabledFlag::Never, [&]() {
+            // Draw ImGui Widgets
+            typedef Sketch::SketchEvents::CommandType CommandType;
+            GUISettings& s = m_Settings->guiSettings;
+            // Select Button
+            if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Select##ToolbarButton", s.img_Sketch_Select, s.imageButton_Toolbar_SketchPrimary, m_Sketcher->Events().GetCommandType() == CommandType::Select, s.toolbarItemHeight)) { 
+                 m_Sketcher->Events().SetCommandType(CommandType::Select);
+            }
+            
+            ImGui::SameLine();
+            
+            ImGui::BeginGroup();
+                ImGuiModules::CentreItemVerticallyAboutItem(s.toolbarItemHeight, s.imageButton_Toolbar_Sketch->buttonSize.y);
+                
+                // Add Point Button
+                if (ImGuiModules::ImageButtonWithText("Point##ToolbarButton", s.img_Sketch_Point, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Point)) {  
+                     m_Sketcher->Events().SetCommandType(CommandType::Add_Point);
+                }
+                ImGui::SameLine();
+                // Add Line Button
+                if (ImGuiModules::ImageButtonWithText("Line##ToolbarButton", s.img_Sketch_Line, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Line)) { 
+                     m_Sketcher->Events().SetCommandType(CommandType::Add_Line);
+                }
+                ImGui::SameLine();
+                // Add Arc Button
+                if (ImGuiModules::ImageButtonWithText("Arc##ToolbarButton", s.img_Sketch_Arc, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Arc)) { 
+                     m_Sketcher->Events().SetCommandType(CommandType::Add_Arc);
+                }
+                ImGui::SameLine();
+                // Add Circle Button
+                if (ImGuiModules::ImageButtonWithText("Circle##ToolbarButton", s.img_Sketch_Circle, s.imageButton_Toolbar_Sketch, m_Sketcher->Events().GetCommandType() == CommandType::Add_Circle)) {  
+                     m_Sketcher->Events().SetCommandType(CommandType::Add_Circle);
+                }
+            ImGui::EndGroup();
+            return false; // Dont show popup 
+        });
+        
+        toolbarList.SketchConstraints = toolbarItems.Addp("Constraints", DisabledFlag::Never, [&]() {
+            
+            
+            GUISettings& s = m_Settings->guiSettings;
+            float frameHeight = m_Settings->guiSettings.toolbarItemHeight;
+            ImVec2& buttonSize = s.imageButton_Toolbar_Constraint->buttonSize;
+            
+            typedef Sketch::RenderData::Image::Type Type;
+            
+            // Draws an image button for a constraint
+            auto cb_ImageButton = [&](const std::string& name, Type imageType) {
+                
+                ImageTexture* image;
+                if(imageType == Type::Coincident)        { image = &s.img_Sketch_Constraint_Coincident; } 
+                else if(imageType == Type::Midpoint)     { image = &s.img_Sketch_Constraint_Midpoint; }
+                else if(imageType == Type::Vertical)     { image = &s.img_Sketch_Constraint_Vertical; }
+                else if(imageType == Type::Horizontal)   { image = &s.img_Sketch_Constraint_Horizontal; }
+                else if(imageType == Type::Parallel)     { image = &s.img_Sketch_Constraint_Parallel; }
+                else if(imageType == Type::Perpendicular){ image = &s.img_Sketch_Constraint_Perpendicular; }
+                else if(imageType == Type::Tangent)      { image = &s.img_Sketch_Constraint_Tangent; }
+                else if(imageType == Type::Equal)        { image = &s.img_Sketch_Constraint_Equal; }
+                else if(imageType == Type::Distance)     { image = &s.img_Sketch_Constraint_Distance; }
+                else if(imageType == Type::Radius)       { image = &s.img_Sketch_Constraint_Radius; }
+                else if(imageType == Type::Angle)        { image = &s.img_Sketch_Constraint_Angle; }
+                else { Log::Critical("Unknown image type"); }
+                 
+                return ImGuiModules::ImageButtonWithText(name, *image, s.imageButton_Toolbar_Constraint);
+            };
+            
+            // Draws an inputbox for a constraint (distance, radius, angle etc.)
+            auto cb_InputValue = [&](double* value) {
+                // Set inputbox width
+                ImGui::SetNextItemWidth(m_Settings->guiSettings.toolbarWidgetWidth);
+                // Centre align to the constraint buttons
+                ImGuiModules::CentreItemVerticallyAboutItem(frameHeight);
+                // Draw inputbox
+                ImGui::InputDouble(std::string("##" + std::to_string((int)value)).c_str(), value, 0.0, 0.0, "%g"); // use value ptr as ID
+            };
+            
+            
+            
+            // Add Constraint Buttons
+            ImGui::BeginGroup();
+                // Centre contraint buttons about main toolbar buttons
+                ImGuiModules::CentreItemVerticallyAboutItem(frameHeight, buttonSize.y);
+                // TODO: Order of selection needs to be preserved - if circle then arc, circle should jump onto arc... atm it's just default order
+                m_Sketcher->Draw_ConstraintButtons(cb_ImageButton, cb_InputValue);
+            ImGui::EndGroup();
+            return false; // Dont show popup
+        });
+        
+        
+// Functions level
+
+        // SketchTools
+        toolbarList.Function_CutPath_Tools = toolbarItems.Addp("Functions", DisabledFlag::Never, [&]() {
+                        
+            GUISettings& s = m_Settings->guiSettings;
+            float frameHeight = s.toolbarItemHeight;
+            ImVec2& buttonSize = s.imageButton_Toolbar_ButtonPrimary->buttonSize;            
+            
+            // Add Constraint Buttons
+            ImGui::BeginGroup();
+                // Centre contraint buttons about main toolbar buttons
+                ImGuiModules::CentreItemVerticallyAboutItem(frameHeight, buttonSize.y);
+                // draw functions toolbars
+                functions.DrawToolbars();
+                
+            ImGui::EndGroup();
+            return false; // Dont show popup
+            
+        });
+        
+ 
+
+  // RIGHT ALIGNED TABLE ITEMS
+  
+        // Spacer
+        toolbarList.Spacer = toolbarItems.Addp("##Spacer", DisabledFlag::WhenDisconnected, [&]() { return false; }, TitleType::MainButtonOpensPopup, nullptr, []() { return false; }, ImGuiTableColumnFlags_WidthStretch);
+ 
+          
+        // Tools
+        toolbarList.Tools = toolbarItems.Addp("Tools", DisabledFlag::Never, [&]() {
+            
+            GUISettings& s = m_Settings->guiSettings;
+            // Draw ImGui Widgets (will show popup if returns true)
+            return ImGuiCustomModules::ImageButtonWithText_CentredVertically("Tools##ToolbarButton", s.img_Tool, s.imageButton_Toolbar_ButtonPrimary, false, s.toolbarItemHeight);
+            
+        }, TitleType::MainButtonOpensPopup, [&]() { 
+            // Draw edit popup
+            if(m_Settings->p.toolSettings.DrawPopup()) { 
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full);   
+            }
+        });
+        
+        // Jog
+        toolbarList.Jog = toolbarItems.Addp("Jog", DisabledFlag::WhenDisconnected, [&]() {
+            // Draw ImGui Widgets
+            jogController.DrawJogController(grbl, *m_Settings);
+            return false; // Dont show popup
+        }, TitleType::HeaderEditButtonOpensPopup, [&]() { 
+            // Draw edit popup
+            jogController.DrawJogSetting(m_Settings->grblVals);
+        });
+                 
+        
+        // 2D / 3D
+        toolbarList.SwitchView = toolbarItems.Addp("View", DisabledFlag::Never, [&]() {
+            // Draw ImGui Widgets
+            GUISettings& s = m_Settings->guiSettings;
+            // Draw ImGui Widgets
+            ImGui::BeginGroup();
+            
+                bool is2DMode;
+                Event<Event_Get2DMode>::Dispatch( { is2DMode } );
+                
+                //std::string name = (is2DMode) ? "3D##ToolbarButton" : "2D##ToolbarButton";
+                std::string name = "Switch View##ToolbarButton";
+                ImageTexture img = (is2DMode) ? s.img_3D : s.img_2D;
+                // Draw button
+                if (ImGuiCustomModules::ImageButtonWithText_CentredVertically(name, img, s.imageButton_Toolbar_Connect, false, s.toolbarItemHeight)) { 
+                    Event<Event_Set2DMode>::Dispatch( { !is2DMode } );
+                }
+            ImGui::EndGroup(); 
+            return false; // Dont show popup 
+        });
+
+// Function LEVEL  
+        // ...
+        
+        
+        // initialise toolbar level (show top level items)
+        SetToolbarLevel(CurrentLevel::Home);
+        UpdateLevel();
+    }
+     
+    // Get current Toolbar level
+    CurrentLevel Level() { return m_CurrentLevel; };
+
+    void SetToolbarLevel(CurrentLevel level) {
+        
+        m_CurrentLevel = level;
+        levelUpdateRequired = true;
+         // Update viewer
+        m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
+    }
+    
+    void PreviousToolbarLevel() {
+        // Move up a level
+        if(m_CurrentLevel == CurrentLevel::Home)                    { /* Do nothing */ }
+        else if(m_CurrentLevel == CurrentLevel::Run)                { SetToolbarLevel(CurrentLevel::Home); } 
+        else if(m_CurrentLevel == CurrentLevel::Drawing)            { SetToolbarLevel(CurrentLevel::Home); } 
+        else if(m_CurrentLevel == CurrentLevel::Settings)           { SetToolbarLevel(CurrentLevel::Home); } 
+        else if(m_CurrentLevel == CurrentLevel::Sketch)             { SetToolbarLevel(CurrentLevel::Drawing); }
+        else if(m_CurrentLevel == CurrentLevel::Function_CutPath)   { SetToolbarLevel(CurrentLevel::Drawing); }
+        else { Log::Critical("Current toolbar level unknown"); }
+    }
+    
+    
+
+    void Draw(GRBL &grbl, sketch::SketchOld& sketcherOld) 
+    {                
+        const ImGuiViewport* viewport = ImGui::GetMainViewport();
+        float padding = m_Settings->guiSettings.dockPadding;
+        // Set window size and position
+        ImGui::SetNextWindowPos(viewport->WorkPos + ImVec2(padding, padding));
+        ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x - 2.0f * padding, m_Settings->guiSettings.toolbarHeight));
+        // flags for window
+        ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse 
+        | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+        // Create Toolbar Window
+        if (!ImGui::Begin("Toolbar", NULL, ImGuiCustomModules::ImGuiWindow::generalWindowFlags | window_flags)) {
+            ImGui::End();
+            return;
+        }
+        // push the general style widget, normally this would be done in ImGuiCustomModules::ImGuiWindow::Begin 
+        ImGuiCustomModules::ImGuiWindow::PushWidgetStyle(*m_Settings);
+        
+    // DRAW THE TOOLBAR TABLE
+    
+        // Format the table
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(m_Settings->guiSettings.toolbarSpacer / 2.0f, 2.0f));
+        ImGui::PushStyleVar(ImGuiStyleVar_ScrollbarSize, m_Settings->guiSettings.toolbarTableScrollbarSize);
+        // flags for table
+        ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_PadOuterX | ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_ScrollX;
+                
+        // Table handles it's own ImGui::BeginDisabled()
+        // Draw Toolbar Table
+        if (ImGui::BeginTable("Toolbar",  VisibleToolbarItemCount(), flags, ImVec2(0.0f, m_Settings->guiSettings.toolbarTableHeight))) 
+        {           
+            // Style the header & edit button
+            ImGui::PushFont(m_Settings->guiSettings.font_small);
+            ImGui::PushStyleColor(ImGuiCol_Text, m_Settings->guiSettings.colour[Colour::HeaderText]);
+            // Set the background colour of the heading row to invisible
+            ImGui::PushStyleColor(ImGuiCol_TableHeaderBg, { 0.0f, 0.0f, 0.0f, 0.0f });
+            ImGui::PushStyleColor(ImGuiCol_HeaderHovered, { 0.0f, 0.0f, 0.0f, 0.0f });
+            ImGui::PushStyleColor(ImGuiCol_HeaderActive, { 0.0f, 0.0f, 0.0f, 0.0f });
+                        
+                // Setup Table columns (will only add visible columns)
+                for(size_t i = 0; i < toolbarItems.Size(); i++) {
+                    // only draw if visible
+                    if(toolbarItems[i].IsVisible()) {
+                        toolbarItems[i].DrawSetupColumn();
+                    }
+                } 
+                
+                // Set up Header Row with Edit buttons 
+                // Instead of calling TableHeadersRow() we'll submit custom headers ourselves so that we can add an Edit Button
+                ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+                
+                size_t counter = 0;
+                // Draw Table Headers (with Edit Button)
+                for(size_t i = 0; i < toolbarItems.Size(); i++) 
+                {
+                    // only draw if visible
+                    if(toolbarItems[i].IsVisible()) {
+                        // Set Column Index
+                        ImGui::TableSetColumnIndex(counter++);
+                        ImGui::TableHeader(toolbarItems[i].Name().c_str());
+                        
+                        ImGui::PushID(i);
+                           // draw the edit button
+                            toolbarItems[i].DrawTitle(m_Settings);
+                        ImGui::PopID();
+                    }
+                }
+                
+            ImGui::PopStyleColor(4);
+            ImGui::PopFont();      
+            
+            // Draw toolbar items (Widgets etc)
+            ImGui::TableNextRow();
+        
+            for(size_t i = 0; i < toolbarItems.Size(); i++) {
+                // only draw if visible
+                if(toolbarItems[i].IsVisible()) {
+                    ImGui::TableNextColumn();
+                    ImGui::BeginGroup();
+                        if(toolbarItems[i].Draw(m_Settings)) {
+                            toolbarItems[i].OpenPopup();         // Open popup if return value
+                        }
+                    ImGui::EndGroup();
+                }
+            }
+            
+            ImGui::EndTable();
+        } 
+
+
+       
+        ImGui::PopStyleVar(2);
+        
+        
+        
+        /*
+        
+        
+        
+        
+        
+        ImGui::SameLine();
+        
+        ImGui::BeginGroup();
+            // Time elapsed
+            if(m_Settings->grblVals.isFileRunning) {
+                //ImGui::SameLine(); ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
+                DrawTimeElapsed(m_Settings->grblVals);
+            }
+            ImGui::SameLine(); //ImGui::Dummy(ImVec2(50, 0)); ImGui::SameLine();
+            
+            // Current file name
+            DrawCurrentFile(m_Settings, fileBrowser);
+        ImGui::EndGroup();
+*/
+ 
+
+
+
+           
+        
+        // popups handle their own ImGui::BeginDisabled()
+            
+        // Draw edit button Popups if visible
+        for(size_t i = 0; i < toolbarItems.Size(); i++) {
+            // Draw Popup
+            if(toolbarItems[i].DrawPopup(m_Settings)) {
+                // update if windows was just closed
+                m_Settings->SetUpdateFlag(SqeakUpdate::Full); 
+            }
+        }
+        
+        
+      
+             
+        // end
+        ImGuiCustomModules::ImGuiWindow::PopWidgetStyle();
+        ImGui::End();
+        
+        // performs update based on current level set if required
+        UpdateLevel();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+//  TOP LEVEL
+//   -> Draw
+//      DRAWING LEVEL
+//       ->New/Open/Save Drawing
+//       ->New Sketch
+//          SKETCH LEVEL
+//           ->Select 
+//           ->Point
+//           ->Line
+//           ->Arc
+//           ->Circle
+//       ->Tool / Material
+//       ->Cut Path
+//          FUNCTION LEVEL
+//       ->Drill
+//          FUNCTION LEVEL
+//  -> Run
+//      RUN LEVEL
+//      -> Connect
+//      -> Open
+//      -> Set X0 Y0 Z0, reset, home etc.
+//      -> Custom GCodes
+//      -> Overrides(collapsable)
+//      -> Jog(collapsable)
+
+
+    /*
+     * 
+     * 
+    enum class Export         { False, Pending, True };
+     * 
+        // allows us to determine whether file should be exported (creates popup if file is to be overwritten)
+        static pair<Export, string> exportFileName = make_pair(Export::False, "");
+        // handle file export
+ //       DoesFileNeedExport(settings, functions, functionsexportFileName);
+             
+             
+    void DoesFileNeedExport(Settings& settings, Functions& functions, std::pair<Export, std::string>& exportFileName)
+    {   // if file doesn't exist, set flag to export. 
+        // If file does exist, show popup to confirm overwrite
+        if(exportFileName.first == Export::Pending) {
+            if(!File::Exists(exportFileName.second)) {
+                exportFileName.first = Export::True;
+            } else {
+                ImGui::OpenPopup("Overwrite File Popup");
+            }
+        }
+        // draw the popup if visible
+        DrawPopup_OverwriteFile(exportFileName);
+        // export file when ready and reset the flag
+        if(exportFileName.first == Export::True) {
+            Log::Info("Exporting file: %s", exportFileName.second.c_str());
+            functions.SaveActiveFunction(settings, exportFileName.second);
+            exportFileName = make_pair(Export::False, "");
+        }
+    }
+           
+    void DrawPopup_OverwriteFile(std::pair<Export, std::string>& exportFileName)
+    {       
+        // Always center this window when appearing
+        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+        if (ImGui::BeginPopupModal("Overwrite File Popup", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGui::Text("The following file already exists:\n\n%s\n\nAre you sure you want to overwrite it?", exportFileName.second.c_str());
+            ImGui::Separator();
+
+            if (ImGui::Button("Overwrite", ImVec2(120, 0))) { 
+                exportFileName.first = Export::True;
+                cout << "Overwrite" << endl;
+                ImGui::CloseCurrentPopup(); 
+            }
+            ImGui::SetItemDefaultFocus();
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel", ImVec2(120, 0))) { 
+                exportFileName = make_pair(Export::False, "");
+                cout << "Cancel" << endl;
+                ImGui::CloseCurrentPopup(); 
+            }
+            ImGui::EndPopup();
+        }
+    }
+*/ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+private:
+// Variables
+    // states what Toolbar level we are in
+    CurrentLevel m_CurrentLevel; // initialised in constructor
+    bool levelUpdateRequired = true;
+    
+    // The toolbar items
+    Vector_Ptrs<ToolbarItem> toolbarItems;
+    // Indexes for toolbar items
+    struct ToolbarList {
+        ToolbarItem* Header_Home;
+        ToolbarItem* Header_Run;
+        ToolbarItem* Header_Draw;
+        ToolbarItem* Header_Sketch;
+        ToolbarItem* Header_Settings;
+        ToolbarItem* Header_Function_CutPath;
+        ToolbarItem* Navigation;
+        ToolbarItem* Back;
+        ToolbarItem* Connect;
+        ToolbarItem* OpenFile;
+        ToolbarItem* PlayButtons;
+        ToolbarItem* Tools;
+        ToolbarItem* Spacer;
+        ToolbarItem* Jog;
+        ToolbarItem* Sketch;
+        ToolbarItem* SketchTools;
+        ToolbarItem* SketchConstraints;
+        ToolbarItem* Function_CutPath;
+        ToolbarItem* Function_CutPath_Tools;
+        ToolbarItem* SwitchView;
+    } toolbarList;
+    
+    // For timing the file
+    Timer timer;
+
+    // these are stored because otherwise references are lost in lambdas
+    Settings* m_Settings;
+    Sketch::Sketcher* m_Sketcher; 
+    // file browser
+    std::unique_ptr<Sqeak::FileBrowser> m_FileBrowser;
+    bool openPopup_FileBrowser = false;
+    // jog controller + keyboard input
+    JogController jogController;
+    
+// Functions
+
+
+    // Gets count of the visible toolbar items
+    size_t VisibleToolbarItemCount() {
+        size_t counter = 0;
+        for(size_t i = 0; i < toolbarItems.Size(); i++) {
+            if(toolbarItems[i].IsVisible()) {
+                counter++;
+            }
+        }
+        return counter;
+    }
+          
+    // updates based on current level set
+    void UpdateLevel() {
+        
+        if(!levelUpdateRequired) { return; }
+        levelUpdateRequired = false;
+        // Set all items invisible
+        for(size_t i = 0; i < toolbarItems.Size(); i++) {
+            toolbarItems[i].SetVisible(false);
+        }
+        
+        // Set item visible 
+        auto SetItemVisible = [&](ToolbarItem* item) {
+            item->SetVisible(true); 
+        };
+        
+        
+        // Always show home
+        SetItemVisible(toolbarList.Header_Home);
+        // Navigation - visible to all
+        if(m_CurrentLevel == CurrentLevel::Home) {
+            SetItemVisible(toolbarList.Back);
+            SetItemVisible(toolbarList.Navigation);
+        }
+        // Run
+        if(m_CurrentLevel == CurrentLevel::Run) {
+            // Set visible toolbar items
+            SetItemVisible(toolbarList.Header_Run); // as header
+            SetItemVisible(toolbarList.Back);
+            SetItemVisible(toolbarList.Connect);
+            SetItemVisible(toolbarList.OpenFile);
+            SetItemVisible(toolbarList.PlayButtons);
+            SetItemVisible(toolbarList.Spacer);
+            SetItemVisible(toolbarList.Jog);
+        } else {
+            // Clear the open file
+            //fileBrowser->ClearCurrentFile();
+        }
+        
+        // Drawing
+        if(m_CurrentLevel == CurrentLevel::Drawing) {
+            // Set visiable toolbar items
+            SetItemVisible(toolbarList.Header_Draw); // as header
+            SetItemVisible(toolbarList.Back);
+            // SetItemVisible(Drawing (New/Open/Save))  ***MAYBE THIS SHOULD BE A DROPDOWN? 
+            SetItemVisible(toolbarList.Sketch);
+            SetItemVisible(toolbarList.Function_CutPath);
+            SetItemVisible(toolbarList.Spacer);
+            SetItemVisible(toolbarList.Tools);
+            SetItemVisible(toolbarList.SwitchView);
+        } 
+        
+        // Settings
+        if(m_CurrentLevel == CurrentLevel::Settings) {
+            // Set visiable toolbar items 
+            SetItemVisible(toolbarList.Header_Settings); // as header
+            SetItemVisible(toolbarList.Back);
+        } 
+        
+        // Sketch
+        if(m_CurrentLevel == CurrentLevel::Sketch) {
+            // Set visiable toolbar items
+            SetItemVisible(toolbarList.Header_Draw); // as header
+            SetItemVisible(toolbarList.Header_Sketch); // as header
+            SetItemVisible(toolbarList.Back);
+            SetItemVisible(toolbarList.SketchTools);
+            SetItemVisible(toolbarList.SketchConstraints);
+            // Set sketch command type
+            m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::Select);
+        } else {
+            // Reset sketch command type
+            m_Sketcher->Events().SetCommandType(Sketch::SketchEvents::CommandType::None);
+        }
+        
+        // Functions
+        if(m_CurrentLevel == CurrentLevel::Function_CutPath) {
+            SetItemVisible(toolbarList.Header_Draw); // as header
+            SetItemVisible(toolbarList.Header_Function_CutPath); // as header
+            SetItemVisible(toolbarList.Back);
+            SetItemVisible(toolbarList.Function_CutPath_Tools);
+            SetItemVisible(toolbarList.Spacer);
+            SetItemVisible(toolbarList.Tools);
+            SetItemVisible(toolbarList.SwitchView);
+        }
+                
+        // Set 2D mode
+        if(m_CurrentLevel == CurrentLevel::Sketch || m_CurrentLevel == CurrentLevel::Function_CutPath) {
+            // Set 2D Mode
+            Event<Event_Set2DMode>::Dispatch( { true } );
+        } else {
+            // Unset 2D Mode
+            Event<Event_Set2DMode>::Dispatch( { false } );
+        }
+    }
+        
+    void RunFile(GRBL& grbl) {
+        // check we have selected a file
+        if (m_FileBrowser->CurrentFile() == "") {
+            Log::Error("No file has been selected");
+            return;
+        }
+        // get filepath of file
+        string filepath = File::CombineDirPath(m_Settings->p.system.curDir, m_FileBrowser->CurrentFile());
+        // add to log
+        Log::Info(string("Sending File: ") + filepath);
+        
+        // start file timer
+        Event<Event_ResetFileTimer>::Dispatch({});
+         
+        // send file to grbl
+        if (grbl.sendFile(filepath)) {
+            // couldn't open file
+            Log::Error("Couldn't send file to grbl");
+        }
+        
+        
+            int sendArray(const std::vector<std::string>& gcodes);
+    }
+    
+    // Toolbar Header Item
+    // draws text and an image by drawing an image button with text and turning off button background colour
+    bool DrawHeaderButton(const std::string& name, ImageTexture image, CurrentLevel level) {
+        // Make button graphics invisible (make same colour as background)
+        ImGui::PushStyleColor(ImGuiCol_Button, { 0.0f, 0.0f, 0.0f, 0.0f });
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, { 0.0f, 0.0f, 0.0f, 0.0f });
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, { 0.0f, 0.0f, 0.0f, 0.0f });
+        // Remove padding arouund button to make the entire cell clickable
+        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0.0f, 0.0f));
+            // Define style, if inactive, show small button
+            std::string text = (m_CurrentLevel == level) ? name : "##HeaderButton" + std::to_string((int)level);
+            ImGuiModules::ImageButtonStyle* style = (m_CurrentLevel == level) ? m_Settings->guiSettings.imageButton_Toolbar_Header : m_Settings->guiSettings.imageButton_Toolbar_HeaderInactive;
+            ImageTexture texture = (m_CurrentLevel == level) ? ImageTexture() : m_Settings->guiSettings.img_ArrowBackward;
+            // Draw ImGui Image button with text, if hovered, show back button
+            bool isClicked = ImGuiModules::ImageButtonWithText(text, image, style, false, texture); 
+            // if clicked, go back a level
+            if(isClicked) { SetToolbarLevel(level); } // Set Toolbar level
+            
+        ImGui::PopStyleVar();
+        ImGui::PopStyleColor(3);
+        return isClicked; 
+    };
+  
+        
+    
+
+    
+    void DrawCurrentFile()
+    {
+        if(m_FileBrowser->CurrentFile() == "") { 
+            return; 
+        }
+        ImGui::BeginGroup();
+            ImGuiModules::CentreItemVertically(2);
+            
+            // shortens file path to "...path/at/place.gc" if length > max_FilePathDisplay
+    
+    // Gets count of the visible toolbar items
+    size_t VisibleToolbarItemCount();
+    
+    // updates based on current level set
+    void UpdateLevel();
+        
+    void RunFile(GRBL& grbl);
+    
+    // Toolbar Header Item - draws text and an image by drawing an image button with text and turning off button background colour
+    bool DrawHeaderButton(const std::string& name, ImageTexture image, CurrentLevel level);
+    void DrawCurrentFile();
+    void DrawPlayButtons(GRBL& grbl);
+    void DrawTimeElapsed();
+            /*int cutOff = 0;
+            if(currentFilePath.size() > m_Settings->guiSettings.max_FilePathDisplay) {
+                cutOff = currentFilePath.size() - m_Settings->guiSettings.max_FilePathDisplay;     
+            }                 
+            const char* shortenedPath = currentFilePath.c_str() + cutOff;
+            ImGui::Text((cutOff ? "..%s" : "%s"), shortenedPath);*/
+            ImGuiModules::TextCentredHorizontallyInTable("%s", m_FileBrowser->CurrentFile().c_str());
+            ImGuiModules::ToolTip_IfItemHovered(m_FileBrowser->CurrentFilePath().c_str());
+        ImGui::EndGroup();
+    }
+
+    
+    void DrawPlayButtons(GRBL& grbl)
+    {
+        auto SameLineSpacer = [&]() {
+            ImGui::SameLine();
+            ImGui::Dummy(ImVec2(m_Settings->guiSettings.toolbarSpacer, 0.0f));
+            ImGui::SameLine();
+        };
+        
+        GUISettings& s = m_Settings->guiSettings;
+        
+        ImGuiModules::CentreItemVerticallyAboutItem(s.toolbarItemHeight, s.imageButton_SubToolbar_Button->buttonSize.y * 2 + ImGui::GetStyle().ItemSpacing.y*2);
+            
+        ImGui::BeginGroup();
+
+            float xSpacing = 10.0f;
+            // Run Button
+            // if (ImGuiCustomModules::ImageButtonWithText_CentredVertically("Run##SubToolbarButton", s.img_Play, s.imageButton_SubToolbar_Button, false, s.toolbarItemHeight)) {
+            if (ImGuiModules::ImageButtonWithText("Run##SubToolbarButton", s.img_Play, s.imageButton_SubToolbar_Button, false)) {
+                RunFile(grbl);
+            }
+            ImGui::SameLine(0.0f, xSpacing);
+            
+            // Pause Button
+            if (ImGuiModules::ImageButtonWithText("Pause##SubToolbarButton", s.img_Pause, s.imageButton_SubToolbar_Button, false)) {
+                Log::Info("Pausing...");
+                grbl.sendRT(GRBL_RT_HOLD);
+            }
+            // SameLineSpacer();
+            
+            // New line
+            
+            // Cancel Button
+            if (ImGuiModules::ImageButtonWithText("Cancel##SubToolbarButton", s.img_Add, s.imageButton_SubToolbar_Button, false)) {
+                if (m_Settings->grblVals.isFileRunning) {
+                    Log::Info("Cancelling... Note: Any commands remaining in grbl's buffer will still execute.");
+                    grbl.cancel();
+                }
+            }
+            ImGui::SameLine(0.0f, xSpacing);
+            
+            // Restart Button
+            if (ImGuiModules::ImageButtonWithText("Restart##SubToolbarButton", s.img_Restart, s.imageButton_SubToolbar_Button, false)) {
+                Log::Info("Resuming...");
+                grbl.sendRT(GRBL_RT_RESUME);
+            }
+            
+            // TODO EXPORT & DELETE
+            //SameLineSpacer();
+            //sketcher.ActiveA_Function_Export(*m_Settings);
+            //
+            //ImGui::SameLine();
+            //sketcher.ActiveA_Function_Delete(*m_Settings);
+            
+        ImGui::EndGroup(); 
+    } 
+    
+    void DrawTimeElapsed()
+    {
+        GRBLVals& grblVals = m_Settings->grblVals;
+        ImGui::BeginGroup();
+            // update time
+            timer.UpdateCurrentTime();
+            // normalise timer seconds to hours/mins/secs
+            Time timeElapsedNorm(timer.dt());
+            // how far through file we arefunctions
+            float percComplete = (float)grblVals.curLine / (float)grblVals.totalLines;
+            // estimate time remaining
+            uint timeExpected = timer.dt() / percComplete;
+            Time timeRemainingNorm(timeExpected - timer.dt());
+            
+            // draw ImGui widgets
+            float cursorPos_FrameTop = ImGui::GetCursorPosY();
+            
+            // progress bar
+            ImGuiModules::CentreItemVertically(2);
+            // stretch
+            ImGui::SetNextItemWidth(-155.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
+                ImGui::ProgressBar(percComplete, ImVec2(0.0f, 0.0f), va_str("%d/%d (%.2f%%)", grblVals.curLine, grblVals.totalLines, 100.0f * percComplete).c_str());
+            ImGui::PopStyleVar();
+        
+            ImGui::SameLine();
+            ImGui::SetCursorPosY(cursorPos_FrameTop);
+            
+            ImGui::BeginGroup();
+                ImGui::TextUnformatted("Time Elapsed:");
+                ImGui::TextUnformatted("Time Remaining:");
+            ImGui::EndGroup();
+            
+            ImGui::SameLine();
+            
+            ImGui::BeginGroup();
+                ImGui::Text("%s", timeElapsedNorm.TimeString().c_str());
+                ImGui::Text("%s", timeRemainingNorm.TimeString().c_str());
+            ImGui::EndGroup();
+                  
+        ImGui::EndGroup();
+    }
+    
+    
+    
+};
+
+
+
+
+
 
 void Frames::DrawSketcher(Settings& settings, Sketch::Sketcher& sketcher) 
 {
@@ -2983,7 +3149,7 @@ void Frames::Draw(GRBL& grbl, Settings* settings, Viewer& viewer, sketch::Sketch
     DrawDockSpace(*settings);
     
         static PopupMessages popupMessages;
-        static Toolbar toolbar(grbl, settings, sketcherNew, fileBrowser.get());
+        static Toolbar toolbar(grbl, settings, sketcherNew, functions);
         static Debug debug;
         static Stats stats;
         static Console console;

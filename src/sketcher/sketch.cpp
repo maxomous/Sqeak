@@ -659,6 +659,25 @@ void SketchEvents::Event_Keyboard(int key, KeyAction action, KeyModifier modifie
 
 
 
+
+enum class ConstraintType { None, Vertical, Horizontal };
+
+// Returns p1 adjusted such that p0 and p1 are horizontal / vertical (if within tolerance)
+std::pair<ConstraintType, Vec2> ConstrainPoint_HorizontalVertical(const Vec2& p0, const Vec2& p1, float selectionTolerance) {
+    
+    Vec2 dif = Abs(p1 - p0);
+    
+    if(dif.x < selectionTolerance) { 
+        return { ConstraintType::Vertical,  Vec2(p0.x, p1.y) };
+    }
+    else if(dif.y < selectionTolerance) { 
+        return { ConstraintType::Horizontal, Vec2(p1.x, p0.y) };
+    }
+    return { ConstraintType::None, p1 };
+} 
+
+
+
 // Mouse Button Event
 //
 //   On Left Click                 
@@ -784,6 +803,10 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
     // Handle add element commands
     else if(m_CommandType == CommandType::Add_Point || m_CommandType == CommandType::Add_Line || m_CommandType == CommandType::Add_Arc || m_CommandType == CommandType::Add_Circle) 
     {
+        ConstraintType constraintType = ConstraintType::None;
+        bool needsSolve = false; // flag if solve constraints is required
+        ElementFactory& f = m_Parent->Factory();
+        
         if(button == MouseButton::Left && action == MouseAction::Press) {
              
         /*            
@@ -794,34 +817,35 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
             circle  -   1               if(m_CursorClickedPos == m_InputData[0]) // dont allow p on pC (0 radius)
         */
             
-            
             m_InputData.push_back(m_CursorClickedPos); 
+            
+            
             // Handle Add Point     
             if(m_CommandType == CommandType::Add_Point) 
             {
                 // check that input data is the corrent size
                 if(m_InputData.size() != 1) { return false; }
                 // Add point
-                m_Parent->Factory().AddPoint(m_InputData[0]);
+                SketchItem point = f.AddPoint(m_InputData[0]);
+                // Constrain Point to closest element / point
+                if(f.ConstrainPointToClosest(point, m_InputData[0])) { needsSolve = true; }
                 // Update render data
                 m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full);
             }
             // Handle Add Line
             else if(m_CommandType == CommandType::Add_Line) {
-                    
+                 
                 // check that input data is the corrent size
                 if(m_InputData.size() != 2) { return false; }
                 // make sure points aren't the same
                 if(m_InputData[1] == m_InputData[0]) { m_InputData.pop_back(); return false; }
                  
-                // allows us to continue element from last element's end points
-                SketchItem previousElement = m_PreviousElement;
-                
-                
                 Vec2 p1 = m_InputData[1];
-                if(previousElement.type == SketchItem::Type::Arc) {
-                    const Vec2& arc_pC = m_Parent->Factory().GetPositionBySketchItem(previousElement.PC());
-                    const Vec2& arc_p1 = m_Parent->Factory().GetPositionBySketchItem(previousElement.P1());
+                
+                // Update point to be tangent to arc
+                if(m_PreviousElement.type == SketchItem::Type::Arc) {
+                    const Vec2& arc_pC = f.GetPositionBySketchItem(m_PreviousElement.PC());
+                    const Vec2& arc_p1 = f.GetPositionBySketchItem(m_PreviousElement.P1());
                     // calculate the perpendicular distance from cursor to line pC->p1, this will be the length of the tangent line
                     double d = Geom::DistanceBetween(arc_pC, arc_p1, m_InputData[1]);
                     // determine which way line should go
@@ -829,25 +853,47 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                     // calculate the end point of the line tangent to arc used previously
                     p1 = Geom::ArcTangentLine(arc_pC, arc_p1, direction, d);
                 } 
+                // Check if Vertical / Horixontal
+                else {
+                    
+                    auto [c, p] = ConstrainPoint_HorizontalVertical(m_InputData[0], m_InputData[1], m_Parent->Factory().selectionTolerance);
+                    constraintType = c;
+                    p1 = p;
+                }
             
                 // create new Line
-                m_PreviousElement = m_Parent->Factory().AddLine(m_InputData[0], p1);
+                SketchItem line = f.AddLine(m_InputData[0], p1);
                  
                 // constraint to beggining of our new line
-                if(previousElement.type == SketchItem::Type::Line) {
+                if(m_PreviousElement.type == SketchItem::Type::Line) {
                     // add constraint between end of last line to beginning of this line
-                    m_Parent->Factory().AddConstraint<Coincident_PointToPoint>(previousElement.P1(), m_PreviousElement.P0());
+                    f.AddConstraint<Coincident_PointToPoint>(m_PreviousElement.P1(), line.P0());
                 }  
                 // tangent constraint to beggining of our new line
-                else if(previousElement.type == SketchItem::Type::Arc) {
+                else if(m_PreviousElement.type == SketchItem::Type::Arc) {
                     // Constrain the end point of previous line to the start point of the new arc
-                    m_Parent->Factory().AddConstraint<Coincident_PointToPoint>(previousElement.P1(), m_PreviousElement.P0());
+                    f.AddConstraint<Coincident_PointToPoint>(m_PreviousElement.P1(), line.P0());
                     // add tangent constraint between the previous line and the beginning of the new arc
-                    m_Parent->Factory().AddConstraint<Tangent_Arc_Line>(previousElement, m_PreviousElement, 1);
+                    f.AddConstraint<Tangent_Arc_Line>(m_PreviousElement, line, 1); // to p1
+                } 
+                else { // Constrain p0 of line to nearby existing geometry (this is covered by the above constraints ) 
+                    if(f.ConstrainPointToClosest(line.P0(), m_InputData[0])) { needsSolve = true; }
                 }
-                 
+                // Constrain p1 of line to nearby existing geometry
+                if(f.ConstrainPointToClosest(line.P1(), p1)) { needsSolve = true; } 
+                
+                // Add vertical constraint
+                if(constraintType == ConstraintType::Vertical) { 
+                    f.AddConstraint<Vertical>(line.P0(), line.P1()); 
+                } // Add horizontal constraint
+                else if(constraintType == ConstraintType::Horizontal) {
+                    f.AddConstraint<Horizontal>(line.P0(), line.P1()); 
+                }
+                
                 // Update render data
                 m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);
+                // Set last item for next time
+                m_PreviousElement = line;
                  
             }
             // Handle Add Arc
@@ -859,20 +905,25 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                     if(m_InputData.size() != 2) { return false; }
                     // make sure points aren't the same
                     if(m_InputData[1] == m_InputData[0]) { m_InputData.pop_back(); return false; }
-                    // allows us to continue element from last element's end points
-                    SketchItem previousElement = m_PreviousElement;
                     // Calculate centre from point
-                    std::optional<Vec2> newCentre = Geom::ArcCentreFromTangentLine(m_Parent->Factory().GetPositionBySketchItem(previousElement.P0()), m_InputData[0], m_InputData[1]);
+                    std::optional<Vec2> newCentre = Geom::ArcCentreFromTangentLine(f.GetPositionBySketchItem(m_PreviousElement.P0()), m_InputData[0], m_InputData[1]);
                     // make sure points aren't the same
                     if(!newCentre) { m_InputData.pop_back(); return false; }                       
                     // Create new Arc
-                    m_PreviousElement = m_Parent->Factory().AddArc(m_InputData[0], m_InputData[1], *newCentre, m_Parent->Events().m_InputDirection); 
+                    SketchItem arc = f.AddArc(m_InputData[0], m_InputData[1], *newCentre, m_Parent->Events().m_InputDirection); 
                     // Constrain the end point of previous line to the start point of the new arc
-                    m_Parent->Factory().AddConstraint<Coincident_PointToPoint>(previousElement.P1(), m_PreviousElement.P0());
+                    f.AddConstraint<Coincident_PointToPoint>(m_PreviousElement.P1(), arc.P0());
                     // add tangent constraint between the previous line and the beginning of the new arc
-                    m_Parent->Factory().AddConstraint<Tangent_Arc_Line>(m_PreviousElement, previousElement, 0);
+                    f.AddConstraint<Tangent_Arc_Line>(arc, m_PreviousElement, 0);
+                    
+                    // Constrain p1 & pC of arc to nearby existing geometry (p0 is covered by the previous click) 
+                    if(f.ConstrainPointToClosest(arc.P1(), m_InputData[1])) { needsSolve = true; }
+                    if(f.ConstrainPointToClosest(arc.PC(), m_InputData[2])) { needsSolve = true; } 
+                    
                     // Update render data
                     m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full_SetInputDataToLastElement);
+                    // Set last item for next time
+                    m_PreviousElement = arc;
                 }  
                 // start new arc
                 else {
@@ -883,10 +934,18 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                     // Calculate closest possible centre point from input centre point
                     Vec2 newCentre = Geom::ArcCentre(m_InputData[0], m_InputData[1], m_InputData[2]);
                     // Create new Arc
-                    m_PreviousElement = m_Parent->Factory().AddArc(m_InputData[0], m_InputData[1], newCentre, m_Parent->Events().m_InputDirection);  
+                    SketchItem arc = f.AddArc(m_InputData[0], m_InputData[1], newCentre, m_Parent->Events().m_InputDirection);
+                    // Constrain p0 of line to nearby existing geometry (this is covered by the above constraints ) 
+                    if(f.ConstrainPointToClosest(arc.P0(), m_InputData[0])) { needsSolve = true; }
+                    if(f.ConstrainPointToClosest(arc.P1(), m_InputData[1])) { needsSolve = true; }
+                    if(f.ConstrainPointToClosest(arc.PC(), m_InputData[2])) { needsSolve = true; } 
                     // Update render data
                     m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full);
+                    // Set last item for next time
+                    m_PreviousElement = arc;
                 }
+                
+            
             }
             // Handle Add Circle
             else if(m_CommandType == CommandType::Add_Circle) {
@@ -897,14 +956,24 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
                 if(m_InputData[1] == m_InputData[0]) { m_InputData.pop_back(); return false; }
                 
                 double radius = Hypot(m_InputData[1] - m_InputData[0]);
-                m_Parent->Factory().AddCircle(m_InputData[0], radius);
+                SketchItem circle = f.AddCircle(m_InputData[0], radius);
+                
+                // Constrain pCentre of circle to nearby existing geometry 
+                if(f.ConstrainPointToClosest(circle.PC(), m_InputData[0])) { needsSolve = true; }
+                
+                // TODO: Constrain circle to nearby existing geometry
+                //if(f.ConstrainCircleToClosest(circle, m_InputData[1])) { needsSolve = true; }
+                
                 // Update render data
                 m_Parent->Renderer().SetUpdateFlag(UpdateFlag::Full);
             }
             else {
                 assert(0 && "Command doesn't exist");
             }
-            
+        }
+        // Solve since we added constraints
+        if(needsSolve) { 
+            m_Parent->SolveConstraints(); 
         }
     }
     return true;
@@ -923,7 +992,7 @@ bool SketchEvents::Mouse_Button(MouseButton button, MouseAction action, KeyModif
 bool SketchEvents::Mouse_Move(const Vec2& p)
 { 
     // TODO: Work out where point should be (i.e. if snapped etc)
-    std::cout << "m_SelectionFilter: " << (int)m_SelectionFilter << std::endl;
+    // std::cout << "m_SelectionFilter: " << (int)m_SelectionFilter << std::endl;
     
     // Reset the mouse button / action
     if(m_MouseAction == MouseAction::Release) { m_MouseButton = MouseButton::None; m_MouseAction = MouseAction::None; }
@@ -1546,9 +1615,13 @@ void Sketcher::DrawImGui()
 void Sketcher::DrawImGui_Elements(ElementID& deleteElement) 
 {        
     
-    auto drawFlags = [](Item& item) 
+    float deleteButtonPos = 140.0f;
+    float inputBoxPos = 200.0f;
+    float inputBoxWidth = 75.0f;
+    
+    auto drawFlags = [&inputBoxPos](Item& item) 
     {
-        if(item.IsSelected())  { ImGui::SameLine(); ImGui::Text("(Selected)"); }
+        if(item.IsSelected())  { ImGui::SameLine(inputBoxPos); ImGui::Text("(Selected)"); }
         if(item.IsHovered())   { ImGui::SameLine(); ImGui::Text("(Hovered)"); }                        
         if(item.IsFailed())   { ImGui::SameLine(); ImGui::Text("(Failed)"); }                        
     };
@@ -1569,8 +1642,8 @@ void Sketcher::DrawImGui_Elements(ElementID& deleteElement)
     auto drawElementTreeNode = [&](const std::string& name, Sketch::Element* element) {
         bool isTreeNodeOpen = ImGui::TreeNode(va_str("%s %d", name.c_str(), element->ID()).c_str());
         drawFlags(element->Item_Elem());         
-        ImGui::SameLine(); 
-        if(ImGui::SmallButton(va_str("Delete##Element%d", element->ID()).c_str())) { deleteElement = element->ID(); }
+        ImGui::SameLine(deleteButtonPos); 
+        if(ImGui::SmallButton(va_str("x##Element%d", element->ID()).c_str())) { deleteElement = element->ID(); }
         return isTreeNodeOpen;                      
     };
     
@@ -1634,14 +1707,18 @@ void Sketcher::DrawImGui_Elements(ElementID& deleteElement)
 
 void Sketcher::DrawImGui_Constraints(ConstraintID& deleteConstraint) 
 {     
+    float deleteButtonPos = 140.0f;
+    float inputBoxPos = 200.0f;
+    float inputBoxWidth = 75.0f;
     
-    auto drawConstraintTreeNode = [&deleteConstraint](const std::string& name, Sketch::Constraint* c) {
-        bool isTreeNodeOpen = ImGui::TreeNode(va_str("%s %d", name.c_str(), c->ID()).c_str());
+    auto drawConstraintTreeNode = [&deleteConstraint, &deleteButtonPos](Sketch::Constraint* c) {
+        std::string title = va_str("%s %d", c->Label().c_str(), c->ID());
+        bool isTreeNodeOpen = ImGui::TreeNode(title.c_str());
         //if(c.IsSelected()) { ImGui::SameLine(); ImGui::Text("(Selected)"); }
         //if(c.IsHovered())  { ImGui::SameLine(); ImGui::Text("(Hovered)"); }    
         if(c->Failed())    { ImGui::SameLine(); ImGui::Text("(Failed)"); }
-        ImGui::SameLine(); 
-        if(ImGui::SmallButton(va_str("Delete##Constraint%d", c->ID()).c_str())) { deleteConstraint = c->ID(); }
+        ImGui::SameLine(deleteButtonPos); 
+        if(ImGui::SmallButton(va_str("x##Constraint%d", c->ID()).c_str())) { deleteConstraint = c->ID(); }
         return isTreeNodeOpen;                      
     };
     
@@ -1653,10 +1730,11 @@ void Sketcher::DrawImGui_Constraints(ConstraintID& deleteConstraint)
     };
     
     
-    auto drawConstraint = [&](Sketch::Constraint* c, std::function<void()> cb) {
+    auto drawConstraint = [&](Sketch::Constraint* c, std::function<void()> cb_title_widgets) {
                 
-        if(drawConstraintTreeNode("Constraint", c)) {                                 //  TODO c->name
-            cb();
+        bool success = drawConstraintTreeNode(c);
+        cb_title_widgets();
+        if(success) {
             drawConstraintItems(c);
             ImGui::TreePop(); ImGui::Separator();
         }
@@ -1667,35 +1745,45 @@ void Sketcher::DrawImGui_Constraints(ConstraintID& deleteConstraint)
     if (ImGui::CollapsingHeader("Constraints"))
     {
         bool updateRequired = false;
+        
+        ImGui::PushItemWidth(inputBoxWidth); // button width
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(ImGui::GetStyle().FramePadding.x, 0.0f));
         m_Factory.ForEachConstraint([&](Sketch::Constraint* constraint) 
         {
             if(auto* c = dynamic_cast<Distance_PointToPoint*>(constraint)) {
                 drawConstraint(constraint, [&]() {
-                    updateRequired |= ImGui::InputDouble(String::va_str("Distance##%d", (int)c).c_str(), &(c->distance));
+                    // display input in title
+                    ImGui::SameLine(inputBoxPos);
+                    updateRequired |= ImGui::InputDouble(String::va_str("Distance##%d", (int)c).c_str(), &(c->distance), 0.0f, 0.0f, "%.2f");
                 });
             }
             else if(auto* c = dynamic_cast<Distance_PointToLine*>(constraint)) {
                 drawConstraint(constraint, [&]() {
-                    updateRequired |= ImGui::InputDouble(String::va_str("Distance##%d", (int)c).c_str(), &(c->distance));
+                    ImGui::SameLine(inputBoxPos);
+                    updateRequired |= ImGui::InputDouble(String::va_str("Distance##%d", (int)c).c_str(), &(c->distance), 0.0f, 0.0f, "%.2f");
                 });
             }
             else if(auto* c = dynamic_cast<AddRadius_Circle*>(constraint)) {
                 drawConstraint(constraint, [&]() {
-                    updateRequired |= ImGui::InputDouble(String::va_str("Radius##%d", (int)c).c_str(), &(c->radius));
+                    ImGui::SameLine(inputBoxPos);
+                    updateRequired |= ImGui::InputDouble(String::va_str("Radius##%d", (int)c).c_str(), &(c->radius), 0.0f, 0.0f, "%.2f");
                 });
             }
             else if(auto* c = dynamic_cast<AddRadius_Arc*>(constraint)) {
                 drawConstraint(constraint, [&]() {
-                    updateRequired |= ImGui::InputDouble(String::va_str("Radius##%d", (int)c).c_str(), &(c->radius));
+                    ImGui::SameLine(inputBoxPos);
+                    updateRequired |= ImGui::InputDouble(String::va_str("Radius##%d", (int)c).c_str(), &(c->radius), 0.0f, 0.0f, "%.2f");
                 });
             }
             else if(auto* c = dynamic_cast<Angle_LineToLine*>(constraint)) {
                 drawConstraint(constraint, [&]() {
-                    updateRequired |= ImGui::InputDouble(String::va_str("Angle##%d", (int)c).c_str(), &(c->angle));
+                    ImGui::SameLine(inputBoxPos);
+                    updateRequired |= ImGui::InputDouble(String::va_str("Angle##%d", (int)c).c_str(), &(c->angle), 0.0f, 0.0f, "%.2f");
                 });
             }
             else if(auto* c = dynamic_cast<Tangent_Arc_Line*>(constraint)) {
                 drawConstraint(constraint, [&]() {
+                    ImGui::SameLine(inputBoxPos);
                     updateRequired |= ImGui::Combo(String::va_str("Tangent Point##%d", (int)c).c_str(), &(c->tangentPoint), "P0\0P1\0\0");
                 });
             }
@@ -1703,6 +1791,9 @@ void Sketcher::DrawImGui_Constraints(ConstraintID& deleteConstraint)
                 drawConstraint(constraint, [](){});
             }
         });
+        ImGui::PopStyleVar();
+        ImGui::PopItemWidth();
+        
         if(updateRequired)  {                        
             SolveConstraints();
             m_Renderer.SetUpdateFlag(UpdateFlag::Full);  

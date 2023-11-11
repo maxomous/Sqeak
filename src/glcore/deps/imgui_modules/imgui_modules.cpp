@@ -187,7 +187,7 @@ bool WasLastItemRightClicked() {
     return (ImGui::IsItemHovered() && ImGui::IsMouseReleased(ImGuiMouseButton_Right));
 }
 
-bool ImageButtonWithText(const std::string& text, ImageTexture& image, const ImVec2& buttonSize, const ImVec2& imageSize, ImFont* font, const ImVec2& textOffset, const ImVec2& imageOffset, bool isActive)
+bool ImageButtonWithText(const std::string& text, ImageTexture image, const ImVec2& buttonSize, const ImVec2& imageSize, ImFont* font, const ImVec2& textOffset, const ImVec2& imageOffset, bool isActive, ImageTexture hoveredImage)
 { 
     ImGui::BeginGroup();
         // get initial cursor position
@@ -219,6 +219,8 @@ bool ImageButtonWithText(const std::string& text, ImageTexture& image, const ImV
             
         if(isActive) ImGui::PopStyleColor();
         ImGui::PopFont();
+        
+        
         // get cursor end position  
         ImVec2 p1 = ImGui::GetCursorPos();
         // Offset Image
@@ -227,8 +229,10 @@ bool ImageButtonWithText(const std::string& text, ImageTexture& image, const ImV
         
         ImVec2 offetToCentre = (buttonSize-imageSize)/2.0f;
         ImGui::SetCursorPos(p0 + offetToCentre + imageOffset);
+        // If hovered, set image to hoveredImage (if provided)
+        ImageTexture imageOut = (hoveredImage.textureID != 0 && ImGui::IsItemHovered()) ? hoveredImage : image;
         // draw image
-        ImGui::Image(image, imageSize);
+        ImGui::Image(imageOut, imageSize);
         
         // reset cursor position to after button
         ImGui::SetCursorPos(p1);
@@ -238,9 +242,22 @@ bool ImageButtonWithText(const std::string& text, ImageTexture& image, const ImV
     return isClicked;
 }
 
-bool ImageButtonWithText(const std::string& text, ImageTexture& image, ImageButtonStyle* imageButton, bool isActive)
+bool ImageButtonWithText(const std::string& text, ImageTexture image, ImageButtonStyle* imageButton, bool isActive, ImageTexture hoveredImage)
+{  
+    return ImageButtonWithText(text, image, imageButton->buttonSize, imageButton->imageSize, imageButton->font, imageButton->textOffset, imageButton->imageOffset, isActive, hoveredImage);
+}
+
+bool ImageButton(ImageTexture image, ImageButtonStyle* imageButton, bool isActive, ImageTexture hoveredImage)
 { 
-    return ImageButtonWithText(text, image, imageButton->buttonSize, imageButton->imageSize, imageButton->font, imageButton->textOffset, imageButton->imageOffset, isActive);
+    // Set active
+    if(isActive) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetColorU32(ImGuiCol_ButtonActive));
+    // If hovered, set image to hoveredImage (if provided)
+    ImageTexture imageOut = (hoveredImage.textureID != 0 && ImGui::IsItemHovered()) ? hoveredImage : image;
+    // Draw image button
+    bool isClicked = ImGui::ImageButton(imageButton->buttonSize, imageButton->imageSize, imageOut); 
+    // Deactive
+    if(isActive) ImGui::PopStyleColor();
+    return isClicked;
 }
 
 // Helper to display a little (?) mark which shows a tooltip when hovered.

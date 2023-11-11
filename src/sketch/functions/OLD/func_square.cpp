@@ -27,7 +27,7 @@ void FunctionType_Square::DrawPopup(Settings& settings)
 bool FunctionType_Square::IsValidInputs(Settings& settings) 
 {
     // check tool and material is selected
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(!settings.p.tools.IsToolAndMaterialSelected())
         return false;
     // start and end point
     if(m_Params.p0.x == m_Params.p1.x || m_Params.p0.y == m_Params.p1.y) {

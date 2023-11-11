@@ -39,7 +39,7 @@ void FunctionType_QRCode::DrawPopup(Settings& settings)
 bool FunctionType_QRCode::IsValidInputs(Settings& settings) 
 {
     // check tool and material is selected
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(!settings.p.tools.IsToolAndMaterialSelected())
         return false;
     // z top and bottom
    /* if(m_Params.p1.z > m_Params.p0.z) {

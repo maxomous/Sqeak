@@ -27,7 +27,7 @@ void FunctionType_Slot::DrawPopup(Settings& settings)
 bool FunctionType_Slot::IsValidInputs(Settings& settings) 
 {
     // check tool and material is selected
-    if(settings.p.tools.IsToolAndMaterialSelected())
+    if(!settings.p.tools.IsToolAndMaterialSelected())
         return false;
     // start and end point
     if(m_Params.p1 == m_Params.p0) {
